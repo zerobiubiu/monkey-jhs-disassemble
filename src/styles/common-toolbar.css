@@ -1,0 +1,110 @@
+    /* 全局通用样式 */
+    .fr-btn {
+        float: right;
+        margin-left: 4px !important;
+    }
+
+    .menu-box {
+        position: fixed;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        gap: 6px;
+    }
+
+    .menu-btn {
+        display: inline-block;
+        min-width: 80px;
+        padding: 7px 12px;
+        border-radius: 4px;
+        color: white !important;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+        border: none;
+        line-height: 1.3;
+        margin: 0;
+    }
+
+    .menu-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        opacity: 0.9;
+    }
+
+    .menu-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .do-hide {
+        display: none !important;
+    }
+
+    .main-tab-btn {
+        border-bottom:none !important;
+        border-radius:3px !important;
+        height: 30px;
+        margin-left: 5px !important;
+    }
+
+    .jhs-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .tool-box .jhs-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+
+    /*表格内按钮溢出,防止被隐藏*/
+    .tabulator .tabulator-row .action-cell-dropdown {
+        overflow: visible !important;
+    }
+    /* 去除行内鼠标小手*/
+    .tabulator .tabulator-row.tabulator-selectable:hover {
+        cursor: default !important;
+    }
+
+    /* 排序小箭头颜色 */
+    .tabulator .tabulator-col.tabulator-sortable[aria-sort="ascending"] .tabulator-arrow {
+        border-bottom-color: #337ab7 !important;
+    }
+    .tabulator .tabulator-col.tabulator-sortable[aria-sort="descending"] .tabulator-arrow {
+        border-top-color: #337ab7 !important;
+    }
+
+    /* 针对折叠行的容器或内容进行样式修改 */
+    .tabulator-responsive-collapse {
+        border-top: none !important;
+    }
+
+    .tabulator-responsive-collapse table{
+        margin-left: 50px !important;
+    }
+
+    .tabulator-cell {
+        height:auto !important;
+    }
+
+    /* 列允许换行,去除省略号 */
+    .tabulator .tabulator-cell {
+        white-space: normal !important;
+        text-overflow: clip !important;
+    }
+
+    .tabulator-tableholder {
+        overflow-x: hidden !important;
+    }
+
+    /*__SCROLLBAR__*/
