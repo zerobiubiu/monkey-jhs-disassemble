@@ -52,6 +52,7 @@ import {
 import { createLoading } from "../core/loading";
 import { show } from "../core/toast";
 import { ImagePreview } from "../core/image-preview";
+import { VIEWER_CONFIG } from "../core/viewer";
 import { Logger } from "../core/logger";
 import { StorageManager } from "../core/storage-manager";
 import { CommonUtil } from "../core/common-util";
@@ -208,62 +209,15 @@ unsafeWindow.show = window.show = show;
         } else {
             a = $(t);
         }
-        const s = {
-            zIndex: 999999990,
-            navbar: false,
-            zoomOnWheel: false,
-            zoomRatio: 0.1,
-            toggleOnDblclick: false,
-            toolbar: {
-                zoomIn: 1,
-                zoomOut: 1,
-                reset: 1,
-                rotateLeft: 0,
-                rotateRight: 0,
-                flipHorizontal: 0,
-                flipVertical: 0,
-            },
-            title: false,
-            keyboard: false,
-            viewed() {
-                o.zoomTo(1.4);
-                let e = (o.viewerData.width - o.imageData.width) / 2;
-                o.moveTo(e, 0);
-            },
-            shown() {
-                if (i) {
-                    a.remove();
-                }
-                document.documentElement.style.overflow = "hidden";
-                document.body.style.overflow = "hidden";
-                o.handleKeydown = function (t) {
-                    if (t.key === "Escape" || t.key === " ") {
-                        t.preventDefault();
-                        t.stopPropagation();
-                        o.destroy();
-                        document.removeEventListener(
-                            "keydown",
-                            o.handleKeydown,
-                        );
-                        document.documentElement.style.overflow = "";
-                        document.body.style.overflow = "";
-                        e();
-                    }
-                };
-                document.addEventListener("keydown", o.handleKeydown);
-            },
-            hidden() {
-                if (o && o.handleKeydown) {
-                    document.removeEventListener("keydown", o.handleKeydown);
-                }
-                o.destroy();
-                document.documentElement.style.overflow = "";
-                document.body.style.overflow = "";
-                e();
-            },
-        };
-        const o = new Viewer(a[0], s);
-        o.show();
+        const viewerRef = { current: null };
+        const s = VIEWER_CONFIG({
+            container: a,
+            isTemporary: i,
+            resetOverflow: e,
+            viewerRef,
+        });
+        viewerRef.current = new Viewer(a[0], s);
+        viewerRef.current.show();
     };
 })();
 (async function () {
