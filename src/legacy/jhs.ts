@@ -38,6 +38,7 @@ import {
 } from "../constants/status";
 import { VIDEO_QUALITY_LIST as L } from "../constants/video-quality";
 import loadingCssRaw from "../styles/loading.css?raw";
+import { Hotkey as ie } from "../core/hotkey";
 
 var e;
 var t;
@@ -3738,89 +3739,6 @@ class PreviewVideoPlugin extends BasePlugin {
         });
     }
 }
-const ie = class e {
-    constructor() {
-        if (new.target === e) {
-            throw new Error("HotkeyManager cannot be instantiated.");
-        }
-    }
-    static registerHotkey(e, t, n = null) {
-        if (Array.isArray(e)) {
-            let a = [];
-            e.forEach((e) => {
-                if (!this.isHotkeyFormat(e)) {
-                    throw new Error("快捷键格式错误");
-                }
-                let i = this.recordHotkey(e, t, n);
-                a.push(i);
-            });
-            return a;
-        }
-        if (!this.isHotkeyFormat(e)) {
-            throw new Error("快捷键格式错误");
-        }
-        return this.recordHotkey(e, t, n);
-    }
-    static recordHotkey(e, t, n) {
-        let a = Math.random().toString(36).substr(2);
-        this.registerHotKeyMap.set(a, {
-            hotkeyString: e,
-            callback: t,
-            keyupCallback: n,
-        });
-        return a;
-    }
-    static unregisterHotkey(e) {
-        if (this.registerHotKeyMap.has(e)) {
-            this.registerHotKeyMap.delete(e);
-        }
-    }
-    static isHotkeyFormat(e) {
-        return e
-            .toLowerCase()
-            .split("+")
-            .map((e) => e.trim())
-            .every(
-                (e) => ["ctrl", "shift", "alt"].includes(e) || e.length === 1,
-            );
-    }
-    static judgeHotkey(e, t) {
-        const n = e
-            .toLowerCase()
-            .split("+")
-            .map((e) => e.trim());
-        const a = n.includes("ctrl");
-        const i = n.includes("shift");
-        const s = n.includes("alt");
-        const o = n.find((e) => e !== "ctrl" && e !== "shift" && e !== "alt");
-        return (
-            (this.isMac ? t.metaKey : t.ctrlKey) === a &&
-            t.shiftKey === i &&
-            t.altKey === s &&
-            t.key.toLowerCase() === o
-        );
-    }
-};
-i(ie, "isMac", navigator.platform.indexOf("Mac") === 0);
-i(ie, "registerHotKeyMap", new Map());
-i(ie, "handleKeydown", (e) => {
-    for (const [t, n] of ie.registerHotKeyMap) {
-        let t = n.hotkeyString;
-        let a = n.callback;
-        if (ie.judgeHotkey(t, e)) {
-            a(e);
-        }
-    }
-});
-i(ie, "handleKeyup", (e) => {
-    for (const [t, n] of ie.registerHotKeyMap) {
-        let t = n.hotkeyString;
-        let a = n.keyupCallback;
-        if (a && ie.judgeHotkey(t, e)) {
-            a(e);
-        }
-    }
-});
 let se = ie;
 document.addEventListener("keydown", (e) => {
     se.handleKeydown(e);
