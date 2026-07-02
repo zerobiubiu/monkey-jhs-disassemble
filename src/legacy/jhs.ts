@@ -52,6 +52,15 @@ import { Logger } from "../core/logger";
 import { StorageManager } from "../core/storage-manager";
 import { CommonUtil } from "../core/common-util";
 import { GmHttp } from "../core/gm-http";
+import {
+    API_BASE as U,
+    reBuildSignature as O,
+    fetchMovieReviews as R,
+    fetchMovieDetail as V,
+    fetchRelatedCollections as K,
+    fetchPlaybackRanking as W,
+    fetchTopMovies as q,
+} from "../constants/api";
 
 var e;
 var t;
@@ -143,106 +152,7 @@ t = async function (e, t, n) {
     await this.forage.setItem(t, a);
     return a;
 };
-const U = "https://jdforrepam.com/api";
-function O() {
-    const e = "jhs_review_ts";
-    const t = "jhs_review_sign";
-    const n = Math.floor(Date.now() / 1000);
-    if (n - (localStorage.getItem(e) || 0) <= 20) {
-        return localStorage.getItem(t);
-    }
-    const a = `${n}.lpw6vgqzsp.${md5(`${n}71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa`)}`;
-    localStorage.setItem(e, n);
-    localStorage.setItem(t, a);
-    return a;
-}
-const R = async (e, t = 1, n = 20) => {
-    let a = `${U}/v1/movies/${e}/reviews`;
-    let i = {
-        jdSignature: await O(),
-    };
-    return (
-        await gmHttp.get(
-            a,
-            {
-                page: t,
-                sort_by: "hotly",
-                limit: n,
-            },
-            i,
-        )
-    ).data.reviews;
-};
-const V = async (e) => {
-    let t = `${U}/v4/movies/${e}`;
-    let n = {
-        jdSignature: await O(),
-    };
-    const a = await gmHttp.get(t, null, n);
-    if (!a.data) {
-        show.error("获取视频详情失败: " + a.message);
-        throw new Error(a.message);
-    }
-    const i = a.data.movie;
-    const s = i.preview_images;
-    const o = [];
-    s.forEach((e) => {
-        o.push(
-            e.large_url.replace(
-                "https://tp-iu.cmastd.com/rhe951l4q",
-                "https://c0.jdbstatic.com",
-            ),
-        );
-    });
-    return {
-        movieId: i.id,
-        actors: i.actors,
-        duration: i.duration,
-        title: i.origin_title,
-        carNum: i.number,
-        score: i.score,
-        releaseDate: i.release_date,
-        watchedCount: i.watched_count,
-        imgList: o,
-    };
-};
-const K = async (e, t = 1, n = 20) => {
-    let a = `${U}/v1/lists/related?movie_id=${e}&page=${t}&limit=${n}`;
-    let i = {
-        jdSignature: await O(),
-    };
-    const s = await gmHttp.get(a, null, i);
-    const o = [];
-    s.data.lists.forEach((e) => {
-        o.push({
-            relatedId: e.id,
-            name: e.name,
-            movieCount: e.movies_count,
-            collectionCount: e.collections_count,
-            viewCount: e.views_count,
-            createTime: utils.formatDate(e.created_at),
-        });
-    });
-    return o;
-};
-const W = async (e = "daily", t = "high_score") => {
-    let n = `${U}/v1/rankings/playback?period=${e}&filter_by=${t}`;
-    let a = {
-        jdSignature: await O(),
-    };
-    return (await gmHttp.get(n, null, a)).data.movies;
-};
-const q = async (e = "all", t = "", n = 1, a = 40) => {
-    let i = `${U}/v1/movies/top?start_rank=1&type=${e}&type_value=${t}&ignore_watched=false&page=${n}&limit=${a}`;
-    let s = {
-        "user-agent": "Dart/3.5 (dart:io)",
-        "accept-language": "zh-TW",
-        host: "jdforrepam.com",
-        authorization: "Bearer " + localStorage.getItem("jhs_appAuthorization"),
-        jdsignature: await O(),
-    };
-    return await gmHttp.get(i, null, s);
-};
+
 unsafeWindow.utils = window.utils = new CommonUtil();
 unsafeWindow.gmHttp = window.gmHttp = new GmHttp();
 unsafeWindow.storageManager = window.storageManager = new StorageManager();
