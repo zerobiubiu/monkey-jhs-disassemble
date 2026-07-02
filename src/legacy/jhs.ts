@@ -62,6 +62,7 @@ import {
     fetchTopMovies as q,
 } from "../constants/api";
 import { BasePlugin } from "../plugins/base-plugin";
+import { PluginManager } from "../plugins/plugin-manager";
 
 var e;
 var t;
@@ -453,93 +454,6 @@ unsafeWindow.show = window.show = show;
         }
     });
 })();
-class PluginManager {
-    constructor() {
-        this.plugins = new Map();
-    }
-    register(e) {
-        if (typeof e != "function") {
-            throw new Error("插件必须是一个类");
-        }
-        const t = new e();
-        t.pluginManager = this;
-        const n = t.getName();
-        if (this.plugins.has(n)) {
-            throw new Error(`插件"${name}"已注册`);
-        }
-        this.plugins.set(n, t);
-    }
-    getBean(e) {
-        return this.plugins.get(e);
-    }
-    async processCss() {
-        const e = (
-            await Promise.allSettled(
-                Array.from(this.plugins).map(async ([e, t]) => {
-                    try {
-                        if (typeof t.initCss == "function") {
-                            const n = await t.initCss();
-                            if (n) {
-                                utils.insertStyle(n);
-                            }
-                            return {
-                                name: e,
-                                status: "fulfilled",
-                            };
-                        }
-                        return {
-                            name: e,
-                            status: "skipped",
-                        };
-                    } catch (n) {
-                        console.error(`插件 ${e} 加载 CSS 失败`, n);
-                        return {
-                            name: e,
-                            status: "rejected",
-                            error: n,
-                        };
-                    }
-                }),
-            )
-        ).filter((e) => e.status === "rejected");
-        if (e.length) {
-            console.error(
-                "以下插件的 CSS 加载失败：",
-                e.map((e) => e.value.name),
-            );
-        }
-    }
-    async processPlugins() {
-        const e = (
-            await Promise.allSettled(
-                Array.from(this.plugins).map(async ([e, t]) => {
-                    try {
-                        if (typeof t.handle == "function") {
-                            await t.handle();
-                            return {
-                                name: e,
-                                status: "fulfilled",
-                            };
-                        }
-                    } catch (n) {
-                        clog.error(`插件 ${e} 执行失败`, n);
-                        return {
-                            name: e,
-                            status: "rejected",
-                            error: n,
-                        };
-                    }
-                }),
-            )
-        ).filter((e) => e.status === "rejected");
-        if (e.length) {
-            console.error(
-                "以下插件执行失败：",
-                e.map((e) => e.value.name),
-            );
-        }
-    }
-}
 class DetailPagePlugin extends BasePlugin {
     getName() {
         return "DetailPagePlugin";
