@@ -6,7 +6,7 @@
     "description": "Jav-鉴黄师 收藏、屏蔽; 屏蔽标签、屏蔽演员、同步收藏演员、新作品检测; 免VIP查看热播、Top250排行榜、Fc2ppv、可查看所有评论信息、相关清单; 支持云盘备份; 以图识图; 字幕搜索; JavDb|JavBus",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "tsc -b && vite build",
         "preview": "vite preview"
     },
     "dependencies": {
