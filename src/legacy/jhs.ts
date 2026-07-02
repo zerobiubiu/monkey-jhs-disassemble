@@ -69,6 +69,7 @@ import {
 import { BasePlugin } from "../plugins/base-plugin";
 import { PluginManager } from "../plugins/plugin-manager";
 import { DetailPagePlugin } from "../plugins/detail-page-plugin";
+import { FilterTitleKeywordPlugin } from "../plugins/filter-title-keyword-plugin";
 
 var e;
 var t;
@@ -4247,43 +4248,6 @@ class ReviewPlugin extends BasePlugin {
                 }
             });
         }
-    }
-}
-class FilterTitleKeywordPlugin extends BasePlugin {
-    getName() {
-        return "FilterTitleKeywordPlugin";
-    }
-    async handle() {
-        if (!isDetailPage && !isFc2Page) {
-            return;
-        }
-        if (
-            (await storageManager.getSetting("enableTitleSelectFilter", _)) !==
-            _
-        ) {
-            return;
-        }
-        let e;
-        if (r) {
-            e = ".title strong, .current-title";
-        } else if (l) {
-            e = "h3";
-        }
-        utils.rightClick(document.body, e, (e) => {
-            const t = window.getSelection().toString();
-            if (t) {
-                e.preventDefault();
-                let n = {
-                    clientX: e.clientX,
-                    clientY: e.clientY + 80,
-                };
-                utils.q(n, `是否屏蔽标题关键词 ${t}?`, async () => {
-                    await storageManager.saveTitleFilterKeyword(t);
-                    window.refresh();
-                    utils.closePage();
-                });
-            }
-        });
     }
 }
 class BlacklistPlugin extends BasePlugin {
