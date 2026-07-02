@@ -10,6 +10,7 @@
 |------|------|------|------|
 | `01-refactor-plan.md` | 🔧开发指导 | 🔧待执行 | 重构总计划：架构分析、渐进策略、提取模式、已完成/待完成清单 |
 | `02-css-extraction.md` | 🔧开发指导 | 🔧待执行 | CSS 提取模式（?raw + H()/insertAdjacentHTML + 占位 replace）与待提取清单 |
+| `03-plugin-integration.md` | 🔧开发指导 | ✅已执行 | 4 个插件（DetailPage/FilterTitleKeyword/HighlightMagnet/FoldCategory）外置集成记录 |
 
 ## 类型图例
 
@@ -29,6 +30,7 @@
 
 1. `01-refactor-plan.md` — 理解整体重构策略与进度
 2. `02-css-extraction.md` — CSS 提取的具体模式与清单
+3. `03-plugin-integration.md` — 插件外置集成模式与执行记录
 
 ## 相关文件
 
