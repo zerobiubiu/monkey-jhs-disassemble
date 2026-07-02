@@ -68,6 +68,7 @@ import {
 } from "../constants/api";
 import { BasePlugin } from "../plugins/base-plugin";
 import { PluginManager } from "../plugins/plugin-manager";
+import { DetailPagePlugin } from "../plugins/detail-page-plugin";
 
 var e;
 var t;
@@ -414,43 +415,6 @@ unsafeWindow.show = window.show = show;
         }
     });
 })();
-class DetailPagePlugin extends BasePlugin {
-    getName() {
-        return "DetailPagePlugin";
-    }
-    constructor() {
-        super();
-    }
-    handle() {
-        if (window.isDetailPage) {
-            $(".video-meta-panel a").each(function () {
-                const e = $(this).attr("href");
-                if (
-                    e &&
-                    (e.startsWith("http://") ||
-                        e.startsWith("https://") ||
-                        e.startsWith("/"))
-                ) {
-                    $(this).attr("target", "_blank");
-                }
-            });
-            this.handleFancyBox();
-        }
-    }
-    handleFancyBox() {
-        document.addEventListener("click", function (e) {
-            if (e.target.closest(".fancybox-button--thumbs")) {
-                const e = !$(".fancybox-thumbs").is(":hidden");
-                localStorage.setItem("jhs_fancyboxThumbs", e.toString());
-                unsafeWindow.$.fancybox.defaults.thumbs.autoStart = e;
-            }
-        });
-        if (unsafeWindow.$.fancybox !== undefined) {
-            const e = localStorage.getItem("jhs_fancyboxThumbs");
-            unsafeWindow.$.fancybox.defaults.thumbs.autoStart = e === "true";
-        }
-    }
-}
 const selectAvailableVideoQuality = (e, t) => {
     if (!e || e.length === 0) {
         return null;
