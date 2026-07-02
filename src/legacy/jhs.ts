@@ -45,6 +45,7 @@ import {
     FILETREE_STORE as ot,
     FILETREE_DATA_KEY as rt,
 } from "../resources/gfriends";
+import { createLoading } from "../core/loading";
 
 var e;
 var t;
@@ -1968,21 +1969,7 @@ document.head.insertAdjacentHTML(
     "beforeend",
     "<style>" + loadingCssRaw + "</style>",
 );
-unsafeWindow.loading = window.loading = function () {
-    const e = document.createElement("div");
-    e.className = "loading-container";
-    const t = document.createElement("div");
-    t.className = "loading-animation";
-    e.appendChild(t);
-    document.body.appendChild(e);
-    return {
-        close: () => {
-            if (e && e.parentNode) {
-                e.parentNode.removeChild(e);
-            }
-        },
-    };
-};
+unsafeWindow.loading = window.loading = createLoading;
 (function () {
     const e = (e, t, n, a, i) => {
         let s;
