@@ -39,6 +39,12 @@ import {
 import { VIDEO_QUALITY_LIST as L } from "../constants/video-quality";
 import loadingCssRaw from "../styles/loading.css?raw";
 import { Hotkey as ie } from "../core/hotkey";
+import {
+    GFRIENDS_SOURCES as tt,
+    GFRIENDS_CDN_INDEX_KEY as nt,
+    FILETREE_STORE as ot,
+    FILETREE_DATA_KEY as rt,
+} from "../resources/gfriends";
 
 var e;
 var t;
@@ -10684,27 +10690,12 @@ class FavoriteActressesPlugin extends BasePlugin {
         }
     }
 }
-const tt = [
-    {
-        name: "jsDelivr (全球CDN)",
-        json: "https://cdn.jsdelivr.net/gh/gfriends/gfriends/Filetree.json",
-        base: "https://cdn.jsdelivr.net/gh/gfriends/gfriends/Content/",
-    },
-    {
-        name: "GitHub Raw (备用)",
-        json: "https://raw.githubusercontent.com/gfriends/gfriends/master/Filetree.json",
-        base: "https://raw.githubusercontent.com/gfriends/gfriends/master/Content/",
-    },
-];
-const nt = "jhs_img_cdn_index";
 let at = parseInt(localStorage.getItem(nt) || "0", 10);
 if (at >= tt.length || at < 0) {
     at = 0;
 }
 let it = tt[at].json;
 let st = tt[at].base;
-const ot = "filetreeStore";
-const rt = "filetree_data";
 const lt = {
     db: null,
     async open() {
