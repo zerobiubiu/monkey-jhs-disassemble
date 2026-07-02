@@ -20,7 +20,7 @@ export default defineConfig({
                 icon: "https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png",
                 match: ["https://javdb.com/*"],
                 include: ["https://javdb*.com/*"],
-                runAt: "document-idle",
+                "run-at": "document-idle",
                 connect: [
                     "xunlei.com",
                     "missav.live",
