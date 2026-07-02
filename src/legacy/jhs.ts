@@ -9,6 +9,35 @@
  * - 在逻辑、执行顺序、副作用上与原始脚本保持一致。
  */
 
+import {
+    currentHref as o,
+    isJavdbSite as r,
+    isJavbusSite as l,
+    isSearchOrUserPage as c,
+    JAVDB as T,
+    JAVBUS as I,
+    ACTOR as B,
+    ACTRESS as P,
+    CENSORED as D,
+    UNCENSORED as A,
+} from "../constants/site";
+import {
+    FILTER_ACTION as d,
+    FAVORITE_ACTION as h,
+    HAS_WATCH_ACTION as p,
+    BLOCK_TEXT as m,
+    BLOCKED_TEXT as u,
+    BLOCK_COLOR as f,
+    FAVORITE_TEXT as v,
+    FAVORITED_TEXT as b,
+    FAVORITE_COLOR as w,
+    WATCHED_TEXT as k,
+    WATCHED_COLOR as S,
+    NO as C,
+    YES as _,
+} from "../constants/status";
+import { VIDEO_QUALITY_LIST as L } from "../constants/video-quality";
+
 var e;
 var t;
 var n = Object.defineProperty;
@@ -33,109 +62,6 @@ var s = (e, t, n) => {
     })(e, t, "access private method");
     return n;
 };
-const o = window.location.href;
-const r = o.includes("javdb");
-const l =
-    o.includes("javbus") ||
-    o.includes("seejav") ||
-    o.includes("bus") ||
-    o.includes("javsee") ||
-    $("title").text().trim().startsWith("JavBus - AV");
-const c =
-    o.includes("/search?q") || o.includes("/search/") || o.includes("/users/");
-const d = "filter";
-const h = "favorite";
-const p = "hasWatch";
-const m = "🚫 屏蔽";
-const u = "🚫 已屏蔽";
-const f = "#de3333";
-const v = "⭐ 收藏";
-const b = "⭐ 已收藏";
-const w = "#25b1dc";
-const k = "🔍 已观看";
-const S = "#d7a80c";
-const C = "no";
-const _ = "yes";
-const T = "javdb";
-const I = "javbus";
-const B = "actor";
-const P = "actress";
-const D = "censored";
-const A = "uncensored";
-const L = [
-    {
-        id: "video-mhb",
-        quality: "dmb_w",
-        text: "旧视频源-中画质宽版 (404p)",
-        canSelect: false,
-    },
-    {
-        id: "video-mhb",
-        quality: "sm_s",
-        text: "旧视频源-低画质 (240p)",
-        canSelect: false,
-    },
-    {
-        id: "video-mhb",
-        quality: "dm_s",
-        text: "旧视频源-中画质 (360p)",
-        canSelect: false,
-    },
-    {
-        id: "video-mhb",
-        quality: "dmb_s",
-        text: "旧视频源-中画质 (480p)",
-        canSelect: false,
-    },
-    {
-        id: "video-mhb",
-        quality: "mhb_w",
-        text: "旧视频源-高画质宽版 (404p)",
-        canSelect: false,
-    },
-    {
-        id: "video-mmb",
-        quality: "mmb",
-        text: "中画质 (432p)",
-        canSelect: true,
-    },
-    {
-        id: "video-mhb",
-        quality: "mhb",
-        text: "高画质 (576p)",
-        canSelect: true,
-    },
-    {
-        id: "video-hmb",
-        quality: "hmb",
-        text: "HD (720p)",
-        canSelect: true,
-    },
-    {
-        id: "video-hhb",
-        quality: "hhb",
-        text: "FullHD (1080p)",
-        canSelect: true,
-    },
-    {
-        id: "video-hhbs",
-        quality: "hhbs",
-        text: "FullHD (1080p60fps)",
-        canSelect: true,
-    },
-    {
-        id: "video-4k",
-        quality: "4k",
-        text: "4K (2160p)",
-        canSelect: true,
-    },
-    {
-        id: "video-4ks",
-        quality: "4ks",
-        text: "4K (2160p60fps)",
-        canSelect: true,
-    },
-];
 let M = "";
 if (window.location.href.includes("hideNav=1")) {
     M =
