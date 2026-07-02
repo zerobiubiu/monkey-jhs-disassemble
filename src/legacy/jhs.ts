@@ -70,6 +70,7 @@ import { BasePlugin } from "../plugins/base-plugin";
 import { PluginManager } from "../plugins/plugin-manager";
 import { DetailPagePlugin } from "../plugins/detail-page-plugin";
 import { FilterTitleKeywordPlugin } from "../plugins/filter-title-keyword-plugin";
+import { HighlightMagnetPlugin } from "../plugins/highlight-magnet-plugin";
 
 var e;
 var t;
@@ -891,95 +892,6 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("keyup", (e) => {
     se.handleKeyup(e);
 });
-class HighlightMagnetPlugin extends BasePlugin {
-    getName() {
-        return "HighlightMagnetPlugin";
-    }
-    doFilterMagnet() {
-        this.handleDb();
-        this.handleBus();
-    }
-    handleDb() {
-        if (!r) {
-            return;
-        }
-        let e = $("#magnets-content .name");
-        if (e.length === 0) {
-            return;
-        }
-        const t = ["4k", "-c", "-u", "-uc"];
-        let n = false;
-        e.each((e, a) => {
-            const i = $(a);
-            const s = i.text().toLowerCase();
-            const o = t.some((e) => s.includes(e));
-            i.parent().parent().parent().addClass("magnet-row");
-            if (s.includes("4k")) {
-                i.css("color", "#f40");
-            }
-            if (o) {
-                n = true;
-                i.parent().parent().parent().addClass("high-quality");
-            }
-        });
-        if (n) {
-            $("#magnets-content .magnet-row").not(".high-quality").hide();
-        } else {
-            $("#enable-magnets-filter").addClass("do-hide");
-        }
-    }
-    handleBus() {
-        if (l && isDetailPage) {
-            utils.loopDetector(
-                () => $("#magnet-table td a").length > 0,
-                () => {
-                    const e = $("#magnet-table tr");
-                    const t = ["4k", "-c", "-u", "-uc"];
-                    let n = false;
-                    e.each((e, a) => {
-                        const i = $(a);
-                        const s = i.find("td:first-child");
-                        const o = s.find("a:first-child");
-                        const r = s.find("a:nth-child(2)");
-                        const l = o.text().toLowerCase();
-                        if (l.includes("4k")) {
-                            o.css("color", "#f40");
-                        }
-                        if (
-                            t.some((e) => l.includes(e)) ||
-                            (r.length && r.text().includes("字幕"))
-                        ) {
-                            n = true;
-                            i.addClass("high-quality");
-                        }
-                    });
-                    if (n) {
-                        e.each((e, t) => {
-                            const n = $(t);
-                            if (!n.hasClass("high-quality")) {
-                                n.hide();
-                            }
-                        });
-                    } else {
-                        $("#enable-magnets-filter").addClass("do-hide");
-                    }
-                },
-            );
-        }
-    }
-    showAll() {
-        if (r) {
-            $("#magnets-content .item")
-                .toArray()
-                .forEach((e) => $(e).show());
-        }
-        if (l) {
-            $("#magnet-table tr")
-                .toArray()
-                .forEach((e) => $(e).show());
-        }
-    }
-}
 class FoldCategoryPlugin extends BasePlugin {
     getName() {
         return "FoldCategoryPlugin";
