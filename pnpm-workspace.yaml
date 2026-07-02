@@ -1,0 +1,9 @@
+# pnpm 11 设置（见 https://pnpm.io/settings）
+#
+# 跳过 `pnpm run` / `pnpm exec` 前的依赖状态预检（verifyDepsBeforeRun）。
+# 原因：pnpm 11 默认忽略 @swc/core 的 postinstall 构建脚本（strictDepBuilds），
+# 导致预检触发 `pnpm install` 并以 ERR_PNPM_IGNORED_BUILDS 退出码 1 失败，
+# 从而阻断 `pnpm run build` / `pnpm run dev`。
+# @swc/core 的平台二进制（@swc/core-win32-x64-msvc）已通过 optionalDependencies
+# 安装，忽略其 postinstall 不影响 SWC 编译能力。
+verifyDepsBeforeRun: false
