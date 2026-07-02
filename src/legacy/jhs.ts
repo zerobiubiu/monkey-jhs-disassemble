@@ -81,6 +81,7 @@ import { ReviewPlugin } from "../plugins/review-plugin";
 import { ListPageButtonPlugin } from "../plugins/list-page-button-plugin";
 import { AutoPagePlugin } from "../plugins/auto-page-plugin";
 import { BlacklistPlugin } from "../plugins/blacklist-plugin";
+import { WantAndWatchedVideosPlugin } from "../plugins/want-and-watched-videos-plugin";
 
 var e;
 var t;
@@ -4959,117 +4960,6 @@ function Ne(e) {
         })
         .join("")
         .slice(Le.length, -Le.length);
-}
-class WantAndWatchedVideosPlugin extends BasePlugin {
-    constructor() {
-        super(...arguments);
-        i(this, "type", null);
-    }
-    getName() {
-        return "WantAndWatchedVideosPlugin";
-    }
-    async handle() {
-        if (window.location.href.includes("/want_watch_videos")) {
-            $("h3").append(
-                '<a class="a-primary" id="wantWatchBtn" style="padding:10px;">导入至 JHS</a>',
-            );
-            $("h3").append(
-                '<span style="margin-left:8px;color:#888;font-size:12px;">（JHS 现已在详情页自动同步"想看"，本页按钮仅用于初始补录）</span>',
-            );
-            $("#wantWatchBtn").on("click", (e) => {
-                this.type = h;
-                this.importWantWatchVideos(
-                    e,
-                    "是否将 想看的影片 导入到 JHS-收藏?",
-                );
-            });
-        }
-        if (window.location.href.includes("/watched_videos")) {
-            $("h3").append(
-                '<a class="a-success" id="wantWatchBtn" style="padding:10px;">导入至 JHS</a>',
-            );
-            $("h3").append(
-                '<span style="margin-left:8px;color:#888;font-size:12px;">（JHS 现已在详情页自动同步"看過"，本页按钮仅用于初始补录）</span>',
-            );
-            $("#wantWatchBtn").on("click", (e) => {
-                this.type = p;
-                this.importWantWatchVideos(
-                    e,
-                    "是否将 看过的影片 导入到 JHS-已观看?",
-                );
-            });
-        }
-    }
-    importWantWatchVideos(e, t) {
-        utils.q(
-            null,
-            `${t} <br/> <span style='color: #f40'>执行此功能前请记得备份数据</span>`,
-            async () => {
-                let e = loading();
-                try {
-                    await this.parseMovieList();
-                } catch (t) {
-                    console.error(t);
-                } finally {
-                    e.close();
-                }
-            },
-        );
-    }
-    async parseMovieList(e) {
-        let t;
-        let n;
-        if (e) {
-            t = e.find(this.getSelector().itemSelector);
-            n = e.find(".pagination-next").attr("href");
-        } else {
-            t = $(this.getSelector().itemSelector);
-            n = $(".pagination-next").attr("href");
-        }
-        for (const i of t) {
-            const e = $(i);
-            const t = e.find("a").attr("href");
-            const n = e.find(".video-title strong").text().trim();
-            const s = e.find(".meta").text().trim();
-            if (t && n) {
-                try {
-                    if (await storageManager.getCar(n)) {
-                        show.info(`${n} 已存在, 跳过`);
-                        continue;
-                    }
-                    await storageManager.saveCar({
-                        carNum: n,
-                        url: t,
-                        names: null,
-                        actionType: this.type,
-                        publishTime: s,
-                    });
-                } catch (a) {
-                    console.error(`保存失败 [${n}]:`, a);
-                }
-            }
-        }
-        if (n) {
-            show.info("发现下一页，正在解析:", n);
-            await new Promise((e) => setTimeout(e, 1000));
-            $.ajax({
-                url: n,
-                method: "GET",
-                success: (e) => {
-                    const t = new DOMParser();
-                    const n = $(t.parseFromString(e, "text/html"));
-                    this.parseMovieList(n);
-                },
-                error: function (e) {
-                    console.error(e);
-                    show.error("加载下一页失败:" + e.message);
-                },
-            });
-        } else {
-            show.ok("导入结束!");
-            window.refresh();
-        }
-    }
 }
 class FavoriteActressesPlugin extends BasePlugin {
     getName() {
