@@ -46,6 +46,7 @@ import {
     FILETREE_DATA_KEY as rt,
 } from "../resources/gfriends";
 import { createLoading } from "../core/loading";
+import { show } from "../core/toast";
 
 var e;
 var t;
@@ -1970,76 +1971,7 @@ document.head.insertAdjacentHTML(
     "<style>" + loadingCssRaw + "</style>",
 );
 unsafeWindow.loading = window.loading = createLoading;
-(function () {
-    const e = (e, t, n, a, i) => {
-        let s;
-        if (typeof n == "object") {
-            s = n;
-        } else {
-            s = typeof a == "object" ? a : i || {};
-            s.gravity = n || "top";
-            s.position = typeof a == "string" ? a : "center";
-        }
-        if (!s.gravity || s.gravity === "center") {
-            s.offset = {
-                y: "calc(50vh - 150px)",
-            };
-        }
-        const o = "#60A5FA";
-        const r = "#93C5FD";
-        const l = "#10B981";
-        const c = "#6EE7B7";
-        const d = "#EF4444";
-        const h = "#FCA5A5";
-        const g = {
-            borderRadius: "12px",
-            color: "white",
-            padding: "12px 16px",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-            minWidth: "150px",
-            textAlign: "center",
-            zIndex: 999999999,
-        };
-        const p = {
-            text: e,
-            duration: 1000,
-            close: false,
-            gravity: "top",
-            position: "center",
-            style: {
-                info: {
-                    ...g,
-                    background: `linear-gradient(to right, ${o}, ${r})`,
-                },
-                success: {
-                    ...g,
-                    background: `linear-gradient(to right, ${l}, ${c})`,
-                },
-                error: {
-                    ...g,
-                    background: `linear-gradient(to right, ${d}, ${h})`,
-                },
-            }[t],
-            stopOnFocus: true,
-            oldestFirst: false,
-            ...s,
-        };
-        if (p.duration === -1) {
-            p.close = true;
-        }
-        const m = Toastify(p);
-        m.showToast();
-        m.closeShow = () => {
-            m.toastElement.remove();
-        };
-        return m;
-    };
-    unsafeWindow.show = window.show = {
-        ok: (t, n = "center", a, i) => e(t, "success", n, a, i),
-        error: (t, n = "center", a, i) => e(t, "error", n, a, i),
-        info: (t, n = "center", a, i) => e(t, "info", n, a, i),
-    };
-})();
+unsafeWindow.show = window.show = show;
 (function () {
     function e(e = 10) {
         setTimeout(() => {
