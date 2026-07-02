@@ -47,6 +47,7 @@ import {
 } from "../resources/gfriends";
 import { createLoading } from "../core/loading";
 import { show } from "../core/toast";
+import { ImagePreview } from "../core/image-preview";
 
 var e;
 var t;
@@ -2052,145 +2053,6 @@ unsafeWindow.show = window.show = show;
         o.show();
     };
 })();
-window.ImageHoverPreview = class {
-    constructor(e = {}) {
-        this.config = {
-            selector: ".hover-preview",
-            dataAttribute: "data-full",
-            maxWidth: 1000,
-            maxHeight: 1000,
-            offsetX: 20,
-            offsetY: 20,
-            zIndex: 9999999999,
-            transition: 0.2,
-            autoAdjustPosition: true,
-            ...e,
-        };
-        this.preview = null;
-        this.currentTarget = null;
-        this.timer = null;
-        this.imgElement = null;
-        this.boundElements = new WeakSet();
-        this.init();
-    }
-    init() {
-        this.injectStyles();
-        this.createPreviewElement();
-        this.bindEvents();
-    }
-    injectStyles() {
-        const e = `\n                <style>\n                    .image-hover-preview {\n                        position: fixed;\n                        display: none;\n                        z-index: ${this.config.zIndex};\n                        border-radius: 4px;\n                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n                        overflow: hidden;\n                        pointer-events: none;\n                        opacity: 0;\n                        transition: opacity ${this.config.transition}s ease;\n                        background-color: #fff;\n                    }\n                    \n                    .image-hover-preview.active {\n                        opacity: 1;\n                    }\n                    \n                    .image-hover-preview img {\n                        max-width: ${this.config.maxWidth}px;\n                        max-height: ${this.config.maxHeight}px;\n                        display: block;\n                        object-fit: contain;\n                    }\n                    \n                    .image-hover-preview::after {\n                        content: '';\n                        position: absolute;\n                        top: 0;\n                        left: 0;\n                        right: 0;\n                        bottom: 0;\n                        background: rgba(0, 0, 0, 0.03);\n                        pointer-events: none;\n                    }\n                    \n                    .image-hover-preview.loading::before {\n                        content: '加载中...';\n                        position: absolute;\n                        top: 50%;\n                        left: 50%;\n                        transform: translate(-50%, -50%);\n                        color: #666;\n                        font-size: 14px;\n                    }\n                </style>\n            `;
-        document.head.insertAdjacentHTML("beforeend", e);
-    }
-    createPreviewElement() {
-        this.preview = document.createElement("div");
-        this.preview.className = "image-hover-preview";
-        document.body.appendChild(this.preview);
-    }
-    bindEvents() {
-        document.querySelectorAll(this.config.selector).forEach((e) => {
-            if (!this.boundElements.has(e)) {
-                e.addEventListener("mouseenter", (e) =>
-                    this.handleMouseEnter(e),
-                );
-                e.addEventListener("mouseleave", (e) =>
-                    this.handleMouseLeave(e),
-                );
-                e.addEventListener("mousemove", (e) => this.handleMouseMove(e));
-                this.boundElements.add(e);
-            }
-        });
-    }
-    handleMouseEnter(e) {
-        clearTimeout(this.timer);
-        this.currentTarget = e.currentTarget;
-        const t =
-            this.currentTarget.getAttribute(this.config.dataAttribute) ||
-            this.currentTarget.src;
-        if (!t) {
-            return;
-        }
-        this.preview.innerHTML = "";
-        this.preview.classList.add("loading");
-        this.preview.style.display = "block";
-        this.preview.classList.remove("active");
-        const n = new Image();
-        n.onload = () => {
-            this.preview.classList.remove("loading");
-            this.preview.innerHTML = `<img src="${t}" alt="预览图">`;
-            this.imgElement = this.preview.querySelector("img");
-            const { width: a, height: i } = this.calculateImageSize(n);
-            this.preview.style.width = `${a}px`;
-            this.preview.style.height = `${i}px`;
-            this.preview.offsetHeight;
-            this.preview.classList.add("active");
-            this.handleMouseMove(e);
-        };
-        n.onerror = () => {
-            this.preview.classList.remove("loading");
-            this.preview.innerHTML =
-                '<div style="padding:10px;color:#f00;">图片加载失败</div>';
-        };
-        n.src = t;
-    }
-    calculateImageSize(e) {
-        let t = e.naturalWidth;
-        let n = e.naturalHeight;
-        if (t > this.config.maxWidth || n > this.config.maxHeight) {
-            const e = Math.min(
-                this.config.maxWidth / t,
-                this.config.maxHeight / n,
-            );
-            t *= e;
-            n *= e;
-        }
-        return {
-            width: t,
-            height: n,
-        };
-    }
-    handleMouseMove(e) {
-        if (!this.currentTarget || !this.preview.classList.contains("active")) {
-            return;
-        }
-        let { offsetX: t, offsetY: n } = this.config;
-        let a = e.clientX + t;
-        let i = e.clientY + n;
-        if (this.config.autoAdjustPosition) {
-            const s = this.preview.offsetWidth;
-            const o = this.preview.offsetHeight;
-            if (a + s > window.innerWidth) {
-                a = e.clientX - s - t;
-            }
-            if (i + o > window.innerHeight) {
-                i = e.clientY - o - n;
-            }
-            a = Math.max(0, a);
-            i = Math.max(0, i);
-        }
-        this.preview.style.left = `${a}px`;
-        this.preview.style.top = `${i}px`;
-    }
-    handleMouseLeave() {
-        this.preview.classList.remove("active");
-        this.preview.style.display = "none";
-        this.currentTarget = null;
-        this.imgElement = null;
-    }
-    destroy() {
-        document.querySelectorAll(this.config.selector).forEach((e) => {
-            if (this.boundElements.has(e)) {
-                e.removeEventListener("mouseenter", this.handleMouseEnter);
-                e.removeEventListener("mouseleave", this.handleMouseLeave);
-                e.removeEventListener("mousemove", this.handleMouseMove);
-                this.boundElements.delete(e);
-            }
-        });
-        if (this.preview && this.preview.parentNode) {
-            this.preview.parentNode.removeChild(this.preview);
-        }
-    }
-};
 (async function () {
     document.head.insertAdjacentHTML(
         "beforeend",
@@ -8671,7 +8533,7 @@ class ListPagePlugin extends BasePlugin {
                 if (window.imageHoverPreviewObj) {
                     window.imageHoverPreviewObj.bindEvents();
                 } else {
-                    window.imageHoverPreviewObj = new ImageHoverPreview({
+                    window.imageHoverPreviewObj = new ImagePreview({
                         selector: this.getSelector().coverImgSelector,
                     });
                 }
@@ -9712,7 +9574,7 @@ class SettingPlugin extends BasePlugin {
             const t = $("#hoverBigImg").is(":checked") ? _ : C;
             await storageManager.saveSettingItem("hoverBigImg", t);
             if (t === _) {
-                window.imageHoverPreviewObj = new ImageHoverPreview({
+                window.imageHoverPreviewObj = new ImagePreview({
                     selector: this.getSelector().coverImgSelector,
                 });
             } else if (window.imageHoverPreviewObj) {
