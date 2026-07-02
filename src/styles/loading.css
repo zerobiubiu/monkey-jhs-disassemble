@@ -1,0 +1,65 @@
+/**
+ * 全局加载动画样式（原 jhs.user.js 中 insertAdjacentHTML 注入的 loading <style>）
+ *
+ * 由 legacy 通过 `import loadingCssRaw from './loading.css?raw'` 读取为字符串，
+ * 再以 `<style>` 包裹注入 document.head，与原始脚本执行顺序、副作用一致。
+ */
+
+.loading-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.1);
+    z-index: 99999999;
+}
+
+.loading-animation {
+    position: relative;
+    width: 60px;
+    height: 12px;
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    border-radius: 6px;
+    animation: loading-animate 1.8s ease-in-out infinite;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-animation:before,
+.loading-animation:after {
+    position: absolute;
+    display: block;
+    content: "";
+    animation: loading-animate 1.8s ease-in-out infinite;
+    height: 12px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-animation:before {
+    top: -20px;
+    left: 10px;
+    width: 40px;
+    background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%);
+}
+
+.loading-animation:after {
+    bottom: -20px;
+    width: 35px;
+    background: linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%);
+}
+
+@keyframes loading-animate {
+    0% {
+        transform: translateX(40px);
+    }
+    50% {
+        transform: translateX(-30px);
+    }
+    100% {
+        transform: translateX(40px);
+    }
+}
