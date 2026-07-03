@@ -130,31 +130,55 @@ archetype/              原始脚本与历史文档（只读参考）
 
 ## 7. 进度
 
+> 截止本次更新（commit 见文末 `git log`），legacy 仅余 405 行（启动序列 + CSS
+> replace + BroadcastChannel + 库 CSS `importResource`），core/plugins/constants/
+> resources/styles 均已提取完毕。下一步重心是 legacy 启动序列收尾与去 `@ts-nocheck`。
+
 ### 已完成
 
-- [x] `pnpm create monkey` react-swc-ts 脚手架，项目名 `monkey-jhs-disassemble`
-- [x] `vite.config.ts` 配置完整 userscript metadata（name/namespace/version/author/
-      license/description/homepageURL/icon/match/include/runAt/connect/require/grant）
-- [x] `pnpm-workspace.yaml` 设置 `verifyDepsBeforeRun: false`（绕过 @swc/core
-      ignored builds 阻断 build）
-- [x] git 初始化与首次提交
-- [x] 原脚本整体迁入 `src/legacy/jhs.ts`（`@ts-nocheck`），产物功能等价（410 kB）
-- [x] `src/types/globals.d.ts` 全局类型声明
-- [x] 常量提取：`src/constants/{site,status,video-quality}.ts`，legacy 别名导入
-- [x] CSS 提取模式建立：`src/styles/loading.css` + `?raw` 导入 + 原注入点
+- [x] 脚手架与项目初始化
+      - `pnpm create monkey` react-swc-ts 脚手架，项目名 `monkey-jhs-disassemble`
+      - `vite.config.ts` 配置完整 userscript metadata（name/namespace/version/
+        author/license/description/homepageURL/icon/match/include/runAt/connect/
+        require/grant）
+      - `pnpm-workspace.yaml` 设置 `verifyDepsBeforeRun: false`（绕过 @swc/core
+        ignored builds 阻断 build）
+      - git 初始化与首次提交
+- [x] 整体迁移：原脚本整体迁入 `src/legacy/jhs.ts`（`@ts-nocheck`），产物功能等价
+- [x] 类型声明：`src/types/globals.d.ts` 全局类型声明（@require 库、GM API、应用全局）
+- [x] 常量提取：`src/constants/{site,status,video-quality,api,tabulator-zh}.ts`，
+      legacy 别名导入
+- [x] CSS 提取（顶层 + loading，详见 `02-css-extraction.md` 模式）
+      - `src/styles/{loading,javbus-masonry,javdb-site,common-toolbar,
+        a-normal-buttons}.css`
+      - `?raw` 导入 + 原注入点（`H()`/`insertAdjacentHTML`）
+      - 含插值/IIFE 的 CSS 用占位 `/*__TOKEN__*/` + `replace` 还原执行顺序
+- [x] core 全模块提取（15 个）：`src/core/{common-util,storage-manager,gm-http,
+      toast,loading,logger,hotkey,image-preview,viewer,webdav,gfriends,
+      async-task-queue,layer-wrapper,tooltip,webdav-crypto}.ts`
+- [x] 插件系统：`src/plugins/{base-plugin,plugin-manager}.ts` + 21 个插件模块
+      全部外置（含 `PreviewVideoPlugin`，见 `03`/`04` 文档及后续提交）
+- [x] 资源提取：`src/resources/gfriends.ts`
+- [x] API 配置：`src/constants/api.ts`（API_BASE/reBuildSignature/请求方法）
+- [x] 辅助代码提取：layer 包装 / tooltip / webdav 加密 → core（详见
+      `05-legacy-helpers-extraction.md`）
+- [x] build 脚本修复：`package.json` `build` 改为 `tsc -b && vite build`
+      （真实类型检查，替代原 `vue-tsc -b` 占位）
+- [x] build 验证通过：`tsc -b && vite build`，51 modules，产物 462.66 kB
+      （gzip 113.30 kB）
 
 ### 待完成
 
-- [ ] CSS：顶层 `N`(javbus masonry)、`E`(javdb site)、`F`(common toolbar，含滚动条
-      IIFE)、`a-normal` 按钮；各插件 `initCss`；ImagePreview/Logger 内联样式；
-      layer content 内联 style。按 5.2 模式逐段提取。
-- [ ] 资源/常量：`src/resources/`（gfriends 清单、KV store 名、库 CSS URL）；
-      Tabulator 中文语言包、请求头 `q`。
-- [ ] core：`utils`(CommonUtil)、`storageManager`(StorageManager)、`gmHttp`、
-      `show`(Toast)、`loading`、`clog`(Logger)、Hotkey、ImagePreview、Viewer 配置。
-- [ ] plugins：`PluginManager`、`BasePlugin` + 21 插件。
-- [ ] components：HTML 字符串 → React 组件/模板。
-- [ ] 命名优化与类型收紧（逐步去 `@ts-nocheck`）。
+- [ ] HTML 字符串 → React 组件：仅做示范性转换；深度耦合 layer content 的
+      动态 HTML 暂保留为字符串模板，待逻辑稳定后再组件化（见 5.4 节原则）
+- [ ] legacy 启动序列移 `main.tsx`：`src/legacy/jhs.ts` 仅余 405 行（启动序列 +
+      CSS replace + BroadcastChannel + 库 CSS `importResource`），整体迁入
+      `src/main.tsx` 后删除 legacy 文件
+- [ ] 各插件 `initCss` CSS 提取为独立 .css：插件内联 CSS 字符串按
+      `02-css-extraction.md` 模式提取到 `src/styles/<plugin>.css`（见 02
+      文档 4.2 节清单）
+- [ ] 全量去 `@ts-nocheck`：legacy 胶水代码逐步引入类型，最终移除
+      `@ts-nocheck`（core/plugins 已是强类型，仅 legacy 残留）
 
 ## 8. 一致性校验（每次改代码后自查）
 
