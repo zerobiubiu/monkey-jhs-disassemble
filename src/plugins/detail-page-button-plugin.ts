@@ -38,10 +38,16 @@
  *   - 两处 layer 弹窗 content（searchXunLeiSubtitle 字幕表格容器、
  *     previewSubtitle 字幕预览容器）提取为 SubtitleTableDialog / SubtitlePreviewDialog
  *     组件（返回 HTML 字符串），插件层以 content: X(props) 消费。
+ *   - searchXunLeiSubtitle Tabulator 操作列 formatter 返回的预览/下载按钮 →
+ *     SubtitleActionCell()（formatter 返回 HTML 字符串，事件绑定仍由 onRendered 持有）
+ *   - previewSubtitle 逐行拼接的 `<span style="color:#AAA;">${paddedNum}. </span>${line}\n` →
+ *     SubtitleLine({ paddedNum, line })（逐行 output += 拼接）
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
  *   Promise 串行化 _reviewChain、IIFE、空 catch）与原脚本一致。
  */
 import { BasePlugin } from "./base-plugin";
+import { SubtitleActionCell } from "../components/subtitle-action-cell";
+import { SubtitleLine } from "../components/subtitle-line";
 import { SubtitlePreviewDialog } from "../components/subtitle-preview-dialog";
 import { SubtitleTableDialog } from "../components/subtitle-table-dialog";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
@@ -1291,7 +1297,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                                                     );
                                                 }
                                             });
-                                            return '\n                                        <a class="a-primary">预览</a>\n                                        <a class="a-success">下载</a>\n                                    ';
+                                            return SubtitleActionCell();
                                         },
                                     },
                                 ],
@@ -1507,7 +1513,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 const numWidth = String(lines.length).length;
                 lines.forEach((line: any, idx: number) => {
                     const paddedNum = String(idx + 1).padStart(numWidth, " ");
-                    output += `<span style="color:#AAA;">${paddedNum}. </span>${line}\n`;
+                    output += SubtitleLine({ paddedNum, line });
                 });
                 const htmlContent = output;
                 layer.open({

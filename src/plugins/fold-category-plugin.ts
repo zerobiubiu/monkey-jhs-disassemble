@@ -17,13 +17,17 @@
  * 保持原逻辑并满足 strict 类型检查。
  * $ / utils / storageManager 已由 ../types/globals.d.ts 声明为 any；
  * jQuery hover / click / .map 回调需依赖 this 指向触发元素，故保留 function 形式
- * 并以 (this: any) 显式标注，满足 noImplicitThis。内联 CSS/HTML 字符串原样保留。
+ * 并以 (this: any) 显式标注，满足 noImplicitThis。内联 CSS/HTML 字符串原样保留，
+ * 其中 highlightTag hover-in 内 `$('<button class="highlight-btn">★</button>')` 提取为
+ * HighlightButton() 组件（返回 HTML 字符串，供 $(HighlightButton()) 消费）；
+ * 折叠工具条与 section-title 按钮提取为 FoldCategoryToolbar / FoldCategorySectionButton。
  */
 import { currentHref } from "../constants/site";
 import { YES, NO } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
 import { FoldCategorySectionButton } from "../components/fold-category-section-button";
 import { FoldCategoryToolbar } from "../components/fold-category-toolbar";
+import { HighlightButton } from "../components/highlight-button";
 import foldCategoryCssRaw from "../styles/fold-category-plugin.css?raw";
 
 export class FoldCategoryPlugin extends BasePlugin {
@@ -106,9 +110,7 @@ export class FoldCategoryPlugin extends BasePlugin {
         $("#tags a.tag, .tags a.tag").hover(
             function (this: any) {
                 const tagEl = $(this);
-                const btnEl = $(
-                    '<button class="highlight-btn" title="高亮显示">★</button>',
-                );
+                const btnEl = $(HighlightButton());
                 tagEl.append(btnEl);
                 btnEl.fadeIn(0);
             },
