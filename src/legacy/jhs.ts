@@ -48,6 +48,7 @@ import {
     parseFiletree as ht,
     filetreeDb as lt,
 } from "../core/gfriends";
+import { WebDavClient as De } from "../core/webdav";
 import { createLoading } from "../core/loading";
 import { show } from "../core/toast";
 import { ImagePreview } from "../core/image-preview";
@@ -187,6 +188,7 @@ unsafeWindow.gmHttp = window.gmHttp = new GmHttp();
 unsafeWindow.storageManager = window.storageManager = new StorageManager();
 unsafeWindow.gt = window.gt = gt;
 unsafeWindow.lt = window.lt = lt;
+unsafeWindow.De = window.De = De;
 const G = new BroadcastChannel("channel-refresh");
 window.refresh = function () {
     G.postMessage({
@@ -458,137 +460,6 @@ class ve {
     }
     async waitAllFinished() {
         return this.queue;
-    }
-}
-class De {
-    constructor(e, t, n) {
-        this.davUrl = e.endsWith("/") ? e : e + "/";
-        this.username = t;
-        this.password = n;
-        this.folderName = null;
-    }
-    _getAuthHeaders() {
-        return {
-            Authorization: `Basic ${btoa(`${this.username}:${this.password}`)}`,
-            Depth: "1",
-        };
-    }
-    _sendRequest(e, t, n = {}, a) {
-        return new Promise((i, s) => {
-            const o = this.davUrl + t;
-            const r = {
-                ...this._getAuthHeaders(),
-                ...n,
-            };
-            GM_xmlhttpRequest({
-                method: e,
-                url: o,
-                headers: r,
-                data: a,
-                onload: (e) => {
-                    if (e.status >= 200 && e.status < 300) {
-                        i(e);
-                    } else {
-                        console.error(e);
-                        s(new Error(`请求失败 ${e.status}: ${e.statusText}`));
-                    }
-                },
-                onerror: (e) => {
-                    console.error("请求WebDav发生错误:", e);
-                    s(
-                        new Error(
-                            "请求WebDav失败, 请检查服务是否启动, 凭证是否正确",
-                        ),
-                    );
-                },
-            });
-        });
-    }
-    async backup(e, t, n) {
-        await this._sendRequest("MKCOL", e);
-        const a = e + "/" + t;
-        await this._sendRequest(
-            "PUT",
-            a,
-            {
-                "Content-Type": "text/plain",
-            },
-            n,
-        );
-    }
-    async getFileList(e) {
-        var t;
-        var n;
-        var a;
-        const i = (
-            await this._sendRequest(
-                "PROPFIND",
-                e,
-                {
-                    "Content-Type": "application/xml",
-                },
-                '<?xml version="1.0"?>\n                <d:propfind xmlns:d="DAV:">\n                    <d:prop>\n                        <d:displayname />\n                        <d:getcontentlength />\n                        <d:creationdate />\n                        <d:getlastmodified />\n                        <d:iscollection />\n                    </d:prop>\n                </d:propfind>\n            ',
-            )
-        ).responseText;
-        const s = new DOMParser()
-            .parseFromString(i, "text/xml")
-            .getElementsByTagNameNS("DAV:", "response");
-        const o = [];
-        for (let r = 0; r < s.length; r++) {
-            if (r === 0) {
-                continue;
-            }
-            let e = s[r];
-            console.log(e);
-            const i = e.getElementsByTagNameNS("DAV:", "displayname")[0]
-                .textContent;
-            const l =
-                ((t = e.getElementsByTagNameNS(
-                    "DAV:",
-                    "getcontentlength",
-                )[0]) == null
-                    ? undefined
-                    : t.textContent) || "0";
-            const c =
-                ((n = e.getElementsByTagNameNS("DAV:", "creationdate")[0]) ==
-                null
-                    ? undefined
-                    : n.textContent) ||
-                ((a = e.getElementsByTagNameNS("DAV:", "getlastmodified")[0]) ==
-                null
-                    ? undefined
-                    : a.textContent) ||
-                "";
-            if (l !== "0") {
-                o.push({
-                    fileId: i,
-                    name: i,
-                    size: Number(l),
-                    createTime: c,
-                });
-            }
-        }
-        o.reverse();
-        return o;
-    }
-    async deleteFile(e) {
-        let t = this.folderName + "/" + encodeURI(e);
-        await this._sendRequest("DELETE", t, {
-            "Cache-Control": "no-cache",
-        });
-    }
-    async getBackupList(e) {
-        this.folderName = e;
-        await this._sendRequest("MKCOL", e);
-        return this.getFileList(e);
-    }
-    async getFileContent(e) {
-        let t = this.folderName + "/" + e;
-        return (
-            await this._sendRequest("GET", t, {
-                Accept: "application/octet-stream",
-            })
-        ).responseText;
     }
 }
 const Le = "x7k9p3";
