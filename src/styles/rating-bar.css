@@ -1,3 +1,4 @@
+
 /* 隐藏 review-buttons 内第二个 panel-block（下載/訂正磁力按钮） */
 .review-buttons > .panel-block ~ .panel-block{display:none!important}
 /* 隐藏 review-buttons 后紧跟的 panel-block（N人想看/看過统计） */
@@ -31,3 +32,4 @@
 .jhs-list-panel .control{margin:0}
 .jhs-list-panel .checkbox{display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
 .jhs-list-panel .checkbox input{margin:0}
+        

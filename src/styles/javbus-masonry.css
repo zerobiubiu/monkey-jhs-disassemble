@@ -1,7 +1,9 @@
+
+<style>
     .top-bar {
         z-index: 12345689 !important;
     }
-
+    
     /*__HIDENAV__*/
 
     .masonry {
@@ -24,7 +26,7 @@
         background-color:#c4b1b1;
         position: relative !important;
     }
-
+    
     .masonry .item:hover {
         box-shadow: 0 .5em 1em -.125em rgba(10, 10, 10, .1), 0 0 0 1px #485fc7;
     }
@@ -60,7 +62,7 @@
       overflow: hidden;     /* 隐藏溢出内容 */
       text-overflow: ellipsis; /* 显示省略号 */
     }
-
+    
     /* 无码页面的样式 */
     .photo-frame .mheyzo,
     .photo-frame .mcaribbeancom2{
@@ -79,17 +81,20 @@
         flex-direction: row;
         background-color:#fff !important;
     }
-
+    
     footer{
         display: none!important;
     }
-
-
+    
+        
     .video-title {
         white-space: normal !important;
         height: 75px; /* 固定高度 容器就不会出现高低不一*/
-
+        
         display: -webkit-box !important; /* 必须设置，使接下来的属性生效 */
         -webkit-box-orient: vertical; /* 垂直方向堆叠行 */
         -webkit-line-clamp: 3; /* 设置文本最多显示的行数*/
     }
+
+    
+</style>

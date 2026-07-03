@@ -1,38 +1,34 @@
-/**
- * 标签高亮样式（原 FoldCategoryPlugin.initCss 内联 <style>，对应原 L4020-4023）
- *
- * 由插件通过 `import ... from "./fold-category-plugin.css?raw"` 读取为字符串，
- * 动态占位符 __HIGHLIGHTED_TAG_NUMBER__ / __HIGHLIGHTED_TAG_COLOR__ 经
- * .replace() 替换为运行时设置值后，经 utils.insertStyle 注入 head。
- */
 
-#tags a.tag, .tags a.tag {
-    position:relative;
-}
-.highlight-btn {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    font-size: 14px;
-    line-height: 24px;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    display: none;
-    z-index: 999;
-}
-/* 当父元素被高亮时，按钮变为其他颜色 */
-.highlighted .highlight-btn {
-    background-color: #FF5722;
-}
-/* 高亮状态下的标签样式 */
-.highlighted {
-    /* 浅黄色 */
-    border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
-}
+            <style>
+                #tags a.tag, .tags a.tag {
+                    position:relative;
+                }
+                .highlight-btn {
+                    position: absolute;
+                    top: -10px;
+                    right: -10px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    font-size: 14px;
+                    line-height: 24px;
+                    text-align: center;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    display: none;
+                    z-index: 999;
+                }
+                /* 当父元素被高亮时，按钮变为其他颜色 */
+                .highlighted .highlight-btn {
+                    background-color: #FF5722;
+                }
+                /* 高亮状态下的标签样式 */
+                .highlighted {
+                    /* 浅黄色 */
+                    border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
+                }
+            </style>
+        

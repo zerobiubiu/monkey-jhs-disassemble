@@ -68,12 +68,14 @@ class ImagePreview {
     }
 
     injectStyles(): void {
+        // imagePreviewCssRaw 已含 <style>...</style>，占位经 replace 填入运行时配置值，
+        // 与原 injectStyles 的 insertAdjacentHTML 注入值字符级一致。
         const css = imagePreviewCssRaw
             .replace("/*__Z_INDEX__*/", String(this.config.zIndex))
             .replace("/*__TRANSITION__*/", String(this.config.transition))
             .replace("/*__MAX_WIDTH__*/", String(this.config.maxWidth))
             .replace("/*__MAX_HEIGHT__*/", String(this.config.maxHeight));
-        document.head.insertAdjacentHTML("beforeend", `<style>${css}</style>`);
+        document.head.insertAdjacentHTML("beforeend", css);
     }
 
     createPreviewElement(): void {

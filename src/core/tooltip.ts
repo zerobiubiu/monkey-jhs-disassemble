@@ -145,10 +145,8 @@ export function positionTooltip(
  * 幂等性未保证：重复调用会重复注入样式与事件监听。legacy 启动序列调用一次即可。
  */
 export function setupTooltip(): void {
-    document.head.insertAdjacentHTML(
-        "beforeend",
-        `<style>${tooltipCssRaw}</style>`,
-    );
+    // tooltipCssRaw 已含 <style>...</style>（与原 insertAdjacentHTML 注入值字符级一致）
+    document.head.insertAdjacentHTML("beforeend", tooltipCssRaw);
     document.addEventListener("mouseover", (event) => {
         const target = (event.target as HTMLElement).closest(
             TOOLTIP_SELECTOR,

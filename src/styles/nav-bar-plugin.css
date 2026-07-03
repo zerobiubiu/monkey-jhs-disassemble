@@ -1,18 +1,12 @@
-/**
- * 高亮关键词样式（原 NavBarPlugin.initCss 内联 CSS，对应原 L4730-4732）
- *
- * 原返回不含 <style> 包裹，由 utils.insertStyle 自动包裹。
- * 由插件通过 `import ... from "./nav-bar-plugin.css?raw"` 读取为字符串，
- * 经 utils.insertStyle 注入 head。
- */
 
-.highlight-red {
+            .highlight-red {
     /* 核心要求：高亮红色文本 */
-    color: red !important;
-
+    color: red !important; 
+    
     /* 建议：增加字体加粗，效果更明显 */
     font-weight: bold;
-
+    
     /* 建议：增加背景色，效果更突出 */
-    /* background-color: yellow; */
+    /* background-color: yellow; */ 
 }
+        

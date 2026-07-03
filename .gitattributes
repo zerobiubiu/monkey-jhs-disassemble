@@ -1,0 +1,6 @@
+# 强制文本文件使用 LF 行尾。
+# 原因：src/styles/*.css 经 `?raw` 内联进打包产物，其行尾必须与原版
+# archetype/jhs.user.js 一致（LF）。Windows 下 core.autocrlf=true 会在
+# checkout 时把 LF 转 CRLF，导致运行时注入值出现 \r\n 偏差。
+# text=auto 由 git 自动识别二进制（图片等）不做转换；eol=lf 保证文本恒为 LF。
+* text=auto eol=lf

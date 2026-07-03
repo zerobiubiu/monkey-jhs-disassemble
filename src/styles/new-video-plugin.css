@@ -1,149 +1,146 @@
-/**
- * 新作品检测卡片样式（原 NewVideoPlugin.initCss 内联 <style>，对应原 L11044-11046）
- *
- * 由插件通过 `import ... from "./new-video-plugin.css?raw"` 读取为字符串，
- * 经 utils.insertStyle 注入 head（不含 <style> 标签时自动包裹）。
- */
 
-#actress-card-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(243px, 1fr)); /* 响应式3-5列 */
-    gap: 20px;
-    padding-bottom: 20px;
-    padding-right: 10px;
-    background: #f9f9f9;
-    border-radius: 5px;
-    overflow-y: auto;
-}
-.actress-card {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-    padding: 15px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-    overflow: hidden;
-}
-.actress-card:hover {
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-}
-.actress-card-name {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #007bff;
-    margin-top: 10px;
-}
-.actress-card-allname {
-    font-size: 0.9em;
-    color: #999;
-    margin-top: 5px;
-    height: 30px; /* 保证高度一致性 */
-    overflow: hidden;
-    white-space: nowrap;      /* 防止文字换行 */
-    text-overflow: ellipsis;  /* 当文本溢出时，显示省略号 */
-}
-.actress-card-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: contain;
-    margin: 0 auto;
-    border: 4px solid #f0f0f0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.card-tag {
-    position: absolute;
-    top: 15px; /* 调整标签距离顶部的距离 */
-    right: -50px; /* 调整标签距离右侧的距离，负值让它移到外面一点 */
-
-    width: 150px; /* 标签的宽度，影响斜角长度 */
-    padding: 5px 0; /* 上下内边距 */
-    text-align: center;
-
-    background-color: #ff4757; /* 标签颜色 */
-    color: white; /* 文字颜色 */
-    font-size: 14px;
-    font-weight: bold;
-    z-index: 10; /* 确保标签在其他内容之上 */
-
-    /* 3. 核心：旋转标签，使其倾斜 */
-    transform: rotate(45deg); /* 45度斜角 */
-
-    /* 可选：添加一些阴影或边框效果 */
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
-.card-new-count-tag {
-    position: absolute;
-    top: 5px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: bold;
-    z-index: 10;
-}
-
-#actress-pagination {
-    padding-top: 10px;
-    text-align: center;
-    border-top: 1px solid #ddd;
-}
-@media (max-width: 600px) {
-    .page-number-btn {
-        display: none !important;
-    }
-}
-
-
-.card-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    background: linear-gradient(145deg, #e0e0e0 0%, #f7f7f7 100%);
-    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.08),
-                -8px -8px 16px rgba(255, 255, 255, 1.0);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.card-btn svg,
-.card-btn svg path {
-    transition: fill 0.3s ease;
-}
-
-.card-btn:hover {
-    box-shadow: inset 5px 5px 10px rgba(0, 0, 0, 0.1),
-                inset -5px -5px 10px rgba(255, 255, 255, 0.9);
-    transform: scale(0.97);
-    background: #e0e0e0;
-}
-
-.btn-check-actress svg path {
-    fill: #4CAF50;
-}
-.btn-check-actress:hover svg path {
-    fill: #388E3C;
-}
-
-.btn-edit-actress svg path {
-    fill: #FFC107;
-}
-.btn-edit-actress:hover svg path {
-    fill: #FFB300;
-}
-
-.btn-delete-actress svg path {
-    fill: #F44336;
-}
-.btn-delete-actress:hover svg path {
-    fill: #D32F2F;
-}
+            <style>
+                #actress-card-container {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(243px, 1fr)); /* 响应式3-5列 */
+                    gap: 20px;
+                    padding-bottom: 20px;
+                    padding-right: 10px;
+                    background: #f9f9f9;
+                    border-radius: 5px;
+                    overflow-y: auto;
+                }
+                .actress-card {
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+                    padding: 15px;
+                    text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .actress-card:hover {
+                    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+                }
+                .actress-card-name {
+                    font-size: 1.2em;
+                    font-weight: bold;
+                    color: #007bff;
+                    margin-top: 10px;
+                }
+                .actress-card-allname {
+                    font-size: 0.9em;
+                    color: #999;
+                    margin-top: 5px;
+                    height: 30px; /* 保证高度一致性 */
+                    overflow: hidden;
+                    white-space: nowrap;      /* 防止文字换行 */
+                    text-overflow: ellipsis;  /* 当文本溢出时，显示省略号 */
+                }
+                .actress-card-avatar {
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 50%;
+                    object-fit: contain;
+                    margin: 0 auto;
+                    border: 4px solid #f0f0f0;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                
+                .card-tag {
+                    position: absolute;
+                    top: 15px; /* 调整标签距离顶部的距离 */
+                    right: -50px; /* 调整标签距离右侧的距离，负值让它移到外面一点 */
+                    
+                    width: 150px; /* 标签的宽度，影响斜角长度 */
+                    padding: 5px 0; /* 上下内边距 */
+                    text-align: center;
+                    
+                    background-color: #ff4757; /* 标签颜色 */
+                    color: white; /* 文字颜色 */
+                    font-size: 14px;
+                    font-weight: bold;
+                    z-index: 10; /* 确保标签在其他内容之上 */
+                
+                    /* 3. 核心：旋转标签，使其倾斜 */
+                    transform: rotate(45deg); /* 45度斜角 */
+                    
+                    /* 可选：添加一些阴影或边框效果 */
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+                }
+                
+                .card-new-count-tag {
+                    position: absolute;
+                    top: 5px;
+                    text-align: center;
+                    font-size: 14px;
+                    font-weight: bold;
+                    z-index: 10;
+                }
+                
+                #actress-pagination {
+                    padding-top: 10px;
+                    text-align: center;
+                    border-top: 1px solid #ddd;
+                }
+                @media (max-width: 600px) {
+                    .page-number-btn {
+                        display: none !important;
+                    }
+                }
+                
+                
+                .card-btn {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    text-decoration: none;
+                    border: none;
+                    cursor: pointer;
+                    background: linear-gradient(145deg, #e0e0e0 0%, #f7f7f7 100%);
+                    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.08),
+                                -8px -8px 16px rgba(255, 255, 255, 1.0);
+                    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+                }
+                
+                .card-btn svg,
+                .card-btn svg path {
+                    transition: fill 0.3s ease;
+                }
+                
+                .card-btn:hover {
+                    box-shadow: inset 5px 5px 10px rgba(0, 0, 0, 0.1),
+                                inset -5px -5px 10px rgba(255, 255, 255, 0.9);
+                    transform: scale(0.97);
+                    background: #e0e0e0;
+                }
+                
+                .btn-check-actress svg path {
+                    fill: #4CAF50;
+                }
+                .btn-check-actress:hover svg path {
+                    fill: #388E3C;
+                }
+                
+                .btn-edit-actress svg path {
+                    fill: #FFC107;
+                }
+                .btn-edit-actress:hover svg path {
+                    fill: #FFB300;
+                }
+                
+                .btn-delete-actress svg path {
+                    fill: #F44336;
+                }
+                .btn-delete-actress:hover svg path {
+                    fill: #D32F2F;
+                }
+            </style>
+        

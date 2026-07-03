@@ -110,7 +110,10 @@ export class SettingPlugin extends BasePlugin {
         return "SettingPlugin";
     }
 
-    /** 注入设置面板 CSS（容器宽度/列数 + 设置项/开关/侧栏/面板等样式）。对应原 L9469-9482。 */
+    /** 注入设置面板 CSS（容器宽度/列数 + 设置项/开关/侧栏/面板等样式）。对应原 L9469-9482。
+     *  帮助弹窗 help-* 样式不在 initCss 注入，改由 helpBtn 点击时在 layer.open
+     *  content 中拼接 help-dialog.css（原 L10040 content 内 <style> 块 + HTML），
+     *  与原脚本 content 字符级一致。 */
     async initCss(): Promise<string> {
         const settings = await storageManager.getSetting();
         const containerWidth =
@@ -125,18 +128,10 @@ export class SettingPlugin extends BasePlugin {
         if (isJavbusSite) {
             cssText = `\n                .container-fluid .row{\n                    max-width: 1000px !important;\n                    min-width: ${containerWidth}%;\n                    margin: auto auto;\n                }\n                \n                .container {\n                    max-width: 1000px !important;\n                    min-width: 80%;\n                    margin: auto auto;\n                }\n                \n                .masonry {\n                    grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n                }\n            `;
         }
-        return (
-            settingCssRaw
-                .replace("__CSS_TEXT__", cssText)
-                .replace(
-                    "__SIMPLE_SETTING_TOP__",
-                    isJavdbSite ? "35px" : "25px",
-                )
-                .replace(
-                    "__SIMPLE_SETTING_RIGHT__",
-                    isJavdbSite ? "-300%" : "0",
-                ) + helpDialogCssRaw
-        );
+        return settingCssRaw
+            .replace("__CSS_TEXT__", cssText)
+            .replace("__SIMPLE_SETTING_TOP__", isJavdbSite ? "35px" : "25px")
+            .replace("__SIMPLE_SETTING_RIGHT__", isJavdbSite ? "-300%" : "0");
     }
 
     /** 挂载设置按钮入口（顶栏/顶栏迷你/详情页 h3 前）并绑定悬浮/点击。对应原 L9483-9558。 */
@@ -733,7 +728,7 @@ export class SettingPlugin extends BasePlugin {
                 title: "",
                 shadeClose: true,
                 scrollbar: false,
-                content: HelpDialog(),
+                content: helpDialogCssRaw + HelpDialog(),
                 area: utils.getResponsiveArea(["50%", "90%"]),
             });
         });

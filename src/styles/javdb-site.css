@@ -1,14 +1,16 @@
-    /*__HIDENAV2__*/
 
+<style>
+    /*__HIDENAV2__*/
+    
     .navbar {
         z-index: 12345679 !important;
         padding: 0 0;
     }
-
+    
     .navbar-link:not(.is-arrowless) {
         padding-right: 33px;
     }
-
+    
     .sub-header,
     /*#search-bar-container, !*搜索框*!*/
     #footer,
@@ -23,41 +25,43 @@
     .float-buttons {
         display: none !important;
     }
-
+    
     div.tabs.no-bottom,
     .tabs ul {
         border-bottom: none !important;
     }
-
-
+    
+    
     /* 视频列表项 相对相对 方便标签绝对定位*/
     .movie-list .item {
         position: relative !important;
     }
-
+    
     .video-title {
         white-space: normal !important;
         height: 80px; /* 固定高度 容器就不会出现高低不一*/
-
+        
         display: -webkit-box; /* 必须设置，使接下来的属性生效 */
         -webkit-box-orient: vertical; /* 垂直方向堆叠行 */
         -webkit-line-clamp: 3; /* 设置文本最多显示的行数*/
     }
-
+    
     /* 列表页顶部分类自适应 */
     .main-tabs, .tabs {
         overflow-x:hidden;
         flex-wrap: wrap;
         justify-content: flex-start;
     }
-
+    
     .main-tabs ul, .tabs ul {
         flex-wrap: wrap;
         flex-grow: 0;
     }
-
-
+    
+    
     /* 二级工具栏 大小封面,可播放,含磁链...*/
     .toolbar {
         display: flex;
     }
+
+</style>

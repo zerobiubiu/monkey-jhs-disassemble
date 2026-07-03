@@ -94,13 +94,14 @@ export class NewVideoPlugin extends BasePlugin {
     }
 
     /**
-     * 注入卡片网格 / 分页 / 按钮等内联样式，以及头像选择网格弹窗的
-     * gfriends-* 选择器样式（提取自原 searchAvatar 弹窗内 <style> 块）。
-     * 对应原 L11044-11046 + L11404 的 <style>。无参数；返回 Promise<string>
-     *（CSS 文本）；不抛出异常。
+     * 注入卡片网格 / 分页 / 按钮等内联样式（原 L11044-11046 的 <style>）。
+     * 头像选择弹窗的 gfriends-* 样式不在 initCss 注入，改由 searchAvatar
+     * 在 layer.open content 中拼接 avatar-select-dialog.css（原 L11404 的
+     * <style> 块 + HTML），与原脚本 content 字符级一致。无参数；返回
+     * Promise<string>（CSS 文本）；不抛出异常。
      */
     async initCss(): Promise<string> {
-        return newVideoCssRaw + avatarSelectDialogCssRaw;
+        return newVideoCssRaw;
     }
 
     /**
@@ -555,9 +556,13 @@ export class NewVideoPlugin extends BasePlugin {
             );
             return;
         }
-        const dialogContent: string = AvatarSelectDialog({
-            avatarUrls,
-        });
+        // content = 原 searchAvatar 的 r 模板：<style> 块（avatar-select-dialog.css）
+        // + HTML（AvatarSelectDialog），与原 content 字符级一致。
+        const dialogContent: string =
+            avatarSelectDialogCssRaw +
+            AvatarSelectDialog({
+                avatarUrls,
+            });
         let errorCount: number = 0;
         layer.open({
             type: 1,

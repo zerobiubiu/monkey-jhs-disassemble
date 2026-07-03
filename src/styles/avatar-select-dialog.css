@@ -1,4 +1,5 @@
 
+        <style>
             /* 保持上一个回答的美化样式 */
             #gfriends-image-list-container { padding: 15px; height: 100%; box-sizing: border-box; background-color: #f8f9fa; }
             #gfriends-prompt { color: #555; font-weight: 500; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -7,12 +8,12 @@
                 width: 160px; height: 225px; /* 增加高度以容纳尺寸标签 */
                 overflow: hidden; border-radius: 6px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); transition: transform 0.2s ease, box-shadow 0.2s ease;
-                cursor: pointer; position: relative;
+                cursor: pointer; position: relative; 
                 padding-bottom: 25px; /* 为尺寸标签留出空间 */
             }
             .gfriends-selectable-img {
                 width: 100%; height: 200px; /* 固定图片高度 */
-                object-fit: cover; border: 3px solid transparent;
+                object-fit: cover; border: 3px solid transparent; 
                 border-radius: 6px; transition: border 0.2s ease;
             }
             .gfriends-image-item-wrapper:hover {
@@ -40,3 +41,4 @@
                 border-bottom-right-radius: 6px;
                 user-select: none;
             }
+        </style>
