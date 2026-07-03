@@ -46,6 +46,7 @@
  *   与原脚本一致。
  */
 import { BasePlugin, ActressInfo } from "./base-plugin";
+import { BlacklistDialog } from "../components/blacklist-dialog";
 import {
     currentHref,
     isJavdbSite,
@@ -211,7 +212,7 @@ export class BlacklistPlugin extends BasePlugin {
      * 对应原 L7446-7502。
      */
     async openBlacklistDialog(): Promise<void> {
-        let dialogHtml = `\n            <div style="padding: 10px 20px; height: 100%;overflow:hidden;"> \n                 <div style="display: flex;justify-content: space-between;">\n                    <div style="display: flex; gap:5px">\n                    </div>\n                    <div style="display: flex; gap:5px">\n                        <select id="dataType" style="text-align: center;min-width: 150px;">\n                            <option value="" selected>所有</option>\n                            <option value="actor">男演员</option>\n                            <option value="actress">女演员</option>\n                        </select>\n                        <select id="statusType" style="text-align: center;min-width: 150px;">\n                            <option value="" selected>--检测状态--</option>\n                            <option value="normal">正常检测</option>\n                            <option value="stop">停止检测</option>\n                        </select>\n                        <select id="urlType" data-tip="在演员页屏蔽时,是否选择了分类" style="text-align: center;min-width: 150px; ${isJavdbSite ? "" : "display: none;"}">\n                            <option value="" selected>--屏蔽类型--</option>\n                            <option value="hasT">按所选分类屏蔽</option>\n                            <option value="noT">未筛选分类</option>\n                        </select>\n                        <input id="searchValue" type="text" placeholder="搜索演员" style="padding: 4px 5px;">\n                        <a id="cleanQueryBtn" class="a-info" style="margin-left: 0">重置</a>\n                    </div>\n\n                </div>\n                <div id="table-container" style="height: calc(100% - 50px);"></div>\n            </div>\n        `;
+        const dialogHtml = BlacklistDialog({ showUrlType: isJavdbSite });
         layer.open({
             type: 1,
             title: "演员黑名单",
@@ -228,18 +229,28 @@ export class BlacklistPlugin extends BasePlugin {
                         $("#statusType").val("");
                         await this.reloadTable();
                     })
-                    .on("focusout keydown", "#searchValue", async (event: any) => {
-                        if (event.type === "focusout" || event.key === "Enter") {
-                            if (event.key === "Enter") {
-                                event.preventDefault();
+                    .on(
+                        "focusout keydown",
+                        "#searchValue",
+                        async (event: any) => {
+                            if (
+                                event.type === "focusout" ||
+                                event.key === "Enter"
+                            ) {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                }
+                                if (
+                                    event.type === "keydown" &&
+                                    event.key !== "Enter"
+                                ) {
+                                    return;
+                                }
+                                $("#dataType").val("");
+                                await this.reloadTable();
                             }
-                            if (event.type === "keydown" && event.key !== "Enter") {
-                                return;
-                            }
-                            $("#dataType").val("");
-                            await this.reloadTable();
-                        }
-                    })
+                        },
+                    )
                     .on("change", "#dataType", async () => {
                         $("#searchValue").val("");
                         await this.reloadTable();
@@ -322,8 +333,7 @@ export class BlacklistPlugin extends BasePlugin {
                     (statusType !== "stop" || !!item.isUnCheck) &&
                     (dataType
                         ? item.role === dataType
-                        : (urlType !== "hasT" ||
-                              !!item.url.includes("t=")) &&
+                        : (urlType !== "hasT" || !!item.url.includes("t=")) &&
                           (urlType !== "noT" || !item.url.includes("t="))),
             );
         $dataTypeSelect.html(
@@ -360,7 +370,8 @@ export class BlacklistPlugin extends BasePlugin {
      */
     async loadTableData(): Promise<void> {
         this.checkBlacklist_ruleTime =
-            (await storageManager.getSetting("checkBlacklist_ruleTime")) || 8760;
+            (await storageManager.getSetting("checkBlacklist_ruleTime")) ||
+            8760;
         const data = await this.getTableData();
         this.tableObj = new Tabulator("#table-container", {
             layout: "fitColumns",
@@ -509,7 +520,11 @@ export class BlacklistPlugin extends BasePlugin {
                     minWidth: 150,
                     responsive: 0,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, onRendered: any) => {
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        onRendered: any,
+                    ) => {
                         const rowData = cell.getData();
                         onRendered(() => {
                             const deleteBtn: any = cell
@@ -555,8 +570,9 @@ export class BlacklistPlugin extends BasePlugin {
                                         rowData.carList.reduce(
                                             (acc: any, carItem: any) => {
                                                 const prefix =
-                                                    carItem.carNum.split("-")[0] +
-                                                    "-";
+                                                    carItem.carNum.split(
+                                                        "-",
+                                                    )[0] + "-";
                                                 acc[prefix] =
                                                     (acc[prefix] || 0) + 1;
                                                 return acc;
@@ -567,7 +583,10 @@ export class BlacklistPlugin extends BasePlugin {
                                         prefixCounts,
                                     )
                                         .map(
-                                            ([prefix, count]: [string, any]) => ({
+                                            ([prefix, count]: [
+                                                string,
+                                                any,
+                                            ]) => ({
                                                 prefix,
                                                 count,
                                             }),
@@ -644,8 +663,8 @@ export class BlacklistPlugin extends BasePlugin {
         if (!url) {
             throw new Error("url未传入");
         }
-        return new URL(url)
-            .pathname.split("/")
+        return new URL(url).pathname
+            .split("/")
             .filter((seg: string) => seg.trim() !== "")
             .pop();
     }
@@ -677,9 +696,8 @@ export class BlacklistPlugin extends BasePlugin {
         }
         for (const itemEl of items) {
             const $item = $(itemEl);
-            const { carNum, url, publishTime } = this.getBean(
-                "ListPagePlugin",
-            ).findCarNumAndHref($item);
+            const { carNum, url, publishTime } =
+                this.getBean("ListPagePlugin").findCarNumAndHref($item);
             if (url && carNum) {
                 try {
                     if (await storageManager.getCar(carNum)) {
@@ -703,9 +721,7 @@ export class BlacklistPlugin extends BasePlugin {
             await new Promise<void>((resolve) => setTimeout(resolve, 500));
             const pageHtml = await gmHttp.get(nextPageHref);
             const domParser = new DOMParser();
-            const $parsed = $(
-                domParser.parseFromString(pageHtml, "text/html"),
-            );
+            const $parsed = $(domParser.parseFromString(pageHtml, "text/html"));
             await this.filterAllVideo(names, $parsed);
         } else {
             show.ok("执行结束!");
@@ -720,11 +736,7 @@ export class BlacklistPlugin extends BasePlugin {
      * @param starId 演员 starId
      * @param $dom 可选的已解析页 DOM；缺省时从当前页选择器取
      */
-    async filterActorVideo(
-        name: any,
-        starId: any,
-        $dom?: any,
-    ): Promise<void> {
+    async filterActorVideo(name: any, starId: any, $dom?: any): Promise<void> {
         const { nextPageLink } = await this.parseAndSaveFilterInfo(
             $dom,
             name,
@@ -738,8 +750,11 @@ export class BlacklistPlugin extends BasePlugin {
             const pageNum = utils.getUrlParam(nextPageLink, "page") || 0;
             const beyond60Plugin = this.getBean("Beyond60Plugin");
             if (isJavdbSite && beyond60Plugin && pageNum > 60) {
-                const { html, nextUrl, hasMore: _hasMore } =
-                    await beyond60Plugin.handleBeyond60(nextPageLink);
+                const {
+                    html,
+                    nextUrl,
+                    hasMore: _hasMore,
+                } = await beyond60Plugin.handleBeyond60(nextPageLink);
                 const wrapperHtml = `\n                    <div class ='movie-list'>${html}</div>\n                    ${nextUrl ? `<a class="pagination-next" href="${nextUrl}"></a>` : ""}\n                `;
                 nextDom = utils.htmlTo$dom(wrapperHtml);
             } else {
@@ -799,9 +814,8 @@ export class BlacklistPlugin extends BasePlugin {
         let lastPublishTime: any = null;
         for (const itemEl of items) {
             const $item = $(itemEl);
-            const { carNum, url, publishTime } = this.getBean(
-                "ListPagePlugin",
-            ).findCarNumAndHref($item);
+            const { carNum, url, publishTime } =
+                this.getBean("ListPagePlugin").findCarNumAndHref($item);
             lastPublishTime ||= publishTime;
             if (url && carNum) {
                 carList.push({
