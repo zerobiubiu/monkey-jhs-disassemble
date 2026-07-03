@@ -17,6 +17,7 @@
 | `07-login-dialog-component.md` | 🔧开发指导 | ✅已执行 | Top250 登录表单（openLoginDialog 的 layer.open content）提取为 LoginDialog 组件（返回 HTML 字符串） |
 | `08-subtitle-dialogs-component.md` | 🔧开发指导 | ✅已执行 | DetailPageButton 字幕弹窗（searchXunLeiSubtitle 表格容器 / previewSubtitle 预览容器）提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件（返回 HTML 字符串） |
 | `09-history-dialogs-component.md` | 🔧开发指导 | ✅已执行 | HistoryPlugin 鉴定记录弹窗（openHistory 筛选/批量/表格容器 / editRecord 编辑表单）提取为 HistoryDialog / EditRecordDialog 组件（返回 HTML 字符串） |
+| `10-new-video-dialogs-component.md` | 🔧开发指导 | ✅已执行 | NewVideoPlugin 四处弹窗（openDialog 新作品面板 / editActress 编辑表单 / CDN 源选择 / searchAvatar 头像网格）提取为 NewVideoDialog / EditActressDialog / CdnSelectDialog / AvatarSelectDialog 组件 + avatar-select-dialog.css（返回 HTML 字符串） |
 
 ## 类型图例
 
@@ -43,6 +44,7 @@
 7. `07-login-dialog-component.md` — Top250 登录表单提取为 LoginDialog 组件
 8. `08-subtitle-dialogs-component.md` — DetailPageButton 字幕弹窗提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件
 9. `09-history-dialogs-component.md` — HistoryPlugin 鉴定记录弹窗提取为 HistoryDialog / EditRecordDialog 组件
+10. `10-new-video-dialogs-component.md` — NewVideoPlugin 四处弹窗提取为 NewVideoDialog / EditActressDialog / CdnSelectDialog / AvatarSelectDialog 组件 + avatar-select-dialog.css
 
 ## 当前进度概览
 
@@ -52,11 +54,11 @@
 - plugins：`base-plugin` + `plugin-manager` + 21 个插件模块全部外置
 - constants：`site`/`status`/`video-quality`/`api`/`tabulator-zh`
 - resources：`gfriends`
-- styles：14 个 CSS（5 顶层 + 9 插件 `initCss`）全部提取
-- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`（返回 HTML 字符串的函数组件，非 JSX）
+- styles：15 个 CSS（5 顶层 + 9 插件 `initCss` + 1 弹窗内 `<style>` 提取）全部提取
+- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`（返回 HTML 字符串的函数组件，非 JSX）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，67 modules，产物 458.99 kB（gzip 114.67 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
+- build：`tsc -b && vite build` 通过，77 modules，产物 460.16 kB（gzip 115.13 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
 
 ## 相关文件
 

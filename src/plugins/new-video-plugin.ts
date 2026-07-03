@@ -48,6 +48,11 @@ import {
 } from "../core/gfriends";
 import { BasePlugin } from "./base-plugin";
 import newVideoCssRaw from "../styles/new-video-plugin.css?raw";
+import avatarSelectDialogCssRaw from "../styles/avatar-select-dialog.css?raw";
+import { NewVideoDialog } from "../components/new-video-dialog";
+import { EditActressDialog } from "../components/edit-actress-dialog";
+import { CdnSelectDialog } from "../components/cdn-select-dialog";
+import { AvatarSelectDialog } from "../components/avatar-select-dialog";
 
 /**
  * 收藏女优记录结构（storageManager.getFavoriteActressList() 返回元素）。
@@ -86,11 +91,13 @@ export class NewVideoPlugin extends BasePlugin {
     }
 
     /**
-     * 注入卡片网格 / 分页 / 按钮等内联样式。
-     * 对应原 L11044-11046。无参数；返回 Promise<string>（CSS 文本）；不抛出异常。
+     * 注入卡片网格 / 分页 / 按钮等内联样式，以及头像选择网格弹窗的
+     * gfriends-* 选择器样式（提取自原 searchAvatar 弹窗内 <style> 块）。
+     * 对应原 L11044-11046 + L11404 的 <style>。无参数；返回 Promise<string>
+     *（CSS 文本）；不抛出异常。
      */
     async initCss(): Promise<string> {
-        return newVideoCssRaw;
+        return newVideoCssRaw + avatarSelectDialogCssRaw;
     }
 
     /**
@@ -126,7 +133,9 @@ export class NewVideoPlugin extends BasePlugin {
      *（success 回调内 loadData/bindClick 异常由调用方兜底）。
      */
     async openDialog(): Promise<void> {
-        const dialogContent: string = `\n            <div class="newVideoToolBox" style="display: flex; flex-direction: column; height: 100%; overflow: hidden; padding:10px">\n                <div style="margin-bottom: 15px;display: flex; justify-content: space-between;">\n                    <div>\n                        <span id="checkNewVideoMsg"></span>\n                    </div>\n                    <div style="display: flex; align-items: flex-start;">\n                        <select id="paramActressType" style="text-align: center; height: 100%; min-width: 150px; border: 1px solid #ddd; margin-right: 10px">\n                            <option value="all" selected>所有</option>\n                            <option value="uncensored">无码</option>\n                            <option value="censored">有码</option>\n                            <option value="">未知</option>\n                        </select>\n                        \n                        <a class="a-normal" id="reLoad">${this.refreshSvg} &nbsp;&nbsp; 刷新</a>\n                    </div>\n\n                </div>\n                <div id="actress-card-container" class="jhs-scrollbar"></div>\n                <div id="actress-pagination"></div>\n            </div>\n        `;
+        const dialogContent: string = NewVideoDialog({
+            refreshSvg: this.refreshSvg,
+        });
         layer.open({
             type: 1,
             title: '<span style="padding: 0 10px;" data-tip="数据来源: 女优页面首页,含磁链分类">新作品检测 ❓</span>',
@@ -318,7 +327,15 @@ export class NewVideoPlugin extends BasePlugin {
         const textareaStyle: string =
             "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-height: 60px; overflow-y: hidden;";
         const actressType: string = actress.actressType || "";
-        const dialogContent: string = `\n            <div style="padding: 20px;">\n                <div style="margin-bottom: 15px; text-align: center;">\n                    <img id="edit-avatar-preview" src="${avatar}" alt="Avatar Preview" \n                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #ddd;">\n                    <div style="text-align: left">\n                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">头像链接:</label>\n                        <input type="text" id="edit-actress-avatar" value="${avatar}" \n                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">\n                       <div style="display: flex; gap: 5px; margin-top: 5px;">\n                            <button type="button" id="search-avatar-btn" \n                                style="flex-grow: 1; padding: 8px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">\n                                搜索头像\n                            </button>\n                            <button type="button" id="select-cdn-btn" \n                                style="width: 100px; padding: 8px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">\n                                选择 CDN 源\n                            </button>\n                        </div>\n                    </div>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">主名称:</label>\n                    <input type="text" id="edit-actress-name" value="${name}" \n                           style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">所有别名(用逗号隔开):</label>\n                    <textarea id="edit-actress-allname" style="${textareaStyle}">${allNameText}</textarea>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">演员类别:</label>\n                    <select id="actressType" style="width: 100%; padding: 10px; border: 1px solid #ddd;">\n                        <option value="" ${actressType === "" ? "selected" : ""}>未知</option>\n                        <option value="censored" ${actressType === "censored" ? "selected" : ""}>有码</option>\n                        <option value="uncensored" ${actressType === "uncensored" ? "selected" : ""}>无码</option>\n                    </select>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">最新作品(用逗号隔开):</label>\n                    <textarea id="edit-actress-newvideolist" style="${textareaStyle}">${newVideoText}</textarea>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">备注:</label>\n                   <textarea id="edit-remark" style="${textareaStyle}">${remark}</textarea>\n                </div>\n            </div>\n        `;
+        const dialogContent: string = EditActressDialog({
+            avatar,
+            name,
+            textareaStyle,
+            allNameText,
+            actressType,
+            newVideoText,
+            remark,
+        });
         layer.open({
             type: 1,
             title: `编辑女优: ${name} (${starId})`,
@@ -352,11 +369,10 @@ export class NewVideoPlugin extends BasePlugin {
                 });
                 $("#select-cdn-btn").on("click", async () => {
                     const currentIndex: number = getCurrentCdnSource().index;
-                    const radioButtonsHtml: string = GFRIENDS_SOURCES.map(
-                        (source, index) =>
-                            `\n        <div style="margin-bottom: 10px;">\n            <input type="radio" id="cdn-${index}" name="cdn-source" value="${index}" ${index === currentIndex ? "checked" : ""} style="margin-right: 10px;">\n            <label for="cdn-${index}">${source.name} ${source.json.includes("jsdelivr") ? "(推荐)" : ""}</label>\n        </div>\n    `,
-                    ).join("");
-                    const cdnDialogContent: string = `\n        <div style="padding: 20px;">\n            <p style="margin-bottom: 15px; font-weight: bold; color: #333;">请选择头像数据源 (当前: ${GFRIENDS_SOURCES[currentIndex].name}):</p>\n            ${radioButtonsHtml}\n            <p style="margin-top: 20px; color: #555; font-size: 12px;">切换源会清除本地缓存的数据，并在下次搜索时重新加载。</p>\n        </div>\n    `;
+                    const cdnDialogContent: string = CdnSelectDialog({
+                        sources: GFRIENDS_SOURCES,
+                        currentIndex,
+                    });
                     layer.open({
                         type: 1,
                         title: "选择 CDN 源",
@@ -545,13 +561,9 @@ export class NewVideoPlugin extends BasePlugin {
             );
             return;
         }
-        const imagesHtml: string = avatarUrls
-            .map(
-                (url, index) =>
-                    `\n        <div id="wrapper-${index}" class="gfriends-image-item-wrapper">\n            <img alt="" src="${url}" data-url="${url}" class="gfriends-selectable-img" data-wrapper-id="wrapper-${index}" >\n            <div class="gfriends-size-tag" data-size-for="wrapper-${index}">...</div> \n        </div>\n    `,
-            )
-            .join("");
-        const dialogContent: string = `\n        <style>\n            /* 保持上一个回答的美化样式 */\n            #gfriends-image-list-container { padding: 15px; height: 100%; box-sizing: border-box; background-color: #f8f9fa; }\n            #gfriends-prompt { color: #555; font-weight: 500; border-bottom: 1px solid #eee; padding-bottom: 10px; }\n            #gfriends-image-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }\n            .gfriends-image-item-wrapper {\n                width: 160px; height: 225px; /* 增加高度以容纳尺寸标签 */\n                overflow: hidden; border-radius: 6px;\n                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); transition: transform 0.2s ease, box-shadow 0.2s ease;\n                cursor: pointer; position: relative; \n                padding-bottom: 25px; /* 为尺寸标签留出空间 */\n            }\n            .gfriends-selectable-img {\n                width: 100%; height: 200px; /* 固定图片高度 */\n                object-fit: cover; border: 3px solid transparent; \n                border-radius: 6px; transition: border 0.2s ease;\n            }\n            .gfriends-image-item-wrapper:hover {\n                transform: translateY(-4px) scale(1.02);\n                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);\n            }\n            .gfriends-selectable-img.is-selected {\n                border-color: #ff6347;\n                box-shadow: 0 0 0 3px #ff6347;\n            }\n            /* 新增：尺寸标签样式 */\n            .gfriends-size-tag {\n                position: absolute;\n                bottom: 0; /* 定位到图片容器底部 */\n                left: 0;\n                right: 0;\n                height: 25px;\n                line-height: 25px;\n                text-align: center;\n                background-color: rgba(0, 0, 0, 0.7); /* 半透明背景 */\n                color: #fff;\n                font-size: 11px;\n                font-weight: bold;\n                border-bottom-left-radius: 6px;\n                border-bottom-right-radius: 6px;\n                user-select: none;\n            }\n        </style>\n        \n        <div id="gfriends-image-list-container">\n            <p id="gfriends-prompt" style="text-align: center; font-size: 15px; margin-bottom: 15px;">\n                点击图片即可选择（初始共 ${avatarUrls.length} 张）\n            </p>\n            <div style="overflow-y: auto; height: calc(100% - 40px);">\n                <div id="gfriends-image-list">\n                    ${imagesHtml}\n                </div>\n            </div>\n        </div>\n    `;
+        const dialogContent: string = AvatarSelectDialog({
+            avatarUrls,
+        });
         let errorCount: number = 0;
         layer.open({
             type: 1,
