@@ -12,8 +12,9 @@
  *   不受 strictPropertyInitialization 约束，语义等价）。
  * - 单字母局部变量（原 e/t/n/a/i/s/r/c/d/h/g/p/m/o/l 等）已语义化：
  *   addBlacklist:          event/position/isAlreadyBlacklisted/blacklistInfo/
- *                          confirmMessage/tagUrl/tagName/starId/name/allName/
- *                          role/movieType/blacklistUrl/lock/okShow/error/errorShow
+ *                          isActress/tagName/confirmMessage/starId/name/allName/
+ *                          role/movieType/blacklistUrl/notFirstPageByQuery/
+ *                          notFirstPageByJavbus/lock/okShow/error/errorShow
  *   openBlacklistDialog:   dialogHtml
  *   getTableData:          blacklist/blacklistCars/searchValue/statusType/
  *                          $dataTypeSelect/dataType/urlType/totalCount/
@@ -47,6 +48,14 @@
  */
 import { BasePlugin, ActressInfo } from "./base-plugin";
 import { BlacklistDialog } from "../components/blacklist-dialog";
+import { BlacklistConfirmMessage } from "../components/blacklist-confirm-message";
+import { BlacklistDataTypeOptions } from "../components/blacklist-data-type-options";
+import { BlacklistNameCell } from "../components/blacklist-name-cell";
+import { BlacklistUrlTypeCell } from "../components/blacklist-url-type-cell";
+import { BlacklistStatusCell } from "../components/blacklist-status-cell";
+import { BlacklistActionCell } from "../components/blacklist-action-cell";
+import { MovieListWrapper } from "../components/movie-list-wrapper";
+import { BlacklistPaginationCounter } from "../components/blacklist-pagination-counter";
 import {
     currentHref,
     isJavdbSite,
@@ -93,11 +102,12 @@ export class BlacklistPlugin extends BasePlugin {
             .text()
             .includes("已加入");
         let blacklistInfo: ActressInfo;
-        let confirmMessage: string;
+        let isActress: boolean;
+        let tagName: string = "";
         if (currentHref.includes("/tags")) {
             const tagUrl = new URL(currentHref);
             tagUrl.searchParams.delete("page");
-            const tagName = $("#jhs-check-tag").text().trim();
+            tagName = $("#jhs-check-tag").text().trim();
             blacklistInfo = {
                 starId: "no-" + tagName,
                 name: "虚拟演员-" + tagName,
@@ -106,32 +116,32 @@ export class BlacklistPlugin extends BasePlugin {
                 movieType: tagName,
                 blacklistUrl: tagUrl.toString(),
             };
-            confirmMessage = `是否将分类 <span style="color: #f40">${tagName}</span> 加入到黑名单中?`;
-            if (isAlreadyBlacklisted) {
-                confirmMessage = `分类 <span style="color: #f40">${tagName}</span> 已在黑名单中, 是否从当前页开始追加屏蔽?`;
-            }
+            isActress = false;
         } else {
             blacklistInfo = this.getActressPageInfo();
-            confirmMessage = `是否将该演员 <span style="color: #f40">${blacklistInfo.name}</span> 加入到黑名单中?`;
-            if (isAlreadyBlacklisted) {
-                confirmMessage = `演员 <span style="color: #f40">${blacklistInfo.name}</span> 已在黑名单中, 是否从当前页开始追加屏蔽?`;
-            }
+            isActress = true;
         }
         const { starId, name, allName, role, movieType, blacklistUrl } =
             blacklistInfo;
-        if (currentHref.includes("page") && !currentHref.includes("page=1")) {
-            confirmMessage +=
-                "<br/> 注意: 当前页面非第一页, 屏蔽数据将从此页面开始";
-        }
+        const notFirstPageByQuery =
+            currentHref.includes("page") && !currentHref.includes("page=1");
+        let notFirstPageByJavbus = false;
         if (isJavbusSite) {
             const starParts = currentHref.split("/star/")[1].split("/");
             if (starParts.length > 1) {
                 if (parseInt(starParts[1]) > 1) {
-                    confirmMessage +=
-                        "<br/> 注意: 当前页面非第一页, 屏蔽数据将从此页面开始";
+                    notFirstPageByJavbus = true;
                 }
             }
         }
+        const confirmMessage = BlacklistConfirmMessage({
+            tagName,
+            name,
+            isAlreadyBlacklisted,
+            isActress,
+            notFirstPageByQuery,
+            notFirstPageByJavbus,
+        });
         utils.q(position, confirmMessage, async () => {
             navigator.locks
                 .request(
@@ -337,7 +347,11 @@ export class BlacklistPlugin extends BasePlugin {
                           (urlType !== "noT" || !item.url.includes("t="))),
             );
         $dataTypeSelect.html(
-            `\n            <option value="">所有 (${totalCount})</option>\n            <option value="actor">男演员 (${actorCount})</option>\n            <option value="actress">女演员 (${actressCount})</option>\n        `,
+            BlacklistDataTypeOptions({
+                totalCount,
+                actorCount,
+                actressCount,
+            }),
         );
         $dataTypeSelect.val(dataType);
         const carsByStarId = new Map<any, any>();
@@ -389,7 +403,10 @@ export class BlacklistPlugin extends BasePlugin {
                 actorCount: any,
                 _pages: any,
             ) =>
-                `演员: ${actorCount} &nbsp;&nbsp;&nbsp;番号总数: ${this.currentCarCount}  <span id="checkBlacklistMsg" style="margin-left: 10px"></span>`,
+                BlacklistPaginationCounter({
+                    actorCount,
+                    currentCarCount: this.currentCarCount,
+                }),
             responsiveLayout: "collapse",
             responsiveLayoutCollapse: true,
             columnDefaults: {
@@ -411,7 +428,10 @@ export class BlacklistPlugin extends BasePlugin {
                         _onRendered: any,
                     ) => {
                         const rowData = cell.getData();
-                        return `<a class="open-url" data-url="${rowData.url}" href="${rowData.url}" data-name="${rowData.name}" target="_blank">${rowData.name}</a>`;
+                        return BlacklistNameCell({
+                            url: rowData.url,
+                            name: rowData.name,
+                        });
                     },
                 },
                 {
@@ -469,7 +489,7 @@ export class BlacklistPlugin extends BasePlugin {
                         _onRendered: any,
                     ) => {
                         const hasTag = cell.getData().url.includes("t=");
-                        return `<span style="${hasTag ? "color:#cc4444" : ""}">${hasTag ? "按所选分类屏蔽" : "未筛选分类"}</span>`;
+                        return BlacklistUrlTypeCell({ hasTag });
                     },
                 },
                 {
@@ -510,7 +530,7 @@ export class BlacklistPlugin extends BasePlugin {
                             tipText = `停更${this.checkBlacklist_ruleTime / 24 / 365}年以上, 下轮任务不再进行检测`;
                             statusText = "停止检测";
                         }
-                        return `<span data-tip="${tipText}" style="${tipText ? "color: #cc4444;" : ""}">${statusText}</span>`;
+                        return BlacklistStatusCell({ tipText, statusText });
                     },
                 },
                 {
@@ -599,7 +619,7 @@ export class BlacklistPlugin extends BasePlugin {
                                 });
                             }
                         });
-                        return '\n                           <!-- <a class="a-normal keyword-btn"> <span>提取屏蔽词</span> </a>-->\n                            <a class="a-danger delete-btn"> <span>✂️ 删除</span> </a>\n                        ';
+                        return BlacklistActionCell();
                     },
                 },
             ],
@@ -755,7 +775,7 @@ export class BlacklistPlugin extends BasePlugin {
                     nextUrl,
                     hasMore: _hasMore,
                 } = await beyond60Plugin.handleBeyond60(nextPageLink);
-                const wrapperHtml = `\n                    <div class ='movie-list'>${html}</div>\n                    ${nextUrl ? `<a class="pagination-next" href="${nextUrl}"></a>` : ""}\n                `;
+                const wrapperHtml = MovieListWrapper({ html, nextUrl });
                 nextDom = utils.htmlTo$dom(wrapperHtml);
             } else {
                 clog.log("正在请求下一页内容:", nextPageLink);

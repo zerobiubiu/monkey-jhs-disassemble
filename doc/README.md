@@ -19,6 +19,7 @@
 | `09-history-dialogs-component.md` | 🔧开发指导 | ✅已执行 | HistoryPlugin 鉴定记录弹窗（openHistory 筛选/批量/表格容器 / editRecord 编辑表单）提取为 HistoryDialog / EditRecordDialog 组件（返回 HTML 字符串） |
 | `10-new-video-dialogs-component.md` | 🔧开发指导 | ✅已执行 | NewVideoPlugin 四处弹窗（openDialog 新作品面板 / editActress 编辑表单 / CDN 源选择 / searchAvatar 头像网格）提取为 NewVideoDialog / EditActressDialog / CdnSelectDialog / AvatarSelectDialog 组件 + avatar-select-dialog.css（返回 HTML 字符串） |
 | `11-list-page-components.md` | 🔧开发指导 | ✅已执行 | list-page-button/list-page HTML 转组件：createMenuBtn 两套菜单按钮 / fixBusTitleBox wrap / renderItemStatusTag+filterMovieList status-tag（render/filter 双变体）/ addJumpPageControl 跳页控件 / filterMovieList countTable 统计表格，提取为 MenuButtonBoxHtml / StatusTagHtml / VideoTitleSpan / JumpPageControl / PageCountTable 5 个组件（返回 HTML 字符串） |
+| `12-blacklist-remaining-components.md` | 🔧开发指导 | ✅已执行 | blacklist-plugin 剩余零散 HTML 转组件：addBlacklist confirmMessage / getTableData dataType 下拉 options / loadTableData 4 个 Tabulator formatter 单元格（演员/屏蔽类型/状态/操作）+ paginationCounter / filterActorVideo movie-list 包装，提取为 BlacklistConfirmMessage / BlacklistDataTypeOptions / BlacklistNameCell / BlacklistUrlTypeCell / BlacklistStatusCell / BlacklistActionCell / MovieListWrapper / BlacklistPaginationCounter 8 个组件（返回 HTML 字符串） |
 
 ## 类型图例
 
@@ -47,6 +48,7 @@
 9. `09-history-dialogs-component.md` — HistoryPlugin 鉴定记录弹窗提取为 HistoryDialog / EditRecordDialog 组件
 10. `10-new-video-dialogs-component.md` — NewVideoPlugin 四处弹窗提取为 NewVideoDialog / EditActressDialog / CdnSelectDialog / AvatarSelectDialog 组件 + avatar-select-dialog.css
 11. `11-list-page-components.md` — list-page-button/list-page HTML 转组件（MenuButtonBoxHtml / StatusTagHtml / VideoTitleSpan / JumpPageControl / PageCountTable）
+12. `12-blacklist-remaining-components.md` — blacklist-plugin 剩余零散 HTML 转组件（BlacklistConfirmMessage / BlacklistDataTypeOptions / BlacklistNameCell / BlacklistUrlTypeCell / BlacklistStatusCell / BlacklistActionCell / MovieListWrapper / BlacklistPaginationCounter）
 
 ## 当前进度概览
 
@@ -57,10 +59,10 @@
 - constants：`site`/`status`/`video-quality`/`api`/`tabulator-zh`
 - resources：`gfriends`
 - styles：15 个 CSS（5 顶层 + 9 插件 `initCss` + 1 弹窗内 `<style>` 提取）全部提取
-- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`（返回 HTML 字符串的函数组件，非 JSX）
+- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter`（返回 HTML 字符串的函数组件，非 JSX）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，93 modules，产物 463.84 kB（gzip 116.15 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
+- build：`tsc -b && vite build` 通过，102 modules，产物 465.42 kB（gzip 116.61 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
 
 ## 相关文件
 
