@@ -34,6 +34,7 @@ import { ReviewItem } from "../components/review-item";
 import { ReviewLinkContent } from "../components/review-link-content";
 import { ReviewLoadMore } from "../components/review-load-more";
 import { ReviewLoading } from "../components/review-loading";
+import { jsxToString } from "../core/jsx-to-string";
 
 export class ReviewPlugin extends BasePlugin {
     /** 评论楼层序号（渲染时自增） */
@@ -123,10 +124,12 @@ export class ReviewPlugin extends BasePlugin {
         );
         const target = container || $("#magnets-content");
         target.append(
-            ReviewHeader({
-                foldText: isExpanded === YES ? "折叠" : "展开",
-                iconText: isExpanded === YES ? "▲" : "▼",
-            }),
+            jsxToString(
+                <ReviewHeader
+                    foldText={isExpanded === YES ? "折叠" : "展开"}
+                    iconText={isExpanded === YES ? "▲" : "▼"}
+                />,
+            ),
         );
         $("#reviewsFold").on("click", (event: any) => {
             event.preventDefault();
@@ -150,7 +153,7 @@ export class ReviewPlugin extends BasePlugin {
                 storageManager.saveSettingItem("enableLoadReview", NO);
             }
         });
-        target.append(ReviewContainers());
+        target.append(jsxToString(<ReviewContainers />));
         if (isExpanded === YES) {
             await this.fetchAndDisplayReviews(movieId);
         }
@@ -165,7 +168,7 @@ export class ReviewPlugin extends BasePlugin {
     async fetchAndDisplayReviews(movieId: any): Promise<void> {
         const container = $("#reviewsContainer");
         const footer = $("#reviewsFooter");
-        container.append(ReviewLoading());
+        container.append(jsxToString(<ReviewLoading />));
         const limit: number = await storageManager.getSetting(
             "reviewCount",
             20,
@@ -183,7 +186,7 @@ export class ReviewPlugin extends BasePlugin {
             $("#reviewsLoading").remove();
         }
         if (!reviews) {
-            container.append(ReviewError());
+            container.append(jsxToString(<ReviewError />));
             $("#retryFetchReviews").on("click", async () => {
                 $("#retryFetchReviews").parent().remove();
                 await this.fetchAndDisplayReviews(movieId);
@@ -191,14 +194,14 @@ export class ReviewPlugin extends BasePlugin {
             return;
         }
         if (reviews.length === 0) {
-            container.append(ReviewEmpty());
+            container.append(jsxToString(<ReviewEmpty />));
             return;
         }
         const filterKeywords =
             await storageManager.getReviewFilterKeywordList();
         this.displayReviews(reviews, container, filterKeywords);
         if (reviews.length === limit) {
-            footer.html(ReviewLoadMore());
+            footer.html(jsxToString(<ReviewLoadMore />));
             let page = 1;
             const loadMoreBtn = $("#loadMoreReviews");
             loadMoreBtn.on("click", async () => {
@@ -227,7 +230,7 @@ export class ReviewPlugin extends BasePlugin {
                 }
             });
         } else {
-            footer.html(ReviewEnd());
+            footer.html(jsxToString(<ReviewEnd />));
         }
     }
 
@@ -255,16 +258,19 @@ export class ReviewPlugin extends BasePlugin {
                     .join("");
                 const content = review.content.replace(
                     /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
-                    (match: any) => ReviewLinkContent({ match }),
+                    (match: any) =>
+                        jsxToString(<ReviewLinkContent match={match} />),
                 );
-                const html = ReviewItem({
-                    floor: this.floorIndex++,
-                    username: review.username,
-                    stars,
-                    time: utils.formatDate(review.created_at),
-                    likesCount: review.likes_count,
-                    content,
-                });
+                const html = jsxToString(
+                    <ReviewItem
+                        floor={this.floorIndex++}
+                        username={review.username}
+                        stars={stars}
+                        time={utils.formatDate(review.created_at)}
+                        likesCount={review.likes_count}
+                        content={content}
+                    />,
+                );
                 container.append(html);
             });
             this.rightClickFilter();

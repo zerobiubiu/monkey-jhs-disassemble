@@ -36,6 +36,7 @@
  */
 import { LoginDialog } from "../components/login-dialog";
 import { RankingContainers } from "../components/ranking-containers";
+import { jsxToString } from "../core/jsx-to-string";
 import {
     Top250ErrorMessage,
     Top250LoadError,
@@ -95,7 +96,7 @@ export class Top250Plugin extends BasePlugin {
         $(".empty-message").remove();
         $(".section .container .box").remove();
         $("#sort-toggle-btn").remove();
-        this.contentBox.append(RankingContainers());
+        this.contentBox.append(jsxToString(<RankingContainers />));
         this.renderPagination();
     }
 

@@ -25,6 +25,7 @@ import { HitShowMovieItem } from "../components/hit-show-movie-item";
 import { HitShowScore } from "../components/hit-show-score";
 import { HitShowToolBar } from "../components/hit-show-tool-bar";
 import { RankingContainers } from "../components/ranking-containers";
+import { jsxToString } from "../core/jsx-to-string";
 
 export class HitShowPlugin extends BasePlugin {
     /** 内容容器 jQuery 对象，热播榜单与工具栏挂载点。对应原 L4331。 */
@@ -63,7 +64,7 @@ export class HitShowPlugin extends BasePlugin {
         $(".empty-message").remove();
         $(".section .container .box").remove();
         $("#sort-toggle-btn").remove();
-        this.contentBox.append(RankingContainers());
+        this.contentBox.append(jsxToString(<RankingContainers />));
     }
 
     /**
@@ -118,7 +119,7 @@ export class HitShowPlugin extends BasePlugin {
      * @param period 时间段（"daily"/"weekly"/"monthly"），URL 缺省时为 null。
      */
     toolBar(period: string | null): void {
-        this.contentBox.append(HitShowToolBar({ period }));
+        this.contentBox.append(jsxToString(<HitShowToolBar period={period} />));
     }
 
     /**
@@ -164,7 +165,12 @@ export class HitShowPlugin extends BasePlugin {
                     const detail = await fetchMovieDetail(movieId);
                     const score = detail.score;
                     const watchedCount = detail.watchedCount;
-                    const scoreHtml = HitShowScore({ score, watchedCount });
+                    const scoreHtml = jsxToString(
+                        <HitShowScore
+                            score={score}
+                            watchedCount={watchedCount}
+                        />,
+                    );
                     this.appendScoreHtml(movieId, scoreHtml);
                     cache[movieId] = scoreHtml;
                     localStorage.setItem(storageKey, JSON.stringify(cache));
@@ -206,7 +212,7 @@ export class HitShowPlugin extends BasePlugin {
     markDataListHtml(movies: any[]): string {
         let html = "";
         movies.forEach((movie: any) => {
-            html += HitShowMovieItem({ movie });
+            html += jsxToString(<HitShowMovieItem movie={movie} />);
         });
         return html;
     }
