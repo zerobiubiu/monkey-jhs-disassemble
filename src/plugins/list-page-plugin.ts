@@ -50,6 +50,10 @@ import {
 import { BasePlugin } from "./base-plugin";
 import { Hotkey } from "../core/hotkey";
 import { ImagePreview } from "../core/image-preview";
+import { VideoTitleSpan } from "../components/video-title-span";
+import { StatusTagHtml } from "../components/status-tag-html";
+import { JumpPageControl } from "../components/jump-page-control";
+import { PageCountTable } from "../components/page-count-table";
 
 /** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
 interface StatusTagConfig {
@@ -208,7 +212,9 @@ export class ListPagePlugin extends BasePlugin {
                         newVideoPlugin.showNewVideoCount().then();
                         newVideoPlugin.loadData();
                     }
-                } else if (msgType === "cleanCache_filter_actor_actress_car_list") {
+                } else if (
+                    msgType === "cleanCache_filter_actor_actress_car_list"
+                ) {
                     storageManager.cache_filter_actor_actress_car_list &&= null;
                 } else if (
                     msgType === "clean_cacheSettingObj" &&
@@ -301,12 +307,12 @@ export class ListPagePlugin extends BasePlugin {
                 if ($item.find(".avatar-box").length > 0) {
                     return;
                 }
-                const imgTitle =
-                    $item.find("img").attr("title")?.trim() || "";
-                $item.find(".photo-info span:first")
+                const imgTitle = $item.find("img").attr("title")?.trim() || "";
+                $item
+                    .find(".photo-info span:first")
                     .contents()
                     .first()
-                    .wrap(`<span class="video-title" title="${imgTitle}">${imgTitle}</span>`);
+                    .wrap(VideoTitleSpan({ imgTitle }));
                 $item.find("br").remove();
             });
     }
@@ -373,7 +379,14 @@ export class ListPagePlugin extends BasePlugin {
                 tagPosition === "rightTop"
                     ? "right: 0; top:5px;"
                     : "left: 0; top:5px;";
-            const tagHtml = `<span class="tag is-success status-tag" data-tip="${tagConfig.reasonType}" title="" style="margin-right: 5px; border-radius:10px; position:absolute;\n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        ${tagConfig.text}\n                    </span>`;
+            const tagHtml = StatusTagHtml({
+                site: "javdb",
+                variant: "render",
+                text: tagConfig.text,
+                color: tagConfig.color,
+                dataTip: tagConfig.reasonType,
+                positionStyle,
+            });
             const tagsEl = $item.find(".tags");
             if (tagsEl.length) {
                 tagsEl.append(tagHtml);
@@ -398,14 +411,19 @@ export class ListPagePlugin extends BasePlugin {
     async filterMovieList(itemEls: any): Promise<void> {
         utils.time("累计耗费时间");
         utils.time("读取数据耗时");
-        const [carList, titleFilterKeywords, blacklist, blacklistCarList, setting] =
-            await Promise.all([
-                storageManager.getCarList(),
-                storageManager.getTitleFilterKeyword(),
-                storageManager.getBlacklist(),
-                storageManager.getBlacklistCarList(),
-                storageManager.getSetting(),
-            ]);
+        const [
+            carList,
+            titleFilterKeywords,
+            blacklist,
+            blacklistCarList,
+            setting,
+        ] = await Promise.all([
+            storageManager.getCarList(),
+            storageManager.getTitleFilterKeyword(),
+            storageManager.getBlacklist(),
+            storageManager.getBlacklistCarList(),
+            storageManager.getSetting(),
+        ]);
         const readDataTime = utils.time("读取数据耗时");
         const statusCarSets: Record<string, Set<string>> = carList.reduce(
             (acc: Record<string, Set<string>>, car: any) => {
@@ -513,7 +531,8 @@ export class ListPagePlugin extends BasePlugin {
                         $item.show().removeAttr("data-hide");
                     }
                 }
-                let tagConfig: StatusTagConfig = STATUS_TAG_CONFIG.IS_WAIT_CHECK;
+                let tagConfig: StatusTagConfig =
+                    STATUS_TAG_CONFIG.IS_WAIT_CHECK;
                 let reasonText: string | null = null;
                 if (isFiltered) {
                     tagConfig = STATUS_TAG_CONFIG.IS_FILTERED;
@@ -542,9 +561,14 @@ export class ListPagePlugin extends BasePlugin {
                         ? "right: 0; top:5px;"
                         : "left: 0; top:5px;";
                 if (tagConfig.text) {
-                    const tagHtml = isJavdbSite
-                        ? `<span class="tag is-success status-tag" data-tip="${reasonText}" title=""\n                        style="margin-right: 5px; border-radius:10px; position:absolute; \n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        ${tagConfig.text}\n                    </span>`
-                        : `<a class="a-primary status-tag" data-tip="${reasonText}"  title=""\n                        style="margin-right: 5px; padding: 0 5px; color: #fff !important; border-radius:10px; position:absolute; \n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        <span class="tag" style="color:#fff !important;">${tagConfig.text}</span>\n                    </a>`;
+                    const tagHtml = StatusTagHtml({
+                        site: isJavdbSite ? "javdb" : "javbus",
+                        variant: "filter",
+                        text: tagConfig.text,
+                        color: tagConfig.color,
+                        dataTip: reasonText as string,
+                        positionStyle,
+                    });
                     if (isJavdbSite) {
                         $item.find(".tags").append(tagHtml);
                     }
@@ -553,7 +577,9 @@ export class ListPagePlugin extends BasePlugin {
                         if (itemTagEl.length) {
                             itemTagEl.append(tagHtml);
                         } else {
-                            $item.find(".photo-info > span > div").append(tagHtml);
+                            $item
+                                .find(".photo-info > span > div")
+                                .append(tagHtml);
                         }
                     }
                 }
@@ -562,49 +588,75 @@ export class ListPagePlugin extends BasePlugin {
         );
         const processPageTime = utils.time("处理页面耗时");
         const totalTime = utils.time("累计耗费时间");
-        $("#waitDownBtn span").text(`打开已收藏 (${statusCarSets.favorite.size})`);
+        $("#waitDownBtn span").text(
+            `打开已收藏 (${statusCarSets.favorite.size})`,
+        );
         clog.log(
-            `\n            <table class="countTable" style='border-collapse: collapse; width: 100%'>\n                <tr>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${readDataTime}</td>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${assembleDataTime}</td>\n                </tr>\n                \n                <tr>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${processPageTime}</td>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${totalTime}</td>\n                </tr>\n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>项目</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>数量</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>项目</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>数量</td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽单番号</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageFilterCount}</strong></td>\n                     <td style='padding: 3px; border: 1px solid #ccc;'>收藏</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageFavoriteCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽演员</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageActorFilterCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽关键词</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageKeywordFilterCount}</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>已观看</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageHasWatchCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>待鉴定</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageWaitCheckCount}</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'></td>\n                </tr>\n        \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>总数</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageTotalCount}</strong></td>\n                </tr>\n            </table>\n        `,
+            PageCountTable({
+                readDataTime,
+                assembleDataTime,
+                processPageTime,
+                totalTime,
+                filterCount: this.currentPageFilterCount,
+                favoriteCount: this.currentPageFavoriteCount,
+                actorFilterCount: this.currentPageActorFilterCount,
+                keywordFilterCount: this.currentPageKeywordFilterCount,
+                hasWatchCount: this.currentPageHasWatchCount,
+                waitCheckCount: this.currentPageWaitCheckCount,
+                totalCount: this.currentPageTotalCount,
+            }),
         );
     }
 
     /** 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。 */
     async bindClick(): Promise<void> {
         const selectorConfig = this.getSelector();
-        $(selectorConfig.boxSelector).on("click", ".item img", async (event: any) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if ($(event.target).closest("div.meta-buttons").length) {
-                return;
-            }
-            const $item = $(event.target).closest(".item");
-            const { carNum, aHref } = this.findCarNumAndHref($item);
-            const dialogOpenDetail = await storageManager.getSetting(
-                "dialogOpenDetail",
-                YES,
-            );
-            if (carNum.includes("FC2-")) {
-                const movieId = this.parseMovieId(aHref);
-                this.getBean("Fc2Plugin")?.openFc2Dialog(movieId, carNum, aHref);
-            } else if (dialogOpenDetail === YES) {
-                utils.openPage(aHref, carNum, true, event);
-                this.$currentImage = null;
-            } else {
-                window.open(aHref);
-            }
-        });
-        $(selectorConfig.boxSelector).on("click", ".item video", async (event: any) => {
-            const videoEl = event.currentTarget;
-            if (videoEl.paused) {
-                videoEl.play().catch((err: any) =>
-                    console.error("播放失败:", err),
+        $(selectorConfig.boxSelector).on(
+            "click",
+            ".item img",
+            async (event: any) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if ($(event.target).closest("div.meta-buttons").length) {
+                    return;
+                }
+                const $item = $(event.target).closest(".item");
+                const { carNum, aHref } = this.findCarNumAndHref($item);
+                const dialogOpenDetail = await storageManager.getSetting(
+                    "dialogOpenDetail",
+                    YES,
                 );
-            } else {
-                videoEl.pause();
-            }
-            event.preventDefault();
-            event.stopPropagation();
-        });
+                if (carNum.includes("FC2-")) {
+                    const movieId = this.parseMovieId(aHref);
+                    this.getBean("Fc2Plugin")?.openFc2Dialog(
+                        movieId,
+                        carNum,
+                        aHref,
+                    );
+                } else if (dialogOpenDetail === YES) {
+                    utils.openPage(aHref, carNum, true, event);
+                    this.$currentImage = null;
+                } else {
+                    window.open(aHref);
+                }
+            },
+        );
+        $(selectorConfig.boxSelector).on(
+            "click",
+            ".item video",
+            async (event: any) => {
+                const videoEl = event.currentTarget;
+                if (videoEl.paused) {
+                    videoEl
+                        .play()
+                        .catch((err: any) => console.error("播放失败:", err));
+                } else {
+                    videoEl.pause();
+                }
+                event.preventDefault();
+                event.stopPropagation();
+            },
+        );
         $(selectorConfig.boxSelector).on(
             "click",
             ".item .video-title",
@@ -666,8 +718,10 @@ export class ListPagePlugin extends BasePlugin {
     async parseActressName(url: string): Promise<string | null> {
         let actressName: string | null = null;
         if (
-            (await storageManager.getSetting("enableSaveActressCarInfo", NO)) ===
-            YES
+            (await storageManager.getSetting(
+                "enableSaveActressCarInfo",
+                NO,
+            )) === YES
         ) {
             clog.debug("鉴定补录演员信息-已启用, 开始解析详情页");
             clog.debug("开始解析演员详情页", url);
@@ -696,9 +750,13 @@ export class ListPagePlugin extends BasePlugin {
     async bindListPageHotKey(): Promise<void> {
         this.$currentImage = null;
         $(document)
-            .on("mouseenter", this.getSelector().coverImgSelector, (event: any) => {
-                this.$currentImage = $(event.currentTarget);
-            })
+            .on(
+                "mouseenter",
+                this.getSelector().coverImgSelector,
+                (event: any) => {
+                    this.$currentImage = $(event.currentTarget);
+                },
+            )
             .on("mouseleave", this.getSelector().coverImgSelector, () => {
                 this.$currentImage = null;
             });
@@ -867,7 +925,9 @@ export class ListPagePlugin extends BasePlugin {
         if (imgEls && typeof imgEls.jquery == "string") {
             imgEls = imgEls.toArray();
         }
-        imgEls ||= document.querySelectorAll(this.getSelector().coverImgSelector);
+        imgEls ||= document.querySelectorAll(
+            this.getSelector().coverImgSelector,
+        );
         if (isJavdbSite) {
             imgEls.forEach((img: any) => {
                 img.src = img.src.replace("thumbs", "covers");
@@ -925,9 +985,7 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
     async translate($item: any): Promise<void> {
-        if (
-            (await storageManager.getSetting("translateTitle", YES)) !== YES
-        ) {
+        if ((await storageManager.getSetting("translateTitle", YES)) !== YES) {
             return;
         }
         let sourceText: any;
@@ -965,15 +1023,17 @@ export class ListPagePlugin extends BasePlugin {
         translateText(sourceText)
             .then((translation) => {
                 if (isJavdbSite) {
-                    videoTitleEl.contents().each((_index: number, node: any) => {
-                        if (
-                            node.nodeType === 3 &&
-                            node.textContent.trim() !== "" &&
-                            !node.textContent.includes(carNum)
-                        ) {
-                            node.textContent = " " + translation + " ";
-                        }
-                    });
+                    videoTitleEl
+                        .contents()
+                        .each((_index: number, node: any) => {
+                            if (
+                                node.nodeType === 3 &&
+                                node.textContent.trim() !== "" &&
+                                !node.textContent.includes(carNum)
+                            ) {
+                                node.textContent = " " + translation + " ";
+                            }
+                        });
                     videoTitleEl.attr("title", translation);
                 } else {
                     videoTitleEl.text(translation);
@@ -1028,22 +1088,10 @@ export class ListPagePlugin extends BasePlugin {
             return;
         }
         const currentPage = utils.getUrlParam(currentHref, "page") || 1;
-        const $pageInput = $("<input>", {
-            type: "number",
-            id: "jumpPageInput",
-            placeholder: "页码",
-            min: "1",
-            style: "width: 60px; margin-left: 10px; padding: 10px; border: 1px solid #ccc; font-size: 14px;",
-            value: currentPage + 1,
-        });
-        const $jumpBtn = $("<button>", {
-            text: "跳转",
-            style: "margin-left: 5px; padding: 9px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f0f0f0; font-size: 14px;",
-        });
-        const $li = $("<li>", { id: controlId })
-            .append($pageInput)
-            .append($jumpBtn);
+        const $li = $(JumpPageControl({ controlId, value: currentPage + 1 }));
         $(".pagination-list").append($li);
+        const $pageInput = $li.find("#jumpPageInput");
+        const $jumpBtn = $li.find("button");
         const jumpToPage = () => {
             const pageNum = parseInt($pageInput.val(), 10);
             if (isNaN(pageNum) || pageNum < 1) {

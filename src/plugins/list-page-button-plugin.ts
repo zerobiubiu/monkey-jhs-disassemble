@@ -36,6 +36,7 @@ import {
     YES,
 } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import { MenuButtonBoxHtml } from "../components/menu-button-box-html";
 
 /** 「已下载」状态标签文本（原顶层常量 y；已下载功能删除后残留引用的还原值）。 */
 const HAS_DOWN_TEXT = "📥️ 已下载";
@@ -81,14 +82,15 @@ export class ListPageButtonPlugin extends BasePlugin {
             let containerEl = $(".main-tabs, .tabs");
             let blacklistLabel = "加入黑名单";
             let blacklistColor = "#d22020";
-            let flexGrowStyle = "";
             let tagBlacklistEntry: any = null;
             if (isActorsPage) {
                 containerEl = $(".toolbar, .section-addition").filter(":last");
                 const blacklist = await storageManager.getBlacklist();
                 const actressInfo = this.getActressPageInfo();
                 if (
-                    blacklist.find((entry: any) => entry.starId === actressInfo.starId)
+                    blacklist.find(
+                        (entry: any) => entry.starId === actressInfo.starId,
+                    )
                 ) {
                     blacklistLabel = "已加入黑名单";
                     blacklistColor = "#885d5d";
@@ -121,8 +123,6 @@ export class ListPageButtonPlugin extends BasePlugin {
             const isAdvancedSearch = currentHref.includes("advanced_search");
             if (isAdvancedSearch) {
                 containerEl = $("h2.section-title");
-            } else {
-                flexGrowStyle = "flex-grow:1;";
             }
             const sortMethod = localStorage.getItem("jhs_sortMethod");
             const sortLabel =
@@ -133,7 +133,16 @@ export class ListPageButtonPlugin extends BasePlugin {
                       ? "时间"
                       : "默认");
             containerEl.append(
-                `\n                <div style="display: flex;align-items: center; ${flexGrowStyle} ">\n                    <a id="waitCheckBtn" class="menu-btn main-tab-btn" style="background-color:#56c938 !important;"><span>打开待鉴定</span></a>\n                    <a id="waitDownBtn" class="menu-btn main-tab-btn" style="background-color:#2caac0 !important;"><span>打开已收藏</span></a>\n                    ${isActorsPage ? `\n                     <a id="addBlacklistBtn" class="menu-btn main-tab-btn" style="background-color:${blacklistColor} !important;" data-tip="将演员加入黑名单, 后续有作品更新也会纳入屏蔽中"><span>${blacklistLabel}</span></a>\n                     <a id="filterAllVideo" class="menu-btn main-tab-btn" style="background-color:#e8ab39 !important;margin-right: 30px!important;" data-tip="一键屏蔽已选分类的视频列表至鉴定记录中"><span>一键屏蔽所有作品</span></a>\n                    ` : ""}\n                    ${currentHref.includes("/tags") ? `\n                      <a id="addBlacklistBtn" class="menu-btn main-tab-btn" style="background-color:${blacklistColor} !important;" data-tip="将演员加入黑名单, 后续有作品更新也会纳入屏蔽中"><span>${blacklistLabel}</span></a>\n                    ` : ""}\n                </div>\n                <div style="display: flex;align-items: center;">\n                    <a id="newVideoBtn" class="menu-btn main-tab-btn" style="background-color:#2c6cc0 !important;"><span>新作品检测 (<span id="newVideoCount">0</span>)</span></a>\n                    <a id="blacklistBtn" class="menu-btn main-tab-btn" style="background-color:#34393f !important;"><span>演员黑名单</span></a>\n                    ${isSearchOrUserPage || isAdvancedSearch ? "" : `<a id="sort-toggle-btn" class="menu-btn main-tab-btn" style="background-color:#8783ab !important;"> ${sortLabel} </a>`}\n                </div>\n            `,
+                MenuButtonBoxHtml({
+                    site: "javdb",
+                    blacklistLabel,
+                    blacklistColor,
+                    actorsPage: isActorsPage,
+                    tagsPage: currentHref.includes("/tags"),
+                    advancedSearch: isAdvancedSearch,
+                    searchOrUserPage: isSearchOrUserPage,
+                    sortLabel,
+                }),
             );
         }
         if (isJavbusSite) {
@@ -144,7 +153,9 @@ export class ListPageButtonPlugin extends BasePlugin {
                 const blacklist = await storageManager.getBlacklist();
                 const actressInfo = this.getActressPageInfo();
                 if (
-                    blacklist.find((entry: any) => entry.starId === actressInfo.starId)
+                    blacklist.find(
+                        (entry: any) => entry.starId === actressInfo.starId,
+                    )
                 ) {
                     blacklistLabel = "已加入黑名单";
                     blacklistColor = "#885d5d";
@@ -153,7 +164,12 @@ export class ListPageButtonPlugin extends BasePlugin {
             $(".masonry")
                 .parent()
                 .prepend(
-                    `\n                <div style="margin: 10px; display: flex;">\n                    <a id="waitCheckBtn" class="menu-btn main-tab-btn" style="background-color:#56c938 !important;"><span>打开待鉴定</span></a>\n                    <a id="waitDownBtn" class="menu-btn main-tab-btn" style="background-color:#2caac0 !important;"><span>打开已收藏</span></a>\n                    \n                    ${isStarPage ? `    \n                        <a id="addBlacklistBtn" class="menu-btn main-tab-btn" style="background-color:${blacklistColor} !important;" data-tip="将演员加入黑名单, 后续有作品更新也会纳入屏蔽中"><span>${blacklistLabel}</span></a>\n                        <a id="filterAllVideo" class="menu-btn main-tab-btn" style="background-color:#e8ab39 !important;" data-tip="一键屏蔽已选分类的视频列表至鉴定记录中"><span>一键屏蔽所有作品</span></a>\n                    ` : '<a id="blacklistBtn" class="menu-btn main-tab-btn" style="background-color:#34393f !important;"><span>演员黑名单</span></a>'}\n                </div>\n            `,
+                    MenuButtonBoxHtml({
+                        site: "javbus",
+                        blacklistLabel,
+                        blacklistColor,
+                        starPage: isStarPage,
+                    }),
                 );
         }
     }
@@ -316,20 +332,25 @@ export class ListPageButtonPlugin extends BasePlugin {
                 if (
                     skipTags.some(
                         (tagText: string) =>
-                            itemEl.find(`span.tag:contains('${tagText}')`).length > 0,
+                            itemEl.find(`span.tag:contains('${tagText}')`)
+                                .length > 0,
                     )
                 ) {
                     return;
                 }
-                const { carNum, aHref } = this.getBean(
-                    "ListPagePlugin",
-                ).findCarNumAndHref(itemEl);
+                const { carNum, aHref } =
+                    this.getBean("ListPagePlugin").findCarNumAndHref(itemEl);
                 if (carNum.includes("FC2-")) {
                     const movieId = this.parseMovieId(aHref);
-                    this.getBean("Fc2Plugin")?.openFc2Page(movieId, carNum, aHref);
+                    this.getBean("Fc2Plugin")?.openFc2Page(
+                        movieId,
+                        carNum,
+                        aHref,
+                    );
                 } else {
                     const url =
-                        aHref + (aHref.includes("?") ? "&autoPlay=1" : "?autoPlay=1");
+                        aHref +
+                        (aHref.includes("?") ? "&autoPlay=1" : "?autoPlay=1");
                     window.open(url);
                 }
                 openedCount++;
@@ -361,7 +382,11 @@ export class ListPageButtonPlugin extends BasePlugin {
             const url = carInfo.url;
             if (carNum.includes("FC2-")) {
                 const movieId = this.parseMovieId(url);
-                await this.getBean("Fc2Plugin")?.openFc2Page(movieId, carNum, url);
+                await this.getBean("Fc2Plugin")?.openFc2Page(
+                    movieId,
+                    carNum,
+                    url,
+                );
             } else {
                 window.open(url);
             }
