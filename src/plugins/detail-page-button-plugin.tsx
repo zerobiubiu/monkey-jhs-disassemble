@@ -29,7 +29,8 @@
  *   → catch {}（optional catch binding，ES2019+）。
  * - 内联 CSS/HTML（含 Tabulator 列配置、Rails JS 注入 <script>）原样保留，
  *   仅替换模板插值变量名；其余结构性 HTML/CSS 按 doc/06-component-html-string.md
- *   统一规定提取为返回 HTML 字符串的组件或 .css + ?raw：
+ *   统一规定提取为组件或 .css + ?raw（组件现返回 JSX，经 jsxToString 转 HTML
+ *   字符串，见 doc/20-detail-page-button-components-tsx.md）：
  *   - 菜单按钮组 menuHtml → DetailMenuButtons(props)（createMenuBtn 消费）
  *   - 评分条 bar.innerHTML → RatingBarHtml()（_buildRatingBar 消费）
  *   - 清单面板空 div → ListPanel()（_ensureListPanel 以 insertAdjacentHTML 消费）
@@ -37,9 +38,9 @@
  *     注入（保留 id=jhs-rating-styles 去重与 addQuickActionButtons 显式调用时序）
  *   - 两处 layer 弹窗 content（searchXunLeiSubtitle 字幕表格容器、
  *     previewSubtitle 字幕预览容器）提取为 SubtitleTableDialog / SubtitlePreviewDialog
- *     组件（返回 HTML 字符串），插件层以 content: X(props) 消费。
+ *     组件（返回 JSX），插件层以 content: jsxToString(<X {...props} />) 消费。
  *   - searchXunLeiSubtitle Tabulator 操作列 formatter 返回的预览/下载按钮 →
- *     SubtitleActionCell()（formatter 返回 HTML 字符串，事件绑定仍由 onRendered 持有）
+ *     SubtitleActionCell()（formatter 返回 jsxToString(<SubtitleActionCell />)，事件绑定仍由 onRendered 持有）
  *   - previewSubtitle 逐行拼接的 `<span style="color:#AAA;">${paddedNum}. </span>${line}\n` →
  *     SubtitleLine({ paddedNum, line })（逐行 output += 拼接）
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
@@ -67,6 +68,7 @@ import {
     NO,
 } from "../constants/status";
 import { Hotkey } from "../core/hotkey";
+import { jsxToString } from "../core/jsx-to-string";
 import { DetailMenuButtons } from "../components/detail-menu-buttons";
 import { RatingBarHtml } from "../components/rating-bar-html";
 import { ListPanel } from "../components/list-panel";
@@ -159,14 +161,16 @@ export class DetailPageButtonPlugin extends BasePlugin {
     async createMenuBtn(): Promise<void> {
         const pageInfo = this.getPageInfo();
         const carNum = pageInfo.carNum;
-        const menuHtml = DetailMenuButtons({
-            filterText: BLOCK_TEXT,
-            filterColor: BLOCK_COLOR,
-            favoriteText: FAVORITE_TEXT,
-            favoriteColor: FAVORITE_COLOR,
-            watchedText: WATCHED_TEXT,
-            watchedColor: WATCHED_COLOR,
-        });
+        const menuHtml = jsxToString(
+            <DetailMenuButtons
+                filterText={BLOCK_TEXT}
+                filterColor={BLOCK_COLOR}
+                favoriteText={FAVORITE_TEXT}
+                favoriteColor={FAVORITE_COLOR}
+                watchedText={WATCHED_TEXT}
+                watchedColor={WATCHED_COLOR}
+            />,
+        );
         if (isJavdbSite) {
             $(".tabs").after(menuHtml);
         }
@@ -620,7 +624,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const self = this;
         const bar = document.createElement("div");
         bar.className = "jhs-rating-bar";
-        bar.innerHTML = RatingBarHtml();
+        bar.innerHTML = jsxToString(<RatingBarHtml />);
         const starsEl: any = bar.querySelector(".jhs-stars");
         const stars: any = bar.querySelectorAll(".jhs-star");
         const readBtn: any = bar.querySelector(".jhs-read-btn");
@@ -698,7 +702,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const self = this;
         // 创建清单面板
         if (!nav.querySelector(".jhs-list-panel")) {
-            otherSite.insertAdjacentHTML("afterend", ListPanel());
+            otherSite.insertAdjacentHTML(
+                "afterend",
+                jsxToString(<ListPanel />),
+            );
         }
         // 初始化（触发 ajax 加载 + 克隆同步）
         self._initListPanel();
@@ -1208,7 +1215,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     layer.open({
                         type: 1,
                         title: "迅雷字幕",
-                        content: SubtitleTableDialog(),
+                        content: jsxToString(<SubtitleTableDialog />),
                         scrollbar: false,
                         area: utils.getResponsiveArea(["60%", "70%"]),
                         anim: -1,
@@ -1297,7 +1304,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
                                                     );
                                                 }
                                             });
-                                            return SubtitleActionCell();
+                                            return jsxToString(
+                                                <SubtitleActionCell />,
+                                            );
                                         },
                                     },
                                 ],
@@ -1513,7 +1522,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 const numWidth = String(lines.length).length;
                 lines.forEach((line: any, idx: number) => {
                     const paddedNum = String(idx + 1).padStart(numWidth, " ");
-                    output += SubtitleLine({ paddedNum, line });
+                    output += jsxToString(
+                        <SubtitleLine paddedNum={paddedNum} line={line} />,
+                    );
                 });
                 const htmlContent = output;
                 layer.open({
@@ -1521,7 +1532,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     title: title,
                     area: ["80%", "80%"],
                     scrollbar: false,
-                    content: SubtitlePreviewDialog({ content: htmlContent }),
+                    content: jsxToString(
+                        <SubtitlePreviewDialog content={htmlContent} />,
+                    ),
                     btn: ["下载", "关闭"],
                     btn1: function (_index: any, _layero: any, _instance: any) {
                         utils.download(subtitleContent, filename);
