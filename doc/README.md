@@ -22,6 +22,7 @@
 | `12-blacklist-remaining-components.md` | 🔧开发指导 | ✅已执行 | blacklist-plugin 剩余零散 HTML 转组件：addBlacklist confirmMessage / getTableData dataType 下拉 options / loadTableData 4 个 Tabulator formatter 单元格（演员/屏蔽类型/状态/操作）+ paginationCounter / filterActorVideo movie-list 包装，提取为 BlacklistConfirmMessage / BlacklistDataTypeOptions / BlacklistNameCell / BlacklistUrlTypeCell / BlacklistStatusCell / BlacklistActionCell / MovieListWrapper / BlacklistPaginationCounter 8 个组件（返回 HTML 字符串） |
 | `13-remaining-html-components.md` | 🔧开发指导 | ✅已执行 | 全面扫描 src/ 剩余注入用 HTML 字符串并转组件：hit-show（ToolBar/MovieItem/Score/RankingContainers）/ top250（ToolBar/YearButton/Pagination/NavLink/ErrorMessage）/ nav-bar（SearchBox/OtherDropdown）/ new-video（ActressCard/Pagination/DialogTitle）/ other-site（Box/Btn/Checkbox/SiteResultTag）/ preview-video（QualityBtn/ActionBtn/Container/SiteResultTag）/ review（Header/Containers/Loading/Error/Empty/LoadMore/End/Item/LinkContent）/ setting（MountBox/BackToTopButton/KeywordLabel/SimpleSettingPanel/CacheItemHtml/VideoQualityOption）/ history（SourceCell/StatusCell）/ want-watched（ImportButton/HintSpan）/ core（LoggerLogEntry/ImagePreviewImg/ImagePreviewError）26 个组件 + image-preview/tooltip/back-to-top/setting-image-mode-vertical/horizontal 5 个 CSS 提取（?raw） |
 | `14-css-charlevel-fix.md` | 🔧开发指导 | ✅已执行 | CSS 与原版字符级对齐修复：24 个 `.css`（主 7 + 插件 initCss 9 + 弹窗 2 + 非 initCss 6）逐字符重写为原版运行时注入值（LF、保留 `<style>` 包裹/首尾空白/行尾空格/中文注释，占位 `replace` 位置对齐 `${...}`）；NewVideo/Setting `initCss` 移除弹窗 CSS 拼接（修复 avatar/help CSS 因 `insertStyle` 不再包裹而失效的 bug），改由 `layer.open content` 拼接复刻原版 `r`/帮助 content；tooltip/image-preview 改为直接注入含 `<style>` 的 `.css` |
+| `15-related-plugin-archetype-calibration.md` | 🔧开发指导 | ✅已执行 | RelatedPlugin 对照 archetype L10585-10708（commit 66b2fdf）校准：头部去 📁 emoji、折叠/重试链接色 #1890ff→#1897ff、条目补创建时间/名称链接/段落内联 style（color:#2e8abb 等）、enableLoadRelated 默认改 NO（与 archetype 折叠一致）；DOM ID/其余文案/字段已一致无需改 |
 
 ## 类型图例
 
@@ -53,6 +54,7 @@
 12. `12-blacklist-remaining-components.md` — blacklist-plugin 剩余零散 HTML 转组件（BlacklistConfirmMessage / BlacklistDataTypeOptions / BlacklistNameCell / BlacklistUrlTypeCell / BlacklistStatusCell / BlacklistActionCell / MovieListWrapper / BlacklistPaginationCounter）
 13. `13-remaining-html-components.md` — 全面扫描剩余注入用 HTML 字符串转 26 个组件 + 5 个 CSS 提取（hit-show/top250/nav-bar/new-video/other-site/preview-video/review/setting/history/want-watched + core image-preview/tooltip/logger）
 14. `14-css-charlevel-fix.md` — CSS 与原版字符级对齐修复（24 个 `.css` 零偏差 + NewVideo/Setting 弹窗 CSS 拼接 bug 修复 + tooltip/image-preview 注入对齐）
+15. `15-related-plugin-archetype-calibration.md` — RelatedPlugin 对照 archetype L10585-10708 校准（头部去 emoji / 链接色 #1897ff / 条目内联 style / enableLoadRelated 默认 NO）
 
 ## 当前进度概览
 
