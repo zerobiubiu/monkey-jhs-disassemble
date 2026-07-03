@@ -16,6 +16,9 @@
  * - 内联 HTML/CSS（layer 弹窗 content、initCss 返回的 <style>）已提取为组件/CSS：
  *   来源/状态列 formatter → HistorySourceCell / HistoryStatusCell，弹窗 → 既有组件；
  *   仅替换其中的模板插值变量名为语义常量。
+ * - 组件（HistoryDialog/EditRecordDialog/HistoryNavButton/HistoryActionButtons/
+ *   HistorySourceCell/HistoryStatusCell）已转 TSX 原生 React 组件（doc/18），
+ *   调用点改 jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  * - 全局 $/layer/utils/storageManager/show/Tabulator/loading/refresh 已由
  *   src/types/globals.d.ts 声明，按 any 使用；原 window.refresh() 以全局 refresh() 调用。
  * - any 类型 callee（$/layer/Tabulator/utils 等）的回调参数显式标注 : any 以规避 noImplicitAny；
@@ -30,7 +33,9 @@ import { HistoryDialog } from "../components/history-dialog";
 import { HistoryNavButton } from "../components/history-nav-button";
 import { HistorySourceCell } from "../components/history-source-cell";
 import { HistoryStatusCell } from "../components/history-status-cell";
+import { jsxToString } from "../core/jsx-to-string";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
+import type { CSSProperties } from "react";
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -97,10 +102,12 @@ export class HistoryPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if (isJavdbSite) {
-            $(".navbar-end").prepend(HistoryNavButton({ variant: "desktop" }));
+            $(".navbar-end").prepend(
+                jsxToString(<HistoryNavButton variant="desktop" />),
+            );
             $(".navbar-search")
                 .css("margin-left", "0")
-                .before(HistoryNavButton({ variant: "mini" }));
+                .before(jsxToString(<HistoryNavButton variant="mini" />));
             this.handleResize();
             $(window).resize(() => {
                 this.handleResize();
@@ -114,7 +121,7 @@ export class HistoryPlugin extends BasePlugin {
                 () => $("#setting-btn").length,
                 () => {
                     $("#top-right-box").append(
-                        HistoryNavButton({ variant: "javbus" }),
+                        jsxToString(<HistoryNavButton variant="javbus" />),
                     );
                     $("#historyBtn,#miniHistoryBtn").on("click", () =>
                         this.openHistory(),
@@ -136,16 +143,18 @@ export class HistoryPlugin extends BasePlugin {
         layer.open({
             type: 1,
             title: "鉴定记录",
-            content: HistoryDialog({
-                blockedText: BLOCKED_TEXT,
-                favoritedText: FAVORITED_TEXT,
-                watchedText: WATCHED_TEXT,
-                watchedColor: WATCHED_COLOR,
-                favoriteColor: FAVORITE_COLOR,
-                favoriteText: FAVORITE_TEXT,
-                blockColor: BLOCK_COLOR,
-                blockText: BLOCK_TEXT,
-            }),
+            content: jsxToString(
+                <HistoryDialog
+                    blockedText={BLOCKED_TEXT}
+                    favoritedText={FAVORITED_TEXT}
+                    watchedText={WATCHED_TEXT}
+                    watchedColor={WATCHED_COLOR}
+                    favoriteColor={FAVORITE_COLOR}
+                    favoriteText={FAVORITE_TEXT}
+                    blockColor={BLOCK_COLOR}
+                    blockText={BLOCK_TEXT}
+                />,
+            ),
             scrollbar: false,
             shadeClose: true,
             area: utils.getResponsiveArea(["70%", "90%"]),
@@ -576,25 +585,33 @@ export class HistoryPlugin extends BasePlugin {
                         let url = cell.getData().url;
                         if (url) {
                             if (url.includes("javdb")) {
-                                return HistorySourceCell({
-                                    text: "Javdb",
-                                    color: "#d34f9e",
-                                });
+                                return jsxToString(
+                                    <HistorySourceCell
+                                        text="Javdb"
+                                        color="#d34f9e"
+                                    />,
+                                );
                             } else if (url.includes("javbus")) {
-                                return HistorySourceCell({
-                                    text: "JavBus",
-                                    color: "#eaa813",
-                                });
+                                return jsxToString(
+                                    <HistorySourceCell
+                                        text="JavBus"
+                                        color="#eaa813"
+                                    />,
+                                );
                             } else if (url.includes("123av")) {
-                                return HistorySourceCell({
-                                    text: "123Av",
-                                    color: "#eaa813",
-                                });
+                                return jsxToString(
+                                    <HistorySourceCell
+                                        text="123Av"
+                                        color="#eaa813"
+                                    />,
+                                );
                             } else {
-                                return HistorySourceCell({
-                                    text: url,
-                                    color: "#050505",
-                                });
+                                return jsxToString(
+                                    <HistorySourceCell
+                                        text={url}
+                                        color="#050505"
+                                    />,
+                                );
                             }
                         } else {
                             return "";
@@ -632,7 +649,9 @@ export class HistoryPlugin extends BasePlugin {
                             default:
                                 text = status;
                         }
-                        return HistoryStatusCell({ text, color });
+                        return jsxToString(
+                            <HistoryStatusCell text={text} color={color} />,
+                        );
                     },
                 },
                 {
@@ -665,16 +684,18 @@ export class HistoryPlugin extends BasePlugin {
                                 });
                             }
                         });
-                        return HistoryActionButtons({
-                            carNum: data.carNum,
-                            url: data.url || "",
-                            watchedColor: WATCHED_COLOR,
-                            watchedText: WATCHED_TEXT,
-                            favoriteColor: FAVORITE_COLOR,
-                            favoriteText: FAVORITE_TEXT,
-                            blockColor: BLOCK_COLOR,
-                            blockText: BLOCK_TEXT,
-                        });
+                        return jsxToString(
+                            <HistoryActionButtons
+                                carNum={data.carNum}
+                                url={data.url || ""}
+                                watchedColor={WATCHED_COLOR}
+                                watchedText={WATCHED_TEXT}
+                                favoriteColor={FAVORITE_COLOR}
+                                favoriteText={FAVORITE_TEXT}
+                                blockColor={BLOCK_COLOR}
+                                blockText={BLOCK_TEXT}
+                            />,
+                        );
                     },
                 },
             ],
@@ -794,10 +815,20 @@ export class HistoryPlugin extends BasePlugin {
         const url = record.url || "";
         const status = record.status;
         const remark = record.remark || "";
-        const textareaStyle =
-            "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-height: 60px; overflow-y: hidden;";
-        const inputStyle =
-            "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;";
+        const textareaStyle: CSSProperties = {
+            width: "100%",
+            padding: "8px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            minHeight: "60px",
+            overflowY: "hidden",
+        };
+        const inputStyle: CSSProperties = {
+            width: "100%",
+            padding: "8px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+        };
         const statusOptions = [
             {
                 value: FILTER_ACTION,
@@ -817,16 +848,18 @@ export class HistoryPlugin extends BasePlugin {
             type: 1,
             title: `编辑记录: ${carNum}`,
             area: ["500px", "650px"],
-            content: EditRecordDialog({
-                carNum,
-                names,
-                status,
-                url,
-                remark,
-                inputStyle,
-                textareaStyle,
-                statusOptions,
-            }),
+            content: jsxToString(
+                <EditRecordDialog
+                    carNum={carNum}
+                    names={names}
+                    status={status}
+                    url={url}
+                    remark={remark}
+                    inputStyle={inputStyle}
+                    textareaStyle={textareaStyle}
+                    statusOptions={statusOptions}
+                />,
+            ),
             btn: ["保存", "取消"],
             success: () => {
                 const autoResize = (el: any) => {

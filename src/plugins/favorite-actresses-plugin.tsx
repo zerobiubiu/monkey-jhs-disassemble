@@ -18,13 +18,15 @@
  * $ / storageManager / clog 已由 ../types/globals.d.ts 声明为 any；
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 等标注意图，不做窄化；
- * 内联 HTML 已提取为组件 src/components/favorite-actress-avatar-column.ts
+ * 内联 HTML 已提取为组件 src/components/favorite-actress-avatar-column.tsx
  * （FavoriteActressAvatarColumn），replaceActressAvatar 的 avatarColumnHtml
- * 改为调用组件函数。
+ * 改为调用组件函数。组件已转 TSX 原生 React 组件（doc/18），调用点改
+ * jsxToString(<Comp />)；本文件因含 JSX 重命名为 .tsx。
  */
 import { YES } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
 import { FavoriteActressAvatarColumn } from "../components/favorite-actress-avatar-column";
+import { jsxToString } from "../core/jsx-to-string";
 
 /**
  * 收藏演员记录结构。
@@ -246,7 +248,9 @@ export class FavoriteActressesPlugin extends BasePlugin {
             const cssUrl: string = `url('${matchedActress.avatar}')`;
             let $avatar = $(".avatar").first();
             if ($avatar.length === 0) {
-                const avatarColumnHtml = FavoriteActressAvatarColumn();
+                const avatarColumnHtml = jsxToString(
+                    <FavoriteActressAvatarColumn />,
+                );
                 $(".section-columns").prepend(avatarColumnHtml);
                 $avatar = $(".avatar").first();
             }

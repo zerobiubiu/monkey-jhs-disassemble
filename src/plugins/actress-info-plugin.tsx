@@ -13,10 +13,12 @@
  * $ / gmHttp / storageManager 已由 ../types/globals.d.ts 声明为 any。
  * 原构造函数 i(this,"apiUrl",...)（Object.defineProperty，[[Define]] 语义）
  * 改为 class 字段（useDefineForClassFields:true，语义一致）；内联 CSS 原样保留，
- * 内联 HTML 已提取为组件 src/components/actress-info-detail-segment.ts
+ * 内联 HTML 已提取为组件 src/components/actress-info-detail-segment.tsx
  * （ActressInfoDetailSegment + ActressWikiInfo 类型）与
- * src/components/actress-info-star-page-html.ts（ActressInfoStarPageHtml），
+ * src/components/actress-info-star-page-html.tsx（ActressInfoStarPageHtml），
  * handleDetailPage 的 segment / handleStarPage 的 html 改为调用组件函数。
+ * 组件已转 TSX 原生 React 组件（doc/18），调用点改
+ * jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 标注意图，不做窄化。
  */
 import { YES } from "../constants/status";
@@ -27,6 +29,7 @@ import {
     type ActressWikiInfo,
 } from "../components/actress-info-detail-segment";
 import { ActressInfoStarPageHtml } from "../components/actress-info-star-page-html";
+import { jsxToString } from "../core/jsx-to-string";
 
 /** 演员信息缓存：演员名 → 维基详情（localStorage jhs_actress_info 的解析结构） */
 type ActressInfoCache = Record<string, ActressWikiInfo | undefined>;
@@ -107,11 +110,13 @@ export class ActressInfoPlugin extends BasePlugin {
                     console.error("该名称查询失败,尝试其它名称");
                 }
             }
-            const segment: string = ActressInfoDetailSegment({
-                actressName,
-                info,
-                wikiApiUrl: this.apiUrl,
-            });
+            const segment: string = jsxToString(
+                <ActressInfoDetailSegment
+                    actressName={actressName}
+                    info={info}
+                    wikiApiUrl={this.apiUrl}
+                />,
+            );
             html += segment;
         }
         $('strong:contains("演員")').parent().after(html);
@@ -177,7 +182,9 @@ export class ActressInfoPlugin extends BasePlugin {
                 cache[actressName] = info!;
             });
         }
-        const html: string = ActressInfoStarPageHtml({ info });
+        const html: string = jsxToString(
+            <ActressInfoStarPageHtml info={info} />,
+        );
         nameSectionEl.parent().append(html);
         localStorage.setItem(storageKey, JSON.stringify(cache));
     }
