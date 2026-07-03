@@ -44,11 +44,10 @@ import commonToolbarCssRaw from "../styles/common-toolbar.css?raw";
 import aNormalButtonsCssRaw from "../styles/a-normal-buttons.css?raw";
 import { Hotkey as ie } from "../core/hotkey";
 import {
-    GFRIENDS_SOURCES as tt,
-    GFRIENDS_CDN_INDEX_KEY as nt,
-    FILETREE_STORE as ot,
-    FILETREE_DATA_KEY as rt,
-} from "../resources/gfriends";
+    loadGfriends as gt,
+    parseFiletree as ht,
+    filetreeDb as lt,
+} from "../core/gfriends";
 import { createLoading } from "../core/loading";
 import { show } from "../core/toast";
 import { ImagePreview } from "../core/image-preview";
@@ -186,6 +185,8 @@ t = async function (e, t, n) {
 unsafeWindow.utils = window.utils = new CommonUtil();
 unsafeWindow.gmHttp = window.gmHttp = new GmHttp();
 unsafeWindow.storageManager = window.storageManager = new StorageManager();
+unsafeWindow.gt = window.gt = gt;
+unsafeWindow.lt = window.lt = lt;
 const G = new BroadcastChannel("channel-refresh");
 window.refresh = function () {
     G.postMessage({
