@@ -8,8 +8,8 @@
 
 | 文件 | 类型 | 状态 | 说明 |
 |------|------|------|------|
-| `01-refactor-plan.md` | 🔧开发指导 | 🔧待执行 | 重构总计划：架构分析、渐进策略、提取模式、进度追踪（core/插件/CSS/常量/资源已完成，余 legacy 启动序列收尾与去 `@ts-nocheck`） |
-| `02-css-extraction.md` | 🔧开发指导 | 🔧待执行 | CSS 提取模式（`?raw` + `H()`/`insertAdjacentHTML` + 占位 `replace`）；顶层 CSS 已提取，余各插件 `initCss` |
+| `01-refactor-plan.md` | 🔧开发指导 | 🔧待执行 | 重构总计划：架构分析、渐进策略、提取模式、进度追踪（core/插件/CSS/常量/资源已完成，legacy 废弃、启动序列移 `main.tsx`、全量去 `@ts-nocheck` 完成，余 HTML→React 组件化） |
+| `02-css-extraction.md` | 🔧开发指导 | 🔧待执行 | CSS 提取模式（`?raw` + `H()`/`insertAdjacentHTML` + 占位 `replace`）；顶层 5 + 插件 `initCss` 9 共 14 个 CSS 提取模式与清单 |
 | `03-plugin-integration.md` | 🔧开发指导 | ✅已执行 | 首批 4 插件（DetailPage/FilterTitleKeyword/HighlightMagnet/FoldCategory）外置集成记录 |
 | `04-plugin-integration-final-batch.md` | 🔧开发指导 | ✅已执行 | 最终批次 3 插件（Setting/DetailPageButton/ListPage）外置集成记录 |
 | `05-legacy-helpers-extraction.md` | 🔧开发指导 | ✅已执行 | legacy 残留辅助（layer 包装/tooltip/webdav 加密）提取到 core |
@@ -44,15 +44,15 @@
 - plugins：`base-plugin` + `plugin-manager` + 21 个插件模块全部外置
 - constants：`site`/`status`/`video-quality`/`api`/`tabulator-zh`
 - resources：`gfriends`
-- styles：`loading`/`javbus-masonry`/`javdb-site`/`common-toolbar`/`a-normal-buttons`
-- legacy：仅余 405 行（启动序列 + CSS replace + BroadcastChannel + 库 CSS
-  `importResource`）
-- build：`tsc -b && vite build` 通过，51 modules，产物 462.66 kB（gzip 113.30 kB）
+- styles：14 个 CSS（5 顶层 + 9 插件 `initCss`）全部提取
+- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）
+- 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
+- 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
+- build：`tsc -b && vite build` 通过，59 modules，产物 459.58 kB（gzip 114.41 kB）
 
 ## 相关文件
 
 - 原始脚本：`archetype/jhs.user.js`
 - 原脚本历史文档：`archetype/doc/`（已执行的历史定稿，仅作参考）
-- 过渡载体：`src/legacy/jhs.ts`
-- 工程入口：`src/main.tsx`
+- 工程入口：`src/main.tsx`（完整启动序列）
 - 构建配置：`vite.config.ts`

@@ -73,8 +73,7 @@ WantAndWatchedVideosPlugin、BlacklistPlugin、FavoriteActressesPlugin、NewVide
 
 ```
 src/
-  main.tsx              入口（触发 legacy 执行）
-  legacy/jhs.ts         过渡载体（原脚本，逐步缩减）
+  main.tsx              入口（完整启动序列，强类型，无 `@ts-nocheck`）
   types/globals.d.ts    全局类型声明（@require 库、GM API、应用全局）
   constants/            常量（site/status/video-quality）
   resources/            CDN 资源清单、KV store 名
@@ -130,9 +129,10 @@ archetype/              原始脚本与历史文档（只读参考）
 
 ## 7. 进度
 
-> 截止本次更新（commit 见文末 `git log`），legacy 仅余 405 行（启动序列 + CSS
-> replace + BroadcastChannel + 库 CSS `importResource`），core/plugins/constants/
-> resources/styles 均已提取完毕。下一步重心是 legacy 启动序列收尾与去 `@ts-nocheck`。
+> 截止本次更新（commit 见文末 `git log`），legacy 已废弃删除，启动序列整体迁入
+> `src/main.tsx`（367 行，强类型，无 `@ts-nocheck`）。core/plugins/constants/
+> resources/styles 均已提取完毕，全量去 `@ts-nocheck` 完成。下一步重心是
+> HTML 字符串 → React 组件的持续组件化。
 
 ### 已完成
 
@@ -164,21 +164,23 @@ archetype/              原始脚本与历史文档（只读参考）
       `05-legacy-helpers-extraction.md`）
 - [x] build 脚本修复：`package.json` `build` 改为 `tsc -b && vite build`
       （真实类型检查，替代原 `vue-tsc -b` 占位）
-- [x] build 验证通过：`tsc -b && vite build`，51 modules，产物 462.66 kB
-      （gzip 113.30 kB）
+- [x] build 验证通过：`tsc -b && vite build`，59 modules，产物 459.58 kB
+      （gzip 114.41 kB）
+- [x] 各插件 `initCss` CSS 提取为独立 .css：9 个插件内联 CSS 按
+      `02-css-extraction.md` 模式提取到 `src/styles/<plugin>.css`（actress-info/
+      auto-page/fold-category/history/nav-bar/new-video/other-site/preview-video/
+      setting），合计 14 个 CSS（5 顶层 + 9 插件）
+- [x] legacy 废弃：`src/legacy/jhs.ts` 删除，启动序列整体迁入 `src/main.tsx`
+      （367 行，强类型化）；`src/main.tsx` 由 `import './legacy/jhs'` 升级为
+      完整启动入口
+- [x] 全量去 `@ts-nocheck`：legacy 胶水代码完成类型化，工程内无任何
+      `@ts-nocheck`（core/plugins 原已强类型）
 
 ### 待完成
 
-- [ ] HTML 字符串 → React 组件：仅做示范性转换；深度耦合 layer content 的
-      动态 HTML 暂保留为字符串模板，待逻辑稳定后再组件化（见 5.4 节原则）
-- [ ] legacy 启动序列移 `main.tsx`：`src/legacy/jhs.ts` 仅余 405 行（启动序列 +
-      CSS replace + BroadcastChannel + 库 CSS `importResource`），整体迁入
-      `src/main.tsx` 后删除 legacy 文件
-- [ ] 各插件 `initCss` CSS 提取为独立 .css：插件内联 CSS 字符串按
-      `02-css-extraction.md` 模式提取到 `src/styles/<plugin>.css`（见 02
-      文档 4.2 节清单）
-- [ ] 全量去 `@ts-nocheck`：legacy 胶水代码逐步引入类型，最终移除
-      `@ts-nocheck`（core/plugins 已是强类型，仅 legacy 残留）
+- [ ] HTML 字符串 → React 组件：已示范性转换 3 个组件（`menu-button-box`/
+      `rating-bar`/`status-tag`），剩余各插件 layer content 的动态 HTML 按
+      5.4 节模式继续组件化（保持 layer/jQuery 消费契约，避免执行偏差）
 
 ## 8. 一致性校验（每次改代码后自查）
 
