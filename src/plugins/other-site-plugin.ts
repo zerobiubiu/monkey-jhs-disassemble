@@ -18,13 +18,15 @@
  * 保持原逻辑并满足 strict 类型检查。
  * 原构造函数 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  * 改为 class 字段（useDefineForClassFields:true，语义一致）；
- * 原紧邻定义的异步任务队列类 ve（L4831-4845）本文件内同等保留为 AsyncTaskQueue（不导出）；
+ * 异步任务队列类 ve（L4831-4845）已提取为 ../core/async-task-queue 的 AsyncTaskQueue，
+ * 本文件以 import 方式复用；
  * $ / utils / storageManager / clog / gmHttp 已由 ../types/globals.d.ts 声明为 any；
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
  * 内联 CSS/HTML 原样保留。
  */
 import { isJavdbSite } from "../constants/site";
 import { YES } from "../constants/status";
+import { AsyncTaskQueue } from "../core/async-task-queue";
 import { BasePlugin } from "./base-plugin";
 
 /** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
@@ -46,29 +48,6 @@ interface SiteConfig {
     initUrl?: (carNum: string) => string;
     noHandle?: boolean;
     headers?: any;
-}
-
-/**
- * 异步任务队列 —— 对应原脚本 archetype/jhs.user.js L4831-4845 的 class ve。
- *
- * Promise 链式串行执行，单任务失败仅 clog.error 不中断后续。
- * 本文件内 OtherSitePlugin.handleSite 以 new AsyncTaskQueue().addTask(...) 形式
- * 将 localStorage 缓存写入异步化，避免阻塞主流程；原样保留 waitAllFinished。
- */
-class AsyncTaskQueue {
-    queue: Promise<void> = Promise.resolve();
-
-    addTask(task: () => void): void {
-        this.queue = this.queue
-            .then(() => task())
-            .catch((error: any) => {
-                clog.error("执行异步队列任务失败:", error);
-            });
-    }
-
-    async waitAllFinished(): Promise<void> {
-        return this.queue;
-    }
 }
 
 export class OtherSitePlugin extends BasePlugin {
@@ -221,7 +200,8 @@ export class OtherSitePlugin extends BasePlugin {
                 const cache: any = localStorage.getItem(storageKey)
                     ? JSON.parse(localStorage.getItem(storageKey) as string)
                     : {};
-                const cacheKey = carNum + "_" + siteConfig.id.replace("Btn", "");
+                const cacheKey =
+                    carNum + "_" + siteConfig.id.replace("Btn", "");
                 const cachedResult: any = cache[cacheKey];
                 if (cachedResult) {
                     if (cachedResult.type === "single") {
@@ -449,8 +429,9 @@ export class OtherSitePlugin extends BasePlugin {
                     settingsArea!.querySelectorAll(
                         'input[type="checkbox"]:checked',
                     ),
-                ).map((checkbox: Element) =>
-                    checkbox.getAttribute("data-site-id") as string,
+                ).map(
+                    (checkbox: Element) =>
+                        checkbox.getAttribute("data-site-id") as string,
                 );
                 this.saveEnabledSites(checkedSiteIds);
             }

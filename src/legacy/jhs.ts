@@ -49,6 +49,7 @@ import {
     filetreeDb as lt,
 } from "../core/gfriends";
 import { WebDavClient as De } from "../core/webdav";
+import { AsyncTaskQueue as ve } from "../core/async-task-queue";
 import { createLoading } from "../core/loading";
 import { show } from "../core/toast";
 import { ImagePreview } from "../core/image-preview";
@@ -447,21 +448,6 @@ document.addEventListener("keyup", (e) => {
 });
 
 const me = "jhs_appAuthorization";
-class ve {
-    constructor() {
-        this.queue = Promise.resolve();
-    }
-    addTask(e) {
-        this.queue = this.queue
-            .then(() => e())
-            .catch((e) => {
-                clog.error("执行异步队列任务失败:", e);
-            });
-    }
-    async waitAllFinished() {
-        return this.queue;
-    }
-}
 const Le = "x7k9p3";
 function Me(e) {
     return (Le + e + Le)
