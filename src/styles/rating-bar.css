@@ -1,0 +1,33 @@
+/* 隐藏 review-buttons 内第二个 panel-block（下載/訂正磁力按钮） */
+.review-buttons > .panel-block ~ .panel-block{display:none!important}
+/* 隐藏 review-buttons 后紧跟的 panel-block（N人想看/看過统计） */
+.review-buttons + .panel-block{display:none!important}
+/* 隐藏原生评价状态标签和按钮（星星组件已替代） */
+.review-buttons .review-title{display:none!important}
+.review-buttons .buttons.are-small.review-buttons{display:none!important}
+/* 永久隐藏清单 modal（DOM 保留供 Stimulus ajax 操作） */
+#modal-save-list{display:none!important}
+/* 星星评分组件 */
+.jhs-rating-bar{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px;user-select:none}
+.jhs-stars{display:inline-flex;gap:6px;align-items:center}
+.jhs-star{font-size:26px;line-height:1.2;padding:2px 4px;cursor:pointer;color:#d0d0d0;transition:color .15s,transform .15s}
+.jhs-star:hover{transform:scale(1.15)}
+.jhs-star.is-preview{color:#f5b301}
+.jhs-star.is-active{color:#f5b301}
+.jhs-star.is-active:hover{color:#ffce3a}
+.jhs-star.is-popping{animation:jhs-star-pop .3s ease}
+@keyframes jhs-star-pop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
+.jhs-stars.is-disabled .jhs-star{cursor:default;opacity:.4;pointer-events:none}
+.jhs-rating-actions{display:flex;gap:8px;align-items:center}
+.jhs-read-btn,.jhs-fav-btn{border:1px solid #dbdbdb;border-radius:6px;padding:5px 16px;font-size:14px;background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
+.jhs-read-btn:hover,.jhs-fav-btn:hover{border-color:#b5b5b5;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.jhs-read-btn.is-active{background:#48c774;border-color:#48c774;color:#fff}
+.jhs-fav-btn.is-active{background:#3273dc;border-color:#3273dc;color:#fff}
+.jhs-read-btn.is-popping,.jhs-fav-btn.is-popping{animation:jhs-star-pop .3s ease}
+.jhs-rating-bar.is-busy{pointer-events:none;opacity:.6}
+/* 清单平铺面板（位于 #otherSiteBox 下方） */
+.jhs-list-panel{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0;padding:8px 12px;background:#fafafa;border-radius:6px;min-height:36px}
+.jhs-list-panel:empty{display:none}
+.jhs-list-panel .control{margin:0}
+.jhs-list-panel .checkbox{display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
+.jhs-list-panel .checkbox input{margin:0}

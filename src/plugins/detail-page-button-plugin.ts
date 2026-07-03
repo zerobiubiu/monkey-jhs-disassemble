@@ -27,12 +27,17 @@
  *   以规避 noImplicitAny；未使用的回调参数加 _ 前缀豁免 noUnusedParameters。
  * - catch (e) → catch (err: any)（strict useUnknownInCatchVariables）；空 catch (_)
  *   → catch {}（optional catch binding，ES2019+）。
- * - 内联 CSS/HTML（含 Tabulator 列配置、评分条 HTML、Rails JS 注入
- *   <script>、星星样式 <style>）原样保留，仅替换模板插值变量名；
- *   两处 layer 弹窗 content（searchXunLeiSubtitle 字幕表格容器、
- *   previewSubtitle 字幕预览容器）按 doc/06-component-html-string.md
- *   统一规定提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件
- *   （返回 HTML 字符串），插件层以 content: X(props) 消费。
+ * - 内联 CSS/HTML（含 Tabulator 列配置、Rails JS 注入 <script>）原样保留，
+ *   仅替换模板插值变量名；其余结构性 HTML/CSS 按 doc/06-component-html-string.md
+ *   统一规定提取为返回 HTML 字符串的组件或 .css + ?raw：
+ *   - 菜单按钮组 menuHtml → DetailMenuButtons(props)（createMenuBtn 消费）
+ *   - 评分条 bar.innerHTML → RatingBarHtml()（_buildRatingBar 消费）
+ *   - 清单面板空 div → ListPanel()（_ensureListPanel 以 insertAdjacentHTML 消费）
+ *   - 星星样式 <style> → src/styles/rating-bar.css + ?raw，由 _injectRatingStyles
+ *     注入（保留 id=jhs-rating-styles 去重与 addQuickActionButtons 显式调用时序）
+ *   - 两处 layer 弹窗 content（searchXunLeiSubtitle 字幕表格容器、
+ *     previewSubtitle 字幕预览容器）提取为 SubtitleTableDialog / SubtitlePreviewDialog
+ *     组件（返回 HTML 字符串），插件层以 content: X(props) 消费。
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
  *   Promise 串行化 _reviewChain、IIFE、空 catch）与原脚本一致。
  */
@@ -56,6 +61,10 @@ import {
     NO,
 } from "../constants/status";
 import { Hotkey } from "../core/hotkey";
+import { DetailMenuButtons } from "../components/detail-menu-buttons";
+import { RatingBarHtml } from "../components/rating-bar-html";
+import { ListPanel } from "../components/list-panel";
+import ratingBarCssRaw from "../styles/rating-bar.css?raw";
 
 /** 「想看/已观看」状态推断结果（detectWantWatchedState 返回结构） */
 interface WantWatchedState {
@@ -144,7 +153,14 @@ export class DetailPageButtonPlugin extends BasePlugin {
     async createMenuBtn(): Promise<void> {
         const pageInfo = this.getPageInfo();
         const carNum = pageInfo.carNum;
-        const menuHtml = `\n            <div style="margin: 10px auto; display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap;gap: 20px;">\n                <div style="display: flex; gap: 10px; flex-wrap:wrap;">\n                    <a id="filterBtn" class="menu-btn" style="width: 120px; background-color:${BLOCK_COLOR}; color: white; text-align: center; padding: 8px 0;">\n                        <span>${BLOCK_TEXT}</span>\n                    </a>\n                    <a id="favoriteBtn" class="menu-btn" style="width: 120px; background-color:${FAVORITE_COLOR}; color: white; text-align: center; padding: 8px 0;">\n                        <span>${FAVORITE_TEXT}</span>\n                    </a>\n                    <a id="hasWatchBtn" class="menu-btn" style="width: 120px; background-color:${WATCHED_COLOR}; color: white; text-align: center; padding: 8px 0;">\n                        <span>${WATCHED_TEXT}</span>\n                    </a>\n                </div>\n        \n                <div style="display: flex; gap: 10px; flex-wrap:wrap;">\n                    <a id="enable-magnets-filter" class="menu-btn" style="width: 140px; background-color: #c2bd4c; color: white; text-align: center; padding: 8px 0;">\n                        <span id="magnets-span">关闭磁力过滤</span>\n                    </a>\n                    <a id="xunLeiSubtitleBtn" class="menu-btn" style="width: 120px; background: linear-gradient(to left, #375f7c, #2196F3); color: white; text-align: center; padding: 8px 0;">\n                        <span>字幕 (迅雷)</span>\n                    </a>\n                    <a id="search-subtitle-btn" class="menu-btn" style="width: 160px; background: linear-gradient(to bottom, #8d5656, rgb(196,159,91)); color: white; text-align: center; padding: 8px 0;">\n                        <span>字幕 (SubTitleCat)</span>\n                    </a>\n                </div>\n            </div>\n        `;
+        const menuHtml = DetailMenuButtons({
+            filterText: BLOCK_TEXT,
+            filterColor: BLOCK_COLOR,
+            favoriteText: FAVORITE_TEXT,
+            favoriteColor: FAVORITE_COLOR,
+            watchedText: WATCHED_TEXT,
+            watchedColor: WATCHED_COLOR,
+        });
         if (isJavdbSite) {
             $(".tabs").after(menuHtml);
         }
@@ -598,21 +614,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const self = this;
         const bar = document.createElement("div");
         bar.className = "jhs-rating-bar";
-        bar.innerHTML =
-            '<div class="jhs-stars" data-score="0">' +
-            [1, 2, 3, 4, 5]
-                .map(
-                    (n) =>
-                        '<span class="jhs-star" data-score="' +
-                        n +
-                        '">★</span>',
-                )
-                .join("") +
-            "</div>" +
-            '<div class="jhs-rating-actions">' +
-            '<button class="jhs-fav-btn" type="button" title="设为想看（收藏）">♥ 收藏</button>' +
-            '<button class="jhs-read-btn" type="button" title="设为已观看（0星）">已读</button>' +
-            "</div>";
+        bar.innerHTML = RatingBarHtml();
         const starsEl: any = bar.querySelector(".jhs-stars");
         const stars: any = bar.querySelectorAll(".jhs-star");
         const readBtn: any = bar.querySelector(".jhs-read-btn");
@@ -690,9 +692,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const self = this;
         // 创建清单面板
         if (!nav.querySelector(".jhs-list-panel")) {
-            const listPanel = document.createElement("div");
-            listPanel.className = "jhs-list-panel";
-            otherSite.insertAdjacentElement("afterend", listPanel);
+            otherSite.insertAdjacentHTML("afterend", ListPanel());
         }
         // 初始化（触发 ajax 加载 + 克隆同步）
         self._initListPanel();
@@ -785,41 +785,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         if (document.getElementById("jhs-rating-styles")) return;
         const style = document.createElement("style");
         style.id = "jhs-rating-styles";
-        style.textContent = `
-/* 隐藏 review-buttons 内第二个 panel-block（下載/訂正磁力按钮） */
-.review-buttons > .panel-block ~ .panel-block{display:none!important}
-/* 隐藏 review-buttons 后紧跟的 panel-block（N人想看/看過统计） */
-.review-buttons + .panel-block{display:none!important}
-/* 隐藏原生评价状态标签和按钮（星星组件已替代） */
-.review-buttons .review-title{display:none!important}
-.review-buttons .buttons.are-small.review-buttons{display:none!important}
-/* 永久隐藏清单 modal（DOM 保留供 Stimulus ajax 操作） */
-#modal-save-list{display:none!important}
-/* 星星评分组件 */
-.jhs-rating-bar{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px;user-select:none}
-.jhs-stars{display:inline-flex;gap:6px;align-items:center}
-.jhs-star{font-size:26px;line-height:1.2;padding:2px 4px;cursor:pointer;color:#d0d0d0;transition:color .15s,transform .15s}
-.jhs-star:hover{transform:scale(1.15)}
-.jhs-star.is-preview{color:#f5b301}
-.jhs-star.is-active{color:#f5b301}
-.jhs-star.is-active:hover{color:#ffce3a}
-.jhs-star.is-popping{animation:jhs-star-pop .3s ease}
-@keyframes jhs-star-pop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
-.jhs-stars.is-disabled .jhs-star{cursor:default;opacity:.4;pointer-events:none}
-.jhs-rating-actions{display:flex;gap:8px;align-items:center}
-.jhs-read-btn,.jhs-fav-btn{border:1px solid #dbdbdb;border-radius:6px;padding:5px 16px;font-size:14px;background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
-.jhs-read-btn:hover,.jhs-fav-btn:hover{border-color:#b5b5b5;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.jhs-read-btn.is-active{background:#48c774;border-color:#48c774;color:#fff}
-.jhs-fav-btn.is-active{background:#3273dc;border-color:#3273dc;color:#fff}
-.jhs-read-btn.is-popping,.jhs-fav-btn.is-popping{animation:jhs-star-pop .3s ease}
-.jhs-rating-bar.is-busy{pointer-events:none;opacity:.6}
-/* 清单平铺面板（位于 #otherSiteBox 下方） */
-.jhs-list-panel{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0;padding:8px 12px;background:#fafafa;border-radius:6px;min-height:36px}
-.jhs-list-panel:empty{display:none}
-.jhs-list-panel .control{margin:0}
-.jhs-list-panel .checkbox{display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
-.jhs-list-panel .checkbox input{margin:0}
-        `;
+        style.textContent = ratingBarCssRaw;
         document.head?.appendChild(style);
     }
 
