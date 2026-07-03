@@ -12,30 +12,21 @@
  * 布尔标识 _ 改由 ../constants/status 引入（YES，对应原 "yes" 默认值）；
  * $ / gmHttp / storageManager 已由 ../types/globals.d.ts 声明为 any。
  * 原构造函数 i(this,"apiUrl",...)（Object.defineProperty，[[Define]] 语义）
- * 改为 class 字段（useDefineForClassFields:true，语义一致）；内联 CSS/HTML 原样保留。
+ * 改为 class 字段（useDefineForClassFields:true，语义一致）；内联 CSS 原样保留，
+ * 内联 HTML 已提取为组件 src/components/actress-info-detail-segment.ts
+ * （ActressInfoDetailSegment + ActressWikiInfo 类型）与
+ * src/components/actress-info-star-page-html.ts（ActressInfoStarPageHtml），
+ * handleDetailPage 的 segment / handleStarPage 的 html 改为调用组件函数。
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 标注意图，不做窄化。
  */
 import { YES } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
 import actressInfoCssRaw from "../styles/actress-info-plugin.css?raw";
-
-/** 演员维基百科详情（searchInfo 返回结构，对应原 L4304-4324 返回的对象字面量） */
-interface ActressWikiInfo {
-    /** 生日（如 "1993年4月15日"） */
-    birthday: string;
-    /** 年龄（如 "30岁"；现年齢单元格为空时为空串） */
-    age: string;
-    /** 身高（如 "165cm"） */
-    height: string;
-    /** 体重（如 "50 kg"；为 "― kg" 占位时归一为空串） */
-    weight: string;
-    /** 三围文本（去除 cm 后的原始文本） */
-    threeSizeText: string;
-    /** 罩杯尺寸 */
-    braSize: string;
-    /** 维基百科页面 URL */
-    url: string;
-}
+import {
+    ActressInfoDetailSegment,
+    type ActressWikiInfo,
+} from "../components/actress-info-detail-segment";
+import { ActressInfoStarPageHtml } from "../components/actress-info-star-page-html";
 
 /** 演员信息缓存：演员名 → 维基详情（localStorage jhs_actress_info 的解析结构） */
 type ActressInfoCache = Record<string, ActressWikiInfo | undefined>;
@@ -116,9 +107,11 @@ export class ActressInfoPlugin extends BasePlugin {
                     console.error("该名称查询失败,尝试其它名称");
                 }
             }
-            const segment: string = info
-                ? `\n                    <div class="panel-block actress-info">\n                        <strong>${actressName}:</strong>\n                        <a href="${info.url}" style="margin-left: 5px" target="_blank">\n                            <span class="info-tag">${info.birthday} ${info.age}</span>\n                            <span class="info-tag">${info.height} ${info.weight}</span>\n                            <span class="info-tag">${info.threeSizeText} ${info.braSize}</span>\n                        </a>\n                    </div>\n                `
-                : `<div class="panel-block actress-info"><a href="${this.apiUrl + actressName}" target="_blank"><strong>${actressName}:</strong></a></div> `;
+            const segment: string = ActressInfoDetailSegment({
+                actressName,
+                info,
+                wikiApiUrl: this.apiUrl,
+            });
             html += segment;
         }
         $('strong:contains("演員")').parent().after(html);
@@ -184,11 +177,7 @@ export class ActressInfoPlugin extends BasePlugin {
                 cache[actressName] = info!;
             });
         }
-        let html =
-            '<div class="actress-info" style="font-size: 17px; font-weight: normal; margin-top: 5px;">无此相关演员信息</div>';
-        if (info) {
-            html = `\n                <a class="actress-info" href="${info.url}" target="_blank">\n                    <div style="font-size: 17px; font-weight: normal; margin-top: 5px;">\n                        <div style="display: flex; margin-bottom: 10px;">\n                            <span style="width: 300px;">出生日期: ${info.birthday}</span>\n                            <span style="width: 200px;">年龄: ${info.age}</span>\n                            <span style="width: 200px;">身高: ${info.height}</span>\n                        </div>\n                        <div style="display: flex; margin-bottom: 10px;">\n                            <span style="width: 300px;">体重: ${info.weight}</span>\n                            <span style="width: 200px;">三围: ${info.threeSizeText}</span>\n                            <span style="width: 200px;">罩杯: ${info.braSize}</span>\n                        </div>\n                    </div>\n                </a>\n            `;
-        }
+        const html: string = ActressInfoStarPageHtml({ info });
         nameSectionEl.parent().append(html);
         localStorage.setItem(storageKey, JSON.stringify(cache));
     }
@@ -232,8 +221,11 @@ export class ActressInfoPlugin extends BasePlugin {
               ) + "岁"
             : "";
         const height: string =
-            $parsed.find('tr:has(a[title="身長"]) td').text().trim().split(" ")[0] +
-            "cm";
+            $parsed
+                .find('tr:has(a[title="身長"]) td')
+                .text()
+                .trim()
+                .split(" ")[0] + "cm";
         let weight: string = $parsed
             .find('tr:has(a[title="体重"]) td')
             .text()

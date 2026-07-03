@@ -18,10 +18,13 @@
  * $ / storageManager / clog 已由 ../types/globals.d.ts 声明为 any；
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 等标注意图，不做窄化；
- * 内联 HTML 原样保留。
+ * 内联 HTML 已提取为组件 src/components/favorite-actress-avatar-column.ts
+ * （FavoriteActressAvatarColumn），replaceActressAvatar 的 avatarColumnHtml
+ * 改为调用组件函数。
  */
 import { YES } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import { FavoriteActressAvatarColumn } from "../components/favorite-actress-avatar-column";
 
 /**
  * 收藏演员记录结构。
@@ -69,8 +72,10 @@ export class FavoriteActressesPlugin extends BasePlugin {
             return;
         }
         if (
-            (await storageManager.getSetting("enableFavoriteActresses", YES)) !==
-            YES
+            (await storageManager.getSetting(
+                "enableFavoriteActresses",
+                YES,
+            )) !== YES
         ) {
             return;
         }
@@ -199,7 +204,8 @@ export class FavoriteActressesPlugin extends BasePlugin {
                 avatar: avatarUrl,
             };
             if (
-                (await storageManager.addFavoriteActressList([actressData])) === 1
+                (await storageManager.addFavoriteActressList([actressData])) ===
+                1
             ) {
                 clog.log(`收藏演员成功: ${firstName} (ID: ${actorId})`);
             } else {
@@ -240,8 +246,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
             const cssUrl: string = `url('${matchedActress.avatar}')`;
             let $avatar = $(".avatar").first();
             if ($avatar.length === 0) {
-                const avatarColumnHtml =
-                    '<div class="column actor-avatar"> <div class="image"> <span class="avatar"></span> </div> </div>';
+                const avatarColumnHtml = FavoriteActressAvatarColumn();
                 $(".section-columns").prepend(avatarColumnHtml);
                 $avatar = $(".avatar").first();
             }
