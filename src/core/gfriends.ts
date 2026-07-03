@@ -23,7 +23,6 @@ import {
     GFRIENDS_CDN_INDEX_KEY,
     GFRIENDS_DB_NAME,
     GFRIENDS_SOURCES,
-    type GfriendsSource,
 } from "../resources/gfriends";
 
 /** Gfriends Filetree.json 数据结构 */
@@ -109,19 +108,47 @@ let cachedFiletreeRaw: FiletreeData | null = null;
 let cachedFiletreeParsed: FiletreeIndex | null = null;
 
 /**
+ * 清除内存中的头像数据缓存（原 ct/dt 置空）
+ *
+ * 重置 cachedFiletreeRaw 与 cachedFiletreeParsed，使下次调用 loadGfriends 时
+ * 重新从 IndexedDB 或远程 CDN 载入。CDN 源切换后必须调用，否则仍使用旧源数据。
+ * 注意：仅清除内存缓存，IndexedDB 缓存需由调用方另行清理。
+ */
+export function clearCache(): void {
+    cachedFiletreeRaw = null;
+    cachedFiletreeParsed = null;
+}
+
+/** getCurrentCdnSource 返回的当前 CDN 源信息 */
+export interface CurrentCdnSource {
+    /** Filetree.json 的完整 URL */
+    json: string;
+    /** Content 目录的基址 URL */
+    base: string;
+    /** 当前源在 GFRIENDS_SOURCES 中的索引 */
+    index: number;
+}
+
+/**
  * 获取当前选定的 CDN 源
  *
  * 从 localStorage 读取索引（原 at），越界时回退到第一项，
- * 返回对应源的 { json, base }（原 it/st 的运行时等价）。
+ * 返回对应源的 { json, base, index }（原 at/it/st 的运行时等价）。
+ *
+ * 导出供外部模块（如 NewVideoPlugin）读取当前 CDN 源，避免直接访问模块私有状态。
+ * 切换源后只需更新 localStorage（GFRIENDS_CDN_INDEX_KEY），下次调用即返回新源。
+ *
+ * @returns 当前 CDN 源信息：json（Filetree.json URL）、base（Content 基址）、index（源索引）
  */
-function getCurrentCdnSource(): GfriendsSource {
+export function getCurrentCdnSource(): CurrentCdnSource {
     const rawIndex = parseInt(
         localStorage.getItem(GFRIENDS_CDN_INDEX_KEY) || "0",
         10,
     );
     const index =
         rawIndex >= 0 && rawIndex < GFRIENDS_SOURCES.length ? rawIndex : 0;
-    return GFRIENDS_SOURCES[index];
+    const source = GFRIENDS_SOURCES[index];
+    return { json: source.json, base: source.base, index };
 }
 
 /**
@@ -133,9 +160,7 @@ function getCurrentCdnSource(): GfriendsSource {
  * @param data Filetree.json 数据（含 Content 字段）
  * @returns 演员名（小写）→ 头像 URL 列表；数据无效时返回 null
  */
-export function parseFiletree(
-    data: FiletreeData | null,
-): FiletreeIndex | null {
+export function parseFiletree(data: FiletreeData | null): FiletreeIndex | null {
     if (!data || !data.Content) {
         return null;
     }
@@ -230,9 +255,7 @@ async function ensureFiletreeLoaded(): Promise<void> {
  * @param actressNames 演员名列表
  * @returns 去重后的头像 URL 列表
  */
-export async function loadGfriends(
-    actressNames: string[],
-): Promise<string[]> {
+export async function loadGfriends(actressNames: string[]): Promise<string[]> {
     const loadingHandle = loading();
     try {
         await ensureFiletreeLoaded();

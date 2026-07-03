@@ -22,9 +22,11 @@
  * 站点类别常量 A/D 改由 ../constants/site 引入（UNCENSORED / CENSORED）；
  * Gfriends CDN 源清单与键名（原 tt/nt/rt）改由 ../resources/gfriends 引入
  * （GFRIENDS_SOURCES / GFRIENDS_CDN_INDEX_KEY / FILETREE_DATA_KEY），均为只读复用。
- * Gfriends 搜索函数 gt 与可变的 CDN 运行时状态（原 at/it/st/ct/dt/lt，
- * 定义于 src/legacy/jhs.ts 顶层闭包，尚未提取为独立模块）按任务约定以
- * (window as any).X 访问，待 gfriends 模块提取后再改为正式导入/调用。
+ * Gfriends 运行时能力（原 gt/at/it/st/ct/dt）改由 ../core/gfriends 正式导入：
+ *   loadGfriends（搜索头像）、getCurrentCdnSource（读当前 CDN 源 {json,base,index}）、
+ *   clearCache（清内存缓存）。切换 CDN 源时写 localStorage + clearCache() 即生效。
+ * IndexedDB 缓存清理（原 lt.set）仍经 (window as any).lt 访问（filetreeDb 已导出，
+ * 但按任务约定不在本次替换范围内）。
  * $ / layer / utils / storageManager / show / clog / gmHttp / loading 已由
  * ../types/globals.d.ts 声明（loading 实际接收消息参数，调用处以类型断言补全签名）；
  * jQuery .each / .on 回调按本仓库既有约定改写为箭头形式（(_index, element) /
@@ -39,6 +41,11 @@ import {
     GFRIENDS_CDN_INDEX_KEY,
     FILETREE_DATA_KEY,
 } from "../resources/gfriends";
+import {
+    clearCache,
+    getCurrentCdnSource,
+    loadGfriends,
+} from "../core/gfriends";
 import { BasePlugin } from "./base-plugin";
 
 /**
@@ -100,12 +107,9 @@ export class NewVideoPlugin extends BasePlugin {
     async showNewVideoCount(): Promise<void> {
         const totalCount: number = (
             await storageManager.getFavoriteActressList()
-        ).reduce(
-            (total: number, actress: FavoriteActressRecord) => {
-                return total + (actress.newVideoList?.length ?? 0);
-            },
-            0,
-        );
+        ).reduce((total: number, actress: FavoriteActressRecord) => {
+            return total + (actress.newVideoList?.length ?? 0);
+        }, 0);
         $("#newVideoCount").text(`${totalCount}`);
     }
 
@@ -201,9 +205,8 @@ export class NewVideoPlugin extends BasePlugin {
             startIndex,
             endIndex,
         );
-        const javDbUrl: string = await this.getBean(
-            "OtherSitePlugin",
-        ).getJavDbUrl();
+        const javDbUrl: string =
+            await this.getBean("OtherSitePlugin").getJavDbUrl();
         const ruleTimeHours: number =
             (await storageManager.getSetting("checkNewVideo_ruleTime")) || 8760;
         const cardsHtml: string = pageActresses
@@ -255,11 +258,15 @@ export class NewVideoPlugin extends BasePlugin {
                     const uncollectUrl: string = `${await this.getBean("OtherSitePlugin").getJavDbUrl()}/actors/${starId}/uncollect`;
                     const csrfToken: string =
                         document
-                            .querySelector('meta[name=csrf-token]')
+                            .querySelector("meta[name=csrf-token]")
                             ?.getAttribute("content") ?? "";
-                    const response: any = await gmHttp.post(uncollectUrl, null, {
-                        "x-csrf-token": csrfToken,
-                    });
+                    const response: any = await gmHttp.post(
+                        uncollectUrl,
+                        null,
+                        {
+                            "x-csrf-token": csrfToken,
+                        },
+                    );
                     if (response.includes("removeClass")) {
                         await storageManager.removeFavoriteActress(starId);
                         this.loadData();
@@ -343,7 +350,7 @@ export class NewVideoPlugin extends BasePlugin {
                     await this.searchAvatar();
                 });
                 $("#select-cdn-btn").on("click", async () => {
-                    const currentIndex: number = (window as any).at;
+                    const currentIndex: number = getCurrentCdnSource().index;
                     const radioButtonsHtml: string = GFRIENDS_SOURCES.map(
                         (source, index) =>
                             `\n        <div style="margin-bottom: 10px;">\n            <input type="radio" id="cdn-${index}" name="cdn-source" value="${index}" ${index === currentIndex ? "checked" : ""} style="margin-right: 10px;">\n            <label for="cdn-${index}">${source.name} ${source.json.includes("jsdelivr") ? "(推荐)" : ""}</label>\n        </div>\n    `,
@@ -366,18 +373,12 @@ export class NewVideoPlugin extends BasePlugin {
                                 selectedValue,
                                 10,
                             );
-                            if (selectedIndex !== (window as any).at) {
-                                (window as any).at = selectedIndex;
+                            if (selectedIndex !== currentIndex) {
                                 localStorage.setItem(
                                     GFRIENDS_CDN_INDEX_KEY,
                                     selectedIndex.toString(),
                                 );
-                                (window as any).it =
-                                    GFRIENDS_SOURCES[selectedIndex].json;
-                                (window as any).st =
-                                    GFRIENDS_SOURCES[selectedIndex].base;
-                                (window as any).ct = null;
-                                (window as any).dt = null;
+                                clearCache();
                                 try {
                                     await (window as any).lt.set(
                                         FILETREE_DATA_KEY,
@@ -402,9 +403,7 @@ export class NewVideoPlugin extends BasePlugin {
                 utils.setupEscClose(layerIndex);
             },
             yes: async (layerIndex: any) => {
-                const avatar: string = $("#edit-actress-avatar")
-                    .val()
-                    .trim();
+                const avatar: string = $("#edit-actress-avatar").val().trim();
                 const name: string = $("#edit-actress-name").val().trim();
                 const allNameText: string = $("#edit-actress-allname")
                     .val()
@@ -525,12 +524,14 @@ export class NewVideoPlugin extends BasePlugin {
             show.error("请先填写女优主名称或别名进行搜索。");
             return;
         }
-        const loader = (loading as (message: string) => {
-            close: () => void;
-        })("正在搜索头像...");
+        const loader = (
+            loading as (message: string) => {
+                close: () => void;
+            }
+        )("正在搜索头像...");
         let avatarUrls: string[] = [];
         try {
-            avatarUrls = await (window as any).gt(searchNames);
+            avatarUrls = await loadGfriends(searchNames);
         } catch (error: any) {
             show.error(`头像数据加载或搜索失败: ${error.message || error}`);
             return;
