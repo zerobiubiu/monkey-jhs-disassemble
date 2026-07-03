@@ -30,7 +30,8 @@
  * - catch (e) → catch (err: any)（strict useUnknownInCatchVariables）。
  * - 内联 HTML/CSS 已提取为组件/CSS：设置挂载容器/回到顶部按钮/关键词标签/简化设置面板/
  *   缓存项/画质选项 → 组件，回到顶部 CSS 与竖图/横图 CSS → src/styles/*.css + ?raw。
- *   layer 弹窗 content 仍由 SettingDialog/HelpDialog/BackupFileDialog 组件返回。
+ *   layer 弹窗 content 由 SettingDialog/HelpDialog/BackupFileDialog 组件返回 JSX，
+ *   经 jsxToString 转为 HTML 字符串（doc/21）。
  * - 控制流（分支、try/catch/finally、fire-and-forget .then()、loopDetector、
  *   requestAnimationFrame 滚动监听、FileReader 异步链）与原脚本一致。
  */
@@ -50,6 +51,7 @@ import helpDialogCssRaw from "../styles/help-dialog.css?raw";
 import backToTopCssRaw from "../styles/back-to-top-button.css?raw";
 import verticalImgCssRaw from "../styles/setting-image-mode-vertical.css?raw";
 import horizontalImgCssRaw from "../styles/setting-image-mode-horizontal.css?raw";
+import { jsxToString } from "../core/jsx-to-string";
 import { SettingDialog } from "../components/setting-dialog";
 import { HelpDialog } from "../components/help-dialog";
 import { BackupFileDialog } from "../components/backup-file-dialog";
@@ -150,13 +152,13 @@ export class SettingPlugin extends BasePlugin {
                 }
             };
             $("#navbar-menu-user .navbar-end").prepend(
-                SettingMountBox({ variant: "navbar" }),
+                jsxToString(<SettingMountBox variant="navbar" />),
             );
             utils.loopDetector(
                 () => $("#miniHistoryBtn").length > 0,
                 () => {
                     $(".miniHistoryBtnBox").before(
-                        SettingMountBox({ variant: "mini" }),
+                        jsxToString(<SettingMountBox variant="mini" />),
                     );
                     toggleSettingBox();
                 },
@@ -169,14 +171,18 @@ export class SettingPlugin extends BasePlugin {
                 () => {
                     $("#waitCheckBtn")
                         .parent()
-                        .append(SettingMountBox({ variant: "topright" }));
+                        .append(
+                            jsxToString(<SettingMountBox variant="topright" />),
+                        );
                 },
                 1,
                 10000,
                 false,
             );
             if ((window as any).isDetailPage) {
-                $("h3").before(SettingMountBox({ variant: "containerfluid" }));
+                $("h3").before(
+                    jsxToString(<SettingMountBox variant="containerfluid" />),
+                );
             }
         }
         $(".main-nav, .container-fluid").on(
@@ -211,7 +217,7 @@ export class SettingPlugin extends BasePlugin {
     /** 挂载"回到顶部"悬浮按钮并绑定滚动显隐/点击平滑滚动。对应原 L9559-9629。 */
     addBackToTopBtn(): void {
         utils.insertStyle(backToTopCssRaw);
-        const btn = $(BackToTopButton());
+        const btn = $(jsxToString(<BackToTopButton />));
         $("body").append(btn);
         btn.on("click", () => {
             utils.smoothScrollToTop(500); // 稍微放慢一点滚动速度，更有质感
@@ -241,31 +247,37 @@ export class SettingPlugin extends BasePlugin {
     ): Promise<void> {
         const cacheItemsHtml = this.cacheItems
             .map((item) =>
-                CacheItemHtml({
-                    text: item.text,
-                    key: item.key,
-                    title: item.title,
-                }),
+                jsxToString(
+                    <CacheItemHtml
+                        text={item.text}
+                        cacheKey={item.key}
+                        title={item.title}
+                    />,
+                ),
             )
             .join("");
         let qualityOptionsHtml = "";
         VIDEO_QUALITY_LIST.forEach((option) => {
             if (option.canSelect) {
-                qualityOptionsHtml += VideoQualityOption({
-                    quality: option.quality,
-                    text: option.text,
-                });
+                qualityOptionsHtml += jsxToString(
+                    <VideoQualityOption
+                        quality={option.quality}
+                        text={option.text}
+                    />,
+                );
             }
         });
-        const dialogHtml = SettingDialog({
-            panelName,
-            cacheItemsHtml,
-            qualityOptionsHtml,
-            isJavdbSite,
-            blockText: BLOCK_TEXT,
-            favoriteText: FAVORITE_TEXT,
-            watchedText: WATCHED_TEXT,
-        });
+        const dialogHtml = jsxToString(
+            <SettingDialog
+                panelName={panelName}
+                cacheItemsHtml={cacheItemsHtml}
+                qualityOptionsHtml={qualityOptionsHtml}
+                isJavdbSite={isJavdbSite}
+                blockText={BLOCK_TEXT}
+                favoriteText={FAVORITE_TEXT}
+                watchedText={WATCHED_TEXT}
+            />,
+        );
         layer.open({
             type: 1,
             title: "设置",
@@ -288,7 +300,7 @@ export class SettingPlugin extends BasePlugin {
 
     /** 生成简化设置面板 HTML（悬浮下拉显示的精简版）。对应原 L9661-9663。 */
     simpleSetting(): string {
-        return SimpleSettingPanel({ isJavdbSite });
+        return jsxToString(<SimpleSettingPanel isJavdbSite={isJavdbSite} />);
     }
 
     /** 从 storageManager 加载设置并回填到设置表单各输入项。对应原 L9664-9747。 */
@@ -729,7 +741,10 @@ export class SettingPlugin extends BasePlugin {
                 shadeClose: true,
                 scrollbar: false,
                 content:
-                    "<style>" + helpDialogCssRaw + "</style>" + HelpDialog(),
+                    "<style>" +
+                    helpDialogCssRaw +
+                    "</style>" +
+                    jsxToString(<HelpDialog />),
                 area: utils.getResponsiveArea(["50%", "90%"]),
             });
         });
@@ -926,22 +941,26 @@ export class SettingPlugin extends BasePlugin {
         if (/^[a-z]{2,}-/i.test(keyword) && isJavdbSite) {
             textColor = "#3477ad";
             $label = $(
-                KeywordLabel({
-                    keyword,
-                    bgColor,
-                    textColor,
-                    variant: "link",
-                    href: `/video_codes/${keyword.replace("-", "")}`,
-                }),
+                jsxToString(
+                    <KeywordLabel
+                        keyword={keyword}
+                        bgColor={bgColor}
+                        textColor={textColor}
+                        variant="link"
+                        href={`/video_codes/${keyword.replace("-", "")}`}
+                    />,
+                ),
             );
         } else {
             $label = $(
-                KeywordLabel({
-                    keyword,
-                    bgColor,
-                    textColor,
-                    variant: "div",
-                }),
+                jsxToString(
+                    <KeywordLabel
+                        keyword={keyword}
+                        bgColor={bgColor}
+                        textColor={textColor}
+                        variant="div"
+                    />,
+                ),
             );
         }
         $label.find(".keyword-remove").click((event: any) => {
@@ -1104,7 +1123,7 @@ export class SettingPlugin extends BasePlugin {
         layer.open({
             type: 1,
             title: titlePrefix + "备份文件",
-            content: BackupFileDialog(),
+            content: jsxToString(<BackupFileDialog />),
             area: ["800px", "70%"],
             anim: -1,
             success: () => {
