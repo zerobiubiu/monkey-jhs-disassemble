@@ -3,12 +3,12 @@
  *
  * 为 RelatedPlugin.displayRelateds 提供：清单卡片含序号、创建时间、名称链接、
  * 视频个数、收藏次数、被查看次数，由 `container.append(html)` 消费。
- * 结构对称 ReviewItem（doc/13 已提取），字段与 HTML 按原版文档校准：
- * - 序号 `<span>#序号</span>`（floorIndex++ 自增）
- * - 创建时间 `<span>创建时间: {createTime}</span>`
- * - 名称链接 `<p><a href="/lists/{relatedId}" target="_blank">{name}</a></p>`
- * - 视频个数 `<p>视频个数: {movieCount}</p>`
- * - 收藏/查看 `<p>收藏次数: {collectionCount} 被查看次数: {viewCount}</p>`
+ * 结构对称 ReviewItem（doc/13 已提取），字段与 HTML 已对照 archetype L10702 精确校准：
+ * - 序号 `<span style="position:absolute;top:5px;right:10px;color:#999;...">#序号</span>`（floorIndex++ 自增）
+ * - 创建时间 `<span style="position:absolute;bottom:5px;right:10px;color:#999;...">创建时间: {createTime}</span>`
+ * - 名称链接 `<p><a href="/lists/{relatedId}" target="_blank" style="color:#2e8abb">{name}</a></p>`
+ * - 视频个数 `<p style="margin-top: 5px;">视频个数: {movieCount}</p>`
+ * - 收藏/查看 `<p style="margin-top: 5px;">收藏次数: {collectionCount} 被查看次数: {viewCount}</p>`
  *
  * 字段来自 RelatedCollection（src/constants/api.ts 由 fetchRelatedCollections 映射：
  * relatedId←id, name←name, movieCount←movies_count, collectionCount←collections_count,
@@ -49,5 +49,5 @@ export function RelatedItem({
     viewCount,
     createTime,
 }: RelatedItemProps): string {
-    return `\n                <div class="item columns is-desktop" style="display:block;margin-top:6px;background-color:#ffffff;padding:10px;margin-left: -10px;word-break: break-word;position:relative;">\n                    <span style="position:absolute;top:5px;right:10px;color:#999;font-size:12px;">#${index}</span>\n                    <span class="time">创建时间: ${createTime}</span>\n                    <p><a href="/lists/${relatedId}" target="_blank">${name}</a></p>\n                    <p>视频个数: ${movieCount}</p>\n                    <p>收藏次数: ${collectionCount} 被查看次数: ${viewCount}</p>\n                </div>\n            `;
+    return `\n                <div class="item columns is-desktop" style="display:block;margin-top:6px;background-color:#ffffff;padding:10px;margin-left: -10px;word-break: break-word;position:relative;">\n                    <span style="position:absolute;top:5px;right:10px;color:#999;font-size:12px;">#${index}</span>\n                    <span style="position:absolute;bottom:5px;right:10px;color:#999;font-size:12px;">创建时间: ${createTime}</span>\n                    <p><a href="/lists/${relatedId}" target="_blank" style="color:#2e8abb">${name}</a></p>\n                    <p style="margin-top: 5px;">视频个数: ${movieCount}</p>\n                    <p style="margin-top: 5px;">收藏次数: ${collectionCount} 被查看次数: ${viewCount}</p>\n                </div>\n            `;
 }

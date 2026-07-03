@@ -11,15 +11,17 @@
  *   配合 tsconfig useDefineForClassFields:true，[[Define]] 语义一致）。
  * - 控制流（折叠 click 分支、try/catch/finally、加载更多 page 自增）与 ReviewPlugin 一致。
  *
- * 实现按原版文档校准（archetype/jhs.user.js 未含 RelatedPlugin 原始代码，本插件依
- * 原版文档要点 + ReviewPlugin 对称模式构建）：
+ * 实现已对照 archetype/jhs.user.js L10585-10708（RelatedPlugin 完整类，commit 66b2fdf）
+ * 精确校准：DOM ID、文案、条目字段、HTML 结构/类名/内联 style、折叠头均与 archetype
+ * 一致；enableLoadRelated 默认 NO（折叠，与 archetype 默认 C 一致），首次展开才拉取。
+ * 保留对 ReviewPlugin 的对称增强（簽名已過期 提示 + clog.error，见 review-plugin.ts）：
  * - DOM ID 沿用原版单数 related 命名：relatedFold / relatedContainer / relatedFooter /
  *   relatedLoading / relatedEnd；重试/加载更多按钮 ID 为 retryFetchRelateds /
  *   loadMoreRelateds（原版命名，relateds 为名词复数）。
- * - 文案沿用原版：头部"相关清单"、loading"获取清单中..."、失败"获取清单失败"+"重试"、
- *   加载更多"加载更多清单"、结束"已加载全部清单"、空"无清单"。
+ * - 文案沿用原版：头部“相关清单”（无 emoji）、loading“获取清单中...”、失败“获取清单失败”+“重试”、
+ *   加载更多“加载更多清单”、结束“已加载全部清单”、空“无清单”。
  * - 条目 HTML 按原版：<div class="item columns is-desktop"> 含 #序号、创建时间、
- *   /lists/{relatedId} 名称链接、视频个数、收藏次数/被查看次数。
+ *   /lists/{relatedId} 名称链接（color:#2e8abb）、视频个数、收藏次数/被查看次数。
  * - API 调用 K(movieId, page, 20)（K 即 fetchRelatedCollections），返回 RelatedCollection[]
  *   （relatedId/name/movieCount/collectionCount/viewCount/createTime）。
  */
@@ -56,7 +58,7 @@ export class RelatedPlugin extends BasePlugin {
     async showRelated(container: any, movieId: any): Promise<void> {
         const isExpanded = await storageManager.getSetting(
             "enableLoadRelated",
-            YES,
+            NO,
         );
         const target = container || $("#magnets-content");
         target.append(
