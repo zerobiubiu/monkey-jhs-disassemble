@@ -23,6 +23,7 @@
 | `13-remaining-html-components.md` | 🔧开发指导 | ✅已执行 | 全面扫描 src/ 剩余注入用 HTML 字符串并转组件：hit-show（ToolBar/MovieItem/Score/RankingContainers）/ top250（ToolBar/YearButton/Pagination/NavLink/ErrorMessage）/ nav-bar（SearchBox/OtherDropdown）/ new-video（ActressCard/Pagination/DialogTitle）/ other-site（Box/Btn/Checkbox/SiteResultTag）/ preview-video（QualityBtn/ActionBtn/Container/SiteResultTag）/ review（Header/Containers/Loading/Error/Empty/LoadMore/End/Item/LinkContent）/ setting（MountBox/BackToTopButton/KeywordLabel/SimpleSettingPanel/CacheItemHtml/VideoQualityOption）/ history（SourceCell/StatusCell）/ want-watched（ImportButton/HintSpan）/ core（LoggerLogEntry/ImagePreviewImg/ImagePreviewError）26 个组件 + image-preview/tooltip/back-to-top/setting-image-mode-vertical/horizontal 5 个 CSS 提取（?raw） |
 | `14-css-charlevel-fix.md` | 🔧开发指导 | ✅已执行 | CSS 与原版字符级对齐修复：24 个 `.css`（主 7 + 插件 initCss 9 + 弹窗 2 + 非 initCss 6）逐字符重写为原版运行时注入值（LF、保留 `<style>` 包裹/首尾空白/行尾空格/中文注释，占位 `replace` 位置对齐 `${...}`）；NewVideo/Setting `initCss` 移除弹窗 CSS 拼接（修复 avatar/help CSS 因 `insertStyle` 不再包裹而失效的 bug），改由 `layer.open content` 拼接复刻原版 `r`/帮助 content；tooltip/image-preview 改为直接注入含 `<style>` 的 `.css` |
 | `15-related-plugin-archetype-calibration.md` | 🔧开发指导 | ✅已执行 | RelatedPlugin 对照 archetype L10585-10708（commit 66b2fdf）校准：头部去 📁 emoji、折叠/重试链接色 #1890ff→#1897ff、条目补创建时间/名称链接/段落内联 style（color:#2e8abb 等）、enableLoadRelated 默认改 NO（与 archetype 折叠一致）；DOM ID/其余文案/字段已一致无需改 |
+| `16-jsx-to-string.md` | 🔧开发指导 | ✅已执行 | 轻量 jsxToString 替代 react-dom/server：新增 `src/core/jsx-to-string.ts`（函数组件/DOM 元素/Fragment/自闭合/属性映射 className→class/style camelToKebab/布尔属性/事件忽略/文本转义），`temporary-image-container.tsx` 反转 doc/06 改回 JSX，`main.tsx` 移除 react-dom/server import 改用 jsxToString；产物 485.12 kB（gzip 119.73 kB），较 481.35 kB 基线 +3.77 kB，远低于 +452 kB 膨胀 |
 
 ## 类型图例
 
@@ -55,6 +56,7 @@
 13. `13-remaining-html-components.md` — 全面扫描剩余注入用 HTML 字符串转 26 个组件 + 5 个 CSS 提取（hit-show/top250/nav-bar/new-video/other-site/preview-video/review/setting/history/want-watched + core image-preview/tooltip/logger）
 14. `14-css-charlevel-fix.md` — CSS 与原版字符级对齐修复（24 个 `.css` 零偏差 + NewVideo/Setting 弹窗 CSS 拼接 bug 修复 + tooltip/image-preview 注入对齐）
 15. `15-related-plugin-archetype-calibration.md` — RelatedPlugin 对照 archetype L10585-10708 校准（头部去 emoji / 链接色 #1897ff / 条目内联 style / enableLoadRelated 默认 NO）
+16. `16-jsx-to-string.md` — 轻量 jsxToString 替代 react-dom/server（仅类型依赖 react，零运行时；产物 +3.77 kB）
 
 ## 当前进度概览
 
@@ -68,7 +70,7 @@
 - components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter` + doc/13 新增 26 个（`ranking-containers`/`hit-show-tool-bar`/`hit-show-movie-item`/`hit-show-score`/`top250-tool-bar`/`top250-year-button`/`top250-pagination`/`top250-error-message`/`top250-nav-link`/`nav-search-box`/`nav-other-dropdown`/`actress-card`/`actress-pagination`/`new-video-dialog-title`/`other-site-box`/`other-site-btn`/`other-site-checkbox`/`site-result-tag`/`preview-video-quality-btn`/`preview-video-action-btn`/`preview-video-container`/`review-header`/`review-containers`/`review-loading`/`review-error`/`review-empty`/`review-load-more`/`review-end`/`review-link-content`/`review-item`/`setting-mount-box`/`back-to-top-button`/`keyword-label`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`history-source-cell`/`history-status-cell`/`want-watched-hint-span`/`want-watched-import-button`/`logger-log-entry`/`image-preview-img`/`image-preview-error`）（返回 HTML 字符串的函数组件，非 JSX）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，153 modules，产物 468.96 kB（gzip 117.99 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
+- build：`tsc -b && vite build` 通过，166 modules，产物 485.12 kB（gzip 119.73 kB）；jsxToString 轻量渲染器（doc/16）已落地，`temporary-image-container` 反转 doc/06 改回 JSX，`main.tsx` 不再引入 react-dom/server；其余组件仍遵循 doc/06「返回 HTML 字符串」统一规定
 
 ## 相关文件
 

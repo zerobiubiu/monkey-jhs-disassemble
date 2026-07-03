@@ -24,6 +24,7 @@ import { WebDavClient as De } from "./core/webdav";
 import { createLoading } from "./core/loading";
 import { show } from "./core/toast";
 import { VIEWER_CONFIG } from "./core/viewer";
+import { jsxToString } from "./core/jsx-to-string";
 import { TemporaryImageContainer } from "./components/temporary-image-container";
 import { Logger } from "./core/logger";
 import { StorageManager } from "./core/storage-manager";
@@ -169,9 +170,11 @@ unsafeWindow.show = window.show = show;
         let a: any = null;
         let i = false;
         if (typeof t == "string" || t instanceof String) {
-            a = $(TemporaryImageContainer({ src: String(t), alt: n })).appendTo(
-                "body",
-            );
+            a = $(
+                jsxToString(
+                    <TemporaryImageContainer src={String(t)} alt={n} />,
+                ),
+            ).appendTo("body");
             i = true;
         } else {
             a = $(t);
