@@ -468,6 +468,9 @@ function Ne(e) {
         .join("")
         .slice(Le.length, -Le.length);
 }
+// WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 (window as any).Me / .Ne 访问
+unsafeWindow.Me = window.Me = Me;
+unsafeWindow.Ne = window.Ne = Ne;
 const ut = layer.close;
 layer.close = function (e) {
     const t = ut.call(this, e);
