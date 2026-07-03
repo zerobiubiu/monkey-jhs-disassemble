@@ -9,7 +9,6 @@
 //
 // 详见 doc/ 目录下的迁移文档。
 
-import { renderToStaticMarkup } from "react-dom/server";
 import { isJavdbSite as r, isJavbusSite as l } from "./constants/site";
 import loadingCssRaw from "./styles/loading.css?raw";
 import viewerCssRaw from "./styles/viewer.css?raw";
@@ -180,11 +179,9 @@ unsafeWindow.show = window.show = show;
         let a: any = null;
         let i = false;
         if (typeof t == "string" || t instanceof String) {
-            a = $(
-                renderToStaticMarkup(
-                    <TemporaryImageContainer src={String(t)} alt={n} />,
-                ),
-            ).appendTo("body");
+            a = $(TemporaryImageContainer({ src: String(t), alt: n })).appendTo(
+                "body",
+            );
             i = true;
         } else {
             a = $(t);
