@@ -18,6 +18,7 @@ import javdbSiteCssRaw from "./styles/javdb-site.css?raw";
 import commonToolbarCssRaw from "./styles/common-toolbar.css?raw";
 import aNormalButtonsCssRaw from "./styles/a-normal-buttons.css?raw";
 import { Hotkey as ie } from "./core/hotkey";
+import { injectCss as H } from "./core/style-injector";
 import { loadGfriends as gt, filetreeDb as lt } from "./core/gfriends";
 import { WebDavClient as De } from "./core/webdav";
 import { createLoading } from "./core/loading";
@@ -114,18 +115,6 @@ const F = commonToolbarCssRaw.replace(
     "/*__SCROLLBAR__*/",
     generateScrollbarCss(),
 );
-/** 将 CSS 文本注入 document.head：含 <style> 标签时直接 insertAdjacentHTML，否则创建 <style> 元素。 */
-function H(e: string): void {
-    if (e) {
-        if (e.includes("<style>")) {
-            document.head.insertAdjacentHTML("beforeend", e);
-        } else {
-            const t = document.createElement("style");
-            t.textContent = e;
-            document.head.appendChild(t);
-        }
-    }
-}
 if (l) {
     H(N);
 }
