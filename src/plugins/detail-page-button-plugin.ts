@@ -27,12 +27,18 @@
  *   以规避 noImplicitAny；未使用的回调参数加 _ 前缀豁免 noUnusedParameters。
  * - catch (e) → catch (err: any)（strict useUnknownInCatchVariables）；空 catch (_)
  *   → catch {}（optional catch binding，ES2019+）。
- * - 内联 CSS/HTML（含 Tabulator 列配置、layer 弹窗 content、评分条 HTML、
- *   Rails JS 注入 <script>、星星样式 <style>）原样保留，仅替换模板插值变量名。
+ * - 内联 CSS/HTML（含 Tabulator 列配置、评分条 HTML、Rails JS 注入
+ *   <script>、星星样式 <style>）原样保留，仅替换模板插值变量名；
+ *   两处 layer 弹窗 content（searchXunLeiSubtitle 字幕表格容器、
+ *   previewSubtitle 字幕预览容器）按 doc/06-component-html-string.md
+ *   统一规定提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件
+ *   （返回 HTML 字符串），插件层以 content: X(props) 消费。
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
  *   Promise 串行化 _reviewChain、IIFE、空 catch）与原脚本一致。
  */
 import { BasePlugin } from "./base-plugin";
+import { SubtitlePreviewDialog } from "../components/subtitle-preview-dialog";
+import { SubtitleTableDialog } from "../components/subtitle-table-dialog";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
 import {
     FILTER_ACTION,
@@ -1230,8 +1236,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     layer.open({
                         type: 1,
                         title: "迅雷字幕",
-                        content:
-                            '\n                    <div style="height: 100%;overflow:hidden;"> \n                        <div id="xunlei-table-container" style="height: 100%;padding-bottom: 20px"></div>\n                    </div>\n                ',
+                        content: SubtitleTableDialog(),
                         scrollbar: false,
                         area: utils.getResponsiveArea(["60%", "70%"]),
                         anim: -1,
@@ -1544,7 +1549,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     title: title,
                     area: ["80%", "80%"],
                     scrollbar: false,
-                    content: `<div style="padding:15px 5px;background:#1E1E1E;color:#FFF;font-family:Consolas,Monaco,monospace;white-space:pre-wrap;overflow:auto;height:100%;">${htmlContent}</div>`,
+                    content: SubtitlePreviewDialog({ content: htmlContent }),
                     btn: ["下载", "关闭"],
                     btn1: function (_index: any, _layero: any, _instance: any) {
                         utils.download(subtitleContent, filename);
