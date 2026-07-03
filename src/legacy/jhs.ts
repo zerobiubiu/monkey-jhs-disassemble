@@ -58,6 +58,9 @@ import { Logger } from "../core/logger";
 import { StorageManager } from "../core/storage-manager";
 import { CommonUtil } from "../core/common-util";
 import { GmHttp } from "../core/gm-http";
+import { setupLayerWrapper } from "../core/layer-wrapper";
+import { setupTooltip } from "../core/tooltip";
+import { Me, Ne } from "../core/webdav-crypto";
 import {
     API_BASE as U,
     reBuildSignature as O,
@@ -309,136 +312,7 @@ unsafeWindow.show = window.show = show;
         }
     });
 })();
-(function () {
-    function e(e, t, n) {
-        const a = (function (e) {
-            const t = document.createElement("div");
-            t.classList.add("js-tooltip");
-            const n = document.createElement("div");
-            n.innerHTML = e;
-            t.appendChild(n);
-            document.body.appendChild(t);
-            return t;
-        })(t);
-        a.style.display = "block";
-        const i = e.getBoundingClientRect();
-        const s = a.getBoundingClientRect();
-        a.style.display = "none";
-        const o = window.innerWidth;
-        const r = window.innerHeight;
-        let l;
-        let c;
-        let d = n;
-        const h = (e) => e >= 8 && e + s.height <= r - 8;
-        const g = (e) => e >= 8 && e + s.width <= o - 8;
-        const p = i.left + i.width / 2 - s.width / 2;
-        const m = i.top + i.height / 2 - s.height / 2;
-        switch (n) {
-            case "top":
-                c = i.top - s.height - 0;
-                if (c < 8 && h(i.bottom + 0)) {
-                    c = i.bottom + 0;
-                    d = "bottom";
-                }
-                break;
-            case "bottom":
-                c = i.bottom + 0;
-                if (c + s.height > r - 8 && h(i.top - s.height - 0)) {
-                    c = i.top - s.height - 0;
-                    d = "top";
-                }
-                break;
-            case "left":
-                l = i.left - s.width - 0;
-                if (l < 8 && g(i.right + 0)) {
-                    l = i.right + 0;
-                    d = "right";
-                }
-                break;
-            case "right":
-                l = i.right + 0;
-                if (l + s.width > o - 8 && g(i.left - s.width - 0)) {
-                    l = i.left - s.width - 0;
-                    d = "left";
-                }
-        }
-        const u = d === "left" || d === "right";
-        if (d === "top" || d === "bottom") {
-            l = p;
-            if (l < 8) {
-                l = 8;
-            } else if (l + s.width > o - 8) {
-                l = o - s.width - 8;
-            }
-        } else if (u) {
-            c = m;
-            if (c < 8) {
-                c = 8;
-            } else if (c + s.height > r - 8) {
-                c = r - s.height - 8;
-            }
-        }
-        a.style.left = `${l}px`;
-        a.style.top = `${c}px`;
-        a.classList.add("is-active");
-        e.tooltipElement = a;
-    }
-    document.head.insertAdjacentHTML(
-        "beforeend",
-        "\n        <style>\n            .js-tooltip {\n                /* 通用样式 */\n                position: fixed;\n                padding: 8px 12px; \n                border-radius: 6px; \n                white-space: normal;\n                max-width: 600px; \n                \n                pointer-events: none;\n                font-size: 14px;\n                line-height: 1.5;\n                z-index: 9999999999;\n                \n                background: #F0FDF4; \n                color: #166534;      \n                border: none; \n                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); \n                \n                display: none; \n            }\n            .js-tooltip.is-active {\n                display: block !important;\n            }\n\n        </style>\n    ",
-    );
-    const t =
-        "[data-tip-top], [data-tip-bottom], [data-tip-left], [data-tip-right], [data-tip]";
-    document.addEventListener("mouseover", (n) => {
-        const a = n.target.closest(t);
-        if (a && !a.tooltipElement) {
-            let t;
-            let n = "top";
-            if (a.hasAttribute("data-tip-bottom")) {
-                t = a.getAttribute("data-tip-bottom");
-                n = "bottom";
-            } else if (a.hasAttribute("data-tip-left")) {
-                t = a.getAttribute("data-tip-left");
-                n = "left";
-            } else if (a.hasAttribute("data-tip-right")) {
-                t = a.getAttribute("data-tip-right");
-                n = "right";
-            } else if (a.hasAttribute("data-tip-top")) {
-                t = a.getAttribute("data-tip-top");
-                n = "top";
-            } else if (a.hasAttribute("data-tip")) {
-                t = a.getAttribute("data-tip");
-                n = "top";
-            }
-            if (!t) {
-                return;
-            }
-            a.hoverTimeout = setTimeout(() => {
-                if (a.matches(":hover") && !a.tooltipElement) {
-                    e(a, t, n);
-                }
-            }, 50);
-        }
-    });
-    document.addEventListener("mouseout", (e) => {
-        const n = e.target.closest(t);
-        var a;
-        if (n) {
-            if (n.hoverTimeout) {
-                clearTimeout(n.hoverTimeout);
-                n.hoverTimeout = null;
-            }
-            if (!n.contains(e.relatedTarget)) {
-                if (n.tooltipElement) {
-                    if ((a = n.tooltipElement) && a.parentNode) {
-                        a.remove();
-                    }
-                    n.tooltipElement = null;
-                }
-            }
-        }
-    });
-})();
+setupTooltip();
 let se = ie;
 document.addEventListener("keydown", (e) => {
     se.handleKeydown(e);
@@ -447,52 +321,10 @@ document.addEventListener("keyup", (e) => {
     se.handleKeyup(e);
 });
 
-const me = "jhs_appAuthorization";
-const Le = "x7k9p3";
-function Me(e) {
-    return (Le + e + Le)
-        .split("")
-        .map((e) => {
-            const t = e.codePointAt(0);
-            return String.fromCodePoint(t + 5);
-        })
-        .join("");
-}
-function Ne(e) {
-    return e
-        .split("")
-        .map((e) => {
-            const t = e.codePointAt(0);
-            return String.fromCodePoint(t - 5);
-        })
-        .join("")
-        .slice(Le.length, -Le.length);
-}
 // WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 (window as any).Me / .Ne 访问
 unsafeWindow.Me = window.Me = Me;
 unsafeWindow.Ne = window.Ne = Ne;
-const ut = layer.close;
-layer.close = function (e) {
-    const t = ut.call(this, e);
-    (function (e = 10) {
-        setTimeout(() => {
-            const e = document.querySelectorAll(".layui-layer-shade").length;
-            document.documentElement.style.overflow = e > 0 ? "hidden" : "";
-        }, e);
-    })();
-    return t;
-};
-const ft = layer.open;
-layer.open = function (e) {
-    const t = (e = e || {}).success;
-    e.success = function (e, n) {
-        if (typeof t == "function") {
-            t.call(this, e, n);
-        }
-        utils.setupEscClose(n);
-    };
-    return ft.call(this, e);
-};
+setupLayerWrapper();
 utils.importResource(
     "https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/layer.min.css",
 );

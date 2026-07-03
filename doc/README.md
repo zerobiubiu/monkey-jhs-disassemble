@@ -12,6 +12,7 @@
 | `02-css-extraction.md` | 🔧开发指导 | 🔧待执行 | CSS 提取模式（?raw + H()/insertAdjacentHTML + 占位 replace）与待提取清单 |
 | `03-plugin-integration.md` | 🔧开发指导 | ✅已执行 | 4 个插件（DetailPage/FilterTitleKeyword/HighlightMagnet/FoldCategory）外置集成记录 |
 | `04-plugin-integration-final-batch.md` | 🔧开发指导 | ✅已执行 | 最终批次 3 插件（Setting/DetailPageButton/ListPage）外置集成记录 |
+| `05-legacy-helpers-extraction.md` | 🔧开发指导 | ✅已执行 | legacy 残留辅助（layer 包装/tooltip/webdav 加密）提取到 core |
 
 ## 类型图例
 
@@ -33,6 +34,7 @@
 2. `02-css-extraction.md` — CSS 提取的具体模式与清单
 3. `03-plugin-integration.md` — 插件外置集成模式与执行记录
 4. `04-plugin-integration-final-batch.md` — 最终批次插件外置集成记录
+5. `05-legacy-helpers-extraction.md` — legacy 残留辅助代码提取到 core
 
 ## 相关文件
 
