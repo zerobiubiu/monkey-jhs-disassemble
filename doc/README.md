@@ -14,6 +14,7 @@
 | `04-plugin-integration-final-batch.md` | 🔧开发指导 | ✅已执行 | 最终批次 3 插件（Setting/DetailPageButton/ListPage）外置集成记录 |
 | `05-legacy-helpers-extraction.md` | 🔧开发指导 | ✅已执行 | legacy 残留辅助（layer 包装/tooltip/webdav 加密）提取到 core |
 | `06-component-html-string.md` | 🔧开发指导 | ✅已执行 | 组件返回 HTML 字符串，移除 react-dom/server（避免 react-dom/server 打包致 911 kB 膨胀）；确立 HTML→组件统一规定 |
+| `07-login-dialog-component.md` | 🔧开发指导 | ✅已执行 | Top250 登录表单（openLoginDialog 的 layer.open content）提取为 LoginDialog 组件（返回 HTML 字符串） |
 
 ## 类型图例
 
@@ -37,6 +38,7 @@
 4. `04-plugin-integration-final-batch.md` — 最终批次插件外置集成记录
 5. `05-legacy-helpers-extraction.md` — legacy 残留辅助代码提取到 core
 6. `06-component-html-string.md` — 组件返回 HTML 字符串，移除 react-dom/server
+7. `07-login-dialog-component.md` — Top250 登录表单提取为 LoginDialog 组件
 
 ## 当前进度概览
 
@@ -47,10 +49,10 @@
 - constants：`site`/`status`/`video-quality`/`api`/`tabulator-zh`
 - resources：`gfriends`
 - styles：14 个 CSS（5 顶层 + 9 插件 `initCss`）全部提取
-- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`（返回 HTML 字符串的函数组件，非 JSX）
+- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`（返回 HTML 字符串的函数组件，非 JSX）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，62 modules，产物 458.24 kB（gzip 114.26 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
+- build：`tsc -b && vite build` 通过，63 modules，产物 458.18 kB（gzip 114.28 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
 
 ## 相关文件
 
