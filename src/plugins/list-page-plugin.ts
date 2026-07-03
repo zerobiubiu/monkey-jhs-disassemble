@@ -18,9 +18,9 @@
  *
  * 注意：原顶层常量 g（"hasDown"，「已下载」动作状态）已在 archetype/doc/
  * 09-remove-hasdown-constants.md 中作为「已删除」定稿移除。filterMovieList
- * 中 {[g]: new Set()} 的键集合从未被读取（仅 filter/favorite/hasWatch 被解构
- * 使用），属残留死代码；为保留原控制流，此处以本地常量 HAS_DOWN_ACTION
- * 还原其值（与 list-page-button-plugin.ts 还原 HAS_DOWN_TEXT 的做法一致）。
+ * 中原 {[g]: new Set()} 的键集合从未被读取（仅 filter/favorite/hasWatch
+ * 被解构使用），属残留死代码；已同步原版删除该行，不再还原 HAS_DOWN_ACTION
+ * 本地常量（避免运行时 ReferenceError 导致弹窗方式打开页面失效）。
  *
  * 构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  * 注入的字段改为 class 字段语法（useDefineForClassFields:true，语义一致）。
@@ -63,15 +63,6 @@ interface StatusTagConfig {
     isCounted: boolean;
     countKey: string;
 }
-
-/**
- * 「已下载」动作状态（原顶层常量 g = "hasDown"）。
- * 已在 archetype/doc/09-remove-hasdown-constants.md 中作为已删除定稿移除，
- * filterMovieList 的 {[g]: new Set()} 键集合从未被读取，属残留死代码；
- * 此处还原其值仅用于保留原控制流（与 list-page-button-plugin.ts 还原
- * HAS_DOWN_TEXT 的做法一致）。
- */
-const HAS_DOWN_ACTION = "hasDown";
 
 /**
  * 状态标签配置表（原顶层 Te）。
@@ -436,7 +427,6 @@ export class ListPagePlugin extends BasePlugin {
             {
                 [FILTER_ACTION]: new Set<string>(),
                 [FAVORITE_ACTION]: new Set<string>(),
-                [HAS_DOWN_ACTION]: new Set<string>(),
                 [HAS_WATCH_ACTION]: new Set<string>(),
             },
         );
