@@ -26,6 +26,7 @@
 | `16-jsx-to-string.md` | 🔧开发指导 | ✅已执行 | 轻量 jsxToString 替代 react-dom/server：新增 `src/core/jsx-to-string.ts`（函数组件/DOM 元素/Fragment/自闭合/属性映射 className→class/style camelToKebab/布尔属性/事件忽略/文本转义），`temporary-image-container.tsx` 反转 doc/06 改回 JSX，`main.tsx` 移除 react-dom/server import 改用 jsxToString；产物 485.12 kB（gzip 119.73 kB），较 481.35 kB 基线 +3.77 kB，远低于 +452 kB 膨胀 |
 | `17-list-page-components-tsx.md` | 🔧开发指导 | ✅已执行 | 列表页/折叠分类 8 个 HTML 字符串组件转 TSX 原生 React 组件（`status-tag-html`/`menu-button-box-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`fold-category-toolbar`/`fold-category-section-button`/`highlight-button`），合并删除 `status-tag.tsx`/`menu-button-box.tsx` 两个孤立示范；3 个调用点插件 `.ts`→`.tsx`，调用改 `jsxToString(<Comp {...props} />)`；DOM/CSS 渲染等价（属性间/子节点 \n 缩进紧凑化，status-tag variant 语义失效但 DOM 等价）；产物 488.25 kB（gzip 120.28 kB） |
 | `18-history-actress-components-tsx.md` | 🔧开发指导 | ✅已执行 | 鉴定记录/演员信息 9 个 HTML 字符串组件转 TSX 原生 React 组件（`history-dialog`/`edit-record-dialog`/`history-nav-button`/`history-action-buttons`/`history-source-cell`/`history-status-cell`/`actress-info-detail-segment`/`actress-info-star-page-html`/`favorite-actress-avatar-column`）；3 个调用点插件 `.ts`→`.tsx`（history/actress-info/favorite-actresses），14 处调用改 `jsxToString(<Comp {...props} />)`；`<option selected>`→`selected={bool}`、`readonly`→`readOnly`（DOM 等价）、`inputStyle`/`textareaStyle` 由 string 改 CSSProperties 对象（React 19 style 不再接受 string）；产物 491.94 kB（gzip 121.16 kB） |
+| `19-blacklist-components-tsx.md` | 🔧开发指导 | ✅已执行 | 黑名单 9 个 HTML 字符串组件转 TSX 原生 React 组件（`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter`）；调用点 `blacklist-plugin.ts`→`.tsx`，9 处调用改 `jsxToString(<Comp {...props} />)`；jsxToString 增加 `dangerouslySetInnerHTML` 支持（MovieListWrapper 的 html prop 为原始 HTML 片段）、条件空 `style=""`→CSSProperties undefined（DOM 等价）、`&nbsp;`→U+00A0（DOM 等价）、`{" "}` 保前后空格、HTML 注释→JSX 注释；产物 494.26 kB（gzip 121.41 kB） |
 
 ## 类型图例
 
@@ -61,6 +62,7 @@
 16. `16-jsx-to-string.md` — 轻量 jsxToString 替代 react-dom/server（仅类型依赖 react，零运行时；产物 +3.77 kB）
 17. `17-list-page-components-tsx.md` — 列表页/折叠分类 8 个组件转 TSX（jsxToString 调用点）
 18. `18-history-actress-components-tsx.md` — 鉴定记录/演员信息 9 个组件转 TSX（14 处调用 jsxToString；selected 布尔化 / readOnly 大小写等价 / inputStyle 对象化）
+19. `19-blacklist-components-tsx.md` — 黑名单 9 个组件转 TSX（9 处调用 jsxToString；dangerouslySetInnerHTML 支持 / 条件空 style 省略 / &nbsp;→U+00A0 / {" "} 保空格 / HTML 注释→JSX 注释）
 
 ## 当前进度概览
 

@@ -25,6 +25,8 @@
  * - `data-*` / `aria-*` / 其他 → 原样 `key="value"`
  * - 布尔属性：`true` → 裸属性；`false`/`null`/`undefined` → 省略
  * - `on*` 事件 → 忽略
+ * - `dangerouslySetInnerHTML` → 取 `__html` 作为原始 inner HTML 注入（不转义），
+ *   属性本身不渲染为 HTML 属性（React 的 raw HTML 注入约定）
  *
  * @module core/jsx-to-string
  */
@@ -144,6 +146,7 @@ function renderAttrs(props: PropsRecord): string {
     for (const [key, value] of Object.entries(props)) {
         if (value == null || value === false) continue;
         if (key === "children") continue;
+        if (key === "dangerouslySetInnerHTML") continue;
         if (key.startsWith("on")) continue;
         if (key === "className") {
             if (value !== "") parts.push(`class="${String(value)}"`);
@@ -258,6 +261,13 @@ export function jsxToString(node: ReactNode): string {
         const attrs = renderAttrs(props as PropsRecord);
         if (VOID_TAGS.has(tag)) {
             return `<${tag}${attrs} />`;
+        }
+        // dangerouslySetInnerHTML：React 的 raw HTML 注入约定，
+        // 取 __html 作为原始 inner HTML（不转义），跳过 children 渲染。
+        const dsi = (props as PropsRecord).dangerouslySetInnerHTML as
+            { __html?: string } | undefined;
+        if (dsi && typeof dsi.__html === "string") {
+            return `<${tag}${attrs}>${dsi.__html}</${tag}>`;
         }
         const inner = renderChildren((props as PropsRecord).children);
         return `<${tag}${attrs}>${inner}</${tag}>`;

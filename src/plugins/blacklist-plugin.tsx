@@ -56,6 +56,7 @@ import { BlacklistStatusCell } from "../components/blacklist-status-cell";
 import { BlacklistActionCell } from "../components/blacklist-action-cell";
 import { MovieListWrapper } from "../components/movie-list-wrapper";
 import { BlacklistPaginationCounter } from "../components/blacklist-pagination-counter";
+import { jsxToString } from "../core/jsx-to-string";
 import {
     currentHref,
     isJavdbSite,
@@ -134,14 +135,16 @@ export class BlacklistPlugin extends BasePlugin {
                 }
             }
         }
-        const confirmMessage = BlacklistConfirmMessage({
-            tagName,
-            name,
-            isAlreadyBlacklisted,
-            isActress,
-            notFirstPageByQuery,
-            notFirstPageByJavbus,
-        });
+        const confirmMessage = jsxToString(
+            <BlacklistConfirmMessage
+                tagName={tagName}
+                name={name}
+                isAlreadyBlacklisted={isAlreadyBlacklisted}
+                isActress={isActress}
+                notFirstPageByQuery={notFirstPageByQuery}
+                notFirstPageByJavbus={notFirstPageByJavbus}
+            />,
+        );
         utils.q(position, confirmMessage, async () => {
             navigator.locks
                 .request(
@@ -222,7 +225,9 @@ export class BlacklistPlugin extends BasePlugin {
      * 对应原 L7446-7502。
      */
     async openBlacklistDialog(): Promise<void> {
-        const dialogHtml = BlacklistDialog({ showUrlType: isJavdbSite });
+        const dialogHtml = jsxToString(
+            <BlacklistDialog showUrlType={isJavdbSite} />,
+        );
         layer.open({
             type: 1,
             title: "演员黑名单",
@@ -347,11 +352,13 @@ export class BlacklistPlugin extends BasePlugin {
                           (urlType !== "noT" || !item.url.includes("t="))),
             );
         $dataTypeSelect.html(
-            BlacklistDataTypeOptions({
-                totalCount,
-                actorCount,
-                actressCount,
-            }),
+            jsxToString(
+                <BlacklistDataTypeOptions
+                    totalCount={totalCount}
+                    actorCount={actorCount}
+                    actressCount={actressCount}
+                />,
+            ),
         );
         $dataTypeSelect.val(dataType);
         const carsByStarId = new Map<any, any>();
@@ -403,10 +410,12 @@ export class BlacklistPlugin extends BasePlugin {
                 actorCount: any,
                 _pages: any,
             ) =>
-                BlacklistPaginationCounter({
-                    actorCount,
-                    currentCarCount: this.currentCarCount,
-                }),
+                jsxToString(
+                    <BlacklistPaginationCounter
+                        actorCount={actorCount}
+                        currentCarCount={this.currentCarCount}
+                    />,
+                ),
             responsiveLayout: "collapse",
             responsiveLayoutCollapse: true,
             columnDefaults: {
@@ -428,10 +437,12 @@ export class BlacklistPlugin extends BasePlugin {
                         _onRendered: any,
                     ) => {
                         const rowData = cell.getData();
-                        return BlacklistNameCell({
-                            url: rowData.url,
-                            name: rowData.name,
-                        });
+                        return jsxToString(
+                            <BlacklistNameCell
+                                url={rowData.url}
+                                name={rowData.name}
+                            />,
+                        );
                     },
                 },
                 {
@@ -489,7 +500,9 @@ export class BlacklistPlugin extends BasePlugin {
                         _onRendered: any,
                     ) => {
                         const hasTag = cell.getData().url.includes("t=");
-                        return BlacklistUrlTypeCell({ hasTag });
+                        return jsxToString(
+                            <BlacklistUrlTypeCell hasTag={hasTag} />,
+                        );
                     },
                 },
                 {
@@ -530,7 +543,12 @@ export class BlacklistPlugin extends BasePlugin {
                             tipText = `停更${this.checkBlacklist_ruleTime / 24 / 365}年以上, 下轮任务不再进行检测`;
                             statusText = "停止检测";
                         }
-                        return BlacklistStatusCell({ tipText, statusText });
+                        return jsxToString(
+                            <BlacklistStatusCell
+                                tipText={tipText}
+                                statusText={statusText}
+                            />,
+                        );
                     },
                 },
                 {
@@ -619,7 +637,7 @@ export class BlacklistPlugin extends BasePlugin {
                                 });
                             }
                         });
-                        return BlacklistActionCell();
+                        return jsxToString(<BlacklistActionCell />);
                     },
                 },
             ],
@@ -775,7 +793,9 @@ export class BlacklistPlugin extends BasePlugin {
                     nextUrl,
                     hasMore: _hasMore,
                 } = await beyond60Plugin.handleBeyond60(nextPageLink);
-                const wrapperHtml = MovieListWrapper({ html, nextUrl });
+                const wrapperHtml = jsxToString(
+                    <MovieListWrapper html={html} nextUrl={nextUrl} />,
+                );
                 nextDom = utils.htmlTo$dom(wrapperHtml);
             } else {
                 clog.log("正在请求下一页内容:", nextPageLink);
