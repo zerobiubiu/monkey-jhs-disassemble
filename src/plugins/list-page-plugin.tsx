@@ -54,6 +54,7 @@ import { VideoTitleSpan } from "../components/video-title-span";
 import { StatusTagHtml } from "../components/status-tag-html";
 import { JumpPageControl } from "../components/jump-page-control";
 import { PageCountTable } from "../components/page-count-table";
+import { jsxToString } from "../core/jsx-to-string";
 
 /** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
 interface StatusTagConfig {
@@ -303,7 +304,7 @@ export class ListPagePlugin extends BasePlugin {
                     .find(".photo-info span:first")
                     .contents()
                     .first()
-                    .wrap(VideoTitleSpan({ imgTitle }));
+                    .wrap(jsxToString(<VideoTitleSpan imgTitle={imgTitle} />));
                 $item.find("br").remove();
             });
     }
@@ -370,14 +371,16 @@ export class ListPagePlugin extends BasePlugin {
                 tagPosition === "rightTop"
                     ? "right: 0; top:5px;"
                     : "left: 0; top:5px;";
-            const tagHtml = StatusTagHtml({
-                site: "javdb",
-                variant: "render",
-                text: tagConfig.text,
-                color: tagConfig.color,
-                dataTip: tagConfig.reasonType,
-                positionStyle,
-            });
+            const tagHtml = jsxToString(
+                <StatusTagHtml
+                    site="javdb"
+                    variant="render"
+                    text={tagConfig.text}
+                    color={tagConfig.color}
+                    dataTip={tagConfig.reasonType}
+                    positionStyle={positionStyle}
+                />,
+            );
             const tagsEl = $item.find(".tags");
             if (tagsEl.length) {
                 tagsEl.append(tagHtml);
@@ -551,14 +554,16 @@ export class ListPagePlugin extends BasePlugin {
                         ? "right: 0; top:5px;"
                         : "left: 0; top:5px;";
                 if (tagConfig.text) {
-                    const tagHtml = StatusTagHtml({
-                        site: isJavdbSite ? "javdb" : "javbus",
-                        variant: "filter",
-                        text: tagConfig.text,
-                        color: tagConfig.color,
-                        dataTip: reasonText as string,
-                        positionStyle,
-                    });
+                    const tagHtml = jsxToString(
+                        <StatusTagHtml
+                            site={isJavdbSite ? "javdb" : "javbus"}
+                            variant="filter"
+                            text={tagConfig.text}
+                            color={tagConfig.color}
+                            dataTip={reasonText as string}
+                            positionStyle={positionStyle}
+                        />,
+                    );
                     if (isJavdbSite) {
                         $item.find(".tags").append(tagHtml);
                     }
@@ -582,19 +587,21 @@ export class ListPagePlugin extends BasePlugin {
             `打开已收藏 (${statusCarSets.favorite.size})`,
         );
         clog.log(
-            PageCountTable({
-                readDataTime,
-                assembleDataTime,
-                processPageTime,
-                totalTime,
-                filterCount: this.currentPageFilterCount,
-                favoriteCount: this.currentPageFavoriteCount,
-                actorFilterCount: this.currentPageActorFilterCount,
-                keywordFilterCount: this.currentPageKeywordFilterCount,
-                hasWatchCount: this.currentPageHasWatchCount,
-                waitCheckCount: this.currentPageWaitCheckCount,
-                totalCount: this.currentPageTotalCount,
-            }),
+            jsxToString(
+                <PageCountTable
+                    readDataTime={readDataTime}
+                    assembleDataTime={assembleDataTime}
+                    processPageTime={processPageTime}
+                    totalTime={totalTime}
+                    filterCount={this.currentPageFilterCount}
+                    favoriteCount={this.currentPageFavoriteCount}
+                    actorFilterCount={this.currentPageActorFilterCount}
+                    keywordFilterCount={this.currentPageKeywordFilterCount}
+                    hasWatchCount={this.currentPageHasWatchCount}
+                    waitCheckCount={this.currentPageWaitCheckCount}
+                    totalCount={this.currentPageTotalCount}
+                />,
+            ),
         );
     }
 
@@ -1078,7 +1085,14 @@ export class ListPagePlugin extends BasePlugin {
             return;
         }
         const currentPage = utils.getUrlParam(currentHref, "page") || 1;
-        const $li = $(JumpPageControl({ controlId, value: currentPage + 1 }));
+        const $li = $(
+            jsxToString(
+                <JumpPageControl
+                    controlId={controlId}
+                    value={currentPage + 1}
+                />,
+            ),
+        );
         $(".pagination-list").append($li);
         const $pageInput = $li.find("#jumpPageInput");
         const $jumpBtn = $li.find("button");

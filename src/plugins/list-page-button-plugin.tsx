@@ -37,6 +37,7 @@ import {
 } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
 import { MenuButtonBoxHtml } from "../components/menu-button-box-html";
+import { jsxToString } from "../core/jsx-to-string";
 
 /** 「已下载」状态标签文本（原顶层常量 y；已下载功能删除后残留引用的还原值）。 */
 const HAS_DOWN_TEXT = "📥️ 已下载";
@@ -133,16 +134,18 @@ export class ListPageButtonPlugin extends BasePlugin {
                       ? "时间"
                       : "默认");
             containerEl.append(
-                MenuButtonBoxHtml({
-                    site: "javdb",
-                    blacklistLabel,
-                    blacklistColor,
-                    actorsPage: isActorsPage,
-                    tagsPage: currentHref.includes("/tags"),
-                    advancedSearch: isAdvancedSearch,
-                    searchOrUserPage: isSearchOrUserPage,
-                    sortLabel,
-                }),
+                jsxToString(
+                    <MenuButtonBoxHtml
+                        site="javdb"
+                        blacklistLabel={blacklistLabel}
+                        blacklistColor={blacklistColor}
+                        actorsPage={isActorsPage}
+                        tagsPage={currentHref.includes("/tags")}
+                        advancedSearch={isAdvancedSearch}
+                        searchOrUserPage={isSearchOrUserPage}
+                        sortLabel={sortLabel}
+                    />,
+                ),
             );
         }
         if (isJavbusSite) {
@@ -164,12 +167,14 @@ export class ListPageButtonPlugin extends BasePlugin {
             $(".masonry")
                 .parent()
                 .prepend(
-                    MenuButtonBoxHtml({
-                        site: "javbus",
-                        blacklistLabel,
-                        blacklistColor,
-                        starPage: isStarPage,
-                    }),
+                    jsxToString(
+                        <MenuButtonBoxHtml
+                            site="javbus"
+                            blacklistLabel={blacklistLabel}
+                            blacklistColor={blacklistColor}
+                            starPage={isStarPage}
+                        />,
+                    ),
                 );
         }
     }

@@ -24,6 +24,7 @@
 | `14-css-charlevel-fix.md` | 🔧开发指导 | ✅已执行 | CSS 与原版字符级对齐修复：24 个 `.css`（主 7 + 插件 initCss 9 + 弹窗 2 + 非 initCss 6）逐字符重写为原版运行时注入值（LF、保留 `<style>` 包裹/首尾空白/行尾空格/中文注释，占位 `replace` 位置对齐 `${...}`）；NewVideo/Setting `initCss` 移除弹窗 CSS 拼接（修复 avatar/help CSS 因 `insertStyle` 不再包裹而失效的 bug），改由 `layer.open content` 拼接复刻原版 `r`/帮助 content；tooltip/image-preview 改为直接注入含 `<style>` 的 `.css` |
 | `15-related-plugin-archetype-calibration.md` | 🔧开发指导 | ✅已执行 | RelatedPlugin 对照 archetype L10585-10708（commit 66b2fdf）校准：头部去 📁 emoji、折叠/重试链接色 #1890ff→#1897ff、条目补创建时间/名称链接/段落内联 style（color:#2e8abb 等）、enableLoadRelated 默认改 NO（与 archetype 折叠一致）；DOM ID/其余文案/字段已一致无需改 |
 | `16-jsx-to-string.md` | 🔧开发指导 | ✅已执行 | 轻量 jsxToString 替代 react-dom/server：新增 `src/core/jsx-to-string.ts`（函数组件/DOM 元素/Fragment/自闭合/属性映射 className→class/style camelToKebab/布尔属性/事件忽略/文本转义），`temporary-image-container.tsx` 反转 doc/06 改回 JSX，`main.tsx` 移除 react-dom/server import 改用 jsxToString；产物 485.12 kB（gzip 119.73 kB），较 481.35 kB 基线 +3.77 kB，远低于 +452 kB 膨胀 |
+| `17-list-page-components-tsx.md` | 🔧开发指导 | ✅已执行 | 列表页/折叠分类 8 个 HTML 字符串组件转 TSX 原生 React 组件（`status-tag-html`/`menu-button-box-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`fold-category-toolbar`/`fold-category-section-button`/`highlight-button`），合并删除 `status-tag.tsx`/`menu-button-box.tsx` 两个孤立示范；3 个调用点插件 `.ts`→`.tsx`，调用改 `jsxToString(<Comp {...props} />)`；DOM/CSS 渲染等价（属性间/子节点 \n 缩进紧凑化，status-tag variant 语义失效但 DOM 等价）；产物 488.25 kB（gzip 120.28 kB） |
 
 ## 类型图例
 

@@ -28,6 +28,7 @@ import { BasePlugin } from "./base-plugin";
 import { FoldCategorySectionButton } from "../components/fold-category-section-button";
 import { FoldCategoryToolbar } from "../components/fold-category-toolbar";
 import { HighlightButton } from "../components/highlight-button";
+import { jsxToString } from "../core/jsx-to-string";
 import foldCategoryCssRaw from "../styles/fold-category-plugin.css?raw";
 
 export class FoldCategoryPlugin extends BasePlugin {
@@ -110,7 +111,7 @@ export class FoldCategoryPlugin extends BasePlugin {
         $("#tags a.tag, .tags a.tag").hover(
             function (this: any) {
                 const tagEl = $(this);
-                const btnEl = $(HighlightButton());
+                const btnEl = $(jsxToString(<HighlightButton />));
                 tagEl.append(btnEl);
                 btnEl.fadeIn(0);
             },
@@ -170,11 +171,16 @@ export class FoldCategoryPlugin extends BasePlugin {
             return;
         }
         $(".tabs").append(
-            FoldCategoryToolbar({ selectedTagsText, hotkey: hotkey || "" }),
+            jsxToString(
+                <FoldCategoryToolbar
+                    selectedTagsText={selectedTagsText}
+                    hotkey={hotkey || ""}
+                />,
+            ),
         );
         let sectionTitleEl = $("h2.section-title");
         if (sectionTitleEl.length > 0) {
-            sectionTitleEl.append(FoldCategorySectionButton());
+            sectionTitleEl.append(jsxToString(<FoldCategorySectionButton />));
             tagsEl = $("section > div > div.box");
         }
         if (!tagsEl) {
