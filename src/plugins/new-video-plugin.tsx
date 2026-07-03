@@ -32,9 +32,13 @@
  * jQuery .each / .on 回调按本仓库既有约定改写为箭头形式（(_index, element) /
  * (event) => $(event.currentTarget)），规避 noImplicitThis；
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string/:number 等标注意图。
- * 内联 HTML（卡片/分页/弹窗标题模板）已提取为组件（ActressCard / ActressPagination /
- * NewVideoDialogTitle），layer 弹窗 content 仍由既有组件返回；仅替换其中 ${单字母} 插值为语义化命名。
+ * 内联 HTML（卡片/分页/弹窗标题/弹窗 content 模板）已提取为组件（NewVideoDialog /
+ * EditActressDialog / CdnSelectDialog / AvatarSelectDialog / ActressCard /
+ * ActressPagination / NewVideoDialogTitle），已转 TSX 原生 React 组件，调用点改
+ * jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。textareaStyle/
+ * btnStyle 由原 string 改为 CSSProperties 对象（React 19 style 不再接受 string）。
  */
+import type { CSSProperties } from "react";
 import { UNCENSORED, CENSORED } from "../constants/site";
 import {
     GFRIENDS_SOURCES,
@@ -46,6 +50,7 @@ import {
     getCurrentCdnSource,
     loadGfriends,
 } from "../core/gfriends";
+import { jsxToString } from "../core/jsx-to-string";
 import { BasePlugin } from "./base-plugin";
 import newVideoCssRaw from "../styles/new-video-plugin.css?raw";
 import avatarSelectDialogCssRaw from "../styles/avatar-select-dialog.css?raw";
@@ -137,12 +142,12 @@ export class NewVideoPlugin extends BasePlugin {
      *（success 回调内 loadData/bindClick 异常由调用方兜底）。
      */
     async openDialog(): Promise<void> {
-        const dialogContent: string = NewVideoDialog({
-            refreshSvg: this.refreshSvg,
-        });
+        const dialogContent: string = jsxToString(
+            <NewVideoDialog refreshSvg={this.refreshSvg} />,
+        );
         layer.open({
             type: 1,
-            title: NewVideoDialogTitle(),
+            title: jsxToString(<NewVideoDialogTitle />),
             content: dialogContent,
             scrollbar: false,
             area: utils.getResponsiveArea(["80%", "90%"]),
@@ -249,31 +254,37 @@ export class NewVideoPlugin extends BasePlugin {
                     typeLabel = "有码";
                     typeColor = "#FF9800";
                 }
-                let btnStyle: string = "";
+                let btnStyle: CSSProperties = {};
                 if (isStale) {
-                    btnStyle =
-                        "background: linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%);box-shadow: none";
+                    btnStyle = {
+                        background:
+                            "linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%)",
+                        boxShadow: "none",
+                    };
                 }
-                return ActressCard({
-                    starId: actress.starId,
-                    avatar:
-                        actress.avatar ||
-                        "https://c0.jdbstatic.com/images/actor_unknow.jpg",
-                    name: actress.name,
-                    allNameText,
-                    actressUrl,
-                    lastCheckTime: actress.lastCheckTime || "",
-                    lastPublishTime: actress.lastPublishTime || "",
-                    isStale,
-                    ruleTimeYears: ruleTimeHours / 24 / 365,
-                    remark: actress.remark || "",
-                    editSvg: this.editSvg,
-                    deleteSvg: this.deleteSvg,
-                    btnStyle,
-                    typeLabel,
-                    typeColor,
-                    newVideoCount: actress.newVideoList?.length || 0,
-                });
+                return jsxToString(
+                    <ActressCard
+                        starId={actress.starId}
+                        avatar={
+                            actress.avatar ||
+                            "https://c0.jdbstatic.com/images/actor_unknow.jpg"
+                        }
+                        name={actress.name}
+                        allNameText={allNameText}
+                        actressUrl={actressUrl}
+                        lastCheckTime={actress.lastCheckTime || ""}
+                        lastPublishTime={actress.lastPublishTime || ""}
+                        isStale={isStale}
+                        ruleTimeYears={ruleTimeHours / 24 / 365}
+                        remark={actress.remark || ""}
+                        editSvg={this.editSvg}
+                        deleteSvg={this.deleteSvg}
+                        btnStyle={btnStyle}
+                        typeLabel={typeLabel}
+                        typeColor={typeColor}
+                        newVideoCount={actress.newVideoList?.length || 0}
+                    />,
+                );
             })
             .join("");
         $container.html(cardsHtml);
@@ -347,18 +358,26 @@ export class NewVideoPlugin extends BasePlugin {
             ? actress.newVideoList.join("，")
             : "";
         const starId: string = actress.starId;
-        const textareaStyle: string =
-            "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-height: 60px; overflow-y: hidden;";
+        const textareaStyle: CSSProperties = {
+            width: "100%",
+            padding: "8px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            minHeight: "60px",
+            overflowY: "hidden",
+        };
         const actressType: string = actress.actressType || "";
-        const dialogContent: string = EditActressDialog({
-            avatar,
-            name,
-            textareaStyle,
-            allNameText,
-            actressType,
-            newVideoText,
-            remark,
-        });
+        const dialogContent: string = jsxToString(
+            <EditActressDialog
+                avatar={avatar}
+                name={name}
+                textareaStyle={textareaStyle}
+                allNameText={allNameText}
+                actressType={actressType}
+                newVideoText={newVideoText}
+                remark={remark}
+            />,
+        );
         layer.open({
             type: 1,
             title: `编辑女优: ${name} (${starId})`,
@@ -392,10 +411,12 @@ export class NewVideoPlugin extends BasePlugin {
                 });
                 $("#select-cdn-btn").on("click", async () => {
                     const currentIndex: number = getCurrentCdnSource().index;
-                    const cdnDialogContent: string = CdnSelectDialog({
-                        sources: GFRIENDS_SOURCES,
-                        currentIndex,
-                    });
+                    const cdnDialogContent: string = jsxToString(
+                        <CdnSelectDialog
+                            sources={GFRIENDS_SOURCES}
+                            currentIndex={currentIndex}
+                        />,
+                    );
                     layer.open({
                         type: 1,
                         title: "选择 CDN 源",
@@ -492,7 +513,15 @@ export class NewVideoPlugin extends BasePlugin {
     renderPagination(totalCount: number, totalPages: number): void {
         const page: number = this.currentPage;
         const $pagination: any = $("#actress-pagination");
-        $pagination.html(ActressPagination({ totalCount, totalPages, page }));
+        $pagination.html(
+            jsxToString(
+                <ActressPagination
+                    totalCount={totalCount}
+                    totalPages={totalPages}
+                    page={page}
+                />,
+            ),
+        );
         $(".pagination-btn")
             .off("click")
             .on("click", (event: any) => {
@@ -562,9 +591,7 @@ export class NewVideoPlugin extends BasePlugin {
             "<style>" +
             avatarSelectDialogCssRaw +
             "</style>" +
-            AvatarSelectDialog({
-                avatarUrls,
-            });
+            jsxToString(<AvatarSelectDialog avatarUrls={avatarUrls} />);
         let errorCount: number = 0;
         layer.open({
             type: 1,

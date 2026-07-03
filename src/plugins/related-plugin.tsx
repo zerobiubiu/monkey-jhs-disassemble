@@ -24,10 +24,15 @@
  *   /lists/{relatedId} 名称链接（color:#2e8abb）、视频个数、收藏次数/被查看次数。
  * - API 调用 K(movieId, page, 20)（K 即 fetchRelatedCollections），返回 RelatedCollection[]
  *   （relatedId/name/movieCount/collectionCount/viewCount/createTime）。
+ *
+ * 组件（RelatedContainers/RelatedEmpty/RelatedEnd/RelatedError/RelatedHeader/
+ * RelatedItem/RelatedLoadMore/RelatedLoading）已转 TSX 原生 React 组件，
+ * 调用点改 jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  */
 import { BasePlugin } from "./base-plugin";
 import { fetchRelatedCollections as K } from "../constants/api";
 import { YES, NO } from "../constants/status";
+import { jsxToString } from "../core/jsx-to-string";
 import { RelatedContainers } from "../components/related-containers";
 import { RelatedEmpty } from "../components/related-empty";
 import { RelatedEnd } from "../components/related-end";
@@ -62,10 +67,12 @@ export class RelatedPlugin extends BasePlugin {
         );
         const target = container || $("#magnets-content");
         target.append(
-            RelatedHeader({
-                foldText: isExpanded === YES ? "折叠" : "展开",
-                iconText: isExpanded === YES ? "▲" : "▼",
-            }),
+            jsxToString(
+                <RelatedHeader
+                    foldText={isExpanded === YES ? "折叠" : "展开"}
+                    iconText={isExpanded === YES ? "▲" : "▼"}
+                />,
+            ),
         );
         $("#relatedFold").on("click", (event: any) => {
             event.preventDefault();
@@ -89,7 +96,7 @@ export class RelatedPlugin extends BasePlugin {
                 storageManager.saveSettingItem("enableLoadRelated", NO);
             }
         });
-        target.append(RelatedContainers());
+        target.append(jsxToString(<RelatedContainers />));
         if (isExpanded === YES) {
             await this.fetchAndDisplayRelateds(movieId);
         }
@@ -104,7 +111,7 @@ export class RelatedPlugin extends BasePlugin {
     async fetchAndDisplayRelateds(movieId: any): Promise<void> {
         const container = $("#relatedContainer");
         const footer = $("#relatedFooter");
-        container.append(RelatedLoading());
+        container.append(jsxToString(<RelatedLoading />));
         const limit = 20;
         let list: any = null;
         try {
@@ -119,7 +126,7 @@ export class RelatedPlugin extends BasePlugin {
             $("#relatedLoading").remove();
         }
         if (!list) {
-            container.append(RelatedError());
+            container.append(jsxToString(<RelatedError />));
             $("#retryFetchRelateds").on("click", async () => {
                 $("#retryFetchRelateds").parent().remove();
                 await this.fetchAndDisplayRelateds(movieId);
@@ -127,12 +134,12 @@ export class RelatedPlugin extends BasePlugin {
             return;
         }
         if (list.length === 0) {
-            container.append(RelatedEmpty());
+            container.append(jsxToString(<RelatedEmpty />));
             return;
         }
         this.displayRelateds(list, container);
         if (list.length === limit) {
-            footer.html(RelatedLoadMore());
+            footer.html(jsxToString(<RelatedLoadMore />));
             let page = 1;
             const loadMoreBtn = $("#loadMoreRelateds");
             loadMoreBtn.on("click", async () => {
@@ -161,7 +168,7 @@ export class RelatedPlugin extends BasePlugin {
                 }
             });
         } else {
-            footer.html(RelatedEnd());
+            footer.html(jsxToString(<RelatedEnd />));
         }
     }
 
@@ -174,15 +181,17 @@ export class RelatedPlugin extends BasePlugin {
     displayRelateds(list: any, container: any): void {
         if (list.length) {
             list.forEach((item: any) => {
-                const html = RelatedItem({
-                    index: this.floorIndex++,
-                    relatedId: item.relatedId,
-                    name: item.name,
-                    movieCount: item.movieCount,
-                    collectionCount: item.collectionCount,
-                    viewCount: item.viewCount,
-                    createTime: item.createTime,
-                });
+                const html = jsxToString(
+                    <RelatedItem
+                        index={this.floorIndex++}
+                        relatedId={item.relatedId}
+                        name={item.name}
+                        movieCount={item.movieCount}
+                        collectionCount={item.collectionCount}
+                        viewCount={item.viewCount}
+                        createTime={item.createTime}
+                    />,
+                );
                 container.append(html);
             });
         }
