@@ -1,0 +1,18 @@
+/**
+ * 图片查看器样式（原 main.tsx 中 insertAdjacentHTML 注入的 viewer-canvas <style>）
+ *
+ * 由 main.tsx 通过 `import viewerCssRaw from './viewer.css?raw'` 读取为字符串，
+ * 再以 H() 注入 document.head（H 自动创建 <style> 元素），与原始脚本执行顺序、副作用一致。
+ */
+
+.viewer-canvas {
+    overflow: auto !important;
+}
+
+.viewer-close {
+    background: rgba(255, 0, 0, 0.6) !important;
+}
+
+.viewer-close:hover {
+    background: rgba(255, 0, 0, 0.8) !important;
+}
