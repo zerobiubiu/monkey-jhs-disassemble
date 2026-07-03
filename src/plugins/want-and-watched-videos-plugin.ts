@@ -14,13 +14,16 @@
  *   nextPageHref / rawItem / $item / href / carNum / metaText / responseHtml /
  *   domParser / $parsedDom / request。
  * 原构造函数 i(this,"type",null)（Object.defineProperty，[[Define]] 语义）改为 class 字段
- * （useDefineForClassFields:true，语义一致）；内联 CSS/HTML 原样保留。
+ * （useDefineForClassFields:true，语义一致）；内联 HTML 已提取为组件
+ * （WantWatchedImportButton / WantWatchedHintSpan）。
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 标注意图，不做窄化。
  * importWantWatchVideos 的首参（原 jQuery 点击事件 e）在内部被 let e = loading() 遮蔽、
  * 从未使用，按 TS 惯例加下划线前缀 _clickEvent 以豁免 noUnusedParameters，签名保持不变。
  */
 import { FAVORITE_ACTION, HAS_WATCH_ACTION } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import { WantWatchedHintSpan } from "../components/want-watched-hint-span";
+import { WantWatchedImportButton } from "../components/want-watched-import-button";
 
 export class WantAndWatchedVideosPlugin extends BasePlugin {
     /** 当前导入动作类型（"favorite" 或 "hasWatch"），由按钮点击时设定。对应原 L10588。 */
@@ -38,12 +41,8 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if (window.location.href.includes("/want_watch_videos")) {
-            $("h3").append(
-                '<a class="a-primary" id="wantWatchBtn" style="padding:10px;">导入至 JHS</a>',
-            );
-            $("h3").append(
-                '<span style="margin-left:8px;color:#888;font-size:12px;">（JHS 现已在详情页自动同步"想看"，本页按钮仅用于初始补录）</span>',
-            );
+            $("h3").append(WantWatchedImportButton({ variant: "want" }));
+            $("h3").append(WantWatchedHintSpan({ variant: "want" }));
             $("#wantWatchBtn").on("click", (clickEvent: any) => {
                 this.type = FAVORITE_ACTION;
                 this.importWantWatchVideos(
@@ -53,12 +52,8 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
             });
         }
         if (window.location.href.includes("/watched_videos")) {
-            $("h3").append(
-                '<a class="a-success" id="wantWatchBtn" style="padding:10px;">导入至 JHS</a>',
-            );
-            $("h3").append(
-                '<span style="margin-left:8px;color:#888;font-size:12px;">（JHS 现已在详情页自动同步"看過"，本页按钮仅用于初始补录）</span>',
-            );
+            $("h3").append(WantWatchedImportButton({ variant: "watched" }));
+            $("h3").append(WantWatchedHintSpan({ variant: "watched" }));
             $("#wantWatchBtn").on("click", (clickEvent: any) => {
                 this.type = HAS_WATCH_ACTION;
                 this.importWantWatchVideos(
@@ -114,7 +109,10 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         for (const rawItem of itemElements) {
             const $item = $(rawItem);
             const href: string = $item.find("a").attr("href");
-            const carNum: string = $item.find(".video-title strong").text().trim();
+            const carNum: string = $item
+                .find(".video-title strong")
+                .text()
+                .trim();
             const metaText: string = $item.find(".meta").text().trim();
             if (href && carNum) {
                 try {

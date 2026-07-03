@@ -22,12 +22,16 @@
  * 本文件以 import 方式复用；
  * $ / utils / storageManager / clog / gmHttp 已由 ../types/globals.d.ts 声明为 any；
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
- * 内联 CSS/HTML 原样保留。
+ * 内联 HTML 已提取为组件（OtherSiteBox / OtherSiteBtn / OtherSiteCheckbox / SiteResultTag）。
  */
 import { isJavdbSite } from "../constants/site";
 import { YES } from "../constants/status";
 import { AsyncTaskQueue } from "../core/async-task-queue";
 import { BasePlugin } from "./base-plugin";
+import { OtherSiteBox } from "../components/other-site-box";
+import { OtherSiteBtn } from "../components/other-site-btn";
+import { OtherSiteCheckbox } from "../components/other-site-checkbox";
+import { SiteResultTag } from "../components/site-result-tag";
 import otherSiteCssRaw from "../styles/other-site-plugin.css?raw";
 
 /** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
@@ -129,7 +133,7 @@ export class OtherSitePlugin extends BasePlugin {
         }
         carNum ||= this.getPageInfo().carNum ?? "";
         const enabledSiteIds = this.getEnabledSites();
-        const boxHtml = `\n            <div id="otherSiteBox" class="panel-block" style="${isJavdbSite ? "margin-top:8px;font-size:13px" : "margin-top:10px;font-size:13px"}; user-select: none; ">\n                <div style="display: flex;gap: 5px;flex-wrap: wrap">\n                    ${this.siteConfigs
+        const siteButtonsHtml = this.siteConfigs
             .map((siteConfig) => {
                 siteConfig.sourceCarNum = sourceCarNum;
                 if (
@@ -138,9 +142,16 @@ export class OtherSitePlugin extends BasePlugin {
                 ) {
                     return "";
                 }
-                return `<a target="_blank" class="site-btn" style="${enabledSiteIds.includes(siteConfig.id) ? "" : "display:none"}" id="${siteConfig.id}"><span>${siteConfig.id.replace("Btn", "")}</span></a>`;
+                return OtherSiteBtn({
+                    id: siteConfig.id,
+                    enabled: enabledSiteIds.includes(siteConfig.id),
+                });
             })
-            .join("")}\n                </div>\n            </div>\n        `;
+            .join("");
+        const boxHtml = OtherSiteBox({
+            siteButtonsHtml,
+            isJavdbSite,
+        });
         $(".movie-panel-info").append(boxHtml);
         $(".container .info").append(boxHtml);
         await Promise.all(
@@ -183,9 +194,7 @@ export class OtherSitePlugin extends BasePlugin {
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                 } else if (dmmCachedResult.type === "multiple") {
                     buttonEl.attr("href", dmmCachedResult.url);
-                    buttonEl.append(
-                        '<span class="site-tag" style="top:-15px">多结果</span>',
-                    );
+                    buttonEl.append(SiteResultTag());
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                 }
             }
@@ -210,9 +219,7 @@ export class OtherSitePlugin extends BasePlugin {
                         buttonEl.css("backgroundColor", this.okBackgroundColor);
                     } else if (cachedResult.type === "multiple") {
                         buttonEl.attr("href", cachedResult.url);
-                        buttonEl.append(
-                            '<span class="site-tag" style="top:-15px">多结果</span>',
-                        );
+                        buttonEl.append(SiteResultTag());
                         buttonEl.css("backgroundColor", this.okBackgroundColor);
                     }
                     return;
@@ -267,8 +274,7 @@ export class OtherSitePlugin extends BasePlugin {
                     };
                 } else if (detailHrefs.length > 1) {
                     buttonEl.attr("href", searchUrl);
-                    tagHtml +=
-                        '<span class="site-tag" style="top:-15px">多结果</span>';
+                    tagHtml += SiteResultTag();
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                     resultData = {
                         type: "multiple",
@@ -399,7 +405,11 @@ export class OtherSitePlugin extends BasePlugin {
             checkboxContainer.innerHTML = this.siteConfigs
                 .map((siteConfig) => {
                     const isEnabled = enabledSiteIds.includes(siteConfig.id);
-                    return `\n                <div style="margin-right: 15px; display: flex; align-items: ${isJavdbSite ? "center" : "flex-start"};">\n                    <input type="checkbox" id="checkbox-${siteConfig.id}" data-site-id="${siteConfig.id}" ${isEnabled ? "checked" : ""} style="margin-right: 8px; cursor: pointer;">\n                    <label for="checkbox-${siteConfig.id}" style="color: #333; font-weight: 500; cursor: pointer;">${siteConfig.id.replace("Btn", "")}</label>\n                </div>\n            `;
+                    return OtherSiteCheckbox({
+                        id: siteConfig.id,
+                        isEnabled,
+                        isJavdbSite,
+                    });
                 })
                 .join("");
         }

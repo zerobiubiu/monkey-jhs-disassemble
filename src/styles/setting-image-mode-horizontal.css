@@ -1,0 +1,15 @@
+.cover {
+    min-height:auto !important;
+    padding-top: 67% !important;
+}
+.cover img {
+    object-fit: contain !important;
+    object-position: 50% 50% !important
+}
+
+/* bus的 */
+ .masonry .movie-box img {
+    min-height:auto !important;
+    object-fit: contain !important;
+    object-position: top;
+}

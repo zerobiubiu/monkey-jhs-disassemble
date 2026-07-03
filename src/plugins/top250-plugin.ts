@@ -31,9 +31,19 @@
  * handleTop 内 page（原 a = e.get("page") || 1，string|number）统一以 parseInt
  * 归一为 number（与 renderPagination 的 page 解析一致），便于 fetchTopMovies 的
  * number 入参；对 page 缺省等边界与原行为等价（均落到第 1 页）。
- * 内联 CSS/HTML 字符串原样保留。
+ * 内联 HTML 已提取为组件（RankingContainers / Top250ToolBar / Top250YearButton /
+ * Top250Pagination / Top250NavLink / Top250ErrorMessage）。
  */
 import { LoginDialog } from "../components/login-dialog";
+import { RankingContainers } from "../components/ranking-containers";
+import {
+    Top250ErrorMessage,
+    Top250LoadError,
+} from "../components/top250-error-message";
+import { Top250NavLink } from "../components/top250-nav-link";
+import { Top250Pagination } from "../components/top250-pagination";
+import { Top250ToolBar } from "../components/top250-tool-bar";
+import { Top250YearButton } from "../components/top250-year-button";
 import { API_BASE, reBuildSignature, fetchTopMovies } from "../constants/api";
 import { BasePlugin } from "./base-plugin";
 
@@ -60,9 +70,7 @@ export class Top250Plugin extends BasePlugin {
      * fire-and-forget）；无参数，返回 Promise<void>，不抛出异常。
      */
     async handle(): Promise<void> {
-        $('.main-tabs ul li:contains("猜你喜歡")').html(
-            '<a href="/rankings/top"><span>Top250</span></a>',
-        );
+        $('.main-tabs ul li:contains("猜你喜歡")').html(Top250NavLink());
         $('a[href*="rankings/top"]').on("click", (event: any) => {
             event.preventDefault();
             event.stopPropagation();
@@ -87,12 +95,7 @@ export class Top250Plugin extends BasePlugin {
         $(".empty-message").remove();
         $(".section .container .box").remove();
         $("#sort-toggle-btn").remove();
-        this.contentBox.append(
-            '<div class="tool-box" style="margin-top: 10px"></div>',
-        );
-        this.contentBox.append(
-            '<div class="movie-list h cols-4 vcols-8" style="margin-top: 10px"></div>',
-        );
+        this.contentBox.append(RankingContainers());
         this.renderPagination();
     }
 
@@ -104,16 +107,7 @@ export class Top250Plugin extends BasePlugin {
     renderPagination(): void {
         const params = new URLSearchParams(window.location.search);
         const page = parseInt(params.get("page") ?? "") || 1;
-        this.contentBox.append(
-            ((page: number) => {
-                const hasMore = page >= 5;
-                let listHtml = "";
-                for (let i = 1; i <= 5; i++) {
-                    listHtml += `<li><a class="pagination-link ${page === i ? "is-current" : ""}" data-page="${i}">${i}</a></li>`;
-                }
-                return `\n                <nav class="pagination">\n                    <a class="pagination-previous ${page <= 1 ? "do-hide" : ""}" data-page="${page - 1}">上一頁</a>\n                    <a class="pagination-next ${hasMore ? "do-hide" : ""}" data-page="${page + 1}">下一頁</a>\n                    \n                    <ul class="pagination-list">\n                        ${listHtml}\n                    </ul>\n                </nav>\n            `;
-            })(page),
-        );
+        this.contentBox.append(Top250Pagination({ page }));
         this.contentBox.on(
             "click",
             ".pagination-link, .pagination-previous, .pagination-next",
@@ -188,7 +182,7 @@ export class Top250Plugin extends BasePlugin {
                     success = true;
                 } else {
                     console.error(response);
-                    movieListEl.html(`<h3>${message}</h3>`);
+                    movieListEl.html(Top250ErrorMessage(message));
                     show.error(message);
                     if (action === "JWTVerificationError") {
                         await localStorage.removeItem(APP_AUTH_KEY);
@@ -210,7 +204,7 @@ export class Top250Plugin extends BasePlugin {
                     );
                 } else {
                     clog.error("所有重试尝试均失败，无法获取Top数据。", error);
-                    movieListEl.html("<h3>无法加载数据，请稍后再试。</h3>");
+                    movieListEl.html(Top250LoadError());
                 }
             } finally {
                 if (success || attempt === 3) {
@@ -240,10 +234,20 @@ export class Top250Plugin extends BasePlugin {
         });
         let yearButtonsHtml = "";
         for (let year = new Date().getFullYear(); year >= 2008; year--) {
-            yearButtonsHtml += `\n                <a style="padding:18px 18px !important;" \n                   class="button is-small ${typeValue === year.toString() ? "is-info" : ""}" \n                   href="/advanced_search?handleTop=1&handleType=year&type_value=${year}&has_cnsub=${this.hasCnsub}">\n                  ${year}\n                </a>\n            `;
+            yearButtonsHtml += Top250YearButton({
+                year,
+                typeValue,
+                hasCnsub: this.hasCnsub,
+            });
         }
-        const html = `\n            <div class="button-group">\n                <div class="buttons has-addons" id="conditionBox" style="margin-bottom: 0!important;">\n                    <a style="padding:18px 18px !important;" class="button is-small ${handleType === "all" ? "is-info" : ""}" href="/advanced_search?handleTop=1&handleType=all&type_value=&has_cnsub=${this.hasCnsub}">全部</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${typeValue === "0" ? "is-info" : ""}" href="/advanced_search?handleTop=1&handleType=video_type&type_value=0&has_cnsub=${this.hasCnsub}">有码</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${typeValue === "1" ? "is-info" : ""}" href="/advanced_search?handleTop=1&handleType=video_type&type_value=1&has_cnsub=${this.hasCnsub}">无码</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${typeValue === "2" ? "is-info" : ""}" href="/advanced_search?handleTop=1&handleType=video_type&type_value=2&has_cnsub=${this.hasCnsub}">欧美</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${typeValue === "3" ? "is-info" : ""}" href="/advanced_search?handleTop=1&handleType=video_type&type_value=3&has_cnsub=${this.hasCnsub}">Fc2</a>\n                    \n                    <a style="padding:18px 18px !important;margin-left: 50px" class="button is-small ${this.hasCnsub === "1" ? "is-info" : ""}" data-cnsub-value="1">含中字磁鏈</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${this.hasCnsub === "0" ? "is-info" : ""}" data-cnsub-value="0">无字幕</a>\n                    <a style="padding:18px 18px !important;" class="button is-small" data-cnsub-value="">重置</a>\n                </div>\n                \n                <div class="buttons has-addons" id="conditionBox">\n                    ${yearButtonsHtml}\n                </div>\n            </div>\n        `;
-        this.contentBox.append(html);
+        this.contentBox.append(
+            Top250ToolBar({
+                handleType,
+                typeValue,
+                hasCnsub: this.hasCnsub,
+                yearButtonsHtml,
+            }),
+        );
         $("a[data-cnsub-value]").on("click", (event: any) => {
             const cnsubValue = $(event.currentTarget).data("cnsub-value");
             this.hasCnsub = cnsubValue.toString();

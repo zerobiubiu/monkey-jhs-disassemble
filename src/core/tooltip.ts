@@ -11,6 +11,8 @@
  * 全局 $/layer/utils 由 src/types/globals.d.ts 声明为 any。
  */
 
+import tooltipCssRaw from "../styles/tooltip.css?raw";
+
 /** 触发 tooltip 的元素，运行时挂载 tooltipElement 与 hoverTimeout。 */
 interface TooltipableElement extends HTMLElement {
     /** 当前显示的 tooltip 元素（运行时挂载）。 */
@@ -25,9 +27,6 @@ type TooltipDirection = "top" | "bottom" | "left" | "right";
 /** 匹配所有支持 data-tip* 属性的元素的选择器。 */
 const TOOLTIP_SELECTOR =
     "[data-tip-top], [data-tip-bottom], [data-tip-left], [data-tip-right], [data-tip]";
-
-/** tooltip 样式（原 IIFE 内联 <style>，原样保留）。 */
-const TOOLTIP_CSS = "\n        <style>\n            .js-tooltip {\n                /* 通用样式 */\n                position: fixed;\n                padding: 8px 12px; \n                border-radius: 6px; \n                white-space: normal;\n                max-width: 600px; \n                \n                pointer-events: none;\n                font-size: 14px;\n                line-height: 1.5;\n                z-index: 9999999999;\n                \n                background: #F0FDF4; \n                color: #166534;      \n                border: none; \n                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); \n                \n                display: none; \n            }\n            .js-tooltip.is-active {\n                display: block !important;\n            }\n\n        </style>\n    ";
 
 /**
  * 创建 tooltip DOM 并挂到 body（原 IIFE 内的匿名工厂）。
@@ -146,7 +145,10 @@ export function positionTooltip(
  * 幂等性未保证：重复调用会重复注入样式与事件监听。legacy 启动序列调用一次即可。
  */
 export function setupTooltip(): void {
-    document.head.insertAdjacentHTML("beforeend", TOOLTIP_CSS);
+    document.head.insertAdjacentHTML(
+        "beforeend",
+        `<style>${tooltipCssRaw}</style>`,
+    );
     document.addEventListener("mouseover", (event) => {
         const target = (event.target as HTMLElement).closest(
             TOOLTIP_SELECTOR,

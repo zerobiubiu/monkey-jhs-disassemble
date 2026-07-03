@@ -16,10 +16,15 @@
  * $ / loading / clog 已由 ../types/globals.d.ts 声明为 any；
  * jQuery 回调中 this 按 fold-category-plugin 既有约定标注 (this: any)，规避 noImplicitThis；
  * handlePlayback 内重试块的 loadingOverlay 与 movies（原均为 n）按作用域拆分命名，
- * 保留 finally 关闭 loading 覆盖层、try 内拉取数据的原始控制流；内联 CSS/HTML 原样保留。
+ * 保留 finally 关闭 loading 覆盖层、try 内拉取数据的原始控制流；内联 CSS/HTML 已提取为
+ * 组件（HitShowToolBar / HitShowMovieItem / HitShowScore / RankingContainers）。
  */
 import { fetchPlaybackRanking, fetchMovieDetail } from "../constants/api";
 import { BasePlugin } from "./base-plugin";
+import { HitShowMovieItem } from "../components/hit-show-movie-item";
+import { HitShowScore } from "../components/hit-show-score";
+import { HitShowToolBar } from "../components/hit-show-tool-bar";
+import { RankingContainers } from "../components/ranking-containers";
 
 export class HitShowPlugin extends BasePlugin {
     /** 内容容器 jQuery 对象，热播榜单与工具栏挂载点。对应原 L4331。 */
@@ -58,12 +63,7 @@ export class HitShowPlugin extends BasePlugin {
         $(".empty-message").remove();
         $(".section .container .box").remove();
         $("#sort-toggle-btn").remove();
-        this.contentBox.append(
-            '<div class="tool-box" style="margin-top: 10px"></div>',
-        );
-        this.contentBox.append(
-            '<div class="movie-list h cols-4 vcols-8" style="margin-top: 10px"></div>',
-        );
+        this.contentBox.append(RankingContainers());
     }
 
     /**
@@ -76,7 +76,9 @@ export class HitShowPlugin extends BasePlugin {
         if (!window.location.href.includes("handlePlayback=1")) {
             return;
         }
-        const period = new URLSearchParams(window.location.search).get("period");
+        const period = new URLSearchParams(window.location.search).get(
+            "period",
+        );
         this.toolBar(period);
         this.hookPage();
         const movieListEl = $(".movie-list");
@@ -92,7 +94,10 @@ export class HitShowPlugin extends BasePlugin {
                 success = true;
             } catch (error) {
                 if (attempt < 3) {
-                    clog.error(`获取热播数据失败 (第 ${attempt} 次重试)`, error);
+                    clog.error(
+                        `获取热播数据失败 (第 ${attempt} 次重试)`,
+                        error,
+                    );
                     await new Promise<void>((resolve) =>
                         setTimeout(resolve, 1000),
                     );
@@ -113,26 +118,7 @@ export class HitShowPlugin extends BasePlugin {
      * @param period 时间段（"daily"/"weekly"/"monthly"），URL 缺省时为 null。
      */
     toolBar(period: string | null): void {
-        const html = `\n            <div class="button-group" style="margin-top:18px">\n                <div class="buttons has-addons" id="conditionBox">\n                    <a style="padding:18px 18px !important;" class="button is-small ${period === "daily" ? "is-info" : ""}" href="/advanced_search?handlePlayback=1&period=daily">日榜</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${period === "weekly" ? "is-info" : ""}" href="/advanced_search?handlePlayback=1&period=weekly">周榜</a>\n                    <a style="padding:18px 18px !important;" class="button is-small ${period === "monthly" ? "is-info" : ""}" href="/advanced_search?handlePlayback=1&period=monthly">月榜</a>\n                </div>\n            </div>\n        `;
-        this.contentBox.append(html);
-    }
-
-    /**
-     * 由分数生成 5 颗星的 HTML（满星 icon-star，空星 icon-star gray）。
-     * 对应原 L4395-4405。
-     * @param score 评分（取整后为满星数，0-5）。
-     * @returns 星级 HTML 字符串。
-     */
-    getStarRating(score: number): string {
-        let html = "";
-        const fullStars = Math.floor(score);
-        for (let i = 0; i < fullStars; i++) {
-            html += '<i class="icon-star"></i>';
-        }
-        for (let i = 0; i < 5 - fullStars; i++) {
-            html += '<i class="icon-star gray"></i>';
-        }
-        return html;
+        this.contentBox.append(HitShowToolBar({ period }));
     }
 
     /**
@@ -141,6 +127,9 @@ export class HitShowPlugin extends BasePlugin {
      * 对应原 L4406-4449。fire-and-forget（IIFE），无参数，无返回值；
      * 单条解析失败仅 clog.error 并继续下一条，不向上抛出；
      * 遇 #score_<id> 缺失时 return 终止整个 IIFE（保留原控制流）。
+     *
+     * 评分星级 HTML 由 HitShowScore 组件产出（含原 getStarRating 的满星/空星逻辑，
+     * 已合并至组件内部，本类不再保留 getStarRating 方法）。
      */
     loadScore(movies: any[]): void {
         if (movies.length === 0) {
@@ -175,7 +164,7 @@ export class HitShowPlugin extends BasePlugin {
                     const detail = await fetchMovieDetail(movieId);
                     const score = detail.score;
                     const watchedCount = detail.watchedCount;
-                    const scoreHtml = `\n                        <span class="value">\n                            <span class="score-stars">${this.getStarRating(score)}</span> \n                            &nbsp; ${score}分，由${watchedCount}人評價\n                        </span>\n                    `;
+                    const scoreHtml = HitShowScore({ score, watchedCount });
                     this.appendScoreHtml(movieId, scoreHtml);
                     cache[movieId] = scoreHtml;
                     localStorage.setItem(storageKey, JSON.stringify(cache));
@@ -217,7 +206,7 @@ export class HitShowPlugin extends BasePlugin {
     markDataListHtml(movies: any[]): string {
         let html = "";
         movies.forEach((movie: any) => {
-            html += `\n                <div class="item" id="${movie.id}">\n                    <a href="/v/${movie.id}" class="box" title="${movie.origin_title}">\n                        <div class="cover ">\n                            <img loading="lazy" src="${movie.cover_url.replace("https://tp-iu.cmastd.com/rhe951l4q", "https://c0.jdbstatic.com")}" alt="">\n                        </div>\n                        <div class="video-title"><strong>${movie.number}</strong> ${movie.origin_title}</div>\n                        <div class="score" id="score_${movie.id}">\n                        </div>\n                        <div class="meta">\n                            ${movie.release_date}\n                        </div>\n                        <div class="tags has-addons">\n                           ${movie.has_cnsub ? '<span class="tag is-warning">含中字磁鏈</span>' : movie.magnets_count > 0 ? '<span class="tag is-success">含磁鏈</span>' : '<span class="tag is-info">无磁鏈</span>'}\n                           ${movie.new_magnets ? '<span class="tag is-info">今日新種</span>' : ""}\n                        </div>\n                    </a>\n                </div>\n            `;
+            html += HitShowMovieItem({ movie });
         });
         return html;
     }

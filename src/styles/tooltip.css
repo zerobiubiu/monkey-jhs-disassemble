@@ -1,0 +1,23 @@
+.js-tooltip {
+    /* 通用样式 */
+    position: fixed;
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 600px;
+
+    pointer-events: none;
+    font-size: 14px;
+    line-height: 1.5;
+    z-index: 9999999999;
+
+    background: #F0FDF4;
+    color: #166534;
+    border: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+
+    display: none;
+}
+.js-tooltip.is-active {
+    display: block !important;
+}

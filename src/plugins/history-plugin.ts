@@ -13,8 +13,9 @@
  * - 单字母局部变量（原 e/t/n/a/i/s/r/o/c/l/m 等）已语义化命名为 page/size/sort/carList 等。
  * - 站点布尔 r/l 改由 ../constants/site 引入；状态动作 d/h/p 与展示文本/颜色
  *   m/u/f/v/b/w/k/S 改由 ../constants/status 引入。
- * - 内联 HTML/CSS（含 Tabulator 列配置、layer 弹窗 content、initCss 返回的 <style>）
- *   原样保留（含 \n 转义与缩进、闭合标签缺漏），仅替换其中的模板插值变量名为语义常量。
+ * - 内联 HTML/CSS（layer 弹窗 content、initCss 返回的 <style>）已提取为组件/CSS：
+ *   来源/状态列 formatter → HistorySourceCell / HistoryStatusCell，弹窗 → 既有组件；
+ *   仅替换其中的模板插值变量名为语义常量。
  * - 全局 $/layer/utils/storageManager/show/Tabulator/loading/refresh 已由
  *   src/types/globals.d.ts 声明，按 any 使用；原 window.refresh() 以全局 refresh() 调用。
  * - any 类型 callee（$/layer/Tabulator/utils 等）的回调参数显式标注 : any 以规避 noImplicitAny；
@@ -27,6 +28,8 @@ import { EditRecordDialog } from "../components/edit-record-dialog";
 import { HistoryActionButtons } from "../components/history-action-buttons";
 import { HistoryDialog } from "../components/history-dialog";
 import { HistoryNavButton } from "../components/history-nav-button";
+import { HistorySourceCell } from "../components/history-source-cell";
+import { HistoryStatusCell } from "../components/history-status-cell";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
 import {
     FILTER_ACTION,
@@ -573,13 +576,25 @@ export class HistoryPlugin extends BasePlugin {
                         let url = cell.getData().url;
                         if (url) {
                             if (url.includes("javdb")) {
-                                return '<span style="color:#d34f9e">Javdb</span>';
+                                return HistorySourceCell({
+                                    text: "Javdb",
+                                    color: "#d34f9e",
+                                });
                             } else if (url.includes("javbus")) {
-                                return '<span style="color:#eaa813">JavBus</span>';
+                                return HistorySourceCell({
+                                    text: "JavBus",
+                                    color: "#eaa813",
+                                });
                             } else if (url.includes("123av")) {
-                                return '<span style="color:#eaa813">123Av</span>';
+                                return HistorySourceCell({
+                                    text: "123Av",
+                                    color: "#eaa813",
+                                });
                             } else {
-                                return `<span style="color:#050505">${url}</span>`;
+                                return HistorySourceCell({
+                                    text: url,
+                                    color: "#050505",
+                                });
                             }
                         } else {
                             return "";
@@ -617,7 +632,7 @@ export class HistoryPlugin extends BasePlugin {
                             default:
                                 text = status;
                         }
-                        return `<span style="color:${color}">${text}</span>`;
+                        return HistoryStatusCell({ text, color });
                     },
                 },
                 {

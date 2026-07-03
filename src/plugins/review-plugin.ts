@@ -12,7 +12,9 @@
  * - 单字母局部变量（原 e/t/n/a/i/s/r 等）已语义化命名为 movieId/container/reviews 等。
  * - 站点布尔 r/l、API 基址 U、签名 O、评论请求 R、布尔标识 _/C 改由 ../constants 引入。
  * - window.isDetailPage 为运行时挂载到 window 的全局，以 (window as any).isDetailPage 访问。
- * - 内联 HTML/CSS 原样保留（含 \n 转义与缩进），仅替换其中的模板插值变量名。
+ * - 内联 HTML 已提取为组件（ReviewHeader / ReviewContainers / ReviewLoading /
+ *   ReviewError / ReviewEmpty / ReviewLoadMore / ReviewEnd / ReviewItem / ReviewLinkContent），
+ *   仅替换其中的模板插值变量名。
  * - 控制流（分支、for 循环、IIFE、try/catch/finally、fire-and-forget .then()）与原脚本一致。
  */
 import { BasePlugin } from "./base-plugin";
@@ -23,6 +25,15 @@ import {
     fetchMovieReviews,
 } from "../constants/api";
 import { YES, NO } from "../constants/status";
+import { ReviewContainers } from "../components/review-containers";
+import { ReviewEmpty } from "../components/review-empty";
+import { ReviewEnd } from "../components/review-end";
+import { ReviewError } from "../components/review-error";
+import { ReviewHeader } from "../components/review-header";
+import { ReviewItem } from "../components/review-item";
+import { ReviewLinkContent } from "../components/review-link-content";
+import { ReviewLoadMore } from "../components/review-load-more";
+import { ReviewLoading } from "../components/review-loading";
 
 export class ReviewPlugin extends BasePlugin {
     /** 评论楼层序号（渲染时自增） */
@@ -108,7 +119,10 @@ export class ReviewPlugin extends BasePlugin {
         );
         const target = container || $("#magnets-content");
         target.append(
-            `\n            <div style="display: flex; align-items: center; margin: 16px 0; color: #666; font-size: 14px;">\n                <span style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #999, transparent);"></span>\n                <span style="padding: 0 10px;" data-tip="想要发表评论? 滑上去, 点击上面的按钮-看过">❓ 评论区</span>\n                <a id="reviewsFold" style="margin-left: 8px; color: #1890ff; text-decoration: none; display: flex; align-items: center;">\n                    <span class="toggle-text">${isExpanded === YES ? "折叠" : "展开"}</span>\n                    <span class="toggle-icon" style="margin-left: 4px;">${isExpanded === YES ? "▲" : "▼"}</span>\n                </a>\n                <span style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #999, transparent);"></span>\n            </div>\n        `,
+            ReviewHeader({
+                foldText: isExpanded === YES ? "折叠" : "展开",
+                iconText: isExpanded === YES ? "▲" : "▼",
+            }),
         );
         $("#reviewsFold").on("click", (event: any) => {
             event.preventDefault();
@@ -132,8 +146,7 @@ export class ReviewPlugin extends BasePlugin {
                 storageManager.saveSettingItem("enableLoadReview", NO);
             }
         });
-        target.append('<div id="reviewsContainer"></div>');
-        target.append('<div id="reviewsFooter"></div>');
+        target.append(ReviewContainers());
         if (isExpanded === YES) {
             await this.fetchAndDisplayReviews(movieId);
         }
@@ -148,9 +161,7 @@ export class ReviewPlugin extends BasePlugin {
     async fetchAndDisplayReviews(movieId: any): Promise<void> {
         const container = $("#reviewsContainer");
         const footer = $("#reviewsFooter");
-        container.append(
-            '<div id="reviewsLoading" style="margin-top:15px;background-color:#ffffff;padding:10px;margin-left: -10px;">获取评论中...</div>',
-        );
+        container.append(ReviewLoading());
         const limit: number = await storageManager.getSetting(
             "reviewCount",
             20,
@@ -168,9 +179,7 @@ export class ReviewPlugin extends BasePlugin {
             $("#reviewsLoading").remove();
         }
         if (!reviews) {
-            container.append(
-                '\n                <div style="margin-top:15px;background-color:#ffffff;padding:10px;margin-left: -10px;">\n                    获取评论失败\n                    <a id="retryFetchReviews" href="javascript:;" style="margin-left: 10px; color: #1890ff; text-decoration: none;">重试</a>\n                </div>\n            ',
-            );
+            container.append(ReviewError());
             $("#retryFetchReviews").on("click", async () => {
                 $("#retryFetchReviews").parent().remove();
                 await this.fetchAndDisplayReviews(movieId);
@@ -178,17 +187,14 @@ export class ReviewPlugin extends BasePlugin {
             return;
         }
         if (reviews.length === 0) {
-            container.append(
-                '<div style="margin-top:15px;background-color:#ffffff;padding:10px;margin-left: -10px;">无评论</div>',
-            );
+            container.append(ReviewEmpty());
             return;
         }
-        const filterKeywords = await storageManager.getReviewFilterKeywordList();
+        const filterKeywords =
+            await storageManager.getReviewFilterKeywordList();
         this.displayReviews(reviews, container, filterKeywords);
         if (reviews.length === limit) {
-            footer.html(
-                '\n                <button id="loadMoreReviews" style="width:100%; background-color: #e1f5fe; border:none; padding:10px; margin-top:10px; cursor:pointer; color:#0277bd; font-weight:bold; border-radius:4px;">\n                    加载更多评论\n                </button>\n                <div id="reviewsEnd" style="display:none; text-align:center; padding:10px; color:#666; margin-top:10px;">已加载全部评论</div>\n            ',
-            );
+            footer.html(ReviewLoadMore());
             let page = 1;
             const loadMoreBtn = $("#loadMoreReviews");
             loadMoreBtn.on("click", async () => {
@@ -210,14 +216,14 @@ export class ReviewPlugin extends BasePlugin {
                         loadMoreBtn.remove();
                         $("#reviewsEnd").show();
                     } else {
-                        loadMoreBtn.text("加载更多评论").prop("disabled", false);
+                        loadMoreBtn
+                            .text("加载更多评论")
+                            .prop("disabled", false);
                     }
                 }
             });
         } else {
-            footer.html(
-                '<div style="text-align:center; padding:10px; color:#666; margin-top:10px;">已加载全部评论</div>',
-            );
+            footer.html(ReviewEnd());
         }
     }
 
@@ -235,7 +241,7 @@ export class ReviewPlugin extends BasePlugin {
             reviews.forEach((review: any) => {
                 if (
                     filterKeywords.some((keyword: any) =>
-                        review.content.includes(keyword)
+                        review.content.includes(keyword),
                     )
                 ) {
                     return;
@@ -245,17 +251,16 @@ export class ReviewPlugin extends BasePlugin {
                     .join("");
                 const content = review.content.replace(
                     /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
-                    (match: any) =>
-                        match.startsWith("ed2k://")
-                            ? `\n                            <span style="word-break: break-all;background: #e0f2fe;color: #0369a1;">${match}</span>\n                            <button class="button is-info down-115" data-magnet="${match}" style="font-size: 11px">115离线下载</button>\n                        `
-                            : match.startsWith("magnet:")
-                              ? `\n                            <a href="${match}" class="a-primary" style="padding:0; word-break: break-all; white-space: pre-wrap;" target="_blank" rel="noopener noreferrer">${match}</a>\n                            <button class="button is-info down-115" data-magnet="${match}" style="font-size: 11px">115离线下载</button>\n                        `
-                              : match.startsWith("http://") ||
-                                  match.startsWith("https://")
-                                ? `\n                            <a href="${match}" class="a-primary" style="padding:0; word-break: break-all; white-space: pre-wrap;" target="_blank" rel="noopener noreferrer">${match}</a>\n                        `
-                                : match,
+                    (match: any) => ReviewLinkContent({ match }),
                 );
-                const html = `\n                <div class="item columns is-desktop" style="display:block;margin-top:6px;background-color:#ffffff;padding:10px;margin-left: -10px;word-break: break-word;position:relative;">\n                    <span style="position:absolute;top:5px;right:10px;color:#999;font-size:12px;">#${this.floorIndex++}楼</span>\n                    ${review.username} &nbsp;&nbsp; <span class="score-stars">${stars}</span> \n                    <span class="time">${utils.formatDate(review.created_at)}</span> \n                    &nbsp;&nbsp; 点赞:${review.likes_count}\n                    <p class="review-content" style="margin-top: 5px;"> ${content} </p>\n                </div>\n            `;
+                const html = ReviewItem({
+                    floor: this.floorIndex++,
+                    username: review.username,
+                    stars,
+                    time: utils.formatDate(review.created_at),
+                    likesCount: review.likes_count,
+                    content,
+                });
                 container.append(html);
             });
             this.rightClickFilter();

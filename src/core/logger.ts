@@ -11,6 +11,8 @@
  * 面板样式由原脚本顶部注入的 `<style>` 块提供，本模块不重复注入。
  */
 
+import { LoggerLogEntry } from "../components/logger-log-entry";
+
 export interface LogEntry {
     /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
     message: string;
@@ -446,7 +448,11 @@ export class Logger {
         )
             .toTimeString()
             .split(" ")[0];
-        el.innerHTML = `\n                <span class="console-logger-timestamp">[${timeStr}]</span>\n                <span class="console-logger-message" data-type="${entry.messageType}">${entry.message}</span>\n            `;
+        el.innerHTML = LoggerLogEntry({
+            timeStr,
+            messageType: entry.messageType,
+            message: entry.message,
+        });
         return el;
     }
 

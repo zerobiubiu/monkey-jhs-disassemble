@@ -28,8 +28,9 @@
  * - any 类型 callee（$/layer/Tabulator/utils/gmHttp 等）的回调参数显式标注 : any
  *   以规避 noImplicitAny；未使用的回调参数加 _ 前缀豁免 noUnusedParameters。
  * - catch (e) → catch (err: any)（strict useUnknownInCatchVariables）。
- * - 内联 CSS/HTML（含 Tabulator 列配置、layer 弹窗 content、设置表单 HTML、
- *   帮助文档 HTML、回到顶部 CSS/SVG）原样保留，仅替换模板插值变量名。
+ * - 内联 HTML/CSS 已提取为组件/CSS：设置挂载容器/回到顶部按钮/关键词标签/简化设置面板/
+ *   缓存项/画质选项 → 组件，回到顶部 CSS 与竖图/横图 CSS → src/styles/*.css + ?raw。
+ *   layer 弹窗 content 仍由 SettingDialog/HelpDialog/BackupFileDialog 组件返回。
  * - 控制流（分支、try/catch/finally、fire-and-forget .then()、loopDetector、
  *   requestAnimationFrame 滚动监听、FileReader 异步链）与原脚本一致。
  */
@@ -46,9 +47,18 @@ import { BasePlugin } from "./base-plugin";
 import { ImagePreview } from "../core/image-preview";
 import settingCssRaw from "../styles/setting-plugin.css?raw";
 import helpDialogCssRaw from "../styles/help-dialog.css?raw";
+import backToTopCssRaw from "../styles/back-to-top-button.css?raw";
+import verticalImgCssRaw from "../styles/setting-image-mode-vertical.css?raw";
+import horizontalImgCssRaw from "../styles/setting-image-mode-horizontal.css?raw";
 import { SettingDialog } from "../components/setting-dialog";
 import { HelpDialog } from "../components/help-dialog";
 import { BackupFileDialog } from "../components/backup-file-dialog";
+import { BackToTopButton } from "../components/back-to-top-button";
+import { CacheItemHtml } from "../components/cache-item-html";
+import { KeywordLabel } from "../components/keyword-label";
+import { SettingMountBox } from "../components/setting-mount-box";
+import { SimpleSettingPanel } from "../components/simple-setting-panel";
+import { VideoQualityOption } from "../components/video-quality-option";
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -145,13 +155,13 @@ export class SettingPlugin extends BasePlugin {
                 }
             };
             $("#navbar-menu-user .navbar-end").prepend(
-                '<div class="navbar-item has-dropdown is-hoverable setting-box" style="position:relative;">\n                    <a id="setting-btn" class="navbar-link nav-btn" style="color: #ff8400 !important;padding-right:15px !important;">\n                        设置\n                    </a>\n                    <div class="simple-setting"></div>\n                </div>',
+                SettingMountBox({ variant: "navbar" }),
             );
             utils.loopDetector(
                 () => $("#miniHistoryBtn").length > 0,
                 () => {
                     $(".miniHistoryBtnBox").before(
-                        '\n                    <div class="navbar-item mini-setting-box" style="position:relative;margin-left: auto;">\n                        <a id="mini-setting-btn" class="navbar-link nav-btn" style="color: #ff8400 !important;padding-left:0 !important;padding-right:0 !important;">\n                            设置\n                        </a>\n                        <div class="mini-simple-setting"></div>\n                    </div>\n                ',
+                        SettingMountBox({ variant: "mini" }),
                     );
                     toggleSettingBox();
                 },
@@ -164,18 +174,14 @@ export class SettingPlugin extends BasePlugin {
                 () => {
                     $("#waitCheckBtn")
                         .parent()
-                        .append(
-                            '\n                    <div id="top-right-box" style="position: relative; display: flex; flex-grow: 1;justify-content: flex-end;z-index: 12345679 !important;">\n                        <div class="setting-box">\n                            <a id="setting-btn" class="menu-btn main-tab-btn" style="background-color:#6e685e !important;">\n                                <span>设置</span>\n                            </a>\n                            <div class="simple-setting"></div>\n                        </div>\n                    </div>\n               ',
-                        );
+                        .append(SettingMountBox({ variant: "topright" }));
                 },
                 1,
                 10000,
                 false,
             );
             if ((window as any).isDetailPage) {
-                $("h3").before(
-                    '\n                    <div class="container-fluid" style="margin-top:20px">\n                        <div id="top-right-box" style="position: relative; display: flex; flex-grow: 1;justify-content: flex-end;z-index: 12345679 !important;">\n                            <div class="setting-box">\n                                <a id="setting-btn" class="menu-btn main-tab-btn" style="background-color:#6e685e !important;">\n                                    <span>设置</span>\n                                </a>\n                                <div class="simple-setting"></div>\n                            </div>\n                        </div>\n                    </div>\n               ',
-                );
+                $("h3").before(SettingMountBox({ variant: "containerfluid" }));
             }
         }
         $(".main-nav, .container-fluid").on(
@@ -209,55 +215,8 @@ export class SettingPlugin extends BasePlugin {
 
     /** 挂载"回到顶部"悬浮按钮并绑定滚动显隐/点击平滑滚动。对应原 L9559-9629。 */
     addBackToTopBtn(): void {
-        utils.insertStyle(`
-            #jhs-back-to-top {
-                position: fixed;
-                bottom: 40px;
-                right: 40px;
-                width: 44px;
-                height: 44px;
-                background-color: rgba(30, 30, 30, 0.9);
-                backdrop-filter: blur(4px);
-                color: #e0e0e0;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                z-index: 9999;
-                opacity: 0;
-                visibility: hidden;
-                transform: translateY(20px) scale(0.9);
-                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                border: 1px solid rgba(255,255,255,0.05);
-                user-select: none;
-            }
-            #jhs-back-to-top:hover {
-                background-color: #ff8400;
-                color: #fff;
-                transform: translateY(0) scale(1);
-                box-shadow: 0 8px 20px rgba(255, 132, 0, 0.3);
-                border-color: #ff8400;
-            }
-            #jhs-back-to-top.show {
-                opacity: 1;
-                visibility: visible;
-                transform: translateY(0) scale(1);
-            }
-            #jhs-back-to-top svg {
-                width: 22px;
-                height: 22px;
-                fill: currentColor;
-                stroke: currentColor;
-                stroke-width: 0;
-            }
-        `);
-        // 使用 SVG 图标替换纯文本
-        const svgIcon = `<svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z"></path></svg>`;
-        const btn = $(
-            `<div id="jhs-back-to-top" title="回到顶部">${svgIcon}</div>`,
-        );
+        utils.insertStyle(backToTopCssRaw);
+        const btn = $(BackToTopButton());
         $("body").append(btn);
         btn.on("click", () => {
             utils.smoothScrollToTop(500); // 稍微放慢一点滚动速度，更有质感
@@ -286,15 +245,21 @@ export class SettingPlugin extends BasePlugin {
         callback?: () => void,
     ): Promise<void> {
         const cacheItemsHtml = this.cacheItems
-            .map(
-                (item) =>
-                    `\n            <div class="cache-item" style="border: 1px solid #eee; border-radius: 8px; padding: 12px;">\n                <div style="font-weight: bold; margin-bottom: 8px;">${item.text}</div>\n                <div style="display: flex; gap: 8px;">\n                    <a class="menu-btn clean-btn" data-key="${item.key}" style="background-color:#448cc2; flex:1; text-align:center;" title="${item.title}">\n                        <span>清理</span>\n                    </a>\n                    <a class="menu-btn view-btn" data-key="${item.key}" style="background-color:#b2bec0; flex:1; text-align:center;" >\n                        <span>查看</span>\n                    </a>\n                </div>\n            </div>\n        `,
+            .map((item) =>
+                CacheItemHtml({
+                    text: item.text,
+                    key: item.key,
+                    title: item.title,
+                }),
             )
             .join("");
         let qualityOptionsHtml = "";
         VIDEO_QUALITY_LIST.forEach((option) => {
             if (option.canSelect) {
-                qualityOptionsHtml += `<option value="${option.quality}">${option.text}</option>`;
+                qualityOptionsHtml += VideoQualityOption({
+                    quality: option.quality,
+                    text: option.text,
+                });
             }
         });
         const dialogHtml = SettingDialog({
@@ -328,7 +293,7 @@ export class SettingPlugin extends BasePlugin {
 
     /** 生成简化设置面板 HTML（悬浮下拉显示的精简版）。对应原 L9661-9663。 */
     simpleSetting(): string {
-        return `\n             <div class="jhs-scrollbar" style="margin-top:20px;max-height:90vh; overflow-y:auto;">\n                <div style="margin: 0 10px;">\n                    <div class="setting-item">\n                        <span class="setting-label">\n                            显示已鉴定内容:\n                        </span>\n                        <div class="form-content" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;">\n                            <span style="display:inline-block; width: 80px; font-size:13px; font-weight:bold; text-align: left">屏蔽单番号: </span><input type="checkbox" id="showFilterItem" class="mini-switch"><br/>\n                            <span style="display:inline-block; width: 80px; font-size:13px; font-weight:bold; text-align: left">屏蔽演员: </span><input type="checkbox" id="showFilterActorItem" class="mini-switch"><br/>\n                            <span style="display:inline-block; width: 80px; font-size:13px; font-weight:bold; text-align: left">屏蔽关键词: </span><input type="checkbox" id="showFilterKeywordItem" class="mini-switch"><br/>\n                            <span style="display:inline-block; width: 80px; font-size:13px; font-weight:bold; text-align: left">收藏: </span><input type="checkbox" id="showFavoriteItem" class="mini-switch"><br/>\n                            <span style="display:inline-block; width: 80px; font-size:13px; font-weight:bold; text-align: left">已观看: </span><input type="checkbox" id="showHasWatchItem" class="mini-switch"><br/>\n                        </div>\n                    </div>\n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="快速显示所有已鉴定内容,减少对以上开关的频繁操作">❓ </span> 显示所有:\n                        </span>\n                        <div class="form-content" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;">\n                            <input type="checkbox" id="showAllItem" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                    <hr style="border: 0; height: 1px; margin:10px 0;background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0));"/>\n                    \n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="点击封面的打开方式,弹窗|新窗口">❓ </span>弹窗方式打开页面:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                             <input type="checkbox" id="dialogOpenDetail" class="mini-switch">\n                        </div>\n                    </div>      \n                    \n                    <div class="setting-item">\n                        <span class="setting-label">鉴定后立即关闭页面:</span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="needClosePage" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                    <hr style="border: 0; height: 1px; margin:10px 0;background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0));"/>\n\n                    <div class="setting-item">\n                        <span class="setting-label">\n                             <span data-tip="使用瀑布流模式, 排序方式将调整为默认">❓ </span>瀑布流模式:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="autoPage" class="mini-switch">\n                        </div>\n                    </div>\n       \n                    <div class="setting-item">\n                        <span class="setting-label">启用标题翻译:</span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="translateTitle" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                    <div class="setting-item">\n                        <span class="setting-label">启用悬浮大图:</span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="hoverBigImg" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                                        \n                    <div class="setting-item">\n                        <span class="setting-label">启用115视频匹配: </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enable115Match" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                    <hr style="border: 0; height: 1px; margin:10px 0;background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0));"/>\n\n                    ${isJavdbSite ? '\n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="详情页是否展示女优年龄、三围等信息">❓ </span>加载女优信息:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enableLoadActressInfo" class="mini-switch">\n                        </div>\n                    </div>' : ""}\n                    \n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="详情页第三方资源检测,如missAv,123AV">❓ </span>加载第三方视频资源:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enableLoadOtherSite" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="详情页图片区首列位置加载长缩略图">❓ </span>加载长缩略图:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enableLoadScreenShot" class="mini-switch">\n                        </div>\n                    </div>\n                    \n                     <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="详情页解析更多更高画质的预览视频">❓ </span>更高画质预览视频:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enableLoadPreviewVideo" class="mini-switch">\n                        </div>\n                    </div>\n\n                    <hr style="border: 0; height: 1px; margin:10px 0;background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0));"/>\n\n                    <div class="setting-item">\n                        <span class="setting-label">\n                            <span data-tip="列数6以上,建议开启竖图">❓ </span>竖图模式:\n                        </span>\n                        <div class="form-content" style="text-align: right;">\n                            <input type="checkbox" id="enableVerticalModel" class="mini-switch">\n                        </div>\n                    </div>\n                                    \n                    <div class="setting-item">\n                        <span class="setting-label">页面列数: <span id="showContainerColumns"></span></span>\n                        <div class="form-content">\n                            <input type="range" id="containerColumns" min="2" max="10" step="1" style="padding:5px 0">\n                        </div>\n                    </div>\n                    \n                    <div class="setting-item">\n                        <span class="setting-label">页面宽度: <span id="showContainerWidth"></span></span>\n                        <div class="form-content">\n                            <input type="range" id="containerWidth" min="0" max="30" step="1" style="padding:5px 0">\n                        </div>\n                    </div>\n                </div>\n                <div style="padding: 0 20px 15px; text-align: right; border-top: 1px solid #eee;">   \n                    <button id="helpBtn" style="float:left;">常见问题</button>\n                    <button id="moreBtn">更多设置</button>\n                </div>\n            </div>\n        `;
+        return SimpleSettingPanel({ isJavdbSite });
     }
 
     /** 从 storageManager 加载设置并回填到设置表单各输入项。对应原 L9664-9747。 */
@@ -784,17 +749,18 @@ export class SettingPlugin extends BasePlugin {
             if (window.location.href.includes("/advanced_search?type=100")) {
                 objectPosition = "50% 50% !important";
             }
-            const verticalCss = `\n                .cover {\n                    min-height: 350px !important;\n                    overflow: hidden !important;\n                    padding-top: 142% !important;\n                }\n                \n                .cover img {\n                    object-fit: cover !important;\n                    object-position: ${objectPosition};\n                }\n                \n                /* bus的 */\n                .masonry .movie-box img {\n                    min-height: 500px !important;\n                    object-fit: cover !important;\n                    object-position: top right;\n                }\n            `;
+            const verticalCss = verticalImgCssRaw.replace(
+                "/*__OBJECT_POSITION__*/",
+                objectPosition,
+            );
             $("<style>")
                 .attr("id", "verticalImgStyle")
                 .text(verticalCss)
                 .appendTo("head");
         } else {
-            const horizontalCss =
-                "\n                .cover {\n                    min-height:auto !important;\n                    padding-top: 67% !important;\n                }\n                .cover img {\n                    object-fit: contain !important;\n                    object-position: 50% 50% !important\n                }\n                \n                /* bus的 */\n                 .masonry .movie-box img {\n                    min-height:auto !important;\n                    object-fit: contain !important;\n                    object-position: top;\n                }\n            ";
             $("<style>")
                 .attr("id", "verticalImgStyle")
-                .text(horizontalCss)
+                .text(horizontalImgCssRaw)
                 .appendTo("head");
         }
     }
@@ -964,11 +930,22 @@ export class SettingPlugin extends BasePlugin {
         if (/^[a-z]{2,}-/i.test(keyword) && isJavdbSite) {
             textColor = "#3477ad";
             $label = $(
-                `\n                <a class="keyword-label" data-keyword="${keyword}" style="background-color: ${bgColor}; color: ${textColor}" href="/video_codes/${keyword.replace("-", "")}" target="_blank">\n                    ${keyword}\n                    <span class="keyword-remove">×</span>\n                </a>\n            `,
+                KeywordLabel({
+                    keyword,
+                    bgColor,
+                    textColor,
+                    variant: "link",
+                    href: `/video_codes/${keyword.replace("-", "")}`,
+                }),
             );
         } else {
             $label = $(
-                `\n                <div class="keyword-label" data-keyword="${keyword}" style="background-color: ${bgColor}; color: ${textColor}">\n                    ${keyword}\n                    <span class="keyword-remove">×</span>\n                </div>\n            `,
+                KeywordLabel({
+                    keyword,
+                    bgColor,
+                    textColor,
+                    variant: "div",
+                }),
             );
         }
         $label.find(".keyword-remove").click((event: any) => {

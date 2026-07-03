@@ -14,11 +14,16 @@
  *   / destroy(原 L2350-2362) 一一对应
  * - 原构造函数内 `this.x = null` 赋值改为 class field 语法（useDefineForClassFields）
  * - 单字母变量语义化：e→event、t→target/imgSrc、n→img、a/i→width/height、s/o→previewWidth/Height
- * - `injectStyles` 内 CSS 模板字符串（含 ${this.config.xxx} 插值）原样保留
+ * - `injectStyles` 内 CSS 模板字符串（含 ${this.config.xxx} 插值）已提取为
+ *   src/styles/image-preview.css + ?raw，运行时以占位 replace 注入
  * - 事件参数显式标注为 MouseEvent / HTMLElement / HTMLImageElement
  * - destroy 中 `removeEventListener` 传方法引用经 `as EventListener` 适配签名
  *   （与原脚本一致：移除的引用与 bindEvents 中箭头包装的监听器不匹配，此处保持原行为）
  */
+
+import imagePreviewCssRaw from "../styles/image-preview.css?raw";
+import { ImagePreviewError } from "../components/image-preview-error";
+import { ImagePreviewImg } from "../components/image-preview-img";
 
 interface ImagePreviewConfig {
     selector: string;
@@ -63,8 +68,12 @@ class ImagePreview {
     }
 
     injectStyles(): void {
-        const css = `\n                <style>\n                    .image-hover-preview {\n                        position: fixed;\n                        display: none;\n                        z-index: ${this.config.zIndex};\n                        border-radius: 4px;\n                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n                        overflow: hidden;\n                        pointer-events: none;\n                        opacity: 0;\n                        transition: opacity ${this.config.transition}s ease;\n                        background-color: #fff;\n                    }\n                    \n                    .image-hover-preview.active {\n                        opacity: 1;\n                    }\n                    \n                    .image-hover-preview img {\n                        max-width: ${this.config.maxWidth}px;\n                        max-height: ${this.config.maxHeight}px;\n                        display: block;\n                        object-fit: contain;\n                    }\n                    \n                    .image-hover-preview::after {\n                        content: '';\n                        position: absolute;\n                        top: 0;\n                        left: 0;\n                        right: 0;\n                        bottom: 0;\n                        background: rgba(0, 0, 0, 0.03);\n                        pointer-events: none;\n                    }\n                    \n                    .image-hover-preview.loading::before {\n                        content: '加载中...';\n                        position: absolute;\n                        top: 50%;\n                        left: 50%;\n                        transform: translate(-50%, -50%);\n                        color: #666;\n                        font-size: 14px;\n                    }\n                </style>\n            `;
-        document.head.insertAdjacentHTML("beforeend", css);
+        const css = imagePreviewCssRaw
+            .replace("/*__Z_INDEX__*/", String(this.config.zIndex))
+            .replace("/*__TRANSITION__*/", String(this.config.transition))
+            .replace("/*__MAX_WIDTH__*/", String(this.config.maxWidth))
+            .replace("/*__MAX_HEIGHT__*/", String(this.config.maxHeight));
+        document.head.insertAdjacentHTML("beforeend", `<style>${css}</style>`);
     }
 
     createPreviewElement(): void {
@@ -74,27 +83,30 @@ class ImagePreview {
     }
 
     bindEvents(): void {
-        document.querySelectorAll<HTMLElement>(this.config.selector).forEach((element) => {
-            if (!this.boundElements.has(element)) {
-                element.addEventListener("mouseenter", (event) =>
-                    this.handleMouseEnter(event),
-                );
-                element.addEventListener("mouseleave", (event) =>
-                    this.handleMouseLeave(event),
-                );
-                element.addEventListener("mousemove", (event) =>
-                    this.handleMouseMove(event),
-                );
-                this.boundElements.add(element);
-            }
-        });
+        document
+            .querySelectorAll<HTMLElement>(this.config.selector)
+            .forEach((element) => {
+                if (!this.boundElements.has(element)) {
+                    element.addEventListener("mouseenter", (event) =>
+                        this.handleMouseEnter(event),
+                    );
+                    element.addEventListener("mouseleave", (event) =>
+                        this.handleMouseLeave(event),
+                    );
+                    element.addEventListener("mousemove", (event) =>
+                        this.handleMouseMove(event),
+                    );
+                    this.boundElements.add(element);
+                }
+            });
     }
 
     handleMouseEnter(event: MouseEvent): void {
         clearTimeout(this.timer!);
         const target = event.currentTarget as HTMLImageElement;
         this.currentTarget = target;
-        const imgSrc = target.getAttribute(this.config.dataAttribute) || target.src;
+        const imgSrc =
+            target.getAttribute(this.config.dataAttribute) || target.src;
         if (!imgSrc) {
             return;
         }
@@ -106,7 +118,7 @@ class ImagePreview {
         const img = new Image();
         img.onload = () => {
             preview.classList.remove("loading");
-            preview.innerHTML = `<img src="${imgSrc}" alt="预览图">`;
+            preview.innerHTML = ImagePreviewImg({ src: imgSrc });
             this.imgElement = preview.querySelector<HTMLImageElement>("img");
             const { width, height } = this.calculateImageSize(img);
             preview.style.width = `${width}px`;
@@ -118,13 +130,15 @@ class ImagePreview {
         };
         img.onerror = () => {
             preview.classList.remove("loading");
-            preview.innerHTML =
-                '<div style="padding:10px;color:#f00;">图片加载失败</div>';
+            preview.innerHTML = ImagePreviewError();
         };
         img.src = imgSrc;
     }
 
-    calculateImageSize(img: HTMLImageElement): { width: number; height: number } {
+    calculateImageSize(img: HTMLImageElement): {
+        width: number;
+        height: number;
+    } {
         let width = img.naturalWidth;
         let height = img.naturalHeight;
         if (width > this.config.maxWidth || height > this.config.maxHeight) {
@@ -171,14 +185,25 @@ class ImagePreview {
     }
 
     destroy(): void {
-        document.querySelectorAll<HTMLElement>(this.config.selector).forEach((element) => {
-            if (this.boundElements.has(element)) {
-                element.removeEventListener("mouseenter", this.handleMouseEnter as EventListener);
-                element.removeEventListener("mouseleave", this.handleMouseLeave as EventListener);
-                element.removeEventListener("mousemove", this.handleMouseMove as EventListener);
-                this.boundElements.delete(element);
-            }
-        });
+        document
+            .querySelectorAll<HTMLElement>(this.config.selector)
+            .forEach((element) => {
+                if (this.boundElements.has(element)) {
+                    element.removeEventListener(
+                        "mouseenter",
+                        this.handleMouseEnter as EventListener,
+                    );
+                    element.removeEventListener(
+                        "mouseleave",
+                        this.handleMouseLeave as EventListener,
+                    );
+                    element.removeEventListener(
+                        "mousemove",
+                        this.handleMouseMove as EventListener,
+                    );
+                    this.boundElements.delete(element);
+                }
+            });
         const preview = this.preview;
         if (preview && preview.parentNode) {
             preview.parentNode.removeChild(preview);

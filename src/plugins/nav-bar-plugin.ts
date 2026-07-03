@@ -18,9 +18,12 @@
  * $ 已由 ../types/globals.d.ts 声明为 any；jQuery .each 回调依赖 this 指向触发
  * 元素，按 fold-category-plugin 既有约定以 (this: any) 显式标注，规避 noImplicitThis。
  * handle 原为同步，此处声明 async 以匹配 BasePlugin.handle(): Promise<void>
- * 签名（行为等价，子任务均为同步调用）；内联 CSS/HTML 字符串原样保留。
+ * 签名（行为等价，子任务均为同步调用）；内联 HTML 已提取为组件
+ * （NavSearchBox / NavOtherDropdown）。
  */
 import { BasePlugin } from "./base-plugin";
+import { NavOtherDropdown } from "../components/nav-other-dropdown";
+import { NavSearchBox } from "../components/nav-search-box";
 import navBarCssRaw from "../styles/nav-bar-plugin.css?raw";
 
 export class NavBarPlugin extends BasePlugin {
@@ -88,9 +91,7 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值，不抛出异常。
      */
     hookSearch(): void {
-        $("#navbar-menu-hero").after(
-            '\n            <div class="navbar-menu" id="search-box">\n                <div class="navbar-start" style="display: flex; align-items: center; gap: 5px;">\n                    <select id="search-type" style="padding: 8px 12px; border: 1px solid #555; border-radius: 4px; background-color: #333; color: #eee; font-size: 14px; outline: none;">\n                        <option value="all">影片</option>\n                        <option value="actor">演員</option>\n                        <option value="series">系列</option>\n                        <option value="maker">片商</option>\n                        <option value="director">導演</option>\n                        <option value="code">番號</option>\n                        <option value="list">清單</option>\n                    </select>\n                    <input id="search-keyword" type="text" placeholder="輸入影片番號，演員名等關鍵字進行檢索" style="padding: 8px 12px; border: 1px solid #555; border-radius: 4px; flex-grow: 1; font-size: 14px; background-color: #333; color: #eee; outline: none;">\n                    <a href="/advanced_search?noFold=1" title="進階檢索" style="padding: 6px 12px; background-color: #444; border-radius: 4px; text-decoration: none; color: #ddd; font-size: 14px; border: 1px solid #555;"><span>...</span></a>\n                    <a id="search-btn" style="padding: 6px 16px; background-color: #444; color: #fff; border-radius: 4px; text-decoration: none; font-weight: 500; cursor: pointer; border: 1px solid #555;">檢索</a>\n                </div>\n            </div>\n        ',
-        );
+        $("#navbar-menu-hero").after(NavSearchBox());
         $("#search-keyword")
             .on("paste", (event: any) => {
                 const items: any = event.originalEvent.clipboardData.items;
@@ -115,7 +116,8 @@ export class NavBarPlugin extends BasePlugin {
             const searchType: any = $("#search-type option:selected").val();
             if (keyword !== "") {
                 if (window.location.href.includes("/search")) {
-                    window.location.href = "/search?q=" + keyword + "&f=" + searchType;
+                    window.location.href =
+                        "/search?q=" + keyword + "&f=" + searchType;
                 } else {
                     window.open("/search?q=" + keyword + "&f=" + searchType);
                 }
@@ -129,7 +131,8 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值；无 .search-image 元素时短路返回。
      */
     hookOldSearch(): void {
-        const searchImageEl: Element | null = document.querySelector(".search-image");
+        const searchImageEl: Element | null =
+            document.querySelector(".search-image");
         if (!searchImageEl) {
             return;
         }
@@ -146,11 +149,7 @@ export class NavBarPlugin extends BasePlugin {
     mergeNav(): void {
         $('a[href*="/feedbacks/new"]').remove();
         $('a[href*="theporndude.com"]').remove();
-        $('a.navbar-link[href="/makers"]')
-            .parent()
-            .after(
-                '\n            <div class="navbar-item has-dropdown is-hoverable">\n                <a class="navbar-link">其它</a>\n                <div class="navbar-dropdown is-boxed">\n                  <a class="navbar-item" href="/feedbacks/new" target="_blank" >反饍</a>\n                  <a class="navbar-item" rel="nofollow noopener" target="_blank" href="https://theporndude.com/zh">ThePornDude</a>\n                </div>\n              </div>\n        ',
-            );
+        $('a.navbar-link[href="/makers"]').parent().after(NavOtherDropdown());
     }
 
     /**

@@ -32,8 +32,8 @@
  * jQuery .each / .on 回调按本仓库既有约定改写为箭头形式（(_index, element) /
  * (event) => $(event.currentTarget)），规避 noImplicitThis；
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string/:number 等标注意图。
- * 内联 CSS/HTML（含 layer 弹窗 content、卡片/分页/编辑/头像选择模板）原样保留，
- * 仅替换其中 ${单字母} 插值为语义化命名。
+ * 内联 HTML（卡片/分页/弹窗标题模板）已提取为组件（ActressCard / ActressPagination /
+ * NewVideoDialogTitle），layer 弹窗 content 仍由既有组件返回；仅替换其中 ${单字母} 插值为语义化命名。
  */
 import { UNCENSORED, CENSORED } from "../constants/site";
 import {
@@ -53,6 +53,9 @@ import { NewVideoDialog } from "../components/new-video-dialog";
 import { EditActressDialog } from "../components/edit-actress-dialog";
 import { CdnSelectDialog } from "../components/cdn-select-dialog";
 import { AvatarSelectDialog } from "../components/avatar-select-dialog";
+import { ActressCard } from "../components/actress-card";
+import { ActressPagination } from "../components/actress-pagination";
+import { NewVideoDialogTitle } from "../components/new-video-dialog-title";
 
 /**
  * 收藏女优记录结构（storageManager.getFavoriteActressList() 返回元素）。
@@ -138,7 +141,7 @@ export class NewVideoPlugin extends BasePlugin {
         });
         layer.open({
             type: 1,
-            title: '<span style="padding: 0 10px;" data-tip="数据来源: 女优页面首页,含磁链分类">新作品检测 ❓</span>',
+            title: NewVideoDialogTitle(),
             content: dialogContent,
             scrollbar: false,
             area: utils.getResponsiveArea(["80%", "90%"]),
@@ -250,7 +253,26 @@ export class NewVideoPlugin extends BasePlugin {
                     btnStyle =
                         "background: linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%);box-shadow: none";
                 }
-                return `\n                <div class="actress-card" data-starId="${actress.starId}" style="${isStale ? "background: #d4cece;" : ""} min-height: 370px;">\n                    <a href="${actressUrl}" target="_blank" style="text-decoration: none; color: inherit; display: block; flex-grow: 1;">\n                        <img src="${actress.avatar || "https://c0.jdbstatic.com/images/actor_unknow.jpg"}" alt="${allNameText}" class="actress-card-avatar">\n                    </a>\n\n                    <div>\n                        <a href="${actressUrl}" target="_blank" style="text-decoration: none; color: inherit; display: block; flex-grow: 1;">\n                            <div class="actress-card-name">${actress.name}</div>\n                        </a>\n                        <div class="actress-card-allname" title="${allNameText}">${allNameText}</div>\n                    </div>\n                    \n                    <div style="font-size: 0.8em; margin-top: 5px;">\n                         <span>上次检测: ${actress.lastCheckTime || ""}</span>\n                    </div>\n                    <div style="font-size: 0.8em; margin-top: 5px;">\n                         <span>最后发行作品: ${actress.lastPublishTime || ""}</span>\n                    </div>\n\n                    <div style="font-size: 0.7em; color: #cc4444; margin-top: 5px; min-height: 18px">\n                         <span>${isStale ? "停更" + ruleTimeHours / 24 / 365 + "年以上, 下轮任务不再进行检测" : ""}</span>\n                    </div>\n                    \n                    <div style="font-size: 0.8em; margin-top: 5px; color: #3765c5; min-height: 10px">\n                         <span>${actress.remark || ""}</span>\n                    </div>\n                    \n                    <div style="margin-top: 10px;display: flex; justify-content:center; gap: 10px;">\n                        <a title="编辑" class="card-btn btn-edit-actress" style="${btnStyle}" data-starId="${actress.starId}">${this.editSvg}</a>\n                        <a title="取消收藏" class="card-btn btn-delete-actress" style="${btnStyle}" data-starId="${actress.starId}">${this.deleteSvg}</a>\n                    </div>\n                    \n                    <div class="card-tag" style="background-color:${typeColor}">${typeLabel}</div>\n                    <div class="card-new-count-tag" data-tip="最新作品数量: ${actress.newVideoList?.length || 0}">🔔 ${actress.newVideoList?.length || 0}</div>\n                </div>\n            `;
+                return ActressCard({
+                    starId: actress.starId,
+                    avatar:
+                        actress.avatar ||
+                        "https://c0.jdbstatic.com/images/actor_unknow.jpg",
+                    name: actress.name,
+                    allNameText,
+                    actressUrl,
+                    lastCheckTime: actress.lastCheckTime || "",
+                    lastPublishTime: actress.lastPublishTime || "",
+                    isStale,
+                    ruleTimeYears: ruleTimeHours / 24 / 365,
+                    remark: actress.remark || "",
+                    editSvg: this.editSvg,
+                    deleteSvg: this.deleteSvg,
+                    btnStyle,
+                    typeLabel,
+                    typeColor,
+                    newVideoCount: actress.newVideoList?.length || 0,
+                });
             })
             .join("");
         $container.html(cardsHtml);
@@ -468,36 +490,8 @@ export class NewVideoPlugin extends BasePlugin {
      */
     renderPagination(totalCount: number, totalPages: number): void {
         const page: number = this.currentPage;
-        let paginationHtml: string = "";
         const $pagination: any = $("#actress-pagination");
-        if (totalPages === 0) {
-            paginationHtml = '<span style="color: #666;">共 0 条记录</span>';
-            $pagination.html(paginationHtml);
-            return;
-        }
-        if (page > 1 && totalPages > 5) {
-            paginationHtml +=
-                '<button class="pagination-btn" data-page="1" style="padding: 8px 12px; margin: 0 5px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">首页</button>';
-        }
-        if (page > 1) {
-            paginationHtml += `<button class="pagination-btn" data-page="${page - 1}" style="padding: 8px 12px; margin: 0 5px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">上一页</button>`;
-        }
-        let rangeStart: number = Math.max(1, page - Math.floor(2.5));
-        let rangeEnd: number = Math.min(totalPages, rangeStart + 5 - 1);
-        if (rangeEnd - rangeStart < 4) {
-            rangeStart = Math.max(1, rangeEnd - 5 + 1);
-        }
-        for (let pageNum = rangeStart; pageNum <= rangeEnd; pageNum++) {
-            paginationHtml += `<button class="pagination-btn page-number-btn ${pageNum === page ? "active" : ""}" data-page="${pageNum}" style="padding: 8px 12px; margin: 0 3px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; ${pageNum === page ? "background: #007bff; color: white; border-color: #007bff;" : ""}">${pageNum}</button>`;
-        }
-        if (page < totalPages) {
-            paginationHtml += `<button class="pagination-btn" data-page="${page + 1}" style="padding: 8px 12px; margin: 0 5px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">下一页</button>`;
-        }
-        if (page < totalPages && totalPages > 5) {
-            paginationHtml += `<button class="pagination-btn" data-page="${totalPages}" style="padding: 8px 12px; margin: 0 5px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">尾页</button>`;
-        }
-        paginationHtml += `<span style="margin-left: 20px; color: #666;">共 ${totalCount} 条记录 (第 ${page}/${totalPages} 页)</span>`;
-        $pagination.html(paginationHtml);
+        $pagination.html(ActressPagination({ totalCount, totalPages, page }));
         $(".pagination-btn")
             .off("click")
             .on("click", (event: any) => {

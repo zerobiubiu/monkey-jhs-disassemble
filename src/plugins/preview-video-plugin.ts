@@ -36,13 +36,18 @@
  * $ / utils / storageManager / show / clog / gmHttp 已由 ../types/globals.d.ts 声明 any；
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string/:number 等标注意图，
  * DOM 元素（$video[0] 等）不额外断言为 HTMLVideoElement——any 链式调用即可满足。
- * 内联 CSS/HTML（含画质按钮、工具栏模板）原样保留，仅替换其中 ${单字母} 插值
- * 为语义化命名。
+ * 内联 HTML（画质按钮、操作按钮、预览封面入口、多结果角标）已提取为组件
+ * （PreviewVideoQualityBtn / PreviewVideoActionBtn / PreviewVideoContainer / SiteResultTag）；
+ * 工具栏/分组容器仍为 $("<div></div>") 空元素创建（非模板注入，保留）。
  */
 import { currentHref } from "../constants/site";
 import { YES, NO } from "../constants/status";
 import { VIDEO_QUALITY_LIST } from "../constants/video-quality";
 import { BasePlugin } from "./base-plugin";
+import { PreviewVideoActionBtn } from "../components/preview-video-action-btn";
+import { PreviewVideoQualityBtn } from "../components/preview-video-quality-btn";
+import { PreviewVideoContainer } from "../components/preview-video-container";
+import { SiteResultTag } from "../components/site-result-tag";
 import previewVideoCssRaw from "../styles/preview-video-plugin.css?raw";
 
 /** DMM 预览视频映射的 localStorage 缓存键。对应原 L3385。 */
@@ -205,7 +210,11 @@ class DmmPreviewVideoResolver {
                 clog.error(`API 请求失败，跳过 ${name}:`, err);
                 continue;
             }
-            if (!response || !response.result || !response.result.result_count) {
+            if (
+                !response ||
+                !response.result ||
+                !response.result.result_count
+            ) {
                 clog.debug("API 返回无结果，尝试下一个关键词。");
                 continue;
             }
@@ -241,9 +250,7 @@ class DmmPreviewVideoResolver {
                 let linkType = "single";
                 if (matched.length > 1) {
                     $fanzaBtn.attr("href", siteUrl);
-                    $fanzaBtn.append(
-                        '<span class="site-tag" style="top:-15px">多结果</span>',
-                    );
+                    $fanzaBtn.append(SiteResultTag());
                     $fanzaBtn.css("backgroundColor", "#7bc73b");
                     linkType = "multiple";
                 } else {
@@ -252,8 +259,10 @@ class DmmPreviewVideoResolver {
                     $fanzaBtn.css("backgroundColor", "#7bc73b");
                 }
                 const rawOther = localStorage.getItem(DMM_OTHER_SITE_KEY);
-                const otherSiteCache: Record<string, { type: string; url: string }> =
-                    rawOther ? JSON.parse(rawOther) : {};
+                const otherSiteCache: Record<
+                    string,
+                    { type: string; url: string }
+                > = rawOther ? JSON.parse(rawOther) : {};
                 otherSiteCache[this.carNum] = {
                     type: linkType,
                     url: siteUrl,
@@ -268,9 +277,7 @@ class DmmPreviewVideoResolver {
                 `[${name}] API 返回结果数 ${response.result.result_count}，但无精确匹配的 Content ID。`,
             );
         }
-        clog.warn(
-            "所有关键词尝试均未找到匹配的Content ID, 解析Dmm视频失败",
-        );
+        clog.warn("所有关键词尝试均未找到匹配的Content ID, 解析Dmm视频失败");
         const $fanzaBtn = $("#fanzaBtn");
         $fanzaBtn.attr(
             "href",
@@ -317,12 +324,14 @@ class DmmPreviewVideoResolver {
         try {
             ({ bitrates } = JSON.parse(argsMatch[1]));
         } catch (err) {
-            throw new Error(`解析播放器脚本 JSON 失败: ${(err as Error).message}`);
+            throw new Error(
+                `解析播放器脚本 JSON 失败: ${(err as Error).message}`,
+            );
         }
         const videoMap: QualityVideoMap = {};
-        const qualityPattern = VIDEO_QUALITY_LIST.map((opt) => opt.quality).join(
-            "|",
-        );
+        const qualityPattern = VIDEO_QUALITY_LIST.map(
+            (opt) => opt.quality,
+        ).join("|");
         const qualityRegex = new RegExp(`(${qualityPattern})\\.mp4$`);
         if (!Array.isArray(bitrates)) {
             clog.error("解析画质链接失败: bitrates 字段不是一个数组或不存在");
@@ -534,7 +543,8 @@ export class PreviewVideoPlugin extends BasePlugin {
             if (!videoMap) {
                 return;
             }
-            const desiredQuality = await storageManager.getSetting("videoQuality");
+            const desiredQuality =
+                await storageManager.getSetting("videoQuality");
             clog.debug("解析其它画质预览视频", "设置-期望画质", desiredQuality);
             const videoUrl =
                 videoMap[
@@ -561,7 +571,7 @@ export class PreviewVideoPlugin extends BasePlugin {
                 clog.debug("JavDB没有视频播放元素, 开始创建...");
                 const coverSrc = $(".column-video-cover img").attr("src");
                 $(".preview-images").prepend(
-                    `\n                    <a class="preview-video-container" data-fancybox="gallery" href="#preview-video">\n                        <span>預告片</span>\n                        <img src="${coverSrc}" class="video-cover" style="width: 150px; height: auto;" alt="">\n                    </a>\n                `,
+                    PreviewVideoContainer({ coverSrc }),
                 );
                 $(".preview-video-container").on("click", () => {
                     utils.loopDetector(
@@ -590,7 +600,8 @@ export class PreviewVideoPlugin extends BasePlugin {
      */
     async handleVideo(): Promise<void> {
         if (
-            (await storageManager.getSetting("enableLoadPreviewVideo", YES)) === NO
+            (await storageManager.getSetting("enableLoadPreviewVideo", YES)) ===
+            NO
         ) {
             return;
         }
@@ -626,7 +637,8 @@ export class PreviewVideoPlugin extends BasePlugin {
         });
         let currentQuality: string | null = null;
         if (videoMap) {
-            const desiredQuality = await storageManager.getSetting("videoQuality");
+            const desiredQuality =
+                await storageManager.getSetting("videoQuality");
             currentQuality = selectAvailableVideoQuality(
                 Object.keys(videoMap),
                 desiredQuality,
@@ -642,7 +654,11 @@ export class PreviewVideoPlugin extends BasePlugin {
                 if (src) {
                     const isActive = currentQuality === opt.quality;
                     const $btn = $(
-                        `\n                    <button class="video-control-btn${isActive ? " active" : ""}" \n                            id="${opt.id}" \n                            data-quality="${opt.quality}"\n                            data-video-src="${src}"\n                            style="min-width: 40px; border: 1px solid #ccc; background-color: ${isActive ? "#007bff" : "#fff"}; color: ${isActive ? "white" : "black"};">\n                        ${opt.text}\n                    </button>\n                `,
+                        PreviewVideoQualityBtn({
+                            opt,
+                            src,
+                            isActive,
+                        }),
                     );
                     $qualityGroup.append($btn);
                 }
@@ -656,15 +672,30 @@ export class PreviewVideoPlugin extends BasePlugin {
             "margin-left": "auto",
         });
         const $filterBtn = $(
-            `<button class="menu-btn" id="video-filterBtn" style="min-width: 120px; background-color:#de3333;">屏蔽 ${this.filterHotKey ? "(" + this.filterHotKey + ")" : ""}</button>`,
+            PreviewVideoActionBtn({
+                id: "video-filterBtn",
+                color: "#de3333",
+                label: "屏蔽",
+                hotKey: this.filterHotKey,
+            }),
         );
         $actionGroup.append($filterBtn);
         const $favoriteBtn = $(
-            `<button class="menu-btn" id="video-favoriteBtn" style="min-width: 120px; background-color:#25b1dc;">收藏 ${this.favoriteHotKey ? "(" + this.favoriteHotKey + ")" : ""}</button>`,
+            PreviewVideoActionBtn({
+                id: "video-favoriteBtn",
+                color: "#25b1dc",
+                label: "收藏",
+                hotKey: this.favoriteHotKey,
+            }),
         );
         $actionGroup.append($favoriteBtn);
         const $speedBtn = $(
-            `<button class="menu-btn" id="speed-btn" style="min-width: 120px; background-color:#76b45d;">快进 ${this.speedVideoHotKey ? "(" + this.speedVideoHotKey + ")" : ""}</button>`,
+            PreviewVideoActionBtn({
+                id: "speed-btn",
+                color: "#76b45d",
+                label: "快进",
+                hotKey: this.speedVideoHotKey,
+            }),
         );
         $actionGroup.append($speedBtn);
         $toolbar.append($actionGroup);
@@ -679,10 +710,13 @@ export class PreviewVideoPlugin extends BasePlugin {
                     videoEl.load();
                     videoEl.currentTime = currentTime;
                     await videoEl.play();
-                    $toolbar.find(".video-control-btn").removeClass("active").css({
-                        "background-color": "#fff",
-                        color: "black",
-                    });
+                    $toolbar
+                        .find(".video-control-btn")
+                        .removeClass("active")
+                        .css({
+                            "background-color": "#fff",
+                            color: "black",
+                        });
                     $btn.addClass("active").css({
                         "background-color": "#007bff",
                         color: "white",
