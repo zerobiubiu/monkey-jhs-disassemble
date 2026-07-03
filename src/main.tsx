@@ -47,6 +47,7 @@ import { ListPageButtonPlugin } from "./plugins/list-page-button-plugin";
 import { AutoPagePlugin } from "./plugins/auto-page-plugin";
 import { BlacklistPlugin } from "./plugins/blacklist-plugin";
 import { WantAndWatchedVideosPlugin } from "./plugins/want-and-watched-videos-plugin";
+import { RelatedPlugin } from "./plugins/related-plugin";
 import { FavoriteActressesPlugin } from "./plugins/favorite-actresses-plugin";
 import { NewVideoPlugin } from "./plugins/new-video-plugin";
 import { HistoryPlugin } from "./plugins/history-plugin";
@@ -279,7 +280,7 @@ utils.importResource(
     "https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/css/tabulator_semanticui.min.css",
 );
 
-// ===== 启动序列：PluginManager + 注册 21 插件 =====
+// ===== 启动序列：PluginManager + 注册 22 插件 =====
 const vt: PluginManager = (function () {
     const e = new PluginManager();
     unsafeWindow.pluginManager = e;
@@ -302,6 +303,7 @@ const vt: PluginManager = (function () {
         e.register(ActressInfoPlugin);
         e.register(OtherSitePlugin);
         e.register(WantAndWatchedVideosPlugin);
+        e.register(RelatedPlugin);
         e.register(BlacklistPlugin);
         e.register(FavoriteActressesPlugin);
         e.register(NewVideoPlugin);

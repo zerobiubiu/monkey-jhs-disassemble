@@ -65,6 +65,10 @@ export class ReviewPlugin extends BasePlugin {
             if (isJavdbSite) {
                 const movieId = this.parseMovieId(window.location.href);
                 await this.showReview(movieId);
+                await this.getBean("RelatedPlugin").showRelated(
+                    $("#magnets-content"),
+                    movieId,
+                );
             }
             if (isJavbusSite) {
                 const carNum = this.getPageInfo().carNum!;
