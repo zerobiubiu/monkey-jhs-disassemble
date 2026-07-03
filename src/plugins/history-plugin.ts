@@ -37,6 +37,7 @@ import {
     WATCHED_TEXT,
     WATCHED_COLOR,
 } from "../constants/status";
+import historyCssRaw from "../styles/history-plugin.css?raw";
 
 export class HistoryPlugin extends BasePlugin {
     /** Tabulator 表格实例（弹窗关闭时销毁置空） */
@@ -66,7 +67,7 @@ export class HistoryPlugin extends BasePlugin {
      * @returns 含 <style> 标签的 CSS 字符串（原样保留，含闭合标签缺漏）
      */
     async initCss(): Promise<string> {
-        return `\n            <style>\n                /* 下拉菜单容器（相对定位） */\n                .sub-btns {\n                    position: relative;\n                    display: inline-block;\n                }\n                \n                /* 下拉菜单内容（默认隐藏） */\n                .sub-btns-menu {\n                    display: none;\n                    position: absolute;\n                    right: 80px;\n                    top:-10px;\n                    background: white;\n                    padding:10px;\n                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);\n                    z-index: 100;\n                    border-radius: 4px;\n                    overflow: hidden;\n                }\n                \n                \n                /* 点击后显示菜单（JS 控制） */\n                .sub-btns-menu.show {\n                    display: flex !important;\n                    flex-direction: column;\n                }\n                \n                .table-link-param {\n                    cursor: pointer;\n                }\n            </style\n        `;
+        return historyCssRaw;
     }
 
     /** 依导航栏搜索框显隐切换桌面/迷你入口。对应原 L6452-6460。 */

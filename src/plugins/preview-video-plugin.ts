@@ -43,6 +43,7 @@ import { currentHref } from "../constants/site";
 import { YES, NO } from "../constants/status";
 import { VIDEO_QUALITY_LIST } from "../constants/video-quality";
 import { BasePlugin } from "./base-plugin";
+import previewVideoCssRaw from "../styles/preview-video-plugin.css?raw";
 
 /** DMM 预览视频映射的 localStorage 缓存键。对应原 L3385。 */
 const DMM_VIDEO_CACHE_KEY = "jhs_dmm_video";
@@ -460,7 +461,7 @@ export class PreviewVideoPlugin extends BasePlugin {
      * @returns Promise<string>（CSS 文本）；不抛出异常。
      */
     async initCss(): Promise<string> {
-        return "\n            .video-control-btn {\n                min-width:120px;\n                padding: 7px 12px;\n                font-size: 12px;\n                background: rgba(0,0,0,0.7);\n                color: white;\n                border: none;\n                border-radius: 4px;\n                cursor: pointer;\n            }\n            .video-control-btn.active {\n                background-color: #1890ff;\n                color: white;\n                font-weight: bold;\n                border: 2px solid #096dd9;\n            }\n        ";
+        return previewVideoCssRaw;
     }
 
     /**

@@ -28,6 +28,7 @@ import { isJavdbSite } from "../constants/site";
 import { YES } from "../constants/status";
 import { AsyncTaskQueue } from "../core/async-task-queue";
 import { BasePlugin } from "./base-plugin";
+import otherSiteCssRaw from "../styles/other-site-plugin.css?raw";
 
 /** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
 interface SiteResult {
@@ -97,7 +98,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 无参数，返回 Promise<string>（CSS 文本）。
      */
     async initCss(): Promise<string> {
-        return `\n            <style>\n                .site-btn {\n                    position: relative !important;\n                    min-width: 80px;\n                    display: inline-block;\n                    padding: 5px 10px;\n                    color: white !important;\n                    background-color:#938585;\n                    text-decoration: none;\n                    border-radius: 4px;\n                    text-align: center;\n                    margin-bottom: 5px;\n                }\n                .site-btn:hover {\n                    color: white;\n                    transform: translateY(-2px);\n                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);\n                }\n                .site-tag {\n                    position: absolute; \n                    top: -15px; \n                    right: 0; \n                    background-color: #ffc107; \n                    color: #333; \n                    font-size: 12px; \n                    padding: 2px 6px; \n                    border-radius: 4px;\n                }\n            </style>\n        `;
+        return otherSiteCssRaw;
     }
 
     /**

@@ -22,6 +22,7 @@
 import { currentHref } from "../constants/site";
 import { YES, NO } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import foldCategoryCssRaw from "../styles/fold-category-plugin.css?raw";
 
 export class FoldCategoryPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4017-4019。 */
@@ -38,7 +39,9 @@ export class FoldCategoryPlugin extends BasePlugin {
      */
     async initCss(): Promise<string> {
         const settings = await storageManager.getSetting();
-        return `\n            <style>\n                #tags a.tag, .tags a.tag {\n                    position:relative;\n                }\n                .highlight-btn {\n                    position: absolute;\n                    top: -10px;\n                    right: -10px;\n                    background-color: #4CAF50;\n                    color: white;\n                    border: none;\n                    border-radius: 50%;\n                    width: 24px;\n                    height: 24px;\n                    font-size: 14px;\n                    line-height: 24px;\n                    text-align: center;\n                    cursor: pointer;\n                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);\n                    display: none;\n                    z-index: 999;\n                }\n                /* 当父元素被高亮时，按钮变为其他颜色 */\n                .highlighted .highlight-btn {\n                    background-color: #FF5722;\n                }\n                /* 高亮状态下的标签样式 */\n                .highlighted {\n                    /* 浅黄色 */\n                    border: ${settings.highlightedTagNumber || 1}px solid ${settings.highlightedTagColor || "#ce2222"};\n                }\n            </style>\n        `;
+        return foldCategoryCssRaw
+            .replace("__HIGHLIGHTED_TAG_NUMBER__", String(settings.highlightedTagNumber || 1))
+            .replace("__HIGHLIGHTED_TAG_COLOR__", settings.highlightedTagColor || "#ce2222");
     }
 
     /**

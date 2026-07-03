@@ -22,6 +22,7 @@ import {
 } from "../constants/site";
 import { NO, YES } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import autoPageCssRaw from "../styles/auto-page-plugin.css?raw";
 
 /** 单页元信息（滚动同步当前页码用）。 */
 export interface PageItem {
@@ -66,7 +67,7 @@ export class AutoPagePlugin extends BasePlugin {
      * @returns Promise<string>，含 <style> 的 CSS 片段；无异常抛出
      */
     async initCss(): Promise<string> {
-        return `\n            <style>\n                .jhs-scroll {\n                    text-align: center;\n                    padding-top: 20px;\n                    font-size: 14px;\n                }\n                .jhs-scroll.waterfall-loading { color: #000; }\n                .jhs-scroll.waterfall-error { color: #f44336; cursor: pointer; }\n                .jhs-scroll.waterfall-no-more { color: #4CAF50; }\n            </style>\n        `;
+        return autoPageCssRaw;
     }
 
     /**

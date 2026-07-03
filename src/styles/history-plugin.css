@@ -1,0 +1,38 @@
+/**
+ * 鉴定记录下拉菜单样式（原 HistoryPlugin.initCss 内联 <style>，对应原 L6445-6448）
+ *
+ * 原脚本闭合标签 </style 缺漏 ">"，提取后由 utils.insertStyle 自动包裹修复。
+ * 由插件通过 `import ... from "./history-plugin.css?raw"` 读取为字符串，
+ * 经 utils.insertStyle 注入 head（不含 <style> 标签时自动包裹）。
+ */
+
+/* 下拉菜单容器（相对定位） */
+.sub-btns {
+    position: relative;
+    display: inline-block;
+}
+
+/* 下拉菜单内容（默认隐藏） */
+.sub-btns-menu {
+    display: none;
+    position: absolute;
+    right: 80px;
+    top:-10px;
+    background: white;
+    padding:10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+
+/* 点击后显示菜单（JS 控制） */
+.sub-btns-menu.show {
+    display: flex !important;
+    flex-direction: column;
+}
+
+.table-link-param {
+    cursor: pointer;
+}

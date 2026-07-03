@@ -17,6 +17,7 @@
  */
 import { YES } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import actressInfoCssRaw from "../styles/actress-info-plugin.css?raw";
 
 /** 演员维基百科详情（searchInfo 返回结构，对应原 L4304-4324 返回的对象字面量） */
 interface ActressWikiInfo {
@@ -77,7 +78,7 @@ export class ActressInfoPlugin extends BasePlugin {
      * 无参数，返回 Promise<string>（内联 `<style>` 文本，原样保留）。
      */
     async initCss(): Promise<string> {
-        return "\n            <style>\n                .info-tag {\n                    background-color: #ecf5ff;\n                    display: inline-block;\n                    height: 32px;\n                    padding: 0 10px;\n                    line-height: 30px;\n                    font-size: 12px;\n                    color: #409eff;\n                    border: 1px solid #d9ecff;\n                    border-radius: 4px;\n                    box-sizing: border-box;\n                    white-space: nowrap;\n                }\n            </style>\n        ";
+        return actressInfoCssRaw;
     }
 
     /**

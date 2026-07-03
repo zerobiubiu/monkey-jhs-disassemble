@@ -1,0 +1,20 @@
+/**
+ * 演员信息标签样式（原 ActressInfoPlugin.initCss 内联 <style>，对应原 L4161-4163）
+ *
+ * 由插件通过 `import ... from "./actress-info-plugin.css?raw"` 读取为字符串，
+ * 经 utils.insertStyle 注入 head（不含 <style> 标签时自动包裹）。
+ */
+
+.info-tag {
+    background-color: #ecf5ff;
+    display: inline-block;
+    height: 32px;
+    padding: 0 10px;
+    line-height: 30px;
+    font-size: 12px;
+    color: #409eff;
+    border: 1px solid #d9ecff;
+    border-radius: 4px;
+    box-sizing: border-box;
+    white-space: nowrap;
+}

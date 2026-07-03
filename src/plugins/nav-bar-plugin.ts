@@ -21,6 +21,7 @@
  * 签名（行为等价，子任务均为同步调用）；内联 CSS/HTML 字符串原样保留。
  */
 import { BasePlugin } from "./base-plugin";
+import navBarCssRaw from "../styles/nav-bar-plugin.css?raw";
 
 export class NavBarPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4727-4729。 */
@@ -34,7 +35,7 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数；返回含规则的 CSS 字符串（Promise<string>）。
      */
     async initCss(): Promise<string> {
-        return "\n            .highlight-red {\n    /* 核心要求：高亮红色文本 */\n    color: red !important; \n    \n    /* 建议：增加字体加粗，效果更明显 */\n    font-weight: bold;\n    \n    /* 建议：增加背景色，效果更突出 */\n    /* background-color: yellow; */ \n}\n        ";
+        return navBarCssRaw;
     }
 
     /**
