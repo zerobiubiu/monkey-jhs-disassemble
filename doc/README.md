@@ -16,6 +16,7 @@
 | `06-component-html-string.md` | 🔧开发指导 | ✅已执行 | 组件返回 HTML 字符串，移除 react-dom/server（避免 react-dom/server 打包致 911 kB 膨胀）；确立 HTML→组件统一规定 |
 | `07-login-dialog-component.md` | 🔧开发指导 | ✅已执行 | Top250 登录表单（openLoginDialog 的 layer.open content）提取为 LoginDialog 组件（返回 HTML 字符串） |
 | `08-subtitle-dialogs-component.md` | 🔧开发指导 | ✅已执行 | DetailPageButton 字幕弹窗（searchXunLeiSubtitle 表格容器 / previewSubtitle 预览容器）提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件（返回 HTML 字符串） |
+| `09-history-dialogs-component.md` | 🔧开发指导 | ✅已执行 | HistoryPlugin 鉴定记录弹窗（openHistory 筛选/批量/表格容器 / editRecord 编辑表单）提取为 HistoryDialog / EditRecordDialog 组件（返回 HTML 字符串） |
 
 ## 类型图例
 
@@ -41,6 +42,7 @@
 6. `06-component-html-string.md` — 组件返回 HTML 字符串，移除 react-dom/server
 7. `07-login-dialog-component.md` — Top250 登录表单提取为 LoginDialog 组件
 8. `08-subtitle-dialogs-component.md` — DetailPageButton 字幕弹窗提取为 SubtitleTableDialog / SubtitlePreviewDialog 组件
+9. `09-history-dialogs-component.md` — HistoryPlugin 鉴定记录弹窗提取为 HistoryDialog / EditRecordDialog 组件
 
 ## 当前进度概览
 
@@ -51,10 +53,10 @@
 - constants：`site`/`status`/`video-quality`/`api`/`tabulator-zh`
 - resources：`gfriends`
 - styles：14 个 CSS（5 顶层 + 9 插件 `initCss`）全部提取
-- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`（返回 HTML 字符串的函数组件，非 JSX）
+- components：3 个 React 组件示范（`menu-button-box`/`rating-bar`/`status-tag`）+ `temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`（返回 HTML 字符串的函数组件，非 JSX）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，65 modules，产物 458.34 kB（gzip 114.39 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
+- build：`tsc -b && vite build` 通过，67 modules，产物 458.99 kB（gzip 114.67 kB）；HTML→组件统一规定：返回 HTML 字符串，禁用 react-dom/server
 
 ## 相关文件
 

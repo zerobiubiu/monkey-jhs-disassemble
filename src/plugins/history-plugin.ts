@@ -23,6 +23,8 @@
  *   与原脚本一致；末尾 case 无 break 合规（无下一分支可穿透）。
  */
 import { BasePlugin } from "./base-plugin";
+import { EditRecordDialog } from "../components/edit-record-dialog";
+import { HistoryDialog } from "../components/history-dialog";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
 import {
     FILTER_ACTION,
@@ -130,11 +132,19 @@ export class HistoryPlugin extends BasePlugin {
      * 对应原 L6497-6544。弹窗关闭时销毁表格实例并触发页面刷新。
      */
     openHistory(): void {
-        const html = `\n            <div style="padding: 10px 20px; height: 100%;overflow:hidden;"> \n                 <div id="filterBox" style="display: flex;gap: 5px;">\n                    <select id="dataType" style="text-align: center;min-width: 150px;">\n                        <option value="all" selected>所有</option>\n                        <option value="filter">${BLOCKED_TEXT}</option>\n                        <option value="favorite">${FAVORITED_TEXT}</option>\n                        <option value="hasWatch">${WATCHED_TEXT}</option>\n                    </select>\n                    <input id="searchCarNum" type="text" placeholder="搜索番号|演员" style="padding: 4px 5px;">\n                    <a id="clearSearchbtn" class="a-info" style="margin-left: 0">重置</a>\n                </div>\n                <div id="allSelectBox" style="margin-top: 8px;display: none">\n                    <a class="menu-btn multiple-history-deleteBtn" style="background-color:#8c8080; color:white; margin-bottom: 5px;"> <span>✂️ 移除</span> </a>\n                    <a class="menu-btn multiple-history-hasWatchBtn" style="background-color:${WATCHED_COLOR};margin-bottom: 5px">${WATCHED_TEXT}</a>\n                    <a class="menu-btn multiple-history-favoriteBtn" style="background-color:${FAVORITE_COLOR};margin-bottom: 5px">${FAVORITE_TEXT}</a>\n                    <a class="menu-btn multiple-history-filterBtn" style="background-color:${BLOCK_COLOR};margin-bottom: 5px">${BLOCK_TEXT}</a>\n                </div>\n                <div id="table-container" style="height: calc(100% - 50px); overflow-x:hidden;"></div>\n            </div>\n        `;
         layer.open({
             type: 1,
             title: "鉴定记录",
-            content: html,
+            content: HistoryDialog({
+                blockedText: BLOCKED_TEXT,
+                favoritedText: FAVORITED_TEXT,
+                watchedText: WATCHED_TEXT,
+                watchedColor: WATCHED_COLOR,
+                favoriteColor: FAVORITE_COLOR,
+                favoriteText: FAVORITE_TEXT,
+                blockColor: BLOCK_COLOR,
+                blockText: BLOCK_TEXT,
+            }),
             scrollbar: false,
             shadeClose: true,
             area: utils.getResponsiveArea(["70%", "90%"]),
@@ -733,12 +743,20 @@ export class HistoryPlugin extends BasePlugin {
             },
         ];
         console.log(statusOptions);
-        const html = `\n            <div style="padding: 20px;">\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">番号:</label>\n                    <input type="text" id="edit-carNum" value="${carNum}" style="${inputStyle} background-color: #f0f0f0;" readonly>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">演员 (用空格隔开):</label>\n                    <textarea id="edit-names" style="${textareaStyle}">${names}</textarea>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">状态:</label>\n                    <select id="edit-status" style="width: 100%; padding: 10px; border: 1px solid #ddd;">\n                        <option value="" ${status === "" ? "selected" : ""}>-- 请选择 --</option>\n                        ${statusOptions.map((opt: any) => `\n                            <option value="${opt.value}" ${status === opt.value ? "selected" : ""}>${opt.text}</option>\n                        `).join("")}\n                    </select>\n                </div>\n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">链接:</label>\n                    <input type="text" id="edit-url" value="${url}" style="${inputStyle}">\n                </div>\n                \n                <div style="margin-bottom: 15px;">\n                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">备注:</label>\n                    <textarea id="edit-remark" style="${textareaStyle}">${remark}</textarea>\n                </div>\n            </div>\n        `;
         layer.open({
             type: 1,
             title: `编辑记录: ${carNum}`,
             area: ["500px", "650px"],
-            content: html,
+            content: EditRecordDialog({
+                carNum,
+                names,
+                status,
+                url,
+                remark,
+                inputStyle,
+                textareaStyle,
+                statusOptions,
+            }),
             btn: ["保存", "取消"],
             success: () => {
                 const autoResize = (el: any) => {
