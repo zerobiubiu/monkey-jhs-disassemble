@@ -71,7 +71,9 @@ export class Top250Plugin extends BasePlugin {
      * fire-and-forget）；无参数，返回 Promise<void>，不抛出异常。
      */
     async handle(): Promise<void> {
-        $('.main-tabs ul li:contains("猜你喜歡")').html(Top250NavLink());
+        $('.main-tabs ul li:contains("猜你喜歡")').html(
+            jsxToString(<Top250NavLink />),
+        );
         $('a[href*="rankings/top"]').on("click", (event: any) => {
             event.preventDefault();
             event.stopPropagation();
@@ -108,7 +110,7 @@ export class Top250Plugin extends BasePlugin {
     renderPagination(): void {
         const params = new URLSearchParams(window.location.search);
         const page = parseInt(params.get("page") ?? "") || 1;
-        this.contentBox.append(Top250Pagination({ page }));
+        this.contentBox.append(jsxToString(<Top250Pagination page={page} />));
         this.contentBox.on(
             "click",
             ".pagination-link, .pagination-previous, .pagination-next",
@@ -183,7 +185,9 @@ export class Top250Plugin extends BasePlugin {
                     success = true;
                 } else {
                     console.error(response);
-                    movieListEl.html(Top250ErrorMessage(message));
+                    movieListEl.html(
+                        jsxToString(<Top250ErrorMessage message={message} />),
+                    );
                     show.error(message);
                     if (action === "JWTVerificationError") {
                         await localStorage.removeItem(APP_AUTH_KEY);
@@ -205,7 +209,7 @@ export class Top250Plugin extends BasePlugin {
                     );
                 } else {
                     clog.error("所有重试尝试均失败，无法获取Top数据。", error);
-                    movieListEl.html(Top250LoadError());
+                    movieListEl.html(jsxToString(<Top250LoadError />));
                 }
             } finally {
                 if (success || attempt === 3) {
@@ -235,19 +239,23 @@ export class Top250Plugin extends BasePlugin {
         });
         let yearButtonsHtml = "";
         for (let year = new Date().getFullYear(); year >= 2008; year--) {
-            yearButtonsHtml += Top250YearButton({
-                year,
-                typeValue,
-                hasCnsub: this.hasCnsub,
-            });
+            yearButtonsHtml += jsxToString(
+                <Top250YearButton
+                    year={year}
+                    typeValue={typeValue}
+                    hasCnsub={this.hasCnsub}
+                />,
+            );
         }
         this.contentBox.append(
-            Top250ToolBar({
-                handleType,
-                typeValue,
-                hasCnsub: this.hasCnsub,
-                yearButtonsHtml,
-            }),
+            jsxToString(
+                <Top250ToolBar
+                    handleType={handleType}
+                    typeValue={typeValue}
+                    hasCnsub={this.hasCnsub}
+                    yearButtonsHtml={yearButtonsHtml}
+                />,
+            ),
         );
         $("a[data-cnsub-value]").on("click", (event: any) => {
             const cnsubValue = $(event.currentTarget).data("cnsub-value");
@@ -325,7 +333,7 @@ export class Top250Plugin extends BasePlugin {
             closeBtn: 1,
             area: ["360px", "auto"],
             shadeClose: false,
-            content: LoginDialog(),
+            content: jsxToString(<LoginDialog />),
             success: (_layero: any, index: any) => {
                 $("#loginBtn").click(function () {
                     const username = $("#username").val();

@@ -48,6 +48,7 @@ import { PreviewVideoActionBtn } from "../components/preview-video-action-btn";
 import { PreviewVideoQualityBtn } from "../components/preview-video-quality-btn";
 import { PreviewVideoContainer } from "../components/preview-video-container";
 import { SiteResultTag } from "../components/site-result-tag";
+import { jsxToString } from "../core/jsx-to-string";
 import previewVideoCssRaw from "../styles/preview-video-plugin.css?raw";
 
 /** DMM 预览视频映射的 localStorage 缓存键。对应原 L3385。 */
@@ -250,7 +251,7 @@ class DmmPreviewVideoResolver {
                 let linkType = "single";
                 if (matched.length > 1) {
                     $fanzaBtn.attr("href", siteUrl);
-                    $fanzaBtn.append(SiteResultTag());
+                    $fanzaBtn.append(jsxToString(<SiteResultTag />));
                     $fanzaBtn.css("backgroundColor", "#7bc73b");
                     linkType = "multiple";
                 } else {
@@ -571,7 +572,7 @@ export class PreviewVideoPlugin extends BasePlugin {
                 clog.debug("JavDB没有视频播放元素, 开始创建...");
                 const coverSrc = $(".column-video-cover img").attr("src");
                 $(".preview-images").prepend(
-                    PreviewVideoContainer({ coverSrc }),
+                    jsxToString(<PreviewVideoContainer coverSrc={coverSrc} />),
                 );
                 $(".preview-video-container").on("click", () => {
                     utils.loopDetector(
@@ -654,11 +655,13 @@ export class PreviewVideoPlugin extends BasePlugin {
                 if (src) {
                     const isActive = currentQuality === opt.quality;
                     const $btn = $(
-                        PreviewVideoQualityBtn({
-                            opt,
-                            src,
-                            isActive,
-                        }),
+                        jsxToString(
+                            <PreviewVideoQualityBtn
+                                opt={opt}
+                                src={src}
+                                isActive={isActive}
+                            />,
+                        ),
                     );
                     $qualityGroup.append($btn);
                 }
@@ -672,30 +675,36 @@ export class PreviewVideoPlugin extends BasePlugin {
             "margin-left": "auto",
         });
         const $filterBtn = $(
-            PreviewVideoActionBtn({
-                id: "video-filterBtn",
-                color: "#de3333",
-                label: "屏蔽",
-                hotKey: this.filterHotKey,
-            }),
+            jsxToString(
+                <PreviewVideoActionBtn
+                    id="video-filterBtn"
+                    color="#de3333"
+                    label="屏蔽"
+                    hotKey={this.filterHotKey}
+                />,
+            ),
         );
         $actionGroup.append($filterBtn);
         const $favoriteBtn = $(
-            PreviewVideoActionBtn({
-                id: "video-favoriteBtn",
-                color: "#25b1dc",
-                label: "收藏",
-                hotKey: this.favoriteHotKey,
-            }),
+            jsxToString(
+                <PreviewVideoActionBtn
+                    id="video-favoriteBtn"
+                    color="#25b1dc"
+                    label="收藏"
+                    hotKey={this.favoriteHotKey}
+                />,
+            ),
         );
         $actionGroup.append($favoriteBtn);
         const $speedBtn = $(
-            PreviewVideoActionBtn({
-                id: "speed-btn",
-                color: "#76b45d",
-                label: "快进",
-                hotKey: this.speedVideoHotKey,
-            }),
+            jsxToString(
+                <PreviewVideoActionBtn
+                    id="speed-btn"
+                    color="#76b45d"
+                    label="快进"
+                    hotKey={this.speedVideoHotKey}
+                />,
+            ),
         );
         $actionGroup.append($speedBtn);
         $toolbar.append($actionGroup);

@@ -24,6 +24,7 @@ import { FAVORITE_ACTION, HAS_WATCH_ACTION } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
 import { WantWatchedHintSpan } from "../components/want-watched-hint-span";
 import { WantWatchedImportButton } from "../components/want-watched-import-button";
+import { jsxToString } from "../core/jsx-to-string";
 
 export class WantAndWatchedVideosPlugin extends BasePlugin {
     /** 当前导入动作类型（"favorite" 或 "hasWatch"），由按钮点击时设定。对应原 L10588。 */
@@ -41,8 +42,10 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if (window.location.href.includes("/want_watch_videos")) {
-            $("h3").append(WantWatchedImportButton({ variant: "want" }));
-            $("h3").append(WantWatchedHintSpan({ variant: "want" }));
+            $("h3").append(
+                jsxToString(<WantWatchedImportButton variant="want" />),
+            );
+            $("h3").append(jsxToString(<WantWatchedHintSpan variant="want" />));
             $("#wantWatchBtn").on("click", (clickEvent: any) => {
                 this.type = FAVORITE_ACTION;
                 this.importWantWatchVideos(
@@ -52,8 +55,12 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
             });
         }
         if (window.location.href.includes("/watched_videos")) {
-            $("h3").append(WantWatchedImportButton({ variant: "watched" }));
-            $("h3").append(WantWatchedHintSpan({ variant: "watched" }));
+            $("h3").append(
+                jsxToString(<WantWatchedImportButton variant="watched" />),
+            );
+            $("h3").append(
+                jsxToString(<WantWatchedHintSpan variant="watched" />),
+            );
             $("#wantWatchBtn").on("click", (clickEvent: any) => {
                 this.type = HAS_WATCH_ACTION;
                 this.importWantWatchVideos(

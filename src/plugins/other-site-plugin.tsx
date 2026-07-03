@@ -27,6 +27,7 @@
 import { isJavdbSite } from "../constants/site";
 import { YES } from "../constants/status";
 import { AsyncTaskQueue } from "../core/async-task-queue";
+import { jsxToString } from "../core/jsx-to-string";
 import { BasePlugin } from "./base-plugin";
 import { OtherSiteBox } from "../components/other-site-box";
 import { OtherSiteBtn } from "../components/other-site-btn";
@@ -142,16 +143,20 @@ export class OtherSitePlugin extends BasePlugin {
                 ) {
                     return "";
                 }
-                return OtherSiteBtn({
-                    id: siteConfig.id,
-                    enabled: enabledSiteIds.includes(siteConfig.id),
-                });
+                return jsxToString(
+                    <OtherSiteBtn
+                        id={siteConfig.id}
+                        enabled={enabledSiteIds.includes(siteConfig.id)}
+                    />,
+                );
             })
             .join("");
-        const boxHtml = OtherSiteBox({
-            siteButtonsHtml,
-            isJavdbSite,
-        });
+        const boxHtml = jsxToString(
+            <OtherSiteBox
+                siteButtonsHtml={siteButtonsHtml}
+                isJavdbSite={isJavdbSite}
+            />,
+        );
         $(".movie-panel-info").append(boxHtml);
         $(".container .info").append(boxHtml);
         await Promise.all(
@@ -194,7 +199,7 @@ export class OtherSitePlugin extends BasePlugin {
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                 } else if (dmmCachedResult.type === "multiple") {
                     buttonEl.attr("href", dmmCachedResult.url);
-                    buttonEl.append(SiteResultTag());
+                    buttonEl.append(jsxToString(<SiteResultTag />));
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                 }
             }
@@ -219,7 +224,7 @@ export class OtherSitePlugin extends BasePlugin {
                         buttonEl.css("backgroundColor", this.okBackgroundColor);
                     } else if (cachedResult.type === "multiple") {
                         buttonEl.attr("href", cachedResult.url);
-                        buttonEl.append(SiteResultTag());
+                        buttonEl.append(jsxToString(<SiteResultTag />));
                         buttonEl.css("backgroundColor", this.okBackgroundColor);
                     }
                     return;
@@ -274,7 +279,7 @@ export class OtherSitePlugin extends BasePlugin {
                     };
                 } else if (detailHrefs.length > 1) {
                     buttonEl.attr("href", searchUrl);
-                    tagHtml += SiteResultTag();
+                    tagHtml += jsxToString(<SiteResultTag />);
                     buttonEl.css("backgroundColor", this.okBackgroundColor);
                     resultData = {
                         type: "multiple",
@@ -405,11 +410,13 @@ export class OtherSitePlugin extends BasePlugin {
             checkboxContainer.innerHTML = this.siteConfigs
                 .map((siteConfig) => {
                     const isEnabled = enabledSiteIds.includes(siteConfig.id);
-                    return OtherSiteCheckbox({
-                        id: siteConfig.id,
-                        isEnabled,
-                        isJavdbSite,
-                    });
+                    return jsxToString(
+                        <OtherSiteCheckbox
+                            id={siteConfig.id}
+                            isEnabled={isEnabled}
+                            isJavdbSite={isJavdbSite}
+                        />,
+                    );
                 })
                 .join("");
         }

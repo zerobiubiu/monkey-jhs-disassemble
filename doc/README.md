@@ -30,6 +30,8 @@
 | `20-detail-page-button-components-tsx.md` | 🔧开发指导 | ✅已执行 | 详情页按钮 7 个 HTML 字符串组件转 TSX 原生 React 组件（`detail-menu-buttons`/`rating-bar-html`/`list-panel`/`subtitle-action-cell`/`subtitle-line`/`subtitle-table-dialog`/`subtitle-preview-dialog`），合并删除示范 `rating-bar.tsx`；调用点 `detail-page-button-plugin.ts`→`.tsx`，7 处调用改 `jsxToString(<Comp {...props} />)`；`{" "}` 保按钮间空格、`{"\n"}` 保字幕行尾换行（pre-wrap 渲染）、`dangerouslySetInnerHTML` 原始注入字幕正文、行文本转义（DOM 等价）；产物 495.97 kB（gzip 121.68 kB） |
 | `21-setting-components-tsx.md` | 🔧开发指导 | ✅已执行 | 设置弹层 9 个 HTML 字符串组件转 TSX 原生 React 组件（`setting-dialog`/`help-dialog`/`backup-file-dialog`/`setting-mount-box`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`keyword-label`/`back-to-top-button`）；调用点 `setting-plugin.ts`→`.tsx`，13 处调用改 `jsxToString(<Comp {...props} />)`；`cacheItemsHtml`/`qualityOptionsHtml` 以 `dangerouslySetInnerHTML` 注入（预拼接 HTML 字符串）、`CacheItemHtml` 的 `key` prop 因 React 保留 prop 冲突重命名为 `cacheKey`（`data-key` 输出不变）、❓ 与文案间 `{" "}` 保空格、条件类名/条件 style/条件块（isJavdbSite）保留、HTML 注释→JSX 注释、SVG 原生 JSX；产物 505.36 kB（gzip 122.35 kB） |
 
+| `22-top250-nav-other-preview-want-tsx.md` | 🔧开发指导 | ✅已执行 | top250/nav/other-site/preview/want-watched 17 个组件转 TSX（26 处调用 jsxToString；LoginDialog on* 内联 JS 丢失 DOM 等价 / OtherSiteCheckbox label for 用 Record 展开注入 / dangerouslySetInnerHTML 注入 yearButtonsHtml/siteButtonsHtml / href & 表达式保留）；产物 517.33 kB（gzip 122.79 kB） |
+
 ## 类型图例
 
 - 📋 接口契约：前后端对接的 API 规格
@@ -67,6 +69,7 @@
 19. `19-blacklist-components-tsx.md` — 黑名单 9 个组件转 TSX（9 处调用 jsxToString；dangerouslySetInnerHTML 支持 / 条件空 style 省略 / &nbsp;→U+00A0 / {" "} 保空格 / HTML 注释→JSX 注释）
 20. `20-detail-page-button-components-tsx.md` — 详情页按钮 7 个组件转 TSX（7 处调用 jsxToString；合并删除 rating-bar.tsx 示范 / {"\n"} 保字幕行尾换行 / dangerouslySetInnerHTML 注入字幕正文）
 21. `21-setting-components-tsx.md` — 设置弹层 9 个组件转 TSX（13 处调用 jsxToString；dangerouslySetInnerHTML 注入 cacheItemsHtml/qualityOptionsHtml / CacheItemHtml key→cacheKey 重命名 / ❓{" "} 保空格 / SVG 原生 JSX）
+22. `22-top250-nav-other-preview-want-tsx.md` — top250/nav/other-site/preview/want-watched 17 个组件转 TSX（26 处调用 jsxToString；LoginDialog on* 内联 JS 丢失 / OtherSiteCheckbox label for 用 Record 展开 / dangerouslySetInnerHTML 注入 yearButtonsHtml/siteButtonsHtml）
 
 ## 当前进度概览
 
@@ -80,7 +83,7 @@
 - components：`temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter` + doc/13 新增 26 个（`ranking-containers`/`hit-show-tool-bar`/`hit-show-movie-item`/`hit-show-score`/`top250-tool-bar`/`top250-year-button`/`top250-pagination`/`top250-error-message`/`top250-nav-link`/`nav-search-box`/`nav-other-dropdown`/`actress-card`/`actress-pagination`/`new-video-dialog-title`/`other-site-box`/`other-site-btn`/`other-site-checkbox`/`site-result-tag`/`preview-video-quality-btn`/`preview-video-action-btn`/`preview-video-container`/`review-header`/`review-containers`/`review-loading`/`review-error`/`review-empty`/`review-load-more`/`review-end`/`review-link-content`/`review-item`/`setting-mount-box`/`back-to-top-button`/`keyword-label`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`history-source-cell`/`history-status-cell`/`want-watched-hint-span`/`want-watched-import-button`/`logger-log-entry`/`image-preview-img`/`image-preview-error`）+ doc/20 转换 `detail-menu-buttons`/`rating-bar-html`/`list-panel`/`subtitle-action-cell`/`subtitle-line`/`subtitle-table-dialog`/`subtitle-preview-dialog` 7 个为 TSX + doc/21 转换 `setting-dialog`/`help-dialog`/`backup-file-dialog`/`setting-mount-box`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`keyword-label`/`back-to-top-button` 9 个为 TSX（JSX 函数组件，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（`menu-button-box`/`rating-bar`/`status-tag`）已全部合并删除（doc/17 删 menu-button-box/status-tag，doc/20 删 rating-bar）
 - 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，166 modules，产物 505.36 kB（gzip 122.35 kB）；jsxToString 轻量渲染器（doc/16）已落地，`temporary-image-container` + 列表页 8（doc/17）+ 鉴定记录/演员 9（doc/18）+ 黑名单 9（doc/19）+ 详情页按钮 7（doc/20）+ 设置弹层 9（doc/21）共 43 个组件已转 TSX（返回 JSX，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（menu-button-box/rating-bar/status-tag）已全部合并删除
+- build：`tsc -b && vite build` 通过，166 modules，产物 517.33 kB（gzip 122.79 kB）；jsxToString 轻量渲染器（doc/16）已落地，`temporary-image-container` + 列表页 8（doc/17）+ 鉴定记录/演员 9（doc/18）+ 黑名单 9（doc/19）+ 详情页按钮 7（doc/20）+ 设置弹层 9（doc/21）+ top250/nav/other-site/preview/want-watched 17（doc/22）共 60 个组件已转 TSX（返回 JSX，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（menu-button-box/rating-bar/status-tag）已全部合并删除
 
 ## 相关文件
 

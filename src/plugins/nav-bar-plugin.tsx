@@ -24,6 +24,7 @@
 import { BasePlugin } from "./base-plugin";
 import { NavOtherDropdown } from "../components/nav-other-dropdown";
 import { NavSearchBox } from "../components/nav-search-box";
+import { jsxToString } from "../core/jsx-to-string";
 import navBarCssRaw from "../styles/nav-bar-plugin.css?raw";
 
 export class NavBarPlugin extends BasePlugin {
@@ -91,7 +92,7 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值，不抛出异常。
      */
     hookSearch(): void {
-        $("#navbar-menu-hero").after(NavSearchBox());
+        $("#navbar-menu-hero").after(jsxToString(<NavSearchBox />));
         $("#search-keyword")
             .on("paste", (event: any) => {
                 const items: any = event.originalEvent.clipboardData.items;
@@ -149,7 +150,9 @@ export class NavBarPlugin extends BasePlugin {
     mergeNav(): void {
         $('a[href*="/feedbacks/new"]').remove();
         $('a[href*="theporndude.com"]').remove();
-        $('a.navbar-link[href="/makers"]').parent().after(NavOtherDropdown());
+        $('a.navbar-link[href="/makers"]')
+            .parent()
+            .after(jsxToString(<NavOtherDropdown />));
     }
 
     /**
