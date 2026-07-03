@@ -8,9 +8,11 @@
  *
  * 保留原 HTML 结构、id（username/password/loginBtn）、内联 style（对象化，
  * 值原样保留）。jsxToString 忽略 on* 事件属性，故原 onfocus/onblur/
- * onmouseover/onmouseout 内联 JS 不迁移（视觉装饰丢失，DOM 结构与
- * id/类名/style 零偏差）。事件绑定（#loginBtn 点击 / 输入校验 / 提交流程）
- * 仍由 openLoginDialog 的 success 回调持有，组件只负责静态结构。
+ * onmouseover/onmouseout 内联 JS 不迁移（DOM 结构与 id/类名/style 零偏差）。
+ * 视觉装饰（输入框 focus/blur 切 borderColor/background、#loginBtn
+ * mouseover/mouseout 切 background）由 `top250-plugin.tsx` 的 openLoginDialog
+ * `success` 回调用 jQuery `.on(...)` 等价补回（详见 doc/23）。事件绑定
+ * （#loginBtn 点击 / 输入校验 / 提交流程）仍由 success 回调持有，组件只负责静态结构。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 openLoginDialog 中
  * layer.open({ content }) 消费时，需先用 `jsxToString`（来自

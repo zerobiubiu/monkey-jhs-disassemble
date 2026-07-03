@@ -11,6 +11,7 @@
  * 面板样式由原脚本顶部注入的 `<style>` 块提供，本模块不重复注入。
  */
 
+import { jsxToString } from "./jsx-to-string";
 import { LoggerLogEntry } from "../components/logger-log-entry";
 
 export interface LogEntry {
@@ -448,11 +449,13 @@ export class Logger {
         )
             .toTimeString()
             .split(" ")[0];
-        el.innerHTML = LoggerLogEntry({
-            timeStr,
-            messageType: entry.messageType,
-            message: entry.message,
-        });
+        el.innerHTML = jsxToString(
+            <LoggerLogEntry
+                timeStr={timeStr}
+                messageType={entry.messageType}
+                message={entry.message}
+            />,
+        );
         return el;
     }
 

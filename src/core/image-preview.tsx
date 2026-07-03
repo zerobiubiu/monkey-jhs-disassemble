@@ -23,6 +23,7 @@
 
 import imagePreviewCssRaw from "../styles/image-preview.css?raw";
 import { injectCss as H } from "./style-injector";
+import { jsxToString } from "./jsx-to-string";
 import { ImagePreviewError } from "../components/image-preview-error";
 import { ImagePreviewImg } from "../components/image-preview-img";
 
@@ -133,7 +134,7 @@ class ImagePreview {
         const img = new Image();
         img.onload = () => {
             preview.classList.remove("loading");
-            preview.innerHTML = ImagePreviewImg({ src: imgSrc });
+            preview.innerHTML = jsxToString(<ImagePreviewImg src={imgSrc} />);
             this.imgElement = preview.querySelector<HTMLImageElement>("img");
             const { width, height } = this.calculateImageSize(img);
             preview.style.width = `${width}px`;
@@ -145,7 +146,7 @@ class ImagePreview {
         };
         img.onerror = () => {
             preview.classList.remove("loading");
-            preview.innerHTML = ImagePreviewError();
+            preview.innerHTML = jsxToString(<ImagePreviewError />);
         };
         img.src = imgSrc;
     }

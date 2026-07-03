@@ -335,6 +335,25 @@ export class Top250Plugin extends BasePlugin {
             shadeClose: false,
             content: jsxToString(<LoginDialog />),
             success: (_layero: any, index: any) => {
+                // 补回原版内联 onfocus/onblur/onmouseover/onmouseout 视觉装饰
+                // （jsxToString 忽略 on* 事件属性，组件只保留静态结构）。
+                // jQuery `on` 回调内 `this` 为 DOM 元素，须用 function 非 arrow。
+                $("#username, #password")
+                    .on("focus", function (this: HTMLElement) {
+                        this.style.borderColor = "#4a8bfc";
+                        this.style.background = "#fff";
+                    })
+                    .on("blur", function (this: HTMLElement) {
+                        this.style.borderColor = "#e0e0e0";
+                        this.style.background = "#f9f9f9";
+                    });
+                $("#loginBtn")
+                    .on("mouseover", function (this: HTMLElement) {
+                        this.style.background = "#3a7be0";
+                    })
+                    .on("mouseout", function (this: HTMLElement) {
+                        this.style.background = "#4a8bfc";
+                    });
                 $("#loginBtn").click(function () {
                     const username = $("#username").val();
                     const password = $("#password").val();
