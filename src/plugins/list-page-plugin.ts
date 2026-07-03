@@ -1,0 +1,1065 @@
+/**
+ * 列表页插件 ListPagePlugin —— 对应原脚本 archetype/jhs.user.js L8279-9069。
+ *
+ * 列表页（window.isListPage）主插件：监听跨标签页 BroadcastChannel 刷新/清缓存
+ * 消息；清理重复 ID、替换高清封面图、挂载分页跳页控件、修正 JavBus 标题盒子；
+ * 依 IndexedDB 的收藏/屏蔽/已观看/关键词/演员黑名单数据对 .item 卡片做显隐
+ * 过滤并注入 status-tag；绑定卡片点击/右键屏蔽/快捷键（屏蔽·收藏·已观看·
+ * 折叠分类·clog 展开）；记忆演员页标签展开态；DOM 变更后自动重过滤；并对
+ * JavDb 标题做 Google 翻译（带 localStorage 缓存）。
+ *
+ * 单字母局部变量（原 e/t/n/a/i/s/o 等）已语义化；顶层站点/状态常量
+ * o/r/l/c/d/h/p/B/C/_ 改由 ../constants 引入（currentHref/isJavdbSite/
+ * isJavbusSite/isSearchOrUserPage/FILTER_ACTION/FAVORITE_ACTION/
+ * HAS_WATCH_ACTION/ACTOR/NO/YES）。原顶层 Te（状态标签配置）改写为模块级
+ * STATUS_TAG_CONFIG；原 _e（Google 翻译）改写为模块级 translateText；
+ * 原 se（快捷键单例 ie）改用 ../core/hotkey 的 Hotkey 静态类；原
+ * ImageHoverPreview 改用 ../core/image-preview 的 ImagePreview（同名重构）。
+ *
+ * 注意：原顶层常量 g（"hasDown"，「已下载」动作状态）已在 archetype/doc/
+ * 09-remove-hasdown-constants.md 中作为「已删除」定稿移除。filterMovieList
+ * 中 {[g]: new Set()} 的键集合从未被读取（仅 filter/favorite/hasWatch 被解构
+ * 使用），属残留死代码；为保留原控制流，此处以本地常量 HAS_DOWN_ACTION
+ * 还原其值（与 list-page-button-plugin.ts 还原 HAS_DOWN_TEXT 的做法一致）。
+ *
+ * 构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
+ * 注入的字段改为 class 字段语法（useDefineForClassFields:true，语义一致）。
+ * $ / utils / storageManager / show / clog / gmHttp 已由 ../types/globals.d.ts
+ * 声明为 any；内联 CSS/HTML 模板字符串原样保留（仅替换 ${} 插值变量名）。
+ */
+import {
+    currentHref,
+    isJavdbSite,
+    isJavbusSite,
+    isSearchOrUserPage,
+    ACTOR,
+} from "../constants/site";
+import {
+    FILTER_ACTION,
+    FAVORITE_ACTION,
+    HAS_WATCH_ACTION,
+    BLOCKED_TEXT,
+    BLOCK_COLOR,
+    FAVORITED_TEXT,
+    FAVORITE_COLOR,
+    WATCHED_TEXT,
+    WATCHED_COLOR,
+    NO,
+    YES,
+} from "../constants/status";
+import { BasePlugin } from "./base-plugin";
+import { Hotkey } from "../core/hotkey";
+import { ImagePreview } from "../core/image-preview";
+
+/** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
+interface StatusTagConfig {
+    text: string;
+    color: string;
+    reasonType: string;
+    isCounted: boolean;
+    countKey: string;
+}
+
+/**
+ * 「已下载」动作状态（原顶层常量 g = "hasDown"）。
+ * 已在 archetype/doc/09-remove-hasdown-constants.md 中作为已删除定稿移除，
+ * filterMovieList 的 {[g]: new Set()} 键集合从未被读取，属残留死代码；
+ * 此处还原其值仅用于保留原控制流（与 list-page-button-plugin.ts 还原
+ * HAS_DOWN_TEXT 的做法一致）。
+ */
+const HAS_DOWN_ACTION = "hasDown";
+
+/**
+ * 状态标签配置表（原顶层 Te）。
+ * 将原 u/f/b/w/k/S 等单字母文本/颜色常量替换为 ../constants/status 的语义常量。
+ */
+const STATUS_TAG_CONFIG: Record<string, StatusTagConfig> = {
+    IS_FILTERED: {
+        text: BLOCKED_TEXT,
+        color: BLOCK_COLOR,
+        reasonType: "单番号屏蔽",
+        isCounted: true,
+        countKey: "currentPageFilterCount",
+    },
+    IS_FAVORITE: {
+        text: FAVORITED_TEXT,
+        color: FAVORITE_COLOR,
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageFavoriteCount",
+    },
+    IS_HAS_WATCH: {
+        text: WATCHED_TEXT,
+        color: WATCHED_COLOR,
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageHasWatchCount",
+    },
+    IS_KEYWORD_FILTER: {
+        text: "❌ 关键词屏蔽",
+        color: "#de3333",
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageKeywordFilterCount",
+    },
+    IS_ACTOR_FILTER: {
+        text: "♂️ 男演员屏蔽",
+        color: "#b22222",
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageActorFilterCount",
+    },
+    IS_ACTRESS_FILTER: {
+        text: "♀️ 女演员屏蔽",
+        color: "#cd5c5c",
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageActorFilterCount",
+    },
+    IS_WAIT_CHECK: {
+        text: "",
+        color: "",
+        reasonType: "",
+        isCounted: true,
+        countKey: "currentPageWaitCheckCount",
+    },
+};
+
+/**
+ * 调用 Google 翻译接口将文本译为目标语言（原顶层 _e）。
+ * @param text 待翻译文本
+ * @param sourceLang 源语言代码，默认 ja
+ * @param targetLang 目标语言代码，默认 zh-CN
+ * @returns 翻译结果字符串
+ */
+async function translateText(
+    text: string,
+    sourceLang: string = "ja",
+    targetLang: string = "zh-CN",
+): Promise<string> {
+    if (!text) {
+        throw new Error("翻译文本不能为空");
+    }
+    const url =
+        "https://translate-pa.googleapis.com/v1/translate?" +
+        new URLSearchParams({
+            "params.client": "gtx",
+            dataTypes: "TRANSLATION",
+            key: "AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA",
+            "query.sourceLanguage": sourceLang,
+            "query.targetLanguage": targetLang,
+            "query.text": text,
+        });
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+    }
+    return (await response.json()).translation;
+}
+
+export class ListPagePlugin extends BasePlugin {
+    // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
+    currentPageFilterCount = 0;
+    currentPageFavoriteCount = 0;
+    currentPageHasWatchCount = 0;
+    currentPageKeywordFilterCount = 0;
+    currentPageActorFilterCount = 0;
+    currentPageWaitCheckCount = 0;
+    currentPageTotalCount = 0;
+
+    /** 翻译缓存（localStorage["jhs_translate"]，番号→译文）。 */
+    cache: Record<string, string> = localStorage.getItem("jhs_translate")
+        ? JSON.parse(localStorage.getItem("jhs_translate") as string)
+        : {};
+
+    /** 翻译写入队列，串行化 localStorage 写入。 */
+    writeQueue: Promise<any> = Promise.resolve();
+
+    /** 当前悬浮的封面图 jQuery 对象（快捷键操作目标）。 */
+    $currentImage: any = null;
+
+    // —— 快捷键设置（运行时由 bindListPageHotKey 从设置读取） ——
+    filterHotKey: any;
+    favoriteHotKey: any;
+    hasWatchHotKey: any;
+    enableImageHotKey: any;
+    clogHotKey: any;
+    foldCategoryHotKey: any;
+
+    /** 返回插件名，供 PluginManager 注册去重。对应原 L8298-8300。 */
+    getName(): string {
+        return "ListPagePlugin";
+    }
+
+    /** 列表页主处理。对应原 L8301-8339。 */
+    async handle(): Promise<void> {
+        new BroadcastChannel("channel-refresh").addEventListener(
+            "message",
+            async (event: MessageEvent) => {
+                const msgType = event.data.type;
+                if (msgType === "refresh") {
+                    await this.doFilter();
+                    const historyPlugin = this.getBean("HistoryPlugin");
+                    if (historyPlugin.tableObj) {
+                        historyPlugin.tableObj.setData();
+                    }
+                    const newVideoPlugin = this.getBean("NewVideoPlugin");
+                    if (newVideoPlugin) {
+                        newVideoPlugin.showNewVideoCount().then();
+                        newVideoPlugin.loadData();
+                    }
+                } else if (msgType === "cleanCache_filter_actor_actress_car_list") {
+                    storageManager.cache_filter_actor_actress_car_list &&= null;
+                } else if (
+                    msgType === "clean_cacheSettingObj" &&
+                    storageManager.cacheSettingObj
+                ) {
+                    storageManager.cacheSettingObj = null;
+                }
+            },
+        );
+        this.cleanRepeatId();
+        this.replaceHdImg();
+        this.addJumpPageControl();
+        this.fixBusTitleBox();
+        await this.doFilter();
+        this.bindClick().then();
+        this.bindListPageHotKey().then();
+        this.rememberTagExpand();
+        $(this.getSelector().itemSelector + " a").attr("target", "_blank");
+        this.checkDom();
+        // 列表页挂载"想看/观看"同步监听器，刷新本页 .item 卡片 status-tag
+        this.getBean("DetailPageButtonPlugin").setupWantWatchedSyncListener();
+    }
+
+    /** 记忆演员页标签展开态（localStorage["jhs_tag_expand"]）。对应原 L8340-8359。 */
+    rememberTagExpand(): void {
+        if (!window.location.href.includes("actors")) {
+            return;
+        }
+        const expandBtn = $(".tag-expand");
+        if (expandBtn.length === 0) {
+            return;
+        }
+        const storageKey = "jhs_tag_expand";
+        const wasExpanded = localStorage.getItem(storageKey) === "true";
+        const contentEl = $(".actor-tags .content");
+        if (wasExpanded && contentEl.hasClass("collapse")) {
+            expandBtn[0].click();
+        }
+        expandBtn.on("click", function () {
+            const isExpanded = !contentEl.hasClass("collapse");
+            console.log("触发");
+            localStorage.setItem(storageKey, isExpanded.toString());
+        });
+    }
+
+    /** 监听列表容器 DOM 变更并自动重过滤/重排序。对应原 L8360-8392。 */
+    checkDom(): void {
+        if (!(window as any).isListPage) {
+            return;
+        }
+        const selectorConfig = this.getSelector();
+        const containerEl = document.querySelector(selectorConfig.boxSelector);
+        if (!containerEl) {
+            console.error("没有找到容器节点!");
+            return;
+        }
+        const observerOptions: MutationObserverInit = {
+            childList: true,
+            subtree: false,
+        };
+        const observer = new MutationObserver(async () => {
+            observer.disconnect();
+            try {
+                this.replaceHdImg();
+                this.addJumpPageControl();
+                this.fixBusTitleBox();
+                await this.doFilter();
+                await this.getBean("ListPageButtonPlugin").sortItems();
+                $(this.getSelector().itemSelector + " a").attr(
+                    "target",
+                    "_blank",
+                );
+                this.getBean("AutoPagePlugin").checkLoad();
+            } finally {
+                observer.observe(containerEl, observerOptions);
+            }
+        });
+        observer.observe(containerEl, observerOptions);
+    }
+
+    /** 修正 JavBus 列表项标题盒子（补 video-title 包裹）。对应原 L8393-8415。 */
+    fixBusTitleBox(): void {
+        if (!isJavbusSite) {
+            return;
+        }
+        $(this.getSelector().itemSelector)
+            .toArray()
+            .forEach((itemEl: any) => {
+                const $item = $(itemEl);
+                if ($item.find(".avatar-box").length > 0) {
+                    return;
+                }
+                const imgTitle =
+                    $item.find("img").attr("title")?.trim() || "";
+                $item.find(".photo-info span:first")
+                    .contents()
+                    .first()
+                    .wrap(`<span class="video-title" title="${imgTitle}">${imgTitle}</span>`);
+                $item.find("br").remove();
+            });
+    }
+
+    /** 清理 JavBus 重复的 waterfall 容器 ID。对应原 L8416-8431。 */
+    cleanRepeatId(): void {
+        if (!isJavbusSite) {
+            return;
+        }
+        $("#waterfall_h").removeAttr("id").attr("id", "no-page");
+        const waterfallEls = $('[id="waterfall"]');
+        if (waterfallEls.length !== 0) {
+            waterfallEls.each((_index: number, element: any) => {
+                const $el = $(element);
+                if (!$el.hasClass("masonry")) {
+                    $el.children().insertAfter($el);
+                    $el.remove();
+                }
+            });
+        }
+    }
+
+    /** 触发列表过滤。对应原 L8432-8440。 */
+    async doFilter(): Promise<void> {
+        if (!(window as any).isListPage) {
+            return;
+        }
+        const itemEls = $(this.getSelector().itemSelector).toArray();
+        if (itemEls.length) {
+            await this.filterMovieList(itemEls);
+        }
+    }
+
+    /**
+     * 增量刷新某个视频卡片的 JHS status-tag。
+     * 用于跨 iframe / 跨标签页"想看 / 观看"同步后立刻反映到 series 列表上。
+     * 走与 filterMovieList 同源数据（IndexedDB），保证状态真实。
+     * @param item jQuery 化的 .item 元素
+     * @param carNum 番号
+     */
+    async renderItemStatusTag(item: any, carNum: string): Promise<void> {
+        try {
+            const $item = $(item);
+            const carInfo = await storageManager.getCar(carNum);
+            const status = carInfo ? carInfo.status : "";
+            // 移除旧 status-tag
+            $item.find(".status-tag").remove();
+            // 根据 JHS 状态决定新 tag
+            let tagConfig: StatusTagConfig | null = null;
+            if (status === FAVORITE_ACTION) {
+                tagConfig = STATUS_TAG_CONFIG.IS_FAVORITE;
+            } else if (status === HAS_WATCH_ACTION) {
+                tagConfig = STATUS_TAG_CONFIG.IS_HAS_WATCH;
+            } else if (status === FILTER_ACTION) {
+                tagConfig = STATUS_TAG_CONFIG.IS_FILTERED;
+            }
+            if (!tagConfig || !tagConfig.text) {
+                return;
+            }
+            // 与 filterMovieList 中保持一致的注入逻辑
+            const tagPosition =
+                (await storageManager.getSetting()).tagPosition || "rightTop";
+            const positionStyle =
+                tagPosition === "rightTop"
+                    ? "right: 0; top:5px;"
+                    : "left: 0; top:5px;";
+            const tagHtml = `<span class="tag is-success status-tag" data-tip="${tagConfig.reasonType}" title="" style="margin-right: 5px; border-radius:10px; position:absolute;\n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        ${tagConfig.text}\n                    </span>`;
+            const tagsEl = $item.find(".tags");
+            if (tagsEl.length) {
+                tagsEl.append(tagHtml);
+                return;
+            }
+            const itemTagEl = $item.find(".item-tag");
+            if (itemTagEl.length) {
+                itemTagEl.append(tagHtml);
+                return;
+            }
+            $item.find(".photo-info > span > div").append(tagHtml);
+        } catch (err) {
+            console.error("[JHS-想看/观看] renderItemStatusTag 失败", err);
+        }
+    }
+
+    /**
+     * 读取数据并依收藏/屏蔽/已观看/关键词/演员黑名单过滤列表项并注入 status-tag。
+     * 对应原 L8484-8633。
+     * @param itemEls .item 元素数组（jQuery .toArray() 结果）
+     */
+    async filterMovieList(itemEls: any): Promise<void> {
+        utils.time("累计耗费时间");
+        utils.time("读取数据耗时");
+        const [carList, titleFilterKeywords, blacklist, blacklistCarList, setting] =
+            await Promise.all([
+                storageManager.getCarList(),
+                storageManager.getTitleFilterKeyword(),
+                storageManager.getBlacklist(),
+                storageManager.getBlacklistCarList(),
+                storageManager.getSetting(),
+            ]);
+        const readDataTime = utils.time("读取数据耗时");
+        const statusCarSets: Record<string, Set<string>> = carList.reduce(
+            (acc: Record<string, Set<string>>, car: any) => {
+                const status = car.status;
+                if (acc.hasOwnProperty(status)) {
+                    acc[status].add(car.carNum);
+                }
+                return acc;
+            },
+            {
+                [FILTER_ACTION]: new Set<string>(),
+                [FAVORITE_ACTION]: new Set<string>(),
+                [HAS_DOWN_ACTION]: new Set<string>(),
+                [HAS_WATCH_ACTION]: new Set<string>(),
+            },
+        );
+        utils.time("组装数据耗时");
+        const blacklistRoleMap: Map<string, any> = new Map(
+            blacklist.map((item: any) => [item.starId, item.role]),
+        );
+        const { actorCarNumToNameMap, actressCarNumToNameMap } =
+            blacklistCarList.reduce(
+                (
+                    acc: {
+                        actorCarNumToNameMap: Map<string, any>;
+                        actressCarNumToNameMap: Map<string, any>;
+                    },
+                    item: any,
+                ) => {
+                    const role = blacklistRoleMap.get(item.starId);
+                    if (!role) {
+                        clog.error("黑名单数据源丢失演员信息", item);
+                        return acc;
+                    }
+                    const targetMap =
+                        role === ACTOR
+                            ? acc.actorCarNumToNameMap
+                            : acc.actressCarNumToNameMap;
+                    if (!targetMap.has(item.carNum)) {
+                        targetMap.set(item.carNum, item.names);
+                    }
+                    return acc;
+                },
+                {
+                    actorCarNumToNameMap: new Map<string, any>(),
+                    actressCarNumToNameMap: new Map<string, any>(),
+                },
+            );
+        const assembleDataTime = utils.time("组装数据耗时");
+        const showFilterItem = setting?.showFilterItem ?? NO;
+        const showFilterActorItem = setting?.showFilterActorItem ?? NO;
+        const showFilterKeywordItem = setting?.showFilterKeywordItem ?? NO;
+        const showFavoriteItem = setting?.showFavoriteItem ?? YES;
+        const showHasWatchItem = setting?.showHasWatchItem ?? YES;
+        const showAllItem = setting?.showAllItem ?? NO;
+        const tagPosition = setting?.tagPosition || "rightTop";
+        this.currentPageFilterCount = 0;
+        this.currentPageFavoriteCount = 0;
+        this.currentPageHasWatchCount = 0;
+        this.currentPageKeywordFilterCount = 0;
+        this.currentPageActorFilterCount = 0;
+        this.currentPageWaitCheckCount = 0;
+        this.currentPageTotalCount = 0;
+        utils.time("处理页面耗时");
+        await Promise.all(
+            itemEls.map(async (itemEl: any) => {
+                const $item = $(itemEl);
+                if (isJavbusSite && $item.find(".avatar-box").length > 0) {
+                    return;
+                }
+                const { carNum, title } = this.findCarNumAndHref($item);
+                const {
+                    filter: filterSet,
+                    favorite: favoriteSet,
+                    hasWatch: hasWatchSet,
+                } = statusCarSets;
+                const isFavorite = favoriteSet.has(carNum);
+                const isHasWatch = hasWatchSet.has(carNum);
+                const isFiltered = filterSet.has(carNum);
+                const isActorBlacklist = actorCarNumToNameMap.has(carNum);
+                const isActressBlacklist = actressCarNumToNameMap.has(carNum);
+                const isBlacklistActor = isActorBlacklist || isActressBlacklist;
+                const matchedKeyword = titleFilterKeywords.find(
+                    (keyword: string) =>
+                        title.includes(keyword) || carNum.startsWith(keyword),
+                );
+                const hasKeywordMatch = !!matchedKeyword;
+                if (!isSearchOrUserPage) {
+                    let shouldHide =
+                        (showFavoriteItem === NO && isFavorite) ||
+                        (showHasWatchItem === NO && isHasWatch) ||
+                        (showFilterItem === NO &&
+                            isFiltered &&
+                            !isFavorite &&
+                            !isHasWatch) ||
+                        (showFilterActorItem === NO && isBlacklistActor) ||
+                        (showFilterKeywordItem === NO && hasKeywordMatch);
+                    const isHidden = $item.attr("data-hide") === YES;
+                    if (showAllItem === YES) {
+                        shouldHide = false;
+                    }
+                    if (shouldHide && !isHidden) {
+                        $item.hide().attr("data-hide", YES);
+                    } else if (!shouldHide && isHidden) {
+                        $item.show().removeAttr("data-hide");
+                    }
+                }
+                let tagConfig: StatusTagConfig = STATUS_TAG_CONFIG.IS_WAIT_CHECK;
+                let reasonText: string | null = null;
+                if (isFiltered) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_FILTERED;
+                } else if (isFavorite) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_FAVORITE;
+                } else if (isHasWatch) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_HAS_WATCH;
+                } else if (hasKeywordMatch) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_KEYWORD_FILTER;
+                    reasonText = matchedKeyword || "未知";
+                } else if (isActorBlacklist) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_ACTOR_FILTER;
+                    reasonText = actorCarNumToNameMap.get(carNum) || "";
+                } else if (isActressBlacklist) {
+                    tagConfig = STATUS_TAG_CONFIG.IS_ACTRESS_FILTER;
+                    reasonText = actressCarNumToNameMap.get(carNum) || "";
+                }
+                reasonText ||= tagConfig.reasonType;
+                if (tagConfig.isCounted) {
+                    (this as any)[tagConfig.countKey]++;
+                }
+                this.currentPageTotalCount++;
+                $item.find(".status-tag").remove();
+                const positionStyle =
+                    tagPosition === "rightTop"
+                        ? "right: 0; top:5px;"
+                        : "left: 0; top:5px;";
+                if (tagConfig.text) {
+                    const tagHtml = isJavdbSite
+                        ? `<span class="tag is-success status-tag" data-tip="${reasonText}" title=""\n                        style="margin-right: 5px; border-radius:10px; position:absolute; \n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        ${tagConfig.text}\n                    </span>`
+                        : `<a class="a-primary status-tag" data-tip="${reasonText}"  title=""\n                        style="margin-right: 5px; padding: 0 5px; color: #fff !important; border-radius:10px; position:absolute; \n                        z-index:10; background-color: ${tagConfig.color} !important; ${positionStyle}">\n                        <span class="tag" style="color:#fff !important;">${tagConfig.text}</span>\n                    </a>`;
+                    if (isJavdbSite) {
+                        $item.find(".tags").append(tagHtml);
+                    }
+                    if (isJavbusSite) {
+                        const itemTagEl = $item.find(".item-tag");
+                        if (itemTagEl.length) {
+                            itemTagEl.append(tagHtml);
+                        } else {
+                            $item.find(".photo-info > span > div").append(tagHtml);
+                        }
+                    }
+                }
+                await this.translate($item);
+            }),
+        );
+        const processPageTime = utils.time("处理页面耗时");
+        const totalTime = utils.time("累计耗费时间");
+        $("#waitDownBtn span").text(`打开已收藏 (${statusCarSets.favorite.size})`);
+        clog.log(
+            `\n            <table class="countTable" style='border-collapse: collapse; width: 100%'>\n                <tr>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${readDataTime}</td>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${assembleDataTime}</td>\n                </tr>\n                \n                <tr>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${processPageTime}</td>\n                    <td colspan="2" style='padding: 3px; border: 1px solid #ccc;'>${totalTime}</td>\n                </tr>\n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>项目</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>数量</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>项目</td>\n                    <td style='padding: 3px; border: 1px solid #ccc; font-weight: bold;'>数量</td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽单番号</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageFilterCount}</strong></td>\n                     <td style='padding: 3px; border: 1px solid #ccc;'>收藏</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageFavoriteCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽演员</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageActorFilterCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>屏蔽关键词</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageKeywordFilterCount}</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>已观看</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageHasWatchCount}</strong></td>\n                </tr>\n                \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'>待鉴定</td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageWaitCheckCount}</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'></td>\n                </tr>\n        \n                <tr>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>总数</strong></td>\n                    <td style='padding: 3px; border: 1px solid #ccc;'><strong>${this.currentPageTotalCount}</strong></td>\n                </tr>\n            </table>\n        `,
+        );
+    }
+
+    /** 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。 */
+    async bindClick(): Promise<void> {
+        const selectorConfig = this.getSelector();
+        $(selectorConfig.boxSelector).on("click", ".item img", async (event: any) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if ($(event.target).closest("div.meta-buttons").length) {
+                return;
+            }
+            const $item = $(event.target).closest(".item");
+            const { carNum, aHref } = this.findCarNumAndHref($item);
+            const dialogOpenDetail = await storageManager.getSetting(
+                "dialogOpenDetail",
+                YES,
+            );
+            if (carNum.includes("FC2-")) {
+                const movieId = this.parseMovieId(aHref);
+                this.getBean("Fc2Plugin")?.openFc2Dialog(movieId, carNum, aHref);
+            } else if (dialogOpenDetail === YES) {
+                utils.openPage(aHref, carNum, true, event);
+                this.$currentImage = null;
+            } else {
+                window.open(aHref);
+            }
+        });
+        $(selectorConfig.boxSelector).on("click", ".item video", async (event: any) => {
+            const videoEl = event.currentTarget;
+            if (videoEl.paused) {
+                videoEl.play().catch((err: any) =>
+                    console.error("播放失败:", err),
+                );
+            } else {
+                videoEl.pause();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        $(selectorConfig.boxSelector).on(
+            "click",
+            ".item .video-title",
+            async (event: any) => {
+                if ($(event.target).closest('[class^="jhs-match-"]').length) {
+                    return;
+                }
+                const $item = $(event.currentTarget).closest(".item");
+                const { carNum, aHref } = this.findCarNumAndHref($item);
+                if (carNum.includes("FC2-")) {
+                    event.preventDefault();
+                    const movieId = this.parseMovieId(aHref);
+                    this.getBean("Fc2Plugin")?.openFc2Dialog(
+                        movieId,
+                        carNum,
+                        aHref,
+                    );
+                }
+            },
+        );
+        $(selectorConfig.boxSelector).on(
+            "contextmenu",
+            ".item img, .item video",
+            async (event: any) => {
+                event.preventDefault();
+                const $item = $(event.target).closest(".item");
+                const { carNum, url, publishTime } =
+                    this.findCarNumAndHref($item);
+                const nameEl = isJavdbSite
+                    ? $(".actor-section-name")
+                    : $(".avatar-box .photo-info .pb10");
+                let actressName: string | null = "";
+                if (nameEl.length) {
+                    actressName = nameEl
+                        .text()
+                        .trim()
+                        .split(",")[0]
+                        .replace("(無碼)", "");
+                }
+                utils.q(event, `是否屏蔽番号 ${carNum}?`, async () => {
+                    setTimeout(async () => {
+                        actressName ||= await this.parseActressName(url);
+                        await storageManager.saveCar({
+                            carNum,
+                            url,
+                            names: actressName,
+                            actionType: FILTER_ACTION,
+                            publishTime,
+                        });
+                        refresh();
+                        show.ok("操作成功");
+                    });
+                });
+            },
+        );
+    }
+
+    /** 解析详情页女演员名称（若启用补录）。对应原 L8712-8739。 */
+    async parseActressName(url: string): Promise<string | null> {
+        let actressName: string | null = null;
+        if (
+            (await storageManager.getSetting("enableSaveActressCarInfo", NO)) ===
+            YES
+        ) {
+            clog.debug("鉴定补录演员信息-已启用, 开始解析详情页");
+            clog.debug("开始解析演员详情页", url);
+            const html = await gmHttp.get(url);
+            const $dom = utils.htmlTo$dom(html);
+            if (isJavdbSite) {
+                actressName = $dom
+                    .find(".female")
+                    .prev()
+                    .map((_index: number, el: any) => $(el).text())
+                    .get()
+                    .join(" ");
+            } else if (isJavbusSite) {
+                actressName = $dom
+                    .find('span[onmouseover*="star_"] a')
+                    .map((_index: number, el: any) => $(el).text())
+                    .get()
+                    .join(" ");
+            }
+            clog.debug("解析到名称:", actressName);
+        }
+        return actressName;
+    }
+
+    /** 绑定列表页快捷键（屏蔽/收藏/已观看/折叠分类/clog）。对应原 L8740-8820。 */
+    async bindListPageHotKey(): Promise<void> {
+        this.$currentImage = null;
+        $(document)
+            .on("mouseenter", this.getSelector().coverImgSelector, (event: any) => {
+                this.$currentImage = $(event.currentTarget);
+            })
+            .on("mouseleave", this.getSelector().coverImgSelector, () => {
+                this.$currentImage = null;
+            });
+        const setting = await storageManager.getSetting();
+        this.filterHotKey = setting.filterHotKey;
+        this.favoriteHotKey = setting.favoriteHotKey;
+        this.hasWatchHotKey = setting.hasWatchHotKey;
+        this.enableImageHotKey = setting.enableImageHotKey || NO;
+        this.clogHotKey = setting.clogHotKey;
+        this.foldCategoryHotKey = setting.foldCategoryHotKey;
+        if (this.enableImageHotKey === NO) {
+            return;
+        }
+        const saveCarByHotkey = async (carInfo: any, actionType: string) => {
+            setTimeout(async () => {
+                const names = await this.parseActressName(carInfo.url);
+                await storageManager.saveCar({
+                    carNum: carInfo.carNum,
+                    url: carInfo.url,
+                    names,
+                    actionType,
+                    publishTime: carInfo.publishTime,
+                });
+                refresh();
+                show.ok("操作成功");
+            });
+        };
+        const hotkeyHandlers: Record<string, (carInfo: any) => void> = {};
+        if (this.filterHotKey) {
+            hotkeyHandlers[this.filterHotKey] = (carInfo: any) => {
+                saveCarByHotkey(carInfo, FILTER_ACTION);
+            };
+        }
+        if (this.favoriteHotKey) {
+            hotkeyHandlers[this.favoriteHotKey] = (carInfo: any) => {
+                saveCarByHotkey(carInfo, FAVORITE_ACTION);
+            };
+        }
+        if (this.hasWatchHotKey) {
+            hotkeyHandlers[this.hasWatchHotKey] = (carInfo: any) => {
+                saveCarByHotkey(carInfo, HAS_WATCH_ACTION);
+            };
+        }
+        if (this.clogHotKey) {
+            Hotkey.registerHotkey(this.clogHotKey, () => {
+                clog.toggleExpandCollapsed();
+            });
+        }
+        if (this.foldCategoryHotKey) {
+            Hotkey.registerHotkey(this.foldCategoryHotKey, () => {
+                const foldBtn = $("#foldCategoryBtn");
+                if (foldBtn.length) {
+                    foldBtn[0].click();
+                }
+            });
+        }
+        const registerImageHotkey = (
+            hotkey: any,
+            handler: (carInfo: any) => void,
+        ) => {
+            Hotkey.registerHotkey(hotkey, () => {
+                const activeEl = document.activeElement as HTMLElement;
+                if (
+                    activeEl.tagName !== "INPUT" &&
+                    activeEl.tagName !== "TEXTAREA" &&
+                    !activeEl.isContentEditable &&
+                    this.$currentImage
+                ) {
+                    const $item = this.$currentImage.closest(".item");
+                    const carInfo = this.findCarNumAndHref($item);
+                    handler(carInfo);
+                }
+            });
+        };
+        Object.entries(hotkeyHandlers).forEach(([hotkey, handler]) => {
+            registerImageHotkey(hotkey, handler);
+        });
+    }
+
+    /**
+     * 从 .item 卡片提取番号、链接、标题、发行时间。carNum 为空时抛错。
+     * 对应原 L8821-8873。
+     * @param $item jQuery 化的 .item 元素
+     * @returns 番号信息（carNum/aHref/url/title/publishTime）
+     */
+    findCarNumAndHref($item: any): {
+        carNum: string;
+        aHref: string;
+        url: string;
+        title: string;
+        publishTime: string;
+    } {
+        let carNum: string | undefined;
+        let title: string | undefined;
+        let publishTime: string | undefined;
+        const linkEl = $item.find("a");
+        const aHref = linkEl.attr("href");
+        const videoTitleEl = $item.find(".video-title");
+        if (videoTitleEl.length > 0) {
+            const strongEl = videoTitleEl.find("strong");
+            if (strongEl.length > 0) {
+                carNum = strongEl.text().trim();
+            }
+            title = linkEl.attr("title")
+                ? linkEl.attr("title").trim()
+                : carNum
+                  ? videoTitleEl.text().replace(carNum, "").trim()
+                  : videoTitleEl.text().trim();
+            publishTime = $item.find(".meta").text().trim();
+        }
+        if (!carNum) {
+            const imgEl = $item.find("img");
+            if (aHref && imgEl.length > 0) {
+                title =
+                    imgEl.attr("title")?.trim() ||
+                    imgEl.attr("data-title")?.trim();
+            }
+            const isDate = (val: string) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(val);
+            publishTime = $item
+                .find("date")
+                .map((_index: number, el: any) => $(el).text().trim())
+                .get()
+                .find(isDate);
+            carNum = $item
+                .find("date")
+                .map((_index: number, el: any) => $(el).text().trim())
+                .get()
+                .find((val: string) => !isDate(val));
+        }
+        if (!carNum) {
+            const errorMsg = "提取番号信息失败";
+            show.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+        return {
+            carNum,
+            aHref: aHref || "",
+            url: aHref || "",
+            title: title || "",
+            publishTime: publishTime || "",
+        };
+    }
+
+    /** 显示被隐藏的指定番号卡片（取消 data-hide）。对应原 L8874-8885。 */
+    showCarNumBox(carNum: string): void {
+        const matchedEl = $(".movie-list .item")
+            .toArray()
+            .find(
+                (itemEl: any) =>
+                    $(itemEl).find(".video-title strong").text() === carNum,
+            );
+        if (matchedEl) {
+            const $matched = $(matchedEl);
+            if ($matched.attr("data-hide") === `${carNum}-hide`) {
+                $matched.show();
+                $matched.removeAttr("data-hide");
+            }
+        }
+    }
+
+    /**
+     * 替换列表封面缩略图为高清图，并按设置挂载悬浮大图预览。对应原 L8886-8933。
+     * @param imgEls 可选的图片元素集合（jQuery 或 NodeList），缺省取封面选择器
+     */
+    replaceHdImg(imgEls?: any): void {
+        if (imgEls && typeof imgEls.jquery == "string") {
+            imgEls = imgEls.toArray();
+        }
+        imgEls ||= document.querySelectorAll(this.getSelector().coverImgSelector);
+        if (isJavdbSite) {
+            imgEls.forEach((img: any) => {
+                img.src = img.src.replace("thumbs", "covers");
+                img.title = "";
+            });
+        }
+        if (isJavbusSite) {
+            const thumbRegex = /\/(imgs|pics)\/(thumb|thumbs)\//;
+            const extRegex = /(\.jpg|\.jpeg|\.png)$/i;
+            const replaceImgsCover = (img: any) => {
+                if (
+                    img.src &&
+                    thumbRegex.test(img.src) &&
+                    img.dataset.hdReplaced !== "true"
+                ) {
+                    img.src = img.src
+                        .replace(thumbRegex, "/$1/cover/")
+                        .replace(extRegex, "_b$1");
+                    img.dataset.hdReplaced = "true";
+                    img.dataset.title = img.title;
+                    img.title = "";
+                }
+            };
+            const psRegex = /ps(\.jpg|\.jpeg|\.png)$/i;
+            const replacePsCover = (img: any) => {
+                if (
+                    img.src &&
+                    psRegex.test(img.src) &&
+                    img.dataset.hdReplaced !== "true"
+                ) {
+                    img.src = img.src.replace(psRegex, "pl$1");
+                    img.dataset.hdReplaced = "true";
+                    img.dataset.title = img.title;
+                    img.title = "";
+                }
+            };
+            imgEls.forEach((img: any) => {
+                replaceImgsCover(img);
+                replacePsCover(img);
+            });
+        }
+        storageManager.getSetting("hoverBigImg", NO).then((setting: any) => {
+            if (setting === YES) {
+                const w = window as any;
+                if (w.imageHoverPreviewObj) {
+                    w.imageHoverPreviewObj.bindEvents();
+                } else {
+                    w.imageHoverPreviewObj = new ImagePreview({
+                        selector: this.getSelector().coverImgSelector,
+                    });
+                }
+            }
+        });
+    }
+
+    /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
+    async translate($item: any): Promise<void> {
+        if (
+            (await storageManager.getSetting("translateTitle", YES)) !== YES
+        ) {
+            return;
+        }
+        let sourceText: any;
+        let carNum: any;
+        const videoTitleEl = $item.find(".video-title");
+        if (isJavdbSite) {
+            sourceText = videoTitleEl
+                .contents()
+                .filter(
+                    (_index: number, node: any) =>
+                        node.nodeType === 3 && node.textContent.trim() !== "",
+                )
+                .text()
+                .trim();
+            carNum = $item.find(".video-title strong").text().trim();
+        } else {
+            sourceText = $item.find("img").attr("data-title").trim();
+            carNum = $item
+                .find("a")
+                .attr("href")
+                .split("/")
+                .filter(Boolean)
+                .pop()
+                .trim();
+        }
+        if (this.cache[carNum]) {
+            videoTitleEl.contents().each((_index: number, node: any) => {
+                if (node.nodeType === 3 && node.textContent.trim() !== "") {
+                    node.textContent = " " + this.cache[carNum] + " ";
+                }
+            });
+            videoTitleEl.attr("title", this.cache[carNum]);
+            return;
+        }
+        translateText(sourceText)
+            .then((translation) => {
+                if (isJavdbSite) {
+                    videoTitleEl.contents().each((_index: number, node: any) => {
+                        if (
+                            node.nodeType === 3 &&
+                            node.textContent.trim() !== "" &&
+                            !node.textContent.includes(carNum)
+                        ) {
+                            node.textContent = " " + translation + " ";
+                        }
+                    });
+                    videoTitleEl.attr("title", translation);
+                } else {
+                    videoTitleEl.text(translation);
+                }
+                this.writeQueue = this.writeQueue.then(() => {
+                    this.cache[carNum] = translation;
+                    localStorage.setItem(
+                        "jhs_translate",
+                        JSON.stringify(this.cache),
+                    );
+                });
+            })
+            .catch((err: any) => {
+                console.error("翻译失败:", err);
+            });
+    }
+
+    /** 还原翻译后的标题为原文。对应原 L8998-9023。 */
+    async revertTranslation(): Promise<void> {
+        $(this.getSelector().itemSelector)
+            .toArray()
+            .forEach((itemEl: any) => {
+                const $item = $(itemEl);
+                const originalTitle =
+                    $item.find(".box").attr("title") ||
+                    $item.find(".video-title").attr("title") ||
+                    $item.find("img").attr("data-title");
+                const carNum = isJavdbSite
+                    ? $item.find(".video-title strong").text().trim()
+                    : undefined;
+                const videoTitleEl = $item.find(".video-title");
+                videoTitleEl.contents().each((_index: number, node: any) => {
+                    if (
+                        node.nodeType === 3 &&
+                        node.textContent.trim() !== "" &&
+                        !node.textContent.includes(carNum)
+                    ) {
+                        node.textContent = " " + originalTitle + " ";
+                    }
+                });
+                videoTitleEl.removeAttr("title");
+            });
+    }
+
+    /** 在分页栏挂载"跳转到指定页"控件。对应原 L9024-9068。 */
+    addJumpPageControl(): void {
+        const controlId = "gemini-jump-page-control";
+        if ($("#" + controlId).length > 0) {
+            return;
+        }
+        if ($(".pagination-link.is-current").length === 0) {
+            return;
+        }
+        const currentPage = utils.getUrlParam(currentHref, "page") || 1;
+        const $pageInput = $("<input>", {
+            type: "number",
+            id: "jumpPageInput",
+            placeholder: "页码",
+            min: "1",
+            style: "width: 60px; margin-left: 10px; padding: 10px; border: 1px solid #ccc; font-size: 14px;",
+            value: currentPage + 1,
+        });
+        const $jumpBtn = $("<button>", {
+            text: "跳转",
+            style: "margin-left: 5px; padding: 9px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f0f0f0; font-size: 14px;",
+        });
+        const $li = $("<li>", { id: controlId })
+            .append($pageInput)
+            .append($jumpBtn);
+        $(".pagination-list").append($li);
+        const jumpToPage = () => {
+            const pageNum = parseInt($pageInput.val(), 10);
+            if (isNaN(pageNum) || pageNum < 1) {
+                $pageInput.focus();
+                return;
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set("page", pageNum.toString());
+            window.location.href = url.toString();
+        };
+        $jumpBtn.on("click", jumpToPage);
+        $pageInput.on("keypress", (event: any) => {
+            if (event.which === 13) {
+                jumpToPage();
+                event.preventDefault();
+            }
+        });
+    }
+}
