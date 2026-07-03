@@ -24,7 +24,9 @@
  */
 import { BasePlugin } from "./base-plugin";
 import { EditRecordDialog } from "../components/edit-record-dialog";
+import { HistoryActionButtons } from "../components/history-action-buttons";
 import { HistoryDialog } from "../components/history-dialog";
+import { HistoryNavButton } from "../components/history-nav-button";
 import { isJavdbSite, isJavbusSite } from "../constants/site";
 import {
     FILTER_ACTION,
@@ -92,14 +94,10 @@ export class HistoryPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if (isJavdbSite) {
-            $(".navbar-end").prepend(
-                '<div class="navbar-item has-sub-btns is-hoverable historyBtnBox">\n                    <a id="historyBtn" class="navbar-link nav-btn" style="color: #aade66 !important;padding-right:15px !important;">\n                        鉴定记录\n                    </a>\n                </div>',
-            );
+            $(".navbar-end").prepend(HistoryNavButton({ variant: "desktop" }));
             $(".navbar-search")
                 .css("margin-left", "0")
-                .before(
-                    '\n                <div class="navbar-item miniHistoryBtnBox">\n                    <a id="miniHistoryBtn" class="navbar-link nav-btn" style="color: #aade66 !important;padding-left:0 !important;padding-right:0 !important;">\n                        鉴定记录\n                    </a>\n                </div>\n            ',
-                );
+                .before(HistoryNavButton({ variant: "mini" }));
             this.handleResize();
             $(window).resize(() => {
                 this.handleResize();
@@ -113,7 +111,7 @@ export class HistoryPlugin extends BasePlugin {
                 () => $("#setting-btn").length,
                 () => {
                     $("#top-right-box").append(
-                        '\n                    <a id="historyBtn" class="menu-btn main-tab-btn" style="background-color:#b68625 !important;">\n                        鉴定记录\n                    </a>\n               ',
+                        HistoryNavButton({ variant: "javbus" }),
                     );
                     $("#historyBtn,#miniHistoryBtn").on("click", () =>
                         this.openHistory(),
@@ -158,17 +156,27 @@ export class HistoryPlugin extends BasePlugin {
                         await this.reloadTable();
                         $("#allSelectBox").hide();
                     })
-                    .on("focusout keydown", "#searchCarNum", async (event: any) => {
-                        if (event.type === "focusout" || event.key === "Enter") {
-                            if (event.key === "Enter") {
-                                event.preventDefault();
+                    .on(
+                        "focusout keydown",
+                        "#searchCarNum",
+                        async (event: any) => {
+                            if (
+                                event.type === "focusout" ||
+                                event.key === "Enter"
+                            ) {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                }
+                                if (
+                                    event.type === "keydown" &&
+                                    event.key !== "Enter"
+                                ) {
+                                    return;
+                                }
+                                await this.reloadTable();
                             }
-                            if (event.type === "keydown" && event.key !== "Enter") {
-                                return;
-                            }
-                            await this.reloadTable();
-                        }
-                    })
+                        },
+                    )
                     .on("click", ".table-link-param", async (event: any) => {
                         const link = $(event.currentTarget);
                         $("#searchCarNum").val(link.text());
@@ -202,7 +210,9 @@ export class HistoryPlugin extends BasePlugin {
         document.addEventListener("click", function (event) {
             const target = event.target as HTMLElement;
             if (target.closest(".sub-btns-toggle")) {
-                const menu = target.closest(".sub-btns")!.querySelector(".sub-btns-menu")!;
+                const menu = target
+                    .closest(".sub-btns")!
+                    .querySelector(".sub-btns-menu")!;
                 document
                     .querySelectorAll(".sub-btns-menu.show")
                     .forEach((el) => {
@@ -291,7 +301,9 @@ export class HistoryPlugin extends BasePlugin {
                                     (row: any) => row.carNum,
                                 );
                                 const removed =
-                                    await storageManager.batchRemoveCars(carNums);
+                                    await storageManager.batchRemoveCars(
+                                        carNums,
+                                    );
                                 if (removed > 0) {
                                     show.ok(`已成功删除 ${removed} 个番号`);
                                 } else if (removed === false) {
@@ -375,7 +387,9 @@ export class HistoryPlugin extends BasePlugin {
                 .replace("-uc", "")
                 .replace("-4k", "");
             filtered = filtered.filter((row: any) => {
-                const matchCar = row.carNum.toLowerCase().includes(normalizedSearch);
+                const matchCar = row.carNum
+                    .toLowerCase()
+                    .includes(normalizedSearch);
                 const matchName = (row.names ? row.names : "")
                     .toLowerCase()
                     .includes(normalizedSearch);
@@ -489,7 +503,11 @@ export class HistoryPlugin extends BasePlugin {
                     width: 120,
                     sorter: "string",
                     responsive: 0,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        _onRendered: any,
+                    ) => {
                         const carNum = cell.getData().carNum;
                         const dashIndex = carNum.indexOf("-");
                         if (dashIndex === -1) {
@@ -505,11 +523,18 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: "string",
                     responsive: 5,
                     headerSort: true,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) =>
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        _onRendered: any,
+                    ) =>
                         (cell.getData().names || "")
                             .split(" ")
                             .filter((part: any) => part.trim() !== "")
-                            .map((part: any) => `<a class="table-link-param">${part}</a>`)
+                            .map(
+                                (part: any) =>
+                                    `<a class="table-link-param">${part}</a>`,
+                            )
                             .join(" "),
                 },
                 {
@@ -540,7 +565,11 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: "string",
                     responsive: 5,
                     hozAlign: "left",
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        _onRendered: any,
+                    ) => {
                         let url = cell.getData().url;
                         if (url) {
                             if (url.includes("javdb")) {
@@ -564,7 +593,11 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: "string",
                     responsive: 1,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        _onRendered: any,
+                    ) => {
                         const status = cell.getData().status;
                         let color = "";
                         let text = "";
@@ -601,7 +634,11 @@ export class HistoryPlugin extends BasePlugin {
                     cssClass: "action-cell-dropdown",
                     responsive: 0,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, onRendered: any) => {
+                    formatter: (
+                        cell: any,
+                        _formatterParams: any,
+                        onRendered: any,
+                    ) => {
                         const data = cell.getData();
                         onRendered(() => {
                             const editBtn = cell
@@ -613,7 +650,16 @@ export class HistoryPlugin extends BasePlugin {
                                 });
                             }
                         });
-                        return `\n                            <div class="action-btns" style="display: flex; gap: 5px;justify-content:center" data-car-num="${data.carNum}" data-href="${data.url ? data.url : ""}">\n                                <div class="sub-btns">\n                                    <a class="menu-btn sub-btns-toggle" style="background-color:#c59d36; color:white; margin-bottom: 5px;">\n                                        <span>✏️ 变更</span>\n                                    </a>\n                                    <div class="sub-btns-menu">\n                                        <a class="menu-btn history-editBtn" style="background-color:#007bff; color:white; margin-bottom: 5px;"> <span>✏️ 编辑</span> </a>\n                                        <a class="menu-btn history-deleteBtn" style="background-color:#8c8080; color:white; margin-bottom: 5px;"> <span>✂️ 移除</span> </a>\n                                        <a class="menu-btn history-hasWatchBtn" style="background-color:${WATCHED_COLOR};margin-bottom: 5px">${WATCHED_TEXT}</a>\n                                        <a class="menu-btn history-favoriteBtn" style="background-color:${FAVORITE_COLOR};margin-bottom: 5px">${FAVORITE_TEXT}</a>\n                                        <a class="menu-btn history-filterBtn" style="background-color:${BLOCK_COLOR};margin-bottom: 5px">${BLOCK_TEXT}</a>\n                                    </div>\n                                </div>\n                                \n                                <a class="menu-btn history-detailBtn" style="background-color:#3397de; color:white; margin-bottom: 5px;"> <span>📄 详情页</span> </a>\n                                \n                            </div>\n                        `;
+                        return HistoryActionButtons({
+                            carNum: data.carNum,
+                            url: data.url || "",
+                            watchedColor: WATCHED_COLOR,
+                            watchedText: WATCHED_TEXT,
+                            favoriteColor: FAVORITE_COLOR,
+                            favoriteText: FAVORITE_TEXT,
+                            blockColor: BLOCK_COLOR,
+                            blockText: BLOCK_TEXT,
+                        });
                     },
                 },
             ],
@@ -643,7 +689,12 @@ export class HistoryPlugin extends BasePlugin {
         });
         this.tableObj.on(
             "rowSelectionChanged",
-            (rows: any, _deselectedRows: any, _selected: any, _deselected: any) => {
+            (
+                rows: any,
+                _deselectedRows: any,
+                _selected: any,
+                _deselected: any,
+            ) => {
                 const selectBox = $("#allSelectBox");
                 const filterBox = $("#filterBox");
                 if (rows && rows.length > 0) {
@@ -685,7 +736,11 @@ export class HistoryPlugin extends BasePlugin {
         if (isJavdbSite) {
             if (carInfo.carNum.includes("FC2-")) {
                 const movieId = this.parseMovieId(carInfo.url);
-                this.getBean("Fc2Plugin")?.openFc2Dialog(movieId, carInfo.carNum, carInfo.url);
+                this.getBean("Fc2Plugin")?.openFc2Dialog(
+                    movieId,
+                    carInfo.carNum,
+                    carInfo.url,
+                );
             } else {
                 if (!carInfo.url) {
                     window.open("/search?q=" + carInfo.carNum, "_blank");

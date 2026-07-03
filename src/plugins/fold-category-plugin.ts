@@ -22,6 +22,8 @@
 import { currentHref } from "../constants/site";
 import { YES, NO } from "../constants/status";
 import { BasePlugin } from "./base-plugin";
+import { FoldCategorySectionButton } from "../components/fold-category-section-button";
+import { FoldCategoryToolbar } from "../components/fold-category-toolbar";
 import foldCategoryCssRaw from "../styles/fold-category-plugin.css?raw";
 
 export class FoldCategoryPlugin extends BasePlugin {
@@ -40,8 +42,14 @@ export class FoldCategoryPlugin extends BasePlugin {
     async initCss(): Promise<string> {
         const settings = await storageManager.getSetting();
         return foldCategoryCssRaw
-            .replace("__HIGHLIGHTED_TAG_NUMBER__", String(settings.highlightedTagNumber || 1))
-            .replace("__HIGHLIGHTED_TAG_COLOR__", settings.highlightedTagColor || "#ce2222");
+            .replace(
+                "__HIGHLIGHTED_TAG_NUMBER__",
+                String(settings.highlightedTagNumber || 1),
+            )
+            .replace(
+                "__HIGHLIGHTED_TAG_COLOR__",
+                settings.highlightedTagColor || "#ce2222",
+            );
     }
 
     /**
@@ -160,13 +168,11 @@ export class FoldCategoryPlugin extends BasePlugin {
             return;
         }
         $(".tabs").append(
-            `\n            <div style="display: flex;align-items: center;flex-grow:1;justify-content: flex-end;">\n                <div>已选分类: <span id="jhs-check-tag">${selectedTagsText}</span></div>\n                <a class="menu-btn  main-tab-btn" id="foldCategoryBtn" style="background-color:#d23e60 !important;">\n                    <span></span>\n                    ${hotkey ? ` (${hotkey})` : ""}\n                    <i style="margin-left: 10px"></i>\n                </a>\n\n            </div>\n        `,
+            FoldCategoryToolbar({ selectedTagsText, hotkey: hotkey || "" }),
         );
         let sectionTitleEl = $("h2.section-title");
         if (sectionTitleEl.length > 0) {
-            sectionTitleEl.append(
-                '\n                <div id="foldCategoryBtn">\n                    <a class="menu-btn" style="background-color:#d23e60 !important;margin-left: 20px;border-bottom:none !important;border-radius:3px;">\n                        <span></span>\n                        <i style="margin-left: 10px"></i>\n                    </a>\n                </div>\n            ',
-            );
+            sectionTitleEl.append(FoldCategorySectionButton());
             tagsEl = $("section > div > div.box");
         }
         if (!tagsEl) {
