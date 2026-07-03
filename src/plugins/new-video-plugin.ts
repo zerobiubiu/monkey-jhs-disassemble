@@ -559,7 +559,9 @@ export class NewVideoPlugin extends BasePlugin {
         // content = 原 searchAvatar 的 r 模板：<style> 块（avatar-select-dialog.css）
         // + HTML（AvatarSelectDialog），与原 content 字符级一致。
         const dialogContent: string =
+            "<style>" +
             avatarSelectDialogCssRaw +
+            "</style>" +
             AvatarSelectDialog({
                 avatarUrls,
             });

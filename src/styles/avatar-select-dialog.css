@@ -1,5 +1,4 @@
 
-        <style>
             /* 保持上一个回答的美化样式 */
             #gfriends-image-list-container { padding: 15px; height: 100%; box-sizing: border-box; background-color: #f8f9fa; }
             #gfriends-prompt { color: #555; font-weight: 500; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -41,4 +40,3 @@
                 border-bottom-right-radius: 6px;
                 user-select: none;
             }
-        </style>

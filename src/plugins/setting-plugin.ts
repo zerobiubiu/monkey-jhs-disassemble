@@ -728,7 +728,8 @@ export class SettingPlugin extends BasePlugin {
                 title: "",
                 shadeClose: true,
                 scrollbar: false,
-                content: helpDialogCssRaw + HelpDialog(),
+                content:
+                    "<style>" + helpDialogCssRaw + "</style>" + HelpDialog(),
                 area: utils.getResponsiveArea(["50%", "90%"]),
             });
         });
@@ -745,8 +746,8 @@ export class SettingPlugin extends BasePlugin {
                 objectPosition = "50% 50% !important";
             }
             const verticalCss = verticalImgCssRaw.replace(
-                "/*__OBJECT_POSITION__*/",
-                objectPosition,
+                "100% 50% !important; /*__OBJECT_POSITION__*/",
+                `${objectPosition}; /*__OBJECT_POSITION__*/`,
             );
             $("<style>")
                 .attr("id", "verticalImgStyle")

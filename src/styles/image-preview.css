@@ -1,48 +1,44 @@
+.image-hover-preview {
+    position: fixed;
+    display: none;
+    z-index: 9999999999; /*__Z_INDEX__*/
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease; /*__TRANSITION__*/
+    background-color: #fff;
+}
 
-                <style>
-                    .image-hover-preview {
-                        position: fixed;
-                        display: none;
-                        z-index: /*__Z_INDEX__*/;
-                        border-radius: 4px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                        overflow: hidden;
-                        pointer-events: none;
-                        opacity: 0;
-                        transition: opacity /*__TRANSITION__*/s ease;
-                        background-color: #fff;
-                    }
-                    
-                    .image-hover-preview.active {
-                        opacity: 1;
-                    }
-                    
-                    .image-hover-preview img {
-                        max-width: /*__MAX_WIDTH__*/px;
-                        max-height: /*__MAX_HEIGHT__*/px;
-                        display: block;
-                        object-fit: contain;
-                    }
-                    
-                    .image-hover-preview::after {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0, 0, 0, 0.03);
-                        pointer-events: none;
-                    }
-                    
-                    .image-hover-preview.loading::before {
-                        content: '加载中...';
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        color: #666;
-                        font-size: 14px;
-                    }
-                </style>
-            
+.image-hover-preview.active {
+    opacity: 1;
+}
+
+.image-hover-preview img {
+    max-width: 1000px; /*__MAX_WIDTH__*/
+    max-height: 1000px; /*__MAX_HEIGHT__*/
+    display: block;
+    object-fit: contain;
+}
+
+.image-hover-preview::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.03);
+    pointer-events: none;
+}
+
+.image-hover-preview.loading::before {
+    content: "加载中...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 14px;
+}

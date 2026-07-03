@@ -1,5 +1,4 @@
 
-            <style>
                 .jhs-scroll {
                     text-align: center;
                     padding-top: 20px;
@@ -8,5 +7,4 @@
                 .jhs-scroll.waterfall-loading { color: #000; }
                 .jhs-scroll.waterfall-error { color: #f44336; cursor: pointer; }
                 .jhs-scroll.waterfall-no-more { color: #4CAF50; }
-            </style>
         

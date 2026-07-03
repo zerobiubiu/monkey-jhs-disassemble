@@ -22,6 +22,7 @@
  */
 
 import imagePreviewCssRaw from "../styles/image-preview.css?raw";
+import { injectCss as H } from "./style-injector";
 import { ImagePreviewError } from "../components/image-preview-error";
 import { ImagePreviewImg } from "../components/image-preview-img";
 
@@ -68,14 +69,26 @@ class ImagePreview {
     }
 
     injectStyles(): void {
-        // imagePreviewCssRaw 已含 <style>...</style>，占位经 replace 填入运行时配置值，
-        // 与原 injectStyles 的 insertAdjacentHTML 注入值字符级一致。
+        // imagePreviewCssRaw 为纯 CSS（无 <style> 包裹），占位以「默认值 + 行末注释」
+        // 形式存在，经 replace 整串替换注入运行时配置值，由 injectCss 创建 <style> 注入。
         const css = imagePreviewCssRaw
-            .replace("/*__Z_INDEX__*/", String(this.config.zIndex))
-            .replace("/*__TRANSITION__*/", String(this.config.transition))
-            .replace("/*__MAX_WIDTH__*/", String(this.config.maxWidth))
-            .replace("/*__MAX_HEIGHT__*/", String(this.config.maxHeight));
-        document.head.insertAdjacentHTML("beforeend", css);
+            .replace(
+                "9999999999; /*__Z_INDEX__*/",
+                `${this.config.zIndex}; /*__Z_INDEX__*/`,
+            )
+            .replace(
+                "0.2s ease; /*__TRANSITION__*/",
+                `${this.config.transition}s ease; /*__TRANSITION__*/`,
+            )
+            .replace(
+                "1000px; /*__MAX_WIDTH__*/",
+                `${this.config.maxWidth}px; /*__MAX_WIDTH__*/`,
+            )
+            .replace(
+                "1000px; /*__MAX_HEIGHT__*/",
+                `${this.config.maxHeight}px; /*__MAX_HEIGHT__*/`,
+            );
+        H(css);
     }
 
     createPreviewElement(): void {

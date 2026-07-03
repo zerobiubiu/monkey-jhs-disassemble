@@ -12,6 +12,7 @@
  */
 
 import tooltipCssRaw from "../styles/tooltip.css?raw";
+import { injectCss as H } from "./style-injector";
 
 /** 触发 tooltip 的元素，运行时挂载 tooltipElement 与 hoverTimeout。 */
 interface TooltipableElement extends HTMLElement {
@@ -145,8 +146,8 @@ export function positionTooltip(
  * 幂等性未保证：重复调用会重复注入样式与事件监听。legacy 启动序列调用一次即可。
  */
 export function setupTooltip(): void {
-    // tooltipCssRaw 已含 <style>...</style>（与原 insertAdjacentHTML 注入值字符级一致）
-    document.head.insertAdjacentHTML("beforeend", tooltipCssRaw);
+    // tooltipCssRaw 为纯 CSS（无 <style> 包裹），由 injectCss 创建 <style> 元素注入
+    H(tooltipCssRaw);
     document.addEventListener("mouseover", (event) => {
         const target = (event.target as HTMLElement).closest(
             TOOLTIP_SELECTOR,

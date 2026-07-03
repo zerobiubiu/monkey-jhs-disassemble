@@ -1,5 +1,4 @@
 
-            <style>
                 #tags a.tag, .tags a.tag {
                     position:relative;
                 }
@@ -30,5 +29,4 @@
                     /* 浅黄色 */
                     border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
                 }
-            </style>
         

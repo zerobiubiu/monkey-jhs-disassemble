@@ -1,5 +1,4 @@
 
-        <style>
             .console-logger-container {
                 position: fixed;
                 bottom: 0;
@@ -222,5 +221,4 @@
             .console-logger-message[data-type="json"] {
                 white-space: pre-wrap; 
             }
-        </style>
     

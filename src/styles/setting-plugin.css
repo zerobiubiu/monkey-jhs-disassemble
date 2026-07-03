@@ -1,5 +1,4 @@
 
-            <style>
                 __CSS_TEXT__
                 .nav-btn::after {
                     content:none !important;
@@ -224,5 +223,4 @@
                     opacity: 0.6; 
                     cursor: default !important;
                 }
-            </style>
         

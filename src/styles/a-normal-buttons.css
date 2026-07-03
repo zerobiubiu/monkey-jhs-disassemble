@@ -1,5 +1,4 @@
 
-<style>
     .a-normal, /* 白色 */
     .a-primary, /* 浅蓝色 */
     .a-success, /* 浅绿色 */
@@ -81,4 +80,3 @@
     .a-normal:hover {
         background: #f8fafc;
     }
-</style>

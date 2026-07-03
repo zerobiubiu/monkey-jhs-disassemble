@@ -1,5 +1,4 @@
 
-            <style>
                 #actress-card-container {
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(243px, 1fr)); /* 响应式3-5列 */
@@ -142,5 +141,4 @@
                 .btn-delete-actress:hover svg path {
                     fill: #D32F2F;
                 }
-            </style>
         

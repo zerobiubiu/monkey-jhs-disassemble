@@ -1,100 +1,98 @@
+.top-bar {
+    z-index: 12345689 !important;
+}
 
-<style>
-    .top-bar {
-        z-index: 12345689 !important;
-    }
-    
-    /*__HIDENAV__*/
+/*__HIDENAV__*/
 
-    .masonry {
-        height: 100% !important;
-        width: 100% !important;
-        padding: 0 15px !important;
-    }
-    .masonry {
-        display: grid;
-        column-gap: 10px; /* 列间距*/
-        row-gap: 10px; /* 行间距 */
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        align-items: start;
-    }
-    .masonry .item {
-        /*position: initial !important;*/
-        top: initial !important;
-        left: initial !important;
-        float: none !important;
-        background-color:#c4b1b1;
-        position: relative !important;
-    }
-    
-    .masonry .item:hover {
-        box-shadow: 0 .5em 1em -.125em rgba(10, 10, 10, .1), 0 0 0 1px #485fc7;
-    }
-    .masonry .movie-box{
-        width: 100% !important;
-        height: 100% !important;
-        margin: 0 !important;
-        overflow: inherit !important;
-    }
-    .masonry .movie-box .photo-frame {
-        /*height: 70% !important;*/
-        height:auto !important;
-        margin: 0 !important;
-        position:relative; /* 方便预览视频定位*/
-    }
-    .masonry .movie-box img {
-        max-height: 500px;
-        height: 100% !important;
-        object-fit: contain;
-        object-position: top;
-    }
-    .masonry .movie-box img:hover {
-      transform: scale(1.04);
-      transition: transform 0.3s;
-    }
-    .masonry .photo-info{
-        /*height: 30% !important;*/
-    }
-    .masonry .photo-info span {
-      display: inline-block; /* 或者 block */
-      max-width: 100%;      /* 根据父容器限制宽度 */
-      white-space: nowrap;  /* 禁止换行 */
-      overflow: hidden;     /* 隐藏溢出内容 */
-      text-overflow: ellipsis; /* 显示省略号 */
-    }
-    
-    /* 无码页面的样式 */
-    .photo-frame .mheyzo,
-    .photo-frame .mcaribbeancom2{
-        margin-left: 0 !important;
-    }
-    .avatar-box{
-        width: 100% !important;
-        display: flex !important;
-        margin:0 !important;
-    }
-    .avatar-box .photo-info{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 30px;
-        flex-direction: row;
-        background-color:#fff !important;
-    }
-    
-    footer{
-        display: none!important;
-    }
-    
-        
-    .video-title {
-        white-space: normal !important;
-        height: 75px; /* 固定高度 容器就不会出现高低不一*/
-        
-        display: -webkit-box !important; /* 必须设置，使接下来的属性生效 */
-        -webkit-box-orient: vertical; /* 垂直方向堆叠行 */
-        -webkit-line-clamp: 3; /* 设置文本最多显示的行数*/
-    }
+.masonry {
+    height: 100% !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+}
+.masonry {
+    display: grid;
+    column-gap: 10px; /* 列间距*/
+    row-gap: 10px; /* 行间距 */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+}
+.masonry .item {
+    /*position: initial !important;*/
+    top: initial !important;
+    left: initial !important;
+    float: none !important;
+    background-color: #c4b1b1;
+    position: relative !important;
+}
 
-    
-</style>
+.masonry .item:hover {
+    box-shadow:
+        0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1),
+        0 0 0 1px #485fc7;
+}
+.masonry .movie-box {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    overflow: inherit !important;
+}
+.masonry .movie-box .photo-frame {
+    /*height: 70% !important;*/
+    height: auto !important;
+    margin: 0 !important;
+    position: relative; /* 方便预览视频定位*/
+}
+.masonry .movie-box img {
+    max-height: 500px;
+    height: 100% !important;
+    object-fit: contain;
+    object-position: top;
+}
+.masonry .movie-box img:hover {
+    transform: scale(1.04);
+    transition: transform 0.3s;
+}
+.masonry .photo-info {
+    /*height: 30% !important;*/
+    display: block;
+}
+.masonry .photo-info span {
+    display: inline-block; /* 或者 block */
+    max-width: 100%; /* 根据父容器限制宽度 */
+    white-space: nowrap; /* 禁止换行 */
+    overflow: hidden; /* 隐藏溢出内容 */
+    text-overflow: ellipsis; /* 显示省略号 */
+}
+
+/* 无码页面的样式 */
+.photo-frame .mheyzo,
+.photo-frame .mcaribbeancom2 {
+    margin-left: 0 !important;
+}
+.avatar-box {
+    width: 100% !important;
+    display: flex !important;
+    margin: 0 !important;
+}
+.avatar-box .photo-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    flex-direction: row;
+    background-color: #fff !important;
+}
+
+footer {
+    display: none !important;
+}
+
+.video-title {
+    white-space: normal !important;
+    height: 75px; /* 固定高度 容器就不会出现高低不一*/
+
+    display: -webkit-box !important; /* 必须设置，使接下来的属性生效 */
+    -webkit-box-orient: vertical; /* 垂直方向堆叠行 */
+    -webkit-line-clamp: 3; /* 设置文本最多显示的行数*/
+    line-clamp: 3;
+}
