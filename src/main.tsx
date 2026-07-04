@@ -9,7 +9,8 @@
 //
 // 详见 doc/ 目录下的迁移文档。
 
-import { isJavdbSite as r, isJavbusSite as l } from './constants/site';
+import './core/libs';
+import { isJavdbSite as r, isJavdbSite as l } from './constants/site';
 import loadingCssRaw from './styles/loading.css?raw';
 import viewerCssRaw from './styles/viewer.css?raw';
 import loggerCssRaw from './styles/logger.css?raw';
@@ -258,13 +259,8 @@ unsafeWindow.Me = window.Me = Me;
 unsafeWindow.Ne = window.Ne = Ne;
 setupLayerWrapper();
 
-// ===== 库 CSS importResource（由全局 utils 加载 CDN 样式） =====
-utils.importResource('https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/layer.min.css');
-utils.importResource('https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css');
-utils.importResource('https://cdn.jsdelivr.net/npm/viewerjs@1.11.1/dist/viewer.min.css');
-utils.importResource(
-    'https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/css/tabulator_semanticui.min.css'
-);
+// 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
+// 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
 // ===== 启动序列：PluginManager + 注册 22 插件 =====
 const vt: PluginManager = (function () {

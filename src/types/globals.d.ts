@@ -1,13 +1,16 @@
 /**
  * 全局类型声明
  *
- * 声明通过 userscript @require 引入的第三方库全局（非 npm 打包），
- * 以及 Tampermonkey Grant API 和应用运行时挂载到 window 的全局对象。
- * 正式 TS 模块引用这些全局时由此获得类型（暂为最小 any 声明，
- * 后续可替换为 @types/tampermonkey / @types/jquery 等更精确类型）。
+ * 第三方库（jquery/tabulator-tables/toastify-js/localforage/viewerjs/
+ * blueimp-md5/layui-layer）现由 src/core/libs.ts 以 ESM import 打包进产物，
+ * 并在运行时挂载到 window（供历史全局引用：layer-wrapper/plugins/main 等仍用
+ * 全局名 $/layer/Tabulator/Toastify/localforage/Viewer/md5）。此处 declare const
+ * 仅为这些全局名提供 any 类型，运行时值来自 libs.ts。
+ *
+ * Tampermonkey Grant API 与应用运行时挂载到 window 的全局对象亦在此声明。
  */
 
-// 第三方库（@require 引入，运行时为全局变量）
+// 第三方库（由 src/core/libs.ts ESM import 打包后挂全局，此处仅声明全局名类型）
 declare const $: any;
 declare const jQuery: any;
 declare const layer: any;
@@ -15,8 +18,12 @@ declare const Tabulator: any;
 declare const Toastify: any;
 declare const localforage: any;
 declare const Viewer: any;
-declare const QRCode: any;
 declare const md5: (s: string) => string;
+
+// 无 @types 的 npm 包，声明模块以允许 import（类型为 any）
+declare module 'layui-layer';
+declare module 'tabulator-tables';
+declare module 'jquery';
 
 // Tampermonkey Grant API
 declare const GM_xmlhttpRequest: any;

@@ -52,8 +52,8 @@ interface ViewerConfigContext {
     viewerRef: { current: any };
 }
 
-/** Viewer (viewerjs) 选项结构（仅约束本模块产出的字段子集）。 */
-interface ViewerOptions {
+/** Viewer (viewerjs) 选项结构（仅约束本模块产出的字段子集，导出供外部类型引用）。 */
+export interface ViewerOptions {
     zIndex: number;
     navbar: boolean;
     zoomOnWheel: boolean;
@@ -83,9 +83,10 @@ interface ViewerOptions {
  * 临时标志、resetOverflow、Viewer 实例），控制流与原脚本等价。
  *
  * @param ctx  运行时上下文（container / isTemporary / resetOverflow / viewerRef）
- * @returns Viewer 选项对象，传入 `new Viewer(el, config)`
+ * @returns Viewer 选项对象，传入 `new Viewer(el, config)`（类型 any，
+ *          与原 @require 全局 Viewer 为 any 时不检查 config 一致）
  */
-export const VIEWER_CONFIG = (ctx: ViewerConfigContext): ViewerOptions => ({
+export const VIEWER_CONFIG = (ctx: ViewerConfigContext): any => ({
     zIndex: 999999990,
     navbar: false,
     zoomOnWheel: false,
