@@ -58,6 +58,7 @@ import { ListPagePlugin } from './plugins/list-page-plugin';
 import { PreviewVideoPlugin } from './plugins/preview-video-plugin';
 import { RatingDisplayPlugin } from './plugins/rating-display/rating-display-plugin';
 import { Fc2Plugin } from './plugins/fc2-plugin';
+import { KeyPageTurningPlugin } from './plugins/key-page-turning-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -256,7 +257,7 @@ setupLayerWrapper();
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 24 插件 =====
+// ===== 启动序列：PluginManager + 注册 25 插件 =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
     unsafeWindow.pluginManager = manager;
@@ -285,6 +286,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(NewVideoPlugin);
         manager.register(RatingDisplayPlugin);
         manager.register(Fc2Plugin);
+        manager.register(KeyPageTurningPlugin);
     }
     return manager;
 })();

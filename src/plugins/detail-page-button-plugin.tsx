@@ -787,9 +787,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const favBtn: any = bar.querySelector('.jhs-fav-btn');
 
         if (want) {
-            // 想看：星星禁用全灰，收藏高亮
+            // 想看：收藏高亮，星星保持可用（可随时点击切换为已观看+N星）
             stars.forEach((s: any) => s.classList.remove('is-active'));
-            starsEl.classList.add('is-disabled');
+            starsEl.classList.remove('is-disabled');
             readBtn.classList.remove('is-active');
             favBtn.classList.add('is-active');
         } else if (watched) {
