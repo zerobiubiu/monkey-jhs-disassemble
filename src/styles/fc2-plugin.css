@@ -1,0 +1,132 @@
+/* Fc2Plugin 弹层样式（提取自未删减版 jhs.user.js Fc2Plugin.initCss） */
+
+/* 弹层样式 */
+.movie-detail-layer .layui-layer-title {
+    font-size: 18px;
+    color: #333;
+    background: #f8f8f8;
+}
+
+/* 容器样式 */
+.movie-detail-container {
+    margin: 40px;
+    height: 100%;
+    background: #fff;
+}
+
+.movie-poster-container {
+    flex: 0 0 60%;
+    padding: 15px;
+}
+
+.right-box {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* 预告片iframe */
+.movie-trailer {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    background: #000;
+    border-radius: 4px;
+}
+
+/* 电影信息样式 */
+.movie-title {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.movie-meta {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.movie-meta span {
+    margin-right: 15px;
+}
+
+/* 演员列表 */
+.actor-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.actor-tag {
+    padding: 4px 12px;
+    background: #f0f0f0;
+    border-radius: 15px;
+    font-size: 12px;
+    color: #555;
+}
+
+/* 图片列表 */
+.image-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.movie-image-thumb {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.movie-image-thumb:hover {
+    transform: scale(1.05);
+}
+
+/* 加载中和错误状态 */
+.search-loading,
+.movie-error {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+}
+
+.movie-error {
+    color: #f56c6c;
+}
+
+.fancybox-container {
+    z-index: 99999999;
+}
+
+/* 错误提示样式 */
+.movie-not-found,
+.movie-error {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+}
+
+.movie-not-found h3,
+.movie-error h3 {
+    color: #f56c6c;
+    margin: 15px 0;
+}
+
+.icon-warning,
+.icon-error {
+    font-size: 50px;
+    color: #e6a23c;
+}
+
+.icon-error {
+    color: #f56c6c;
+}
+
+.fc2-movie-panel-info .panel-block {
+    padding: 0 !important;
+}

@@ -12,6 +12,8 @@ export const FILTER_ACTION = 'filter';
 export const FAVORITE_ACTION = 'favorite';
 /** 原 p */
 export const HAS_WATCH_ACTION = 'hasWatch';
+/** 原 g（未删减版 Fc2Plugin 使用，删减版已移除但 Fc2Plugin 依赖） */
+export const HAS_DOWN_ACTION = 'hasDown';
 
 // 屏蔽
 /** 原 m */
@@ -34,6 +36,12 @@ export const FAVORITE_COLOR = '#25b1dc';
 export const WATCHED_TEXT = '🔍 已观看';
 /** 原 S */
 export const WATCHED_COLOR = '#d7a80c';
+
+// 已下载（未删减版 Fc2Plugin 使用，删减版已移除）
+/** 原 y */
+export const HAS_DOWN_TEXT = '📥️ 已下载';
+/** 原 x */
+export const HAS_DOWN_COLOR = '#7bc73b';
 
 // 布尔标识
 /** 原 C */
