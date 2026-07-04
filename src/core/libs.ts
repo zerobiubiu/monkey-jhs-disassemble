@@ -29,7 +29,12 @@ import './_jquery-global';
 //    且 ready.run(jQuery) 依赖上一步已挂的 window.jQuery）
 import layer from 'layui-layer';
 // 3. 其余 5 库
-import { Tabulator } from 'tabulator-tables';
+// 注：Tabulator 6.x 拆分为基础类 Tabulator（不含模块）与完整类 TabulatorFull
+// （含 Format/Sort/ResponsiveLayout/Filter/Page 等全部模块）。原 userscript
+// 使用的是含全部模块的完整版，此处必须导入 TabulatorFull，否则 formatter、
+// headerSort、responsiveLayout 等列选项均不生效（控制台报 Invalid column
+// definition option）。详见 doc/31-tabulator-full-fix.md。
+import { TabulatorFull } from 'tabulator-tables';
 import Toastify from 'toastify-js';
 import localforage from 'localforage';
 import Viewer from 'viewerjs';
@@ -46,10 +51,10 @@ import 'tabulator-tables/dist/css/tabulator_semanticui.min.css';
 // 5. 挂全局（供历史全局引用；window 在 TS 中需 as any，因 Window 接口未列这些字段）
 const win = window as any;
 win.layer = layer;
-win.Tabulator = Tabulator;
+win.Tabulator = TabulatorFull;
 win.Toastify = Toastify;
 win.localforage = localforage;
 win.Viewer = Viewer;
 win.md5 = md5;
 
-export { layer, Tabulator, Toastify, localforage, Viewer, md5 };
+export { layer, TabulatorFull as Tabulator, Toastify, localforage, Viewer, md5 };
