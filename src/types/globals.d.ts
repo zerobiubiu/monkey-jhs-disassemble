@@ -30,6 +30,7 @@ declare const GM_xmlhttpRequest: any;
 declare const GM_openInTab: any;
 declare const GM_setValue: any;
 declare const GM_addValueChangeListener: any;
+declare const GM_registerMenuCommand: any;
 declare const unsafeWindow: any;
 
 // 应用运行时全局（由 legacy 启动时挂载到 window/unsafeWindow）

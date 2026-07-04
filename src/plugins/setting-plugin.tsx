@@ -17,8 +17,9 @@
  * - window.isDetailPage 为运行时挂载全局，以 (window as any).isDetailPage 访问；
  *   window.refresh() 以全局 refresh() 调用（src/types/globals.d.ts 已声明）；
  *   window.imageHoverPreviewObj 以 (window as any).imageHoverPreviewObj 访问。
- * - WebDav 加密/解密/客户端（原 Me/Ne/De）尚未从 legacy 导出，暂以
- *   (window as any).Me / .Ne / .De 访问，后续提取 core/webdav 后替换。
+ * - WebDav 加密/解密/客户端（原 Me/Ne/De）已提取至 core/webdav-crypto
+ *   （encryptCredential/decryptCredential）与 core/webdav（WebDavClient），
+ *   经 (window as any).encryptCredential / .decryptCredential / .WebDavClient 访问。
  * - 原构造函数 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  *   改为 class 字段语法（useDefineForClassFields:true，语义一致）。
  * - $ / layer / utils / storageManager / show / clog / Tabulator / loading 已由
@@ -943,10 +944,14 @@ export class SettingPlugin extends BasePlugin {
         }
         const fileName = utils.getNowStr('_', '_') + '.json';
         let exportText = JSON.stringify(await storageManager.exportData());
-        exportText = (window as any).Me(exportText);
+        exportText = (window as any).encryptCredential(exportText);
         const loadingHandle = loading();
         try {
-            const webdavClient = new (window as any).De(webDavUrl, webDavUsername, webDavPassword);
+            const webdavClient = new (window as any).WebDavClient(
+                webDavUrl,
+                webDavUsername,
+                webDavPassword
+            );
             await webdavClient.backup(this.folderName, fileName, exportText);
             show.ok('备份完成');
         } catch (err: any) {
@@ -977,7 +982,11 @@ export class SettingPlugin extends BasePlugin {
         }
         const loadingHandle = loading();
         try {
-            const webdavClient = new (window as any).De(webDavUrl, webDavUsername, webDavPassword);
+            const webdavClient = new (window as any).WebDavClient(
+                webDavUrl,
+                webDavUsername,
+                webDavPassword
+            );
             const backupList = await webdavClient.getBackupList(this.folderName);
             this.openFileListDialog(backupList, webdavClient, 'WebDav');
         } catch (err: any) {
@@ -1097,7 +1106,9 @@ export class SettingPlugin extends BasePlugin {
                                             async (_event: any) => {
                                                 let loadingHandle = loading();
                                                 try {
-                                                    const decrypted = (window as any).Ne(
+                                                    const decrypted = (
+                                                        window as any
+                                                    ).decryptCredential(
                                                         await webdavClient.getFileContent(
                                                             rowData.fileId
                                                         )
@@ -1130,9 +1141,9 @@ export class SettingPlugin extends BasePlugin {
                                                                 rowData.fileId
                                                             );
                                                         show.info('解密文件内容...');
-                                                        fileContent = (window as any).Ne(
-                                                            fileContent
-                                                        );
+                                                        fileContent = (
+                                                            window as any
+                                                        ).decryptCredential(fileContent);
                                                         show.info('解密完成, 开始导入...');
                                                         const parsedData = JSON.parse(fileContent);
                                                         await storageManager.importData(parsedData);

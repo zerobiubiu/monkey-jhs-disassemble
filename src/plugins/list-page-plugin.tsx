@@ -879,11 +879,11 @@ export class ListPagePlugin extends BasePlugin {
         }
         storageManager.getSetting('hoverBigImg', NO).then((setting: any) => {
             if (setting === YES) {
-                const w = window as any;
-                if (w.imageHoverPreviewObj) {
-                    w.imageHoverPreviewObj.bindEvents();
+                const win = window as any;
+                if (win.imageHoverPreviewObj) {
+                    win.imageHoverPreviewObj.bindEvents();
                 } else {
-                    w.imageHoverPreviewObj = new ImagePreview({
+                    win.imageHoverPreviewObj = new ImagePreview({
                         selector: this.getSelector().coverImgSelector
                     });
                 }

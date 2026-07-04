@@ -9,30 +9,30 @@
 
 interface HotkeyEntry {
     hotkeyString: string;
-    callback: (e: KeyboardEvent) => void;
-    keyupCallback?: ((e: KeyboardEvent) => void) | null;
+    callback: (event: KeyboardEvent) => void;
+    keyupCallback?: ((event: KeyboardEvent) => void) | null;
 }
 
 class Hotkey {
     static isMac: boolean = navigator.platform.indexOf('Mac') === 0;
     static registerHotKeyMap: Map<string, HotkeyEntry> = new Map();
 
-    static handleKeydown: (e: KeyboardEvent) => void = (e) => {
+    static handleKeydown: (event: KeyboardEvent) => void = (event) => {
         for (const [, entry] of Hotkey.registerHotKeyMap) {
             const hotkeyString = entry.hotkeyString;
             const callback = entry.callback;
-            if (Hotkey.judgeHotkey(hotkeyString, e)) {
-                callback(e);
+            if (Hotkey.judgeHotkey(hotkeyString, event)) {
+                callback(event);
             }
         }
     };
 
-    static handleKeyup: (e: KeyboardEvent) => void = (e) => {
+    static handleKeyup: (event: KeyboardEvent) => void = (event) => {
         for (const [, entry] of Hotkey.registerHotKeyMap) {
             const hotkeyString = entry.hotkeyString;
             const keyupCallback = entry.keyupCallback;
-            if (keyupCallback && Hotkey.judgeHotkey(hotkeyString, e)) {
-                keyupCallback(e);
+            if (keyupCallback && Hotkey.judgeHotkey(hotkeyString, event)) {
+                keyupCallback(event);
             }
         }
     };
@@ -44,57 +44,57 @@ class Hotkey {
     }
 
     static registerHotkey(
-        e: string | string[],
-        t: (e: KeyboardEvent) => void,
-        n: ((e: KeyboardEvent) => void) | null = null
+        hotkeyStr: string | string[],
+        keydownCallback: (event: KeyboardEvent) => void,
+        keyupCallback: ((event: KeyboardEvent) => void) | null = null
     ) {
-        if (Array.isArray(e)) {
+        if (Array.isArray(hotkeyStr)) {
             const ids: string[] = [];
-            e.forEach((item) => {
+            hotkeyStr.forEach((item) => {
                 if (!Hotkey.isHotkeyFormat(item)) {
                     throw new Error('快捷键格式错误');
                 }
-                const id = Hotkey.recordHotkey(item, t, n);
+                const id = Hotkey.recordHotkey(item, keydownCallback, keyupCallback);
                 ids.push(id);
             });
             return ids;
         }
-        if (!Hotkey.isHotkeyFormat(e)) {
+        if (!Hotkey.isHotkeyFormat(hotkeyStr)) {
             throw new Error('快捷键格式错误');
         }
-        return Hotkey.recordHotkey(e, t, n);
+        return Hotkey.recordHotkey(hotkeyStr, keydownCallback, keyupCallback);
     }
 
     static recordHotkey(
-        e: string,
-        t: (e: KeyboardEvent) => void,
-        n: ((e: KeyboardEvent) => void) | null
+        hotkeyStr: string,
+        keydownCallback: (event: KeyboardEvent) => void,
+        keyupCallback: ((event: KeyboardEvent) => void) | null
     ) {
         const id = Math.random().toString(36).substr(2);
         Hotkey.registerHotKeyMap.set(id, {
-            hotkeyString: e,
-            callback: t,
-            keyupCallback: n
+            hotkeyString: hotkeyStr,
+            callback: keydownCallback,
+            keyupCallback: keyupCallback
         });
         return id;
     }
 
-    static unregisterHotkey(e: string) {
-        if (Hotkey.registerHotKeyMap.has(e)) {
-            Hotkey.registerHotKeyMap.delete(e);
+    static unregisterHotkey(id: string) {
+        if (Hotkey.registerHotKeyMap.has(id)) {
+            Hotkey.registerHotKeyMap.delete(id);
         }
     }
 
-    static isHotkeyFormat(e: string) {
-        return e
+    static isHotkeyFormat(hotkeyStr: string) {
+        return hotkeyStr
             .toLowerCase()
             .split('+')
             .map((item) => item.trim())
             .every((item) => ['ctrl', 'shift', 'alt'].includes(item) || item.length === 1);
     }
 
-    static judgeHotkey(e: string, t: KeyboardEvent) {
-        const parts = e
+    static judgeHotkey(hotkeyStr: string, event: KeyboardEvent) {
+        const parts = hotkeyStr
             .toLowerCase()
             .split('+')
             .map((item) => item.trim());
@@ -103,10 +103,10 @@ class Hotkey {
         const withAlt = parts.includes('alt');
         const mainKey = parts.find((item) => item !== 'ctrl' && item !== 'shift' && item !== 'alt');
         return (
-            (Hotkey.isMac ? t.metaKey : t.ctrlKey) === withCtrl &&
-            t.shiftKey === withShift &&
-            t.altKey === withAlt &&
-            t.key.toLowerCase() === mainKey
+            (Hotkey.isMac ? event.metaKey : event.ctrlKey) === withCtrl &&
+            event.shiftKey === withShift &&
+            event.altKey === withAlt &&
+            event.key.toLowerCase() === mainKey
         );
     }
 }

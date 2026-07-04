@@ -156,22 +156,22 @@ class ImagePreview {
             return;
         }
         let { offsetX, offsetY } = this.config;
-        let x = event.clientX + offsetX;
-        let y = event.clientY + offsetY;
+        let left = event.clientX + offsetX;
+        let top = event.clientY + offsetY;
         if (this.config.autoAdjustPosition) {
             const previewWidth = preview.offsetWidth;
             const previewHeight = preview.offsetHeight;
-            if (x + previewWidth > window.innerWidth) {
-                x = event.clientX - previewWidth - offsetX;
+            if (left + previewWidth > window.innerWidth) {
+                left = event.clientX - previewWidth - offsetX;
             }
-            if (y + previewHeight > window.innerHeight) {
-                y = event.clientY - previewHeight - offsetY;
+            if (top + previewHeight > window.innerHeight) {
+                top = event.clientY - previewHeight - offsetY;
             }
-            x = Math.max(0, x);
-            y = Math.max(0, y);
+            left = Math.max(0, left);
+            top = Math.max(0, top);
         }
-        preview.style.left = `${x}px`;
-        preview.style.top = `${y}px`;
+        preview.style.left = `${left}px`;
+        preview.style.top = `${top}px`;
     }
 
     handleMouseLeave(_event: MouseEvent): void {

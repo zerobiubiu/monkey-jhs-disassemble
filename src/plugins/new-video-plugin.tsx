@@ -25,8 +25,8 @@
  * Gfriends 运行时能力（原 gt/at/it/st/ct/dt）改由 ../core/gfriends 正式导入：
  *   loadGfriends（搜索头像）、getCurrentCdnSource（读当前 CDN 源 {json,base,index}）、
  *   clearCache（清内存缓存）。切换 CDN 源时写 localStorage + clearCache() 即生效。
- * IndexedDB 缓存清理（原 lt.set）仍经 (window as any).lt 访问（filetreeDb 已导出，
- * 但按任务约定不在本次替换范围内）。
+ * IndexedDB 缓存清理（原 lt.set）经 (window as any).filetreeDb 访问（filetreeDb 已导出，
+ *   挂载于 window.filetreeDb）。
  * $ / layer / utils / storageManager / show / clog / gmHttp / loading 已由
  * ../types/globals.d.ts 声明（loading 实际接收消息参数，调用处以类型断言补全签名）；
  * jQuery .each / .on 回调按本仓库既有约定改写为箭头形式（(_index, element) /
@@ -395,7 +395,7 @@ export class NewVideoPlugin extends BasePlugin {
                                 );
                                 clearCache();
                                 try {
-                                    await (window as any).lt.set(FILETREE_DATA_KEY, null);
+                                    await (window as any).filetreeDb.set(FILETREE_DATA_KEY, null);
                                 } catch (error: any) {
                                     clog.error('清除 IndexedDB 缓存失败:', error);
                                 }

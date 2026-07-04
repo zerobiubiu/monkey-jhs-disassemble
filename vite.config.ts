@@ -43,6 +43,7 @@ export default defineConfig({
                     'GM_openInTab',
                     'GM_setValue',
                     'GM_addValueChangeListener',
+                    'GM_registerMenuCommand',
                     'unsafeWindow'
                 ]
             }

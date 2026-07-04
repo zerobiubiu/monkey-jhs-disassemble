@@ -44,12 +44,12 @@ import 'viewerjs/dist/viewer.min.css';
 import 'tabulator-tables/dist/css/tabulator_semanticui.min.css';
 
 // 5. 挂全局（供历史全局引用；window 在 TS 中需 as any，因 Window 接口未列这些字段）
-const w = window as any;
-w.layer = layer;
-w.Tabulator = Tabulator;
-w.Toastify = Toastify;
-w.localforage = localforage;
-w.Viewer = Viewer;
-w.md5 = md5;
+const win = window as any;
+win.layer = layer;
+win.Tabulator = Tabulator;
+win.Toastify = Toastify;
+win.localforage = localforage;
+win.Viewer = Viewer;
+win.md5 = md5;
 
 export { layer, Tabulator, Toastify, localforage, Viewer, md5 };

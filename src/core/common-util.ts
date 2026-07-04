@@ -369,13 +369,13 @@ export class CommonUtil {
         timeSep: string = ':',
         timestamp: number | null = null
     ): string {
-        const d = timestamp ? new Date(timestamp) : new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        const seconds = String(d.getSeconds()).padStart(2, '0');
+        const date = timestamp ? new Date(timestamp) : new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${[year, month, day].join(dateSep)} ${[hours, minutes, seconds].join(timeSep)}`;
     }
 
@@ -388,24 +388,24 @@ export class CommonUtil {
      * @throws 输入非 Date/字符串或字符串无法解析时抛 Error
      */
     formatDate(input: Date | string, dateSep: string = '-', timeSep: string = ':'): string {
-        let d: Date;
+        let date: Date;
         if (input instanceof Date) {
-            d = input;
+            date = input;
         } else {
             if (typeof input !== 'string') {
                 throw new Error('Invalid date input: must be Date object or date string');
             }
-            d = new Date(input);
-            if (isNaN(d.getTime())) {
+            date = new Date(input);
+            if (isNaN(date.getTime())) {
                 throw new Error('Invalid date string');
             }
         }
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        const seconds = String(d.getSeconds()).padStart(2, '0');
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${[year, month, day].join(dateSep)} ${[hours, minutes, seconds].join(timeSep)}`;
     }
 
@@ -465,13 +465,13 @@ export class CommonUtil {
             blob = new Blob([data], { type: mimeType });
         }
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
         setTimeout(() => {
-            document.body.removeChild(a);
+            document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
         }, 100);
     }
