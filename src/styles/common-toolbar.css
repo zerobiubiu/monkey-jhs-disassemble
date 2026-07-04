@@ -106,4 +106,17 @@
     overflow-x: hidden !important;
 }
 
+/*
+ * Toastify 宽度修复：toastify-js 源 CSS 中 .toastify-center 有两行
+ *   max-width: fit-content;
+ *   max-width: -moz-fit-content;
+ * lightningcss 压缩时删除了标准 fit-content 只留 -moz-fit-content（Firefox
+ * 前缀），Chrome 不认 -moz- 前缀致 max-width 失效，toast 退回 .toastify 的
+ * calc(50% - 20px) 变成超宽（~937px）。此处用 !important 强制 fit-content
+ * 覆盖，恢复 toast 自适应内容宽度。详见 doc/32-css-layout-fix.md。
+ */
+.toastify-center {
+    max-width: fit-content !important;
+}
+
 /*__SCROLLBAR__*/

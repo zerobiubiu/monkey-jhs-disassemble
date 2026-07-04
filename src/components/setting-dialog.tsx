@@ -164,7 +164,7 @@ export function SettingDialog({
                                 style={{ backgroundColor: '#d25a88' }}
                             >
                                 <span>导入数据</span>
-                            </a>
+                            </a>{' '}
                             <a
                                 id="exportBtn"
                                 className="menu-btn"
@@ -183,7 +183,7 @@ export function SettingDialog({
                                     style={{ backgroundColor: '#5d87c2' }}
                                 >
                                     <span>查看备份</span>
-                                </a>
+                                </a>{' '}
                                 <a
                                     id="webdavBackupBtn"
                                     className="menu-btn"
