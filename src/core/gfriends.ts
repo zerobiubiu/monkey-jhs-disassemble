@@ -156,7 +156,7 @@ export function getCurrentCdnSource(): CurrentCdnSource {
  * @param data Filetree.json 数据（含 Content 字段）
  * @returns 演员名（小写）→ 头像 URL 列表；数据无效时返回 null
  */
-export function parseFiletree(data: FiletreeData | null): FiletreeIndex | null {
+function parseFiletree(data: FiletreeData | null): FiletreeIndex | null {
     if (!data || !data.Content) {
         return null;
     }

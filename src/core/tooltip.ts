@@ -58,7 +58,7 @@ function createTooltipElement(content: string): HTMLElement {
  * @param content   tooltip HTML 内容
  * @param direction 首选定位方向
  */
-export function positionTooltip(
+function positionTooltip(
     element: TooltipableElement,
     content: string,
     direction: TooltipDirection

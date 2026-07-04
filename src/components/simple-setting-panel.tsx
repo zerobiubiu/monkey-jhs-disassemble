@@ -179,7 +179,7 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="详情页第三方资源检测,如missAv,123AV">❓</span>{' '}
+                        <span data-tip="详情页第三方资源检测,如missAv,SupJav">❓</span>{' '}
                         加载第三方视频资源:
                     </span>
                     <div className="form-content" style={{ textAlign: 'right' }}>

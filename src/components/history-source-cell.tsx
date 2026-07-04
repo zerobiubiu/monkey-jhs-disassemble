@@ -2,7 +2,7 @@
  * HistorySourceCell —— 鉴定记录表格"来源"列 formatter（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/history-plugin.ts 的 loadTableData columns formatter
- * （L568-587）：依 url 含 javdb/123av 返回带颜色的 `<span>`，否则返回
+ * （L568-587）：依 url 含 javdb 返回带颜色的 `<span>`，否则返回
  * 灰色 url span。与 doc/12 blacklist formatter 组件化一致。
  *
  * 保留原 HTML 结构、内联 style 值（`color:<color>`，经 CSSProperties 对象还原为
@@ -20,7 +20,7 @@
 
 /** HistorySourceCell 的属性。 */
 export interface HistorySourceCellProps {
-    /** 显示文本（"Javdb"/"123Av" 或原始 url）。 */
+    /** 显示文本（"Javdb" 或原始 url）。 */
     text: string;
     /** 文字色（如 "#d34f9e"）。 */
     color: string;

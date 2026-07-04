@@ -78,7 +78,7 @@ export class SettingPlugin extends BasePlugin {
         {
             key: 'jhs_other_site',
             text: '🌍 第三方站点缓存',
-            title: '第三方站点资源检测结果, 如missav,123Av等'
+            title: '第三方站点资源检测结果, 如missav,supjav等'
         },
         {
             key: 'jhs_screenShot',

@@ -7,7 +7,7 @@
  */
 
 /** 加密 salt，作为密文前后缀。 */
-export const WEBDAV_SALT = 'x7k9p3';
+const WEBDAV_SALT = 'x7k9p3';
 
 /**
  * 加密：salt 前后包裹后，每个码点 +5。

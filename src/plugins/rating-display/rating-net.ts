@@ -58,9 +58,6 @@ async function request(
     throw new Error('unreachable');
 }
 
-/** 网络层导出（保持原 Net 命名空间风格）。 */
-export const RatingNet = { limiter, request };
-
 /**
  * 从详情页 DOM 解析个人评分。对应原 L340-349。
  * 判定条件：存在 `.review-title .tag.is-success.is-light`（已评分标记），

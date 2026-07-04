@@ -25,7 +25,7 @@
  * @param onClick   兜底选项对象
  * @returns Toastify 实例（any），已调用 showToast，并附加 closeShow 方法
  */
-export const createToast = (
+const createToast = (
     message: string,
     type: 'info' | 'success' | 'error',
     position: any,

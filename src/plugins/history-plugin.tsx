@@ -517,10 +517,6 @@ export class HistoryPlugin extends BasePlugin {
                                 return jsxToString(
                                     <HistorySourceCell text="Javdb" color="#d34f9e" />
                                 );
-                            } else if (url.includes('123av')) {
-                                return jsxToString(
-                                    <HistorySourceCell text="123Av" color="#eaa813" />
-                                );
                             } else {
                                 return jsxToString(
                                     <HistorySourceCell text={url} color="#050505" />

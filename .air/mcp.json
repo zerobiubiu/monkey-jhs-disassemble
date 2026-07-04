@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "chrome-devtools": {
+            /// The command which runs the MCP server
+            "command": "npx",
+            /// The arguments to pass to the MCP server
+            "args": [
+                "chrome-devtools-mcp@latest",
+                "--autoConnect"
+            ],
+            /// The environment variables to set
+            "env": {}
+        }
+    }
+}
