@@ -44,9 +44,9 @@ export interface SubtitleLineProps {
 export function SubtitleLine({ paddedNum, line }: SubtitleLineProps) {
     return (
         <>
-            <span style={{ color: "#AAA" }}>{`${paddedNum}. `}</span>
+            <span style={{ color: '#AAA' }}>{`${paddedNum}. `}</span>
             {line}
-            {"\n"}
+            {'\n'}
         </>
     );
 }

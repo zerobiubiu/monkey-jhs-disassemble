@@ -26,11 +26,7 @@
  */
 
 /** SettingMountBox 的变体（决定包裹结构与样式）。 */
-export type SettingMountBoxVariant =
-    | "navbar"
-    | "mini"
-    | "topright"
-    | "containerfluid";
+export type SettingMountBoxVariant = 'navbar' | 'mini' | 'topright' | 'containerfluid';
 
 /** SettingMountBox 的属性。 */
 export interface SettingMountBoxProps {
@@ -46,18 +42,18 @@ export interface SettingMountBoxProps {
  */
 export function SettingMountBox({ variant }: SettingMountBoxProps) {
     switch (variant) {
-        case "navbar":
+        case 'navbar':
             return (
                 <div
                     className="navbar-item has-dropdown is-hoverable setting-box"
-                    style={{ position: "relative" }}
+                    style={{ position: 'relative' }}
                 >
                     <a
                         id="setting-btn"
                         className="navbar-link nav-btn"
                         style={{
-                            color: "#ff8400 !important",
-                            paddingRight: "15px !important",
+                            color: '#ff8400 !important',
+                            paddingRight: '15px !important'
                         }}
                     >
                         设置
@@ -65,19 +61,19 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                     <div className="simple-setting" />
                 </div>
             );
-        case "mini":
+        case 'mini':
             return (
                 <div
                     className="navbar-item mini-setting-box"
-                    style={{ position: "relative", marginLeft: "auto" }}
+                    style={{ position: 'relative', marginLeft: 'auto' }}
                 >
                     <a
                         id="mini-setting-btn"
                         className="navbar-link nav-btn"
                         style={{
-                            color: "#ff8400 !important",
-                            paddingLeft: "0 !important",
-                            paddingRight: "0 !important",
+                            color: '#ff8400 !important',
+                            paddingLeft: '0 !important',
+                            paddingRight: '0 !important'
                         }}
                     >
                         设置
@@ -85,16 +81,16 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                     <div className="mini-simple-setting" />
                 </div>
             );
-        case "topright":
+        case 'topright':
             return (
                 <div
                     id="top-right-box"
                     style={{
-                        position: "relative",
-                        display: "flex",
+                        position: 'relative',
+                        display: 'flex',
                         flexGrow: 1,
-                        justifyContent: "flex-end",
-                        zIndex: "12345679 !important",
+                        justifyContent: 'flex-end',
+                        zIndex: '12345679 !important'
                     }}
                 >
                     <div className="setting-box">
@@ -102,7 +98,7 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                             id="setting-btn"
                             className="menu-btn main-tab-btn"
                             style={{
-                                backgroundColor: "#6e685e !important",
+                                backgroundColor: '#6e685e !important'
                             }}
                         >
                             <span>设置</span>
@@ -111,20 +107,17 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                     </div>
                 </div>
             );
-        case "containerfluid":
+        case 'containerfluid':
             return (
-                <div
-                    className="container-fluid"
-                    style={{ marginTop: "20px" }}
-                >
+                <div className="container-fluid" style={{ marginTop: '20px' }}>
                     <div
                         id="top-right-box"
                         style={{
-                            position: "relative",
-                            display: "flex",
+                            position: 'relative',
+                            display: 'flex',
                             flexGrow: 1,
-                            justifyContent: "flex-end",
-                            zIndex: "12345679 !important",
+                            justifyContent: 'flex-end',
+                            zIndex: '12345679 !important'
                         }}
                     >
                         <div className="setting-box">
@@ -132,7 +125,7 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                                 id="setting-btn"
                                 className="menu-btn main-tab-btn"
                                 style={{
-                                    backgroundColor: "#6e685e !important",
+                                    backgroundColor: '#6e685e !important'
                                 }}
                             >
                                 <span>设置</span>

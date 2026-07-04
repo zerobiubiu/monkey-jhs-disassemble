@@ -37,15 +37,13 @@ export interface BlacklistPaginationCounterProps {
  */
 export function BlacklistPaginationCounter({
     actorCount,
-    currentCarCount,
+    currentCarCount
 }: BlacklistPaginationCounterProps) {
     return (
         <>
-            演员: {actorCount} &nbsp;&nbsp;&nbsp;番号总数: {currentCarCount}{"  "}
-            <span
-                id="checkBlacklistMsg"
-                style={{ marginLeft: "10px" }}
-            ></span>
+            演员: {actorCount} &nbsp;&nbsp;&nbsp;番号总数: {currentCarCount}
+            {'  '}
+            <span id="checkBlacklistMsg" style={{ marginLeft: '10px' }}></span>
         </>
     );
 }

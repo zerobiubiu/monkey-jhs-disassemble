@@ -48,9 +48,9 @@ export class GmHttp {
         url: string,
         queryParams: StringRecord = {},
         headers: HttpHeaders = {},
-        followRedirect?: boolean,
+        followRedirect?: boolean
     ): Promise<any> {
-        return this.gmRequest("GET", url, null, queryParams, headers, followRedirect);
+        return this.gmRequest('GET', url, null, queryParams, headers, followRedirect);
     }
 
     /**
@@ -61,17 +61,13 @@ export class GmHttp {
      * @param headers 自定义请求头（覆盖默认 Content-Type）
      * @returns 解析后的响应体
      */
-    post(
-        url: string,
-        body: StringRecord = {},
-        headers: HttpHeaders = {},
-    ): Promise<any> {
+    post(url: string, body: StringRecord = {}, headers: HttpHeaders = {}): Promise<any> {
         const requestHeaders: HttpHeaders = {
-            "Content-Type": "application/json",
-            ...headers,
+            'Content-Type': 'application/json',
+            ...headers
         };
         const bodyString = JSON.stringify(body);
-        return this.gmRequest("POST", url, bodyString, null, requestHeaders);
+        return this.gmRequest('POST', url, bodyString, null, requestHeaders);
     }
 
     /**
@@ -83,20 +79,16 @@ export class GmHttp {
      * @param headers  自定义请求头（写回 Content-Type，保持原引用语义）
      * @returns 解析后的响应体
      */
-    postForm(
-        url: string,
-        formData: StringRecord = {},
-        headers: HttpHeaders = {},
-    ): Promise<any> {
+    postForm(url: string, formData: StringRecord = {}, headers: HttpHeaders = {}): Promise<any> {
         const requestHeaders: HttpHeaders = headers || {};
-        requestHeaders["Content-Type"] ||= "application/x-www-form-urlencoded";
-        let bodyString = "";
+        requestHeaders['Content-Type'] ||= 'application/x-www-form-urlencoded';
+        let bodyString = '';
         if (formData && Object.keys(formData).length > 0) {
             bodyString = Object.entries(formData)
                 .map(([key, value]) => `${key}=${String(value)}`)
-                .join("&");
+                .join('&');
         }
-        return this.gmRequest("POST", url, bodyString, null, requestHeaders);
+        return this.gmRequest('POST', url, bodyString, null, requestHeaders);
     }
 
     /**
@@ -110,22 +102,22 @@ export class GmHttp {
     postFileFormData(
         url: string,
         formFields: StringRecord = {},
-        headers: HttpHeaders = {},
+        headers: HttpHeaders = {}
     ): Promise<any> {
         const requestHeaders: HttpHeaders = headers || {};
         const boundary = `----WebKitFormBoundary${Math.random().toString(36).substring(2)}`;
-        requestHeaders["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
-        let body = "";
+        requestHeaders['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+        let body = '';
         if (formFields && Object.keys(formFields).length > 0) {
             body = Object.entries(formFields)
                 .map(
                     ([key, value]) =>
-                        `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${String(value)}\r\n`,
+                        `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${String(value)}\r\n`
                 )
-                .join("");
+                .join('');
         }
         body += `--${boundary}--`;
-        return this.gmRequest("POST", url, body, null, requestHeaders);
+        return this.gmRequest('POST', url, body, null, requestHeaders);
     }
 
     /**
@@ -142,13 +134,13 @@ export class GmHttp {
         url: string,
         headers: HttpHeaders = {},
         filename?: string,
-        transform?: (content: string) => string,
+        transform?: (content: string) => string
     ): Promise<void> {
         if (!filename) {
-            throw new Error("请提供文件名 (filename) 用于保存。");
+            throw new Error('请提供文件名 (filename) 用于保存。');
         }
-        const timeout: number = await storageManager.getSetting("httpTimeout", 5000);
-        const retryCount: number = await storageManager.getSetting("httpRetryCount", 3);
+        const timeout: number = await storageManager.getSetting('httpTimeout', 5000);
+        const retryCount: number = await storageManager.getSetting('httpRetryCount', 3);
         let fileSize: number = 0;
         let mimeType: string | undefined;
         clog.log(`[${filename}] 正在获取文件大小...`);
@@ -157,52 +149,49 @@ export class GmHttp {
                 () =>
                     new Promise<GmResponse>((resolve, reject) => {
                         GM_xmlhttpRequest({
-                            method: "GET",
+                            method: 'GET',
                             url: url,
                             headers: {
                                 ...headers,
-                                Range: "bytes=0-0",
+                                Range: 'bytes=0-0'
                             },
                             timeout: timeout,
                             onload: resolve,
-                            onerror: () =>
-                                reject(new Error("网络错误：无法获取文件大小")),
-                            ontimeout: () => reject(new Error("超时：获取文件大小")),
+                            onerror: () => reject(new Error('网络错误：无法获取文件大小')),
+                            ontimeout: () => reject(new Error('超时：获取文件大小'))
                         });
                     }),
-                retryCount,
+                retryCount
             );
             if (sizeResponse.status !== 206 && sizeResponse.status !== 200) {
                 throw new Error(`请求文件大小失败，状态码: ${sizeResponse.status}`);
             }
             {
                 const contentRangeMatch = sizeResponse.responseHeaders.match(
-                    /content-range:\s*bytes\s*\d+-\d+\/(\d+)/i,
+                    /content-range:\s*bytes\s*\d+-\d+\/(\d+)/i
                 );
-                const contentTypeMatch = sizeResponse.responseHeaders.match(
-                    /content-type:\s*([^\s;]+)/i,
-                );
+                const contentTypeMatch =
+                    sizeResponse.responseHeaders.match(/content-type:\s*([^\s;]+)/i);
                 if (contentRangeMatch && contentRangeMatch[1]) {
                     fileSize = parseInt(contentRangeMatch[1], 10);
                 } else {
-                    const contentLengthMatch = sizeResponse.responseHeaders.match(
-                        /content-length:\s*(\d+)/i,
-                    );
+                    const contentLengthMatch =
+                        sizeResponse.responseHeaders.match(/content-length:\s*(\d+)/i);
                     if (!contentLengthMatch || sizeResponse.status !== 200) {
                         throw new Error(
-                            "无法从响应头中获取文件总大小，服务器可能不支持 Range 请求。",
+                            '无法从响应头中获取文件总大小，服务器可能不支持 Range 请求。'
                         );
                     }
                     fileSize = parseInt(contentLengthMatch[1], 10);
                     clog.warn(
-                        `[${filename}] 服务器返回 200 状态码，可能不支持 Range 请求。将尝试完整下载。`,
+                        `[${filename}] 服务器返回 200 状态码，可能不支持 Range 请求。将尝试完整下载。`
                     );
                 }
                 if (contentTypeMatch && contentTypeMatch[1]) {
                     mimeType = contentTypeMatch[1];
                 }
                 clog.log(
-                    `[${filename}] 文件总大小：${(fileSize / 1024 / 1024).toFixed(2)} MB, MIME 类型: ${mimeType || "未知"}`,
+                    `[${filename}] 文件总大小：${(fileSize / 1024 / 1024).toFixed(2)} MB, MIME 类型: ${mimeType || '未知'}`
                 );
             }
         } catch (err: any) {
@@ -210,14 +199,14 @@ export class GmHttp {
             throw err;
         }
         if (!fileSize || fileSize <= 0) {
-            throw new Error("获取到的文件大小无效或服务器拒绝提供大小信息。");
+            throw new Error('获取到的文件大小无效或服务器拒绝提供大小信息。');
         }
         const chunkSize = 1048576;
         const chunkCount = Math.ceil(fileSize / chunkSize);
         const promises: Promise<void>[] = [];
         const chunks: ArrayBuffer[] = new Array(chunkCount);
         clog.log(
-            `[${filename}] 文件将被分为 ${chunkCount} 块进行下载 (每块约 ${(1).toFixed(2)} MB)`,
+            `[${filename}] 文件将被分为 ${chunkCount} 块进行下载 (每块约 ${(1).toFixed(2)} MB)`
         );
         for (let index = 0; index < chunkCount; index++) {
             const start = index * chunkSize;
@@ -228,48 +217,44 @@ export class GmHttp {
                         const requestHeaders: HttpHeaders = {
                             ...headers,
                             Range: rangeHeader,
-                            Accept: "application/octet-stream",
+                            Accept: 'application/octet-stream'
                         };
                         GM_xmlhttpRequest({
-                            method: "GET",
+                            method: 'GET',
                             url: url,
                             headers: requestHeaders,
                             timeout: timeout,
-                            responseType: "arraybuffer",
+                            responseType: 'arraybuffer',
                             onload: (response: GmResponse) => {
                                 if (response.status === 206 || response.status === 200) {
                                     const chunkData = response.response;
                                     if (chunkData instanceof ArrayBuffer) {
                                         chunks[index] = chunkData;
                                         clog.log(
-                                            `[${filename}] 成功下载第 ${index + 1}/${chunkCount} 块 (${rangeHeader})`,
+                                            `[${filename}] 成功下载第 ${index + 1}/${chunkCount} 块 (${rangeHeader})`
                                         );
                                         resolve();
                                     } else {
                                         reject(
-                                            new Error(
-                                                `第 ${index + 1} 块响应不是 ArrayBuffer。`,
-                                            ),
+                                            new Error(`第 ${index + 1} 块响应不是 ArrayBuffer。`)
                                         );
                                     }
                                 } else {
                                     reject(
                                         new Error(
-                                            `第 ${index + 1} 块请求失败，状态码: ${response.status}`,
-                                        ),
+                                            `第 ${index + 1} 块请求失败，状态码: ${response.status}`
+                                        )
                                     );
                                 }
                             },
                             onerror: (errorEvent: GmResponse) =>
                                 reject(
-                                    new Error(
-                                        `第 ${index + 1} 块网络错误: ${errorEvent.error}`,
-                                    ),
+                                    new Error(`第 ${index + 1} 块网络错误: ${errorEvent.error}`)
                                 ),
-                            ontimeout: () => reject(new Error(`第 ${index + 1} 块超时。`)),
+                            ontimeout: () => reject(new Error(`第 ${index + 1} 块超时。`))
                         });
                     }),
-                retryCount,
+                retryCount
             );
             promises.push(promise);
         }
@@ -283,7 +268,7 @@ export class GmHttp {
         const blob = new Blob(chunks);
         if (blob.size !== fileSize) {
             clog.warn(
-                `[${filename}] 警告：合并后的 Blob 大小 (${blob.size}) 与预期文件大小 (${fileSize}) 不匹配！`,
+                `[${filename}] 警告：合并后的 Blob 大小 (${blob.size}) 与预期文件大小 (${fileSize}) 不匹配！`
             );
         }
         const text = await blob.text();
@@ -310,17 +295,17 @@ export class GmHttp {
         data: string | StringRecord | null = {},
         queryParams: StringRecord | null = {},
         headers: HttpHeaders = {},
-        followRedirect: boolean = false,
+        followRedirect: boolean = false
     ): Promise<any> {
         let requestUrl = url;
         if (queryParams && Object.keys(queryParams).length) {
             const queryString = new URLSearchParams(
-                queryParams as Record<string, string>,
+                queryParams as Record<string, string>
             ).toString();
-            requestUrl += (requestUrl.includes("?") ? "&" : "?") + queryString;
+            requestUrl += (requestUrl.includes('?') ? '&' : '?') + queryString;
         }
-        const timeout: number = await storageManager.getSetting("httpTimeout", 5000);
-        const retryCount: number = await storageManager.getSetting("httpRetryCount", 3);
+        const timeout: number = await storageManager.getSetting('httpTimeout', 5000);
+        const retryCount: number = await storageManager.getSetting('httpRetryCount', 3);
         const requestData = data || undefined;
         return await utils.retry(
             () =>
@@ -334,7 +319,7 @@ export class GmHttp {
                         onload: (response: GmResponse) => {
                             try {
                                 if (followRedirect && response.finalUrl !== requestUrl) {
-                                    reject("请求被重定向了,URL是:" + response.finalUrl);
+                                    reject('请求被重定向了,URL是:' + response.finalUrl);
                                 }
                                 if (response.status >= 200 && response.status < 300) {
                                     if (response.responseText) {
@@ -347,11 +332,7 @@ export class GmHttp {
                                         resolve(response.responseText || response);
                                     }
                                 } else {
-                                    clog.error(
-                                        "请求失败,状态码:",
-                                        response.status,
-                                        requestUrl,
-                                    );
+                                    clog.error('请求失败,状态码:', response.status, requestUrl);
                                     if (response.responseText) {
                                         try {
                                             const parsed = JSON.parse(response.responseText);
@@ -360,8 +341,8 @@ export class GmHttp {
                                             reject(
                                                 new Error(
                                                     response.responseText ||
-                                                        `请求发生错误 ${response.status}`,
-                                                ),
+                                                        `请求发生错误 ${response.status}`
+                                                )
                                             );
                                         }
                                     } else {
@@ -373,15 +354,15 @@ export class GmHttp {
                             }
                         },
                         onerror: (errorEvent: GmResponse) => {
-                            clog.error("网络错误:", requestUrl);
-                            reject(new Error(errorEvent.error || "网络错误"));
+                            clog.error('网络错误:', requestUrl);
+                            reject(new Error(errorEvent.error || '网络错误'));
                         },
                         ontimeout: () => {
-                            reject(new Error("请求超时: " + requestUrl));
-                        },
+                            reject(new Error('请求超时: ' + requestUrl));
+                        }
                     });
                 }),
-            retryCount,
+            retryCount
         );
     }
 }

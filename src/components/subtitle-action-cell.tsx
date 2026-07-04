@@ -33,9 +33,7 @@
 export function SubtitleActionCell() {
     return (
         <>
-            <a className="a-primary">预览</a>
-            {" "}
-            <a className="a-success">下载</a>
+            <a className="a-primary">预览</a> <a className="a-success">下载</a>
         </>
     );
 }

@@ -34,22 +34,17 @@ export interface PreviewVideoActionBtnProps {
  * 渲染预览视频操作按钮的 JSX。
  * @returns menu-btn JSX，经 jsxToString 转 HTML 字符串后供 `$(html)` 创建后 `.append()` 消费。
  */
-export function PreviewVideoActionBtn({
-    id,
-    color,
-    label,
-    hotKey,
-}: PreviewVideoActionBtnProps) {
+export function PreviewVideoActionBtn({ id, color, label, hotKey }: PreviewVideoActionBtnProps) {
     return (
         <button
             className="menu-btn"
             id={id}
             style={{
-                minWidth: "120px",
-                backgroundColor: color,
+                minWidth: '120px',
+                backgroundColor: color
             }}
         >
-            {label} {hotKey ? `(${hotKey})` : ""}
+            {label} {hotKey ? `(${hotKey})` : ''}
         </button>
     );
 }

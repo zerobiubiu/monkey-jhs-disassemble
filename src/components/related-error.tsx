@@ -24,10 +24,10 @@ export function RelatedError() {
     return (
         <div
             style={{
-                marginTop: "15px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
+                marginTop: '15px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px'
             }}
         >
             获取清单失败
@@ -35,9 +35,9 @@ export function RelatedError() {
                 id="retryFetchRelateds"
                 href="javascript:;"
                 style={{
-                    marginLeft: "10px",
-                    color: "#1897ff",
-                    textDecoration: "none",
+                    marginLeft: '10px',
+                    color: '#1897ff',
+                    textDecoration: 'none'
                 }}
             >
                 重试

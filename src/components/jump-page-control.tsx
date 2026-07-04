@@ -25,7 +25,7 @@
  * 依赖，不引入 react-dom/server）。属性值不做转义，与原始 jQuery
  * `$("<input>", { value })` 行为一致（value 数字转字符串渲染）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** JumpPageControl 的属性。 */
 export interface JumpPageControlProps {
@@ -44,19 +44,19 @@ export interface JumpPageControlProps {
  */
 export function JumpPageControl({ controlId, value }: JumpPageControlProps) {
     const inputStyle: CSSProperties = {
-        width: "60px",
-        marginLeft: "10px",
-        padding: "10px",
-        border: "1px solid #ccc",
-        fontSize: "14px",
+        width: '60px',
+        marginLeft: '10px',
+        padding: '10px',
+        border: '1px solid #ccc',
+        fontSize: '14px'
     };
     const buttonStyle: CSSProperties = {
-        marginLeft: "5px",
-        padding: "9px 8px",
-        cursor: "pointer",
-        border: "1px solid #ccc",
-        backgroundColor: "#f0f0f0",
-        fontSize: "14px",
+        marginLeft: '5px',
+        padding: '9px 8px',
+        cursor: 'pointer',
+        border: '1px solid #ccc',
+        backgroundColor: '#f0f0f0',
+        fontSize: '14px'
     };
     return (
         <li id={controlId}>

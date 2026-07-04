@@ -95,7 +95,7 @@ export interface RequestHeaders {
 export async function fetchMovieReviews(
     movieId: string | number,
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
 ): Promise<any> {
     const url = `${API_BASE}/v1/movies/${movieId}/reviews`;
     const headers = { jdSignature: await reBuildSignature() };
@@ -105,9 +105,9 @@ export async function fetchMovieReviews(
             {
                 page,
                 sort_by: 'hotly',
-                limit,
+                limit
             },
-            headers,
+            headers
         )
     ).data.reviews;
 }
@@ -118,9 +118,7 @@ export async function fetchMovieReviews(
  * @param movieId 电影 ID（原 e）
  * @returns 结构化的电影详情
  */
-export async function fetchMovieDetail(
-    movieId: string | number,
-): Promise<MovieDetail> {
+export async function fetchMovieDetail(movieId: string | number): Promise<MovieDetail> {
     const url = `${API_BASE}/v4/movies/${movieId}`;
     const headers = { jdSignature: await reBuildSignature() };
     const resp = await gmHttp.get(url, null, headers);
@@ -132,10 +130,7 @@ export async function fetchMovieDetail(
     const imgList: string[] = [];
     movie.preview_images.forEach((img: any) => {
         imgList.push(
-            img.large_url.replace(
-                'https://tp-iu.cmastd.com/rhe951l4q',
-                'https://c0.jdbstatic.com',
-            ),
+            img.large_url.replace('https://tp-iu.cmastd.com/rhe951l4q', 'https://c0.jdbstatic.com')
         );
     });
     return {
@@ -147,7 +142,7 @@ export async function fetchMovieDetail(
         score: movie.score,
         releaseDate: movie.release_date,
         watchedCount: movie.watched_count,
-        imgList,
+        imgList
     };
 }
 
@@ -162,7 +157,7 @@ export async function fetchMovieDetail(
 export async function fetchRelatedCollections(
     movieId: string | number,
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
 ): Promise<RelatedCollection[]> {
     const url = `${API_BASE}/v1/lists/related?movie_id=${movieId}&page=${page}&limit=${limit}`;
     const headers = { jdSignature: await reBuildSignature() };
@@ -175,7 +170,7 @@ export async function fetchRelatedCollections(
             movieCount: item.movies_count,
             collectionCount: item.collections_count,
             viewCount: item.views_count,
-            createTime: utils.formatDate(item.created_at),
+            createTime: utils.formatDate(item.created_at)
         });
     });
     return list;
@@ -190,7 +185,7 @@ export async function fetchRelatedCollections(
  */
 export async function fetchPlaybackRanking(
     period: string = 'daily',
-    filterBy: string = 'high_score',
+    filterBy: string = 'high_score'
 ): Promise<any> {
     const url = `${API_BASE}/v1/rankings/playback?period=${period}&filter_by=${filterBy}`;
     const headers = { jdSignature: await reBuildSignature() };
@@ -216,7 +211,7 @@ export async function DEFAULT_REQUEST_HEADERS(): Promise<RequestHeaders> {
         'accept-language': 'zh-TW',
         host: 'jdforrepam.com',
         authorization: 'Bearer ' + (localStorage.getItem(APP_AUTH_KEY) as string),
-        jdsignature: await reBuildSignature(),
+        jdsignature: await reBuildSignature()
     };
 }
 
@@ -233,7 +228,7 @@ export async function fetchTopMovies(
     type: string = 'all',
     typeValue: string = '',
     page: number = 1,
-    limit: number = 40,
+    limit: number = 40
 ): Promise<any> {
     const url = `${API_BASE}/v1/movies/top?start_rank=1&type=${type}&type_value=${typeValue}&ignore_watched=false&page=${page}&limit=${limit}`;
     const headers = await DEFAULT_REQUEST_HEADERS();

@@ -63,32 +63,34 @@ export function BlacklistConfirmMessage({
     isAlreadyBlacklisted,
     isActress,
     notFirstPageByQuery,
-    notFirstPageByJavbus,
+    notFirstPageByJavbus
 }: BlacklistConfirmMessageProps) {
     const entityName = isActress ? name : tagName;
     const prefix = isAlreadyBlacklisted
         ? isActress
-            ? "演员 "
-            : "分类 "
+            ? '演员 '
+            : '分类 '
         : isActress
-              ? "是否将该演员 "
-              : "是否将分类 ";
+          ? '是否将该演员 '
+          : '是否将分类 ';
     const suffix = isAlreadyBlacklisted
-        ? " 已在黑名单中, 是否从当前页开始追加屏蔽?"
-        : " 加入到黑名单中?";
+        ? ' 已在黑名单中, 是否从当前页开始追加屏蔽?'
+        : ' 加入到黑名单中?';
     return (
         <>
             {prefix}
-            <span style={{ color: "#f40" }}>{entityName}</span>
+            <span style={{ color: '#f40' }}>{entityName}</span>
             {suffix}
             {notFirstPageByQuery && (
                 <>
-                    <br />{" 注意: 当前页面非第一页, 屏蔽数据将从此页面开始"}
+                    <br />
+                    {' 注意: 当前页面非第一页, 屏蔽数据将从此页面开始'}
                 </>
             )}
             {notFirstPageByJavbus && (
                 <>
-                    <br />{" 注意: 当前页面非第一页, 屏蔽数据将从此页面开始"}
+                    <br />
+                    {' 注意: 当前页面非第一页, 屏蔽数据将从此页面开始'}
                 </>
             )}
         </>

@@ -39,7 +39,7 @@ export interface BlacklistDataTypeOptionsProps {
 export function BlacklistDataTypeOptions({
     totalCount,
     actorCount,
-    actressCount,
+    actressCount
 }: BlacklistDataTypeOptionsProps) {
     return (
         <>

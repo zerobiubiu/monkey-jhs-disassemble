@@ -34,11 +34,11 @@ export function HelpDialog() {
         <div className="help-container">
             <h1
                 style={{
-                    fontSize: "22px",
-                    marginBottom: "20px",
-                    color: "#2c3e50",
-                    borderBottom: "1px solid #eee",
-                    paddingBottom: "10px",
+                    fontSize: '22px',
+                    marginBottom: '20px',
+                    color: '#2c3e50',
+                    borderBottom: '1px solid #eee',
+                    paddingBottom: '10px'
                 }}
             >
                 使用说明
@@ -47,22 +47,13 @@ export function HelpDialog() {
             <details className="help-section">
                 <summary>1. 无法查看预览视频，提示分流?</summary>
                 <div className="help-content">
+                    <p>JavDB限制日本IP的访问，而预览视频来自DMM，需要日本IP才能访问。</p>
+                    <p>这样会导致二者无法同时使用，需要对其一进行代理转发。</p>
+                    <p>将 cc3001.dmm.co.jp 及 dmm.co 分流到日本ip。</p>
                     <p>
-                        JavDB限制日本IP的访问，而预览视频来自DMM，需要日本IP才能访问。
-                    </p>
-                    <p>
-                        这样会导致二者无法同时使用，需要对其一进行代理转发。
-                    </p>
-                    <p>
-                        将 cc3001.dmm.co.jp 及 dmm.co 分流到日本ip。
-                    </p>
-                    <p>
-                        <a
-                            href="https://youtu.be/wQUK8z_YeU4?t=121"
-                            target="_blank"
-                        >
-                            Clash Verge分流规则设置{" "}
-                        </a>{" "}
+                        <a href="https://youtu.be/wQUK8z_YeU4?t=121" target="_blank">
+                            Clash Verge分流规则设置{' '}
+                        </a>{' '}
                         (如果你是别的代理软件，自行搜索如何分流)
                     </p>
                 </div>
@@ -94,20 +85,17 @@ export function HelpDialog() {
             <details className="help-section">
                 <summary>4. 如何多浏览器同时登录115网盘?</summary>
                 <div className="help-content">
-                    <p>
-                        ① 访问115登录页, 选择JHS-扫码面板, 并扫码登录
-                    </p>
+                    <p>① 访问115登录页, 选择JHS-扫码面板, 并扫码登录</p>
                     <img src="https://imgur.com/XbaisWD.png" alt="" />
                 </div>
                 <div className="help-content">
-                    <p>
-                        ② 进入网盘后, 右下角悬浮按钮, 复制Cookie
-                    </p>
+                    <p>② 进入网盘后, 右下角悬浮按钮, 复制Cookie</p>
                     <img src="https://imgur.com/GvzJ2Gy.png" alt="" />
                 </div>
                 <div className="help-content">
                     <p>
-                        ③ 打开另一个浏览器(需装JHS脚本), 进入登录页面, 选择JHS-扫码面板, 输入Cookie并回车
+                        ③ 打开另一个浏览器(需装JHS脚本), 进入登录页面, 选择JHS-扫码面板,
+                        输入Cookie并回车
                     </p>
                     <img src="https://imgur.com/FX08qdO.png" alt="" />
                 </div>

@@ -16,7 +16,7 @@
  */
 
 /** WantWatchedImportButton 的变体。 */
-export type WantWatchedImportButtonVariant = "want" | "watched";
+export type WantWatchedImportButtonVariant = 'want' | 'watched';
 
 /** WantWatchedImportButton 的属性。 */
 export interface WantWatchedImportButtonProps {
@@ -28,12 +28,10 @@ export interface WantWatchedImportButtonProps {
  * 渲染"导入至 JHS"按钮的 JSX。
  * @returns 导入按钮 JSX，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
-export function WantWatchedImportButton({
-    variant,
-}: WantWatchedImportButtonProps) {
-    const cls = variant === "want" ? "a-primary" : "a-success";
+export function WantWatchedImportButton({ variant }: WantWatchedImportButtonProps) {
+    const cls = variant === 'want' ? 'a-primary' : 'a-success';
     return (
-        <a className={cls} id="wantWatchBtn" style={{ padding: "10px" }}>
+        <a className={cls} id="wantWatchBtn" style={{ padding: '10px' }}>
             导入至 JHS
         </a>
     );

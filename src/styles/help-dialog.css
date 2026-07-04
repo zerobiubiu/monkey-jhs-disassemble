@@ -1,39 +1,37 @@
+.help-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    padding: 15px;
+    max-height: 100%;
+    overflow-y: auto;
+}
 
-    .help-container {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        color: #333;
-        padding: 15px;
-        max-height: 100%;
-        overflow-y: auto;
-    }
-    
-    .help-section {
-        margin-bottom: 25px;
-    }
-    
-    .help-section summary {
-        font-size: 18px;
-        color: #3498db;
-        margin-bottom: 12px;
-        cursor: pointer;
-    }
-    
-    .help-content {
-        background-color: #f9f9f9;
-        border-radius: 5px;
-        padding: 15px;
-        border-left: 4px solid #3498db;
-    }
-    
-    .help-content p {
-        line-height: 1.6;
-        margin-bottom: 10px;
-    }
-    .help-section img {
-        max-width: 100%;
-        height: auto;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+.help-section {
+    margin-bottom: 25px;
+}
 
+.help-section summary {
+    font-size: 18px;
+    color: #3498db;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.help-content {
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 15px;
+    border-left: 4px solid #3498db;
+}
+
+.help-content p {
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+.help-section img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

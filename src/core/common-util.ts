@@ -46,33 +46,33 @@ export class CommonUtil {
     intervalContainer: Record<string, ReturnType<typeof setInterval>> = {};
     /** 文件扩展名 → MIME 映射（原 mimeTypes） */
     mimeTypes: Record<string, string> = {
-        txt: "text/plain",
-        html: "text/html",
-        css: "text/css",
-        csv: "text/csv",
-        json: "application/json",
-        xml: "application/xml",
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        png: "image/png",
-        gif: "image/gif",
-        webp: "image/webp",
-        svg: "image/svg+xml",
-        pdf: "application/pdf",
-        doc: "application/msword",
-        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        xls: "application/vnd.ms-excel",
-        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ppt: "application/vnd.ms-powerpoint",
-        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        zip: "application/zip",
-        rar: "application/x-rar-compressed",
-        "7z": "application/x-7z-compressed",
-        mp3: "audio/mpeg",
-        wav: "audio/wav",
-        mp4: "video/mp4",
-        webm: "video/webm",
-        ogg: "audio/ogg",
+        txt: 'text/plain',
+        html: 'text/html',
+        css: 'text/css',
+        csv: 'text/csv',
+        json: 'application/json',
+        xml: 'application/xml',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        svg: 'image/svg+xml',
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        zip: 'application/zip',
+        rar: 'application/x-rar-compressed',
+        '7z': 'application/x-7z-compressed',
+        mp3: 'audio/mpeg',
+        wav: 'audio/wav',
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        ogg: 'audio/ogg'
     };
     /** time 计时器表（原 timers） */
     timers: Map<string, TimerEntry> = new Map();
@@ -82,10 +82,10 @@ export class CommonUtil {
      */
     insertStyle = (css: string): void => {
         if (css) {
-            if (css.indexOf("<style>") === -1) {
-                css = "<style>" + css + "</style>";
+            if (css.indexOf('<style>') === -1) {
+                css = '<style>' + css + '</style>';
             }
-            $("head").append(css);
+            $('head').append(css);
         }
     };
     /** 已打开 layer 的索引栈，用于 ESC 关闭（原 layerIndexStack） */
@@ -108,14 +108,14 @@ export class CommonUtil {
      */
     importResource(url: string): void {
         let el: HTMLElement;
-        if (url.indexOf("css") >= 0) {
-            const link = document.createElement("link");
-            link.setAttribute("rel", "stylesheet");
+        if (url.indexOf('css') >= 0) {
+            const link = document.createElement('link');
+            link.setAttribute('rel', 'stylesheet');
             link.href = url;
             el = link;
         } else {
-            const script = document.createElement("script");
-            script.setAttribute("type", "text/javascript");
+            const script = document.createElement('script');
+            script.setAttribute('type', 'text/javascript');
             script.src = url;
             el = script;
         }
@@ -129,27 +129,17 @@ export class CommonUtil {
      * @param shadeClose 是否点击遮罩关闭，默认 true
      * @param event      触发事件（含 ctrlKey/metaKey 判定新标签打开）
      */
-    openPage(
-        url: string,
-        title: string,
-        shadeClose?: boolean,
-        event?: MouseEvent,
-    ): void {
+    openPage(url: string, title: string, shadeClose?: boolean, event?: MouseEvent): void {
         shadeClose = shadeClose ?? true;
         if (event && (event.ctrlKey || event.metaKey)) {
-            GM_openInTab(
-                url.includes("http") ? url : window.location.origin + url,
-                {
-                    insert: 0,
-                },
-            );
+            GM_openInTab(url.includes('http') ? url : window.location.origin + url, {
+                insert: 0
+            });
             return;
         }
         let content = url;
-        if (!url.includes("/actors/") && !url.includes("/star/")) {
-            content = url.includes("?")
-                ? `${url}&hideNav=1`
-                : `${url}?hideNav=1`;
+        if (!url.includes('/actors/') && !url.includes('/star/')) {
+            content = url.includes('?') ? `${url}&hideNav=1` : `${url}?hideNav=1`;
         }
         layer.open({
             type: 2,
@@ -157,12 +147,12 @@ export class CommonUtil {
             content,
             scrollbar: false,
             shadeClose,
-            area: this.getResponsiveArea(["85%", "90%"]),
+            area: this.getResponsiveArea(['85%', '90%']),
             isOutAnim: false,
             anim: -1,
             success: (_layerEl: any, layerIdx: number) => {
                 this.setupEscClose(layerIdx);
-            },
+            }
         });
     }
 
@@ -172,7 +162,7 @@ export class CommonUtil {
      * @param event keydown 事件（含 key/keyCode）
      */
     _handleGlobalEscKey(event: KeyboardEvent): void {
-        if (event.key !== "Escape" && event.keyCode !== 27) {
+        if (event.key !== 'Escape' && event.keyCode !== 27) {
             return;
         }
         if (this.layerIndexStack.length === 0) {
@@ -181,20 +171,17 @@ export class CommonUtil {
         const layerIdx = this.layerIndexStack[this.layerIndexStack.length - 1];
         const layerEl = $(`#layui-layer${layerIdx}`);
         let hasViewer = false;
-        if (layerEl.find(".viewer-container").length > 0) {
+        if (layerEl.find('.viewer-container').length > 0) {
             hasViewer = true;
         } else {
             const iframeEl = layerEl.find(`#layui-layer-iframe${layerIdx}`)[0];
             if (iframeEl && iframeEl.contentDocument) {
                 try {
-                    if (
-                        $(iframeEl.contentDocument).find(".viewer-container")
-                            .length > 0
-                    ) {
+                    if ($(iframeEl.contentDocument).find('.viewer-container').length > 0) {
                         hasViewer = true;
                     }
                 } catch {
-                    clog.warn("无法检查跨域 iframe 内的 .viewer-container");
+                    clog.warn('无法检查跨域 iframe 内的 .viewer-container');
                 }
             }
         }
@@ -212,8 +199,8 @@ export class CommonUtil {
     setupEscClose(layerIdx: number): void {
         if (!this._boundHandler) {
             this._boundHandler = this._handleGlobalEscKey.bind(this);
-            $(document).off("keydown.globalLayerEsc");
-            $(document).on("keydown.globalLayerEsc", this._boundHandler);
+            $(document).off('keydown.globalLayerEsc');
+            $(document).on('keydown.globalLayerEsc', this._boundHandler);
         }
         if (this.layerIndexStack.indexOf(layerIdx) === -1) {
             this.layerIndexStack.push(layerIdx);
@@ -223,15 +210,15 @@ export class CommonUtil {
         try {
             const doc = iframeEl[0]?.contentDocument;
             if (doc) {
-                if (iframeEl.attr("data-esc-bound") === "yes") {
+                if (iframeEl.attr('data-esc-bound') === 'yes') {
                     return;
                 }
                 $(doc).off(eventNamespace);
                 $(doc).on(eventNamespace, this._boundHandler);
-                iframeEl.attr("data-esc-bound", "yes");
+                iframeEl.attr('data-esc-bound', 'yes');
             }
         } catch (err) {
-            clog.error("iframe监听失败 (跨域或未加载完毕):", err);
+            clog.error('iframe监听失败 (跨域或未加载完毕):', err);
         }
     }
 
@@ -240,29 +227,22 @@ export class CommonUtil {
      * 依据设置 needClosePage 决定是否执行：恢复父页滚动、移除遮罩/弹层 DOM、window.close。
      */
     closePage(): void {
-        storageManager
-            .getSetting("needClosePage", "yes")
-            .then((setting: any) => {
-                if (setting !== "yes") {
-                    return;
-                }
-                parent.document.documentElement.style.overflow = "auto";
-                [
-                    ".layui-layer-shade",
-                    ".layui-layer-move",
-                    ".layui-layer",
-                ].forEach((selector: string) => {
+        storageManager.getSetting('needClosePage', 'yes').then((setting: any) => {
+            if (setting !== 'yes') {
+                return;
+            }
+            parent.document.documentElement.style.overflow = 'auto';
+            ['.layui-layer-shade', '.layui-layer-move', '.layui-layer'].forEach(
+                (selector: string) => {
                     const matches = parent.document.querySelectorAll(selector);
                     if (matches.length > 0) {
-                        const el =
-                            matches.length > 1
-                                ? matches[matches.length - 1]
-                                : matches[0];
+                        const el = matches.length > 1 ? matches[matches.length - 1] : matches[0];
                         el.parentNode!.removeChild(el);
                     }
-                });
-                window.close();
-            });
+                }
+            );
+            window.close();
+        });
     }
 
     /**
@@ -278,7 +258,7 @@ export class CommonUtil {
         onSuccess: () => void,
         intervalMs: number = 20,
         timeoutMs: number = 10000,
-        callOnTimeout: boolean = true,
+        callOnTimeout: boolean = true
     ): void {
         const token = String(Math.random());
         const startTime = new Date().getTime();
@@ -308,34 +288,27 @@ export class CommonUtil {
     rightClick(
         container: string | HTMLElement,
         targetSelector: string,
-        handler: (event: MouseEvent, target: any) => void,
+        handler: (event: MouseEvent, target: any) => void
     ): void {
         let el: any;
-        if (typeof container === "string") {
+        if (typeof container === 'string') {
             el = document.querySelector(container);
         } else if (container instanceof HTMLElement) {
             el = container;
         }
         if (!el) {
-            console.warn(
-                "rightClick(), 容器无效或未提供，将使用 document.body 进行全局委托。",
-            );
+            console.warn('rightClick(), 容器无效或未提供，将使用 document.body 进行全局委托。');
             el = document.body;
         }
-        if (
-            typeof targetSelector === "string" &&
-            targetSelector.trim() !== ""
-        ) {
-            el.addEventListener("contextmenu", (event: MouseEvent) => {
-                const target = (event.target as HTMLElement).closest(
-                    targetSelector,
-                );
+        if (typeof targetSelector === 'string' && targetSelector.trim() !== '') {
+            el.addEventListener('contextmenu', (event: MouseEvent) => {
+                const target = (event.target as HTMLElement).closest(targetSelector);
                 if (target) {
                     handler(event, target);
                 }
             });
         } else {
-            console.error("rightClick(), 必须提供有效的 targetSelector。");
+            console.error('rightClick(), 必须提供有效的 targetSelector。');
         }
     }
 
@@ -350,7 +323,7 @@ export class CommonUtil {
         event: MouseEvent | null,
         content: string,
         onConfirm?: () => void,
-        onCancel?: () => void,
+        onCancel?: () => void
     ): void {
         let left: number;
         let top: number;
@@ -365,10 +338,10 @@ export class CommonUtil {
             content,
             {
                 offset: [top, left],
-                title: "提示",
-                btn: ["确定", "取消"],
+                title: '提示',
+                btn: ['确定', '取消'],
                 shade: 0,
-                zIndex: 999999991,
+                zIndex: 999999991
             },
             function () {
                 if (onConfirm) {
@@ -380,7 +353,7 @@ export class CommonUtil {
                 if (onCancel) {
                     onCancel();
                 }
-            },
+            }
         );
     }
 
@@ -392,17 +365,17 @@ export class CommonUtil {
      * @returns "YYYY-MM-DD HH:mm:ss" 形式字符串
      */
     getNowStr(
-        dateSep: string = "-",
-        timeSep: string = ":",
-        timestamp: number | null = null,
+        dateSep: string = '-',
+        timeSep: string = ':',
+        timestamp: number | null = null
     ): string {
         const d = timestamp ? new Date(timestamp) : new Date();
         const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const hours = String(d.getHours()).padStart(2, "0");
-        const minutes = String(d.getMinutes()).padStart(2, "0");
-        const seconds = String(d.getSeconds()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
         return `${[year, month, day].join(dateSep)} ${[hours, minutes, seconds].join(timeSep)}`;
     }
 
@@ -414,31 +387,25 @@ export class CommonUtil {
      * @returns "YYYY-MM-DD HH:mm:ss" 形式字符串
      * @throws 输入非 Date/字符串或字符串无法解析时抛 Error
      */
-    formatDate(
-        input: Date | string,
-        dateSep: string = "-",
-        timeSep: string = ":",
-    ): string {
+    formatDate(input: Date | string, dateSep: string = '-', timeSep: string = ':'): string {
         let d: Date;
         if (input instanceof Date) {
             d = input;
         } else {
-            if (typeof input !== "string") {
-                throw new Error(
-                    "Invalid date input: must be Date object or date string",
-                );
+            if (typeof input !== 'string') {
+                throw new Error('Invalid date input: must be Date object or date string');
             }
             d = new Date(input);
             if (isNaN(d.getTime())) {
-                throw new Error("Invalid date string");
+                throw new Error('Invalid date string');
             }
         }
         const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const hours = String(d.getHours()).padStart(2, "0");
-        const minutes = String(d.getMinutes()).padStart(2, "0");
-        const seconds = String(d.getSeconds()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
         return `${[year, month, day].join(dateSep)} ${[hours, minutes, seconds].join(timeSep)}`;
     }
 
@@ -462,12 +429,9 @@ export class CommonUtil {
      * @returns true 表示仍在间隔内、无需检查
      * @throws 未传入 checkIntervalTime 抛 Error
      */
-    isUnnecessaryCheck(
-        timeStr: string,
-        checkIntervalTime: string | number,
-    ): boolean {
+    isUnnecessaryCheck(timeStr: string, checkIntervalTime: string | number): boolean {
         if (!checkIntervalTime) {
-            throw new Error("未传入checkIntervalTime");
+            throw new Error('未传入checkIntervalTime');
         }
         const hours = parseInt(String(checkIntervalTime), 10);
         return this.getHourDifference(new Date(timeStr), new Date()) < hours;
@@ -479,9 +443,9 @@ export class CommonUtil {
      * @param filename 下载文件名（用于推断 MIME 与 a.download）
      */
     download(data: any, filename: string): void {
-        show.info("开始请求下载...");
-        const ext = filename.split(".").pop()!.toLowerCase();
-        const mimeType = this.mimeTypes[ext] || "application/octet-stream";
+        show.info('开始请求下载...');
+        const ext = filename.split('.').pop()!.toLowerCase();
+        const mimeType = this.mimeTypes[ext] || 'application/octet-stream';
         let blob: Blob;
         if (data instanceof Blob) {
             blob = data;
@@ -489,8 +453,8 @@ export class CommonUtil {
             // TS6: ArrayBuffer.isView 类型谓词收窄为 ArrayBufferView<ArrayBufferLike>，
             // 与 BlobPart 不兼容；运行时原行为即直接交给 Blob 构造，故断言为 BlobPart。
             blob = new Blob([data as unknown as BlobPart], { type: mimeType });
-        } else if (typeof data === "string" && data.startsWith("data:")) {
-            const raw = atob(data.split(",")[1]);
+        } else if (typeof data === 'string' && data.startsWith('data:')) {
+            const raw = atob(data.split(',')[1]);
             const buf = new ArrayBuffer(raw.length);
             const bytes = new Uint8Array(buf);
             for (let i = 0; i < raw.length; i++) {
@@ -501,7 +465,7 @@ export class CommonUtil {
             blob = new Blob([data], { type: mimeType });
         }
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
@@ -543,7 +507,7 @@ export class CommonUtil {
      * @returns 无连字符的 UUID 字符串
      */
     simpleId(): string {
-        return crypto.randomUUID().replace("-", "");
+        return crypto.randomUUID().replace('-', '');
     }
 
     /**
@@ -568,7 +532,7 @@ export class CommonUtil {
     setHrefParam(key: string, value: string): void {
         const url = new URL(window.location.href);
         url.searchParams.set(key, value);
-        window.history.pushState({}, "", url.toString());
+        window.history.pushState({}, '', url.toString());
     }
 
     /**
@@ -578,24 +542,20 @@ export class CommonUtil {
      * @returns 解析值：布尔 / 数字 / 字符串；无查询或无匹配返回 null/空串
      */
     getUrlParam(url: string, param: string): string | number | boolean | null {
-        const query = url.split("?")[1];
+        const query = url.split('?')[1];
         if (!query) {
             return null;
         }
         const regex = new RegExp(`(?:^|&)${param}=([^&]*)`);
         const match = query.match(regex);
-        let value = "";
+        let value = '';
         if (match && match[1]) {
-            value = decodeURIComponent(match[1].replace(/\+/g, " "));
+            value = decodeURIComponent(match[1].replace(/\+/g, ' '));
         }
         if (value) {
-            if (value === "true" || value === "false") {
-                return value.toLowerCase() === "true";
-            } else if (
-                typeof value !== "string" ||
-                value.trim() === "" ||
-                isNaN(Number(value))
-            ) {
+            if (value === 'true' || value === 'false') {
+                return value.toLowerCase() === 'true';
+            } else if (typeof value !== 'string' || value.trim() === '' || isNaN(Number(value))) {
                 return value;
             } else {
                 return Number(value);
@@ -611,8 +571,8 @@ export class CommonUtil {
      * @returns 签名字符串（缓存未命中时可能为 null）
      */
     reBuildSignature(): string | null {
-        const tsKey = "jhs_review_ts";
-        const signKey = "jhs_review_sign";
+        const tsKey = 'jhs_review_ts';
+        const signKey = 'jhs_review_sign';
         const nowSec = Math.floor(Date.now() / 1000);
         if (nowSec - (Number(localStorage.getItem(tsKey)) || 0) <= 20) {
             return localStorage.getItem(signKey);
@@ -633,9 +593,9 @@ export class CommonUtil {
         if (width >= 1200) {
             return area || this.getDefaultArea();
         } else if (width >= 768) {
-            return ["70%", "90%"];
+            return ['70%', '90%'];
         } else {
-            return ["95%", "95%"];
+            return ['95%', '95%'];
         }
     }
 
@@ -644,7 +604,7 @@ export class CommonUtil {
      * @returns ["85%","90%"]
      */
     getDefaultArea(): string[] {
-        return ["85%", "90%"];
+        return ['85%', '90%'];
     }
 
     /**
@@ -654,18 +614,18 @@ export class CommonUtil {
     isMobile(): boolean {
         const ua = navigator.userAgent.toLowerCase();
         return [
-            "iphone",
-            "ipod",
-            "ipad",
-            "android",
-            "blackberry",
-            "windows phone",
-            "nokia",
-            "webos",
-            "opera mini",
-            "mobile",
-            "mobi",
-            "tablet",
+            'iphone',
+            'ipod',
+            'ipad',
+            'android',
+            'blackberry',
+            'windows phone',
+            'nokia',
+            'webos',
+            'opera mini',
+            'mobile',
+            'mobi',
+            'tablet'
         ].some((keyword) => ua.includes(keyword));
     }
 
@@ -678,7 +638,7 @@ export class CommonUtil {
         navigator.clipboard
             .writeText(text)
             .then(() => show.info(`${label}已复制到剪切板, ${text}`))
-            .catch((err) => console.error("复制失败: ", err));
+            .catch((err) => console.error('复制失败: ', err));
     }
 
     /**
@@ -688,7 +648,7 @@ export class CommonUtil {
      */
     htmlTo$dom(html: string): any {
         const parser = new DOMParser();
-        return $(parser.parseFromString(html, "text/html"));
+        return $(parser.parseFromString(html, 'text/html'));
     }
 
     /**
@@ -699,19 +659,17 @@ export class CommonUtil {
     addCookie(cookieStr: string, options: AddCookieOptions = {}): void {
         const {
             maxAge = 604800,
-            path = "/",
-            domain = "",
+            path = '/',
+            domain = '',
             secure = false,
-            sameSite = "Lax",
+            sameSite = 'Lax'
         } = options;
-        cookieStr.split(";").forEach((pair: string) => {
+        cookieStr.split(';').forEach((pair: string) => {
             const trimmed = pair.trim();
             if (trimmed) {
-                const parts = trimmed.split("=");
+                const parts = trimmed.split('=');
                 if (parts.length >= 2 && parts[0].trim()) {
-                    const segments: string[] = [
-                        `${parts[0].trim()}=${parts.slice(1).join("=")}`,
-                    ];
+                    const segments: string[] = [`${parts[0].trim()}=${parts.slice(1).join('=')}`];
                     if (maxAge > 0) {
                         segments.push(`max-age=${maxAge}`);
                     }
@@ -720,15 +678,13 @@ export class CommonUtil {
                         segments.push(`domain=${domain}`);
                     }
                     if (secure) {
-                        segments.push("Secure");
+                        segments.push('Secure');
                     }
                     if (sameSite) {
                         segments.push(`SameSite=${sameSite}`);
                     }
-                    console.log(
-                        "document.cookie = '" + segments.join("; ") + "'",
-                    );
-                    document.cookie = segments.join("; ");
+                    console.log("document.cookie = '" + segments.join('; ') + "'");
+                    document.cookie = segments.join('; ');
                 }
             }
         });
@@ -744,7 +700,7 @@ export class CommonUtil {
         return (
             !node ||
             (node.offsetWidth <= 0 && node.offsetHeight <= 0) ||
-            window.getComputedStyle(node).display === "none"
+            window.getComputedStyle(node).display === 'none'
         );
     }
 
@@ -755,22 +711,18 @@ export class CommonUtil {
      * @param precision 小数精度，默认 2
      * @returns 二次调用返回 "{label}: {x}秒/毫秒"；首次调用返回 undefined
      */
-    time(
-        label: string = "default",
-        unit: string = "s",
-        precision: number = 2,
-    ): string | undefined {
+    time(label: string = 'default', unit: string = 's', precision: number = 2): string | undefined {
         if (this.timers.has(label)) {
             const entry = this.timers.get(label)!;
             const elapsed = performance.now() - entry.startTime;
             let formatted: string;
             let unitLabel: string;
-            if (entry.unit === "s") {
+            if (entry.unit === 's') {
                 formatted = (elapsed / 1000).toFixed(entry.precision);
-                unitLabel = "秒";
+                unitLabel = '秒';
             } else {
                 formatted = elapsed.toFixed(entry.precision);
-                unitLabel = "毫秒";
+                unitLabel = '毫秒';
             }
             this.timers.delete(label);
             return `${label}: ${formatted}${unitLabel}`;
@@ -778,7 +730,7 @@ export class CommonUtil {
         this.timers.set(label, {
             startTime: performance.now(),
             unit,
-            precision,
+            precision
         });
     }
 
@@ -798,11 +750,7 @@ export class CommonUtil {
      * @param nullsFirst  空值处理开关，默认 true（保留原控制流）
      * @returns 排序后的新数组（不修改原数组）
      */
-    genericSort(
-        data: any[],
-        sortConfigs: SortConfig[],
-        nullsFirst: boolean = true,
-    ): any[] {
+    genericSort(data: any[], sortConfigs: SortConfig[], nullsFirst: boolean = true): any[] {
         if (!Array.isArray(data) || data.length === 0) {
             return [];
         }
@@ -814,7 +762,7 @@ export class CommonUtil {
             if (value instanceof Date) {
                 return value;
             }
-            if (typeof value === "string") {
+            if (typeof value === 'string') {
                 const parsed = new Date(value);
                 if (!isNaN(parsed.getTime())) {
                     return parsed;
@@ -824,22 +772,16 @@ export class CommonUtil {
         };
         return items.sort((itemA: any, itemB: any) => {
             for (const config of sortConfigs) {
-                const { key, order = "asc" } = config;
+                const { key, order = 'asc' } = config;
                 let valA: any = itemA;
                 let valB: any = itemB;
                 if (key != null) {
-                    if (typeof key === "function") {
+                    if (typeof key === 'function') {
                         valA = key(itemA);
                         valB = key(itemB);
                     } else {
-                        valA =
-                            itemA && typeof itemA === "object"
-                                ? itemA[key]
-                                : undefined;
-                        valB =
-                            itemB && typeof itemB === "object"
-                                ? itemB[key]
-                                : undefined;
+                        valA = itemA && typeof itemA === 'object' ? itemA[key] : undefined;
+                        valB = itemB && typeof itemB === 'object' ? itemB[key] : undefined;
                     }
                 }
                 const coercedA = coerceDate(valA);
@@ -867,12 +809,12 @@ export class CommonUtil {
                 cmp =
                     coercedA instanceof Date && coercedB instanceof Date
                         ? coercedA.getTime() - coercedB.getTime()
-                        : typeof valA === "number" && typeof valB === "number"
+                        : typeof valA === 'number' && typeof valB === 'number'
                           ? valA - valB
-                          : typeof valA === "string" && typeof valB === "string"
+                          : typeof valA === 'string' && typeof valB === 'string'
                             ? valA.localeCompare(valB)
                             : String(valA).localeCompare(String(valB));
-                if (order === "desc") {
+                if (order === 'desc') {
                     cmp *= -1;
                 }
                 if (cmp !== 0) {
@@ -891,10 +833,7 @@ export class CommonUtil {
      * @returns 成功则返回 fn 的结果；最终失败则抛出
      * @throws 命中致命错误或达到最大重试次数时抛出原错误
      */
-    async retry<T>(
-        fn: () => T | Promise<T>,
-        maxRetries: number = 3,
-    ): Promise<T | undefined> {
+    async retry<T>(fn: () => T | Promise<T>, maxRetries: number = 3): Promise<T | undefined> {
         let attempt = 0;
         while (attempt < maxRetries) {
             try {
@@ -906,23 +845,18 @@ export class CommonUtil {
             } catch (err) {
                 const msg = String(err);
                 if (
-                    msg.includes("Just a moment") ||
-                    msg.includes("重定向") ||
-                    msg.toLowerCase().includes("404 not found")
+                    msg.includes('Just a moment') ||
+                    msg.includes('重定向') ||
+                    msg.toLowerCase().includes('404 not found')
                 ) {
                     throw err;
                 }
                 attempt++;
                 if (attempt === maxRetries) {
-                    clog.debug(
-                        `[重试] 达到最大重试次数 (${maxRetries})，最终失败：`,
-                        err,
-                    );
+                    clog.debug(`[重试] 达到最大重试次数 (${maxRetries})，最终失败：`, err);
                     throw err;
                 }
-                clog.debug(
-                    `[重试] 请求失败，准备第 ${attempt + 1} 次重试, 错误信息: ${msg}`,
-                );
+                clog.debug(`[重试] 请求失败，准备第 ${attempt + 1} 次重试, 错误信息: ${msg}`);
             }
         }
     }

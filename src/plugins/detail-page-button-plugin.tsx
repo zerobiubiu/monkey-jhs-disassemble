@@ -46,12 +46,12 @@
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
  *   Promise 串行化 _reviewChain、IIFE、空 catch）与原脚本一致。
  */
-import { BasePlugin } from "./base-plugin";
-import { SubtitleActionCell } from "../components/subtitle-action-cell";
-import { SubtitleLine } from "../components/subtitle-line";
-import { SubtitlePreviewDialog } from "../components/subtitle-preview-dialog";
-import { SubtitleTableDialog } from "../components/subtitle-table-dialog";
-import { isJavdbSite, isJavbusSite } from "../constants/site";
+import { BasePlugin } from './base-plugin';
+import { SubtitleActionCell } from '../components/subtitle-action-cell';
+import { SubtitleLine } from '../components/subtitle-line';
+import { SubtitlePreviewDialog } from '../components/subtitle-preview-dialog';
+import { SubtitleTableDialog } from '../components/subtitle-table-dialog';
+import { isJavdbSite, isJavbusSite } from '../constants/site';
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -65,14 +65,14 @@ import {
     WATCHED_TEXT,
     WATCHED_COLOR,
     YES,
-    NO,
-} from "../constants/status";
-import { Hotkey } from "../core/hotkey";
-import { jsxToString } from "../core/jsx-to-string";
-import { DetailMenuButtons } from "../components/detail-menu-buttons";
-import { RatingBarHtml } from "../components/rating-bar-html";
-import { ListPanel } from "../components/list-panel";
-import ratingBarCssRaw from "../styles/rating-bar.css?raw";
+    NO
+} from '../constants/status';
+import { Hotkey } from '../core/hotkey';
+import { jsxToString } from '../core/jsx-to-string';
+import { DetailMenuButtons } from '../components/detail-menu-buttons';
+import { RatingBarHtml } from '../components/rating-bar-html';
+import { ListPanel } from '../components/list-panel';
+import ratingBarCssRaw from '../styles/rating-bar.css?raw';
 
 /** 「想看/已观看」状态推断结果（detectWantWatchedState 返回结构） */
 interface WantWatchedState {
@@ -84,7 +84,7 @@ interface WantWatchedState {
 interface WantWatchedSyncPayload {
     carNum: any;
     status: any;
-    op: "add" | "remove";
+    op: 'add' | 'remove';
     time?: number;
 }
 
@@ -124,7 +124,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L5119-5121。 */
     getName(): string {
-        return "DetailPageButtonPlugin";
+        return 'DetailPageButtonPlugin';
     }
 
     /** 构造函数：初始化连续屏蔽计数。对应原 L5122-5125。 */
@@ -169,51 +169,44 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 favoriteColor={FAVORITE_COLOR}
                 watchedText={WATCHED_TEXT}
                 watchedColor={WATCHED_COLOR}
-            />,
+            />
         );
         if (isJavdbSite) {
-            $(".tabs").after(menuHtml);
+            $('.tabs').after(menuHtml);
         }
         if (isJavbusSite) {
-            $("#mag-submit-show").before(menuHtml);
+            $('#mag-submit-show').before(menuHtml);
         }
-        $("#favoriteBtn").on("click", () => this.favoriteOne());
-        $("#filterBtn").on("click", (event: any) => this.filterOne(event));
-        $("#hasWatchBtn").on("click", async () => this.hasWatchOne());
-        const highlightPlugin = this.getBean("HighlightMagnetPlugin");
-        const enableFilter = await storageManager.getSetting(
-            "enableMagnetsFilter",
-            YES,
-        );
-        $("#magnets-span").text(
-            enableFilter === YES ? "关闭磁力过滤" : "开启磁力过滤",
-        );
+        $('#favoriteBtn').on('click', () => this.favoriteOne());
+        $('#filterBtn').on('click', (event: any) => this.filterOne(event));
+        $('#hasWatchBtn').on('click', async () => this.hasWatchOne());
+        const highlightPlugin = this.getBean('HighlightMagnetPlugin');
+        const enableFilter = await storageManager.getSetting('enableMagnetsFilter', YES);
+        $('#magnets-span').text(enableFilter === YES ? '关闭磁力过滤' : '开启磁力过滤');
         if (enableFilter === YES) {
             highlightPlugin.doFilterMagnet();
         }
-        $("#enable-magnets-filter").on("click", (_event: any) => {
-            const $span = $("#magnets-span");
-            if ($span.text() === "关闭磁力过滤") {
+        $('#enable-magnets-filter').on('click', (_event: any) => {
+            const $span = $('#magnets-span');
+            if ($span.text() === '关闭磁力过滤') {
                 highlightPlugin.showAll();
-                $span.text("开启磁力过滤");
-                storageManager.saveSettingItem("enableMagnetsFilter", NO);
+                $span.text('开启磁力过滤');
+                storageManager.saveSettingItem('enableMagnetsFilter', NO);
             } else {
                 highlightPlugin.doFilterMagnet();
-                $span.text("关闭磁力过滤");
-                storageManager.saveSettingItem("enableMagnetsFilter", YES);
+                $span.text('关闭磁力过滤');
+                storageManager.saveSettingItem('enableMagnetsFilter', YES);
             }
         });
-        $("#search-subtitle-btn").on("click", (event: any) =>
+        $('#search-subtitle-btn').on('click', (event: any) =>
             utils.openPage(
                 `https://subtitlecat.com/index.php?search=${carNum}`,
                 carNum,
                 false,
-                event,
-            ),
+                event
+            )
         );
-        $("#xunLeiSubtitleBtn").on("click", () =>
-            this.searchXunLeiSubtitle(carNum),
-        );
+        $('#xunLeiSubtitleBtn').on('click', () => this.searchXunLeiSubtitle(carNum));
         this.showStatus(carNum).then();
     }
 
@@ -223,34 +216,24 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @param carNum 番号
      */
     async showStatus(carNum: any): Promise<void> {
-        const $filterSpan = $("#filterBtn span");
-        const $favoriteSpan = $("#favoriteBtn span");
-        const $hasWatchSpan = $("#hasWatchBtn span");
-        const formatHotkey = (key: any) => (key ? `(${key})` : "");
+        const $filterSpan = $('#filterBtn span');
+        const $favoriteSpan = $('#favoriteBtn span');
+        const $hasWatchSpan = $('#hasWatchBtn span');
+        const formatHotkey = (key: any) => (key ? `(${key})` : '');
         $filterSpan.text(`${BLOCK_TEXT} ${formatHotkey(this.filterHotKey)}`);
-        $favoriteSpan.text(
-            `${FAVORITE_TEXT} ${formatHotkey(this.favoriteHotKey)}`,
-        );
-        $hasWatchSpan.text(
-            `${WATCHED_TEXT} ${formatHotkey(this.hasWatchHotKey)}`,
-        );
+        $favoriteSpan.text(`${FAVORITE_TEXT} ${formatHotkey(this.favoriteHotKey)}`);
+        $hasWatchSpan.text(`${WATCHED_TEXT} ${formatHotkey(this.hasWatchHotKey)}`);
         const carRecord = await storageManager.getCar(carNum);
         if (carRecord) {
             switch (carRecord.status) {
                 case FILTER_ACTION:
-                    $filterSpan.text(
-                        `${BLOCKED_TEXT} ${formatHotkey(this.filterHotKey)}`,
-                    );
+                    $filterSpan.text(`${BLOCKED_TEXT} ${formatHotkey(this.filterHotKey)}`);
                     break;
                 case FAVORITE_ACTION:
-                    $favoriteSpan.text(
-                        `${FAVORITED_TEXT} ${formatHotkey(this.favoriteHotKey)}`,
-                    );
+                    $favoriteSpan.text(`${FAVORITED_TEXT} ${formatHotkey(this.favoriteHotKey)}`);
                     break;
                 case HAS_WATCH_ACTION:
-                    $hasWatchSpan.text(
-                        `🔍 已标记观看 ${formatHotkey(this.hasWatchHotKey)}`,
-                    );
+                    $hasWatchSpan.text(`🔍 已标记观看 ${formatHotkey(this.hasWatchHotKey)}`);
             }
         }
     }
@@ -267,7 +250,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         // 等待 .review-buttons 出现
         const ensure = () => {
             const container: any = document.querySelector(
-                "body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav > div.review-buttons",
+                'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav > div.review-buttons'
             );
             if (!container) {
                 setTimeout(ensure, 200);
@@ -285,11 +268,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 self._wantWatchedDebounce = setTimeout(() => {
                     self._wantWatchedSyncing = true;
                     try {
-                        const currentState =
-                            self.detectWantWatchedState(container);
+                        const currentState = self.detectWantWatchedState(container);
                         const lastState = self._lastWantState || {
                             want: false,
-                            watched: false,
+                            watched: false
                         };
                         if (currentState.want !== lastState.want) {
                             if (currentState.want) self.onWantAdded();
@@ -321,14 +303,14 @@ export class DetailPageButtonPlugin extends BasePlugin {
         // is-success is-light tag = 我看過
         // 它们的 parent a[href] 指向 /users/want_watch_videos 或 /users/watched_videos
         const wantTag = container.querySelector(
-            "a[href='/users/want_watch_videos'] .tag.is-info.is-light",
+            "a[href='/users/want_watch_videos'] .tag.is-info.is-light"
         );
         const watchedTag = container.querySelector(
-            "a[href='/users/watched_videos'] .tag.is-success.is-light",
+            "a[href='/users/watched_videos'] .tag.is-success.is-light"
         );
         return {
             want: !!wantTag,
-            watched: !!watchedTag,
+            watched: !!watchedTag
         };
     }
 
@@ -349,17 +331,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     url: pageInfo.url,
                     names: pageInfo.actress,
                     actionType: FAVORITE_ACTION,
-                    publishTime: pageInfo.publishTime,
+                    publishTime: pageInfo.publishTime
                 });
                 this.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum,
                     status: FAVORITE_ACTION,
-                    op: "add",
+                    op: 'add'
                 });
                 show.ok(`${pageInfo.carNum} 已收藏`);
             }
         } catch (err: any) {
-            console.error("[JHS-想看自动同步] 写入失败", err);
+            console.error('[JHS-想看自动同步] 写入失败', err);
         }
         this.showStatus(pageInfo.carNum).then();
     }
@@ -371,20 +353,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
     async onWantRemoved(): Promise<void> {
         const pageInfo = this.getPageInfo();
         try {
-            const removed = await this.removeCarIfStatus(
-                pageInfo.carNum,
-                FAVORITE_ACTION,
-            );
+            const removed = await this.removeCarIfStatus(pageInfo.carNum, FAVORITE_ACTION);
             if (removed) {
                 this.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum,
                     status: FAVORITE_ACTION,
-                    op: "remove",
+                    op: 'remove'
                 });
                 show.ok(`${pageInfo.carNum} 已取消收藏`);
             }
         } catch (err: any) {
-            console.error("[JHS-想看自动同步] 移除失败", err);
+            console.error('[JHS-想看自动同步] 移除失败', err);
         }
         this.showStatus(pageInfo.carNum).then();
     }
@@ -405,17 +384,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     url: pageInfo.url,
                     names: pageInfo.actress,
                     actionType: HAS_WATCH_ACTION,
-                    publishTime: pageInfo.publishTime,
+                    publishTime: pageInfo.publishTime
                 });
                 this.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum,
                     status: HAS_WATCH_ACTION,
-                    op: "add",
+                    op: 'add'
                 });
                 show.ok(`${pageInfo.carNum} 已标记看过`);
             }
         } catch (err: any) {
-            console.error("[JHS-观看自动同步] 写入失败", err);
+            console.error('[JHS-观看自动同步] 写入失败', err);
         }
         this.showStatus(pageInfo.carNum).then();
     }
@@ -427,20 +406,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
     async onWatchedRemoved(): Promise<void> {
         const pageInfo = this.getPageInfo();
         try {
-            const removed = await this.removeCarIfStatus(
-                pageInfo.carNum,
-                HAS_WATCH_ACTION,
-            );
+            const removed = await this.removeCarIfStatus(pageInfo.carNum, HAS_WATCH_ACTION);
             if (removed) {
                 this.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum,
                     status: HAS_WATCH_ACTION,
-                    op: "remove",
+                    op: 'remove'
                 });
                 show.ok(`${pageInfo.carNum} 已取消看过`);
             }
         } catch (err: any) {
-            console.error("[JHS-观看自动同步] 移除失败", err);
+            console.error('[JHS-观看自动同步] 移除失败', err);
         }
         this.showStatus(pageInfo.carNum).then();
     }
@@ -469,22 +445,22 @@ export class DetailPageButtonPlugin extends BasePlugin {
             const json = JSON.stringify({ ...payload, time: Date.now() });
             // 1) GM 原生通道（跨标签页）
             try {
-                GM_setValue("jdb:want-watched-sync", json);
+                GM_setValue('jdb:want-watched-sync', json);
             } catch {}
             // 2) localStorage（跨脚本同源）
             try {
-                localStorage.setItem("jdb:want-watched-sync", json);
+                localStorage.setItem('jdb:want-watched-sync', json);
             } catch {}
             // 3) CustomEvent（跨脚本同页面）
             try {
                 document.dispatchEvent(
-                    new CustomEvent("jdb:want-watched-sync", {
-                        detail: payload,
-                    }),
+                    new CustomEvent('jdb:want-watched-sync', {
+                        detail: payload
+                    })
                 );
             } catch {}
         } catch (err: any) {
-            console.error("[JHS-想看/观看同步] 广播失败", err);
+            console.error('[JHS-想看/观看同步] 广播失败', err);
         }
     }
 
@@ -522,23 +498,22 @@ export class DetailPageButtonPlugin extends BasePlugin {
             self.refreshItemStatusTag(payload.carNum);
         };
         // 1) 同页面 CustomEvent
-        document.addEventListener("jdb:want-watched-sync", (event: any) =>
-            handleSync(event.detail),
+        document.addEventListener('jdb:want-watched-sync', (event: any) =>
+            handleSync(event.detail)
         );
         // 2) localStorage（跨标签页 / 跨 iframe）
-        window.addEventListener("storage", (event: StorageEvent) => {
-            if (event.key !== "jdb:want-watched-sync" || !event.newValue)
-                return;
+        window.addEventListener('storage', (event: StorageEvent) => {
+            if (event.key !== 'jdb:want-watched-sync' || !event.newValue) return;
             handleSync(event.newValue);
         });
         // 3) GM 通道
         try {
             GM_addValueChangeListener(
-                "jdb:want-watched-sync",
+                'jdb:want-watched-sync',
                 (_name: any, _oldValue: any, newValue: any) => {
                     if (!newValue) return;
                     handleSync(newValue);
-                },
+                }
             );
         } catch {}
     }
@@ -555,17 +530,15 @@ export class DetailPageButtonPlugin extends BasePlugin {
             const itemSelector = selectorConfig.itemSelector;
             const items: any = document.querySelectorAll(itemSelector);
             for (const item of items) {
-                const strongEl: any = item.querySelector(
-                    "a > div.video-title > strong",
-                );
+                const strongEl: any = item.querySelector('a > div.video-title > strong');
                 if (!strongEl || strongEl.innerHTML !== carNum) continue;
                 // 找到匹配的卡片，交给 ListPagePlugin 重跑单卡片
-                const listPagePlugin = this.getBean("ListPagePlugin");
+                const listPagePlugin = this.getBean('ListPagePlugin');
                 if (!listPagePlugin) continue;
                 listPagePlugin.renderItemStatusTag(item, carNum);
             }
         } catch (err: any) {
-            console.error("[JHS-想看/观看] 刷新列表项 status-tag 失败", err);
+            console.error('[JHS-想看/观看] 刷新列表项 status-tag 失败', err);
         }
     }
 
@@ -582,7 +555,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         this._injectRatingStyles();
         const ensure = () => {
             const nav: any = document.querySelector(
-                "body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav",
+                'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav'
             );
             if (!nav) {
                 setTimeout(ensure, 400);
@@ -594,7 +567,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
             // 清单面板独立等待 #otherSiteBox 出现（OtherSitePlugin 异步注入）
             self._ensureListPanel(nav);
             // 监听 .review-buttons 变化（Rails ajax 替换 innerHTML 会销毁组件 → 重建 + 状态刷新）
-            const rb: any = nav.querySelector(".review-buttons");
+            const rb: any = nav.querySelector('.review-buttons');
             if (rb && !rb.__jhsRatingObserved) {
                 rb.__jhsRatingObserved = true;
                 new MutationObserver(() => {
@@ -616,38 +589,34 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @param nav nav 容器
      */
     _buildRatingBar(nav: any): void {
-        const column: any = nav.querySelector(
-            "div.review-buttons > div:nth-child(1) > div > div",
-        );
+        const column: any = nav.querySelector('div.review-buttons > div:nth-child(1) > div > div');
         if (!column) return;
-        if (column.querySelector(".jhs-rating-bar")) return; // 已存在
+        if (column.querySelector('.jhs-rating-bar')) return; // 已存在
         const self = this;
-        const bar = document.createElement("div");
-        bar.className = "jhs-rating-bar";
+        const bar = document.createElement('div');
+        bar.className = 'jhs-rating-bar';
         bar.innerHTML = jsxToString(<RatingBarHtml />);
-        const starsEl: any = bar.querySelector(".jhs-stars");
-        const stars: any = bar.querySelectorAll(".jhs-star");
-        const readBtn: any = bar.querySelector(".jhs-read-btn");
-        const favBtn: any = bar.querySelector(".jhs-fav-btn");
+        const starsEl: any = bar.querySelector('.jhs-stars');
+        const stars: any = bar.querySelectorAll('.jhs-star');
+        const readBtn: any = bar.querySelector('.jhs-read-btn');
+        const favBtn: any = bar.querySelector('.jhs-fav-btn');
         // hover 预览
-        starsEl.addEventListener("pointerover", (e: any) => {
-            const star = e.target.closest(".jhs-star");
+        starsEl.addEventListener('pointerover', (e: any) => {
+            const star = e.target.closest('.jhs-star');
             if (!star) return;
             const score = +star.dataset.score;
-            stars.forEach((s: any, i: number) =>
-                s.classList.toggle("is-preview", i < score),
-            );
+            stars.forEach((s: any, i: number) => s.classList.toggle('is-preview', i < score));
         });
-        starsEl.addEventListener("pointerleave", () =>
-            stars.forEach((s: any) => s.classList.remove("is-preview")),
+        starsEl.addEventListener('pointerleave', () =>
+            stars.forEach((s: any) => s.classList.remove('is-preview'))
         );
         // 点击星星 → 已观看 + N星
         stars.forEach((star: any) => {
-            star.addEventListener("click", async (e: any) => {
+            star.addEventListener('click', async (e: any) => {
                 e.preventDefault();
                 const score = +star.dataset.score;
-                star.classList.add("is-popping");
-                setTimeout(() => star.classList.remove("is-popping"), 300);
+                star.classList.add('is-popping');
+                setTimeout(() => star.classList.remove('is-popping'), 300);
                 self._setRatingBusy(true);
                 try {
                     await self.quickSetHasWatch(score);
@@ -658,10 +627,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
             });
         });
         // 已读 → 已观看 + 0星
-        readBtn.addEventListener("click", async (e: any) => {
+        readBtn.addEventListener('click', async (e: any) => {
             e.preventDefault();
-            readBtn.classList.add("is-popping");
-            setTimeout(() => readBtn.classList.remove("is-popping"), 300);
+            readBtn.classList.add('is-popping');
+            setTimeout(() => readBtn.classList.remove('is-popping'), 300);
             self._setRatingBusy(true);
             try {
                 await self.quickSetHasWatch(0);
@@ -671,10 +640,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
             }
         });
         // 收藏 → 想看
-        favBtn.addEventListener("click", async (e: any) => {
+        favBtn.addEventListener('click', async (e: any) => {
             e.preventDefault();
-            favBtn.classList.add("is-popping");
-            setTimeout(() => favBtn.classList.remove("is-popping"), 300);
+            favBtn.classList.add('is-popping');
+            setTimeout(() => favBtn.classList.remove('is-popping'), 300);
             self._setRatingBusy(true);
             try {
                 await self.quickConvertToFav();
@@ -693,7 +662,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
      */
     _ensureListPanel(nav: any): void {
         if (this._listPanelEnsured) return;
-        const otherSite: any = nav.querySelector("#otherSiteBox");
+        const otherSite: any = nav.querySelector('#otherSiteBox');
         if (!otherSite) {
             setTimeout(() => this._ensureListPanel(nav), 400);
             return;
@@ -701,38 +670,29 @@ export class DetailPageButtonPlugin extends BasePlugin {
         this._listPanelEnsured = true;
         const self = this;
         // 创建清单面板
-        if (!nav.querySelector(".jhs-list-panel")) {
-            otherSite.insertAdjacentHTML(
-                "afterend",
-                jsxToString(<ListPanel />),
-            );
+        if (!nav.querySelector('.jhs-list-panel')) {
+            otherSite.insertAdjacentHTML('afterend', jsxToString(<ListPanel />));
         }
         // 初始化（触发 ajax 加载 + 克隆同步）
         self._initListPanel();
         // 事件代理：平铺面板 checkbox change → 同步到 modal 内 checkbox 触发 Stimulus
-        const listPanel: any = nav.querySelector(".jhs-list-panel");
+        const listPanel: any = nav.querySelector('.jhs-list-panel');
         if (listPanel && !listPanel.__jhsListClickBound) {
             listPanel.__jhsListClickBound = true;
-            listPanel.addEventListener("change", (e: any) => {
-                if (e.target.type !== "checkbox") return;
-                const modal: any = document.querySelector("#modal-save-list");
+            listPanel.addEventListener('change', (e: any) => {
+                if (e.target.type !== 'checkbox') return;
+                const modal: any = document.querySelector('#modal-save-list');
                 const listContainer: any = modal?.querySelector(
-                    '[data-list-target="listContainer"]',
+                    '[data-list-target="listContainer"]'
                 );
                 if (!listContainer) return;
-                const panels = Array.from(
-                    listPanel.querySelectorAll('input[type="checkbox"]'),
-                );
+                const panels = Array.from(listPanel.querySelectorAll('input[type="checkbox"]'));
                 const idx = panels.indexOf(e.target);
-                const modalCheckboxes = listContainer.querySelectorAll(
-                    'input[type="checkbox"]',
-                );
+                const modalCheckboxes = listContainer.querySelectorAll('input[type="checkbox"]');
                 const target = modalCheckboxes[idx];
                 if (target) {
                     target.checked = e.target.checked;
-                    target.dispatchEvent(
-                        new Event("change", { bubbles: true }),
-                    );
+                    target.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
         }
@@ -748,15 +708,13 @@ export class DetailPageButtonPlugin extends BasePlugin {
         this._listPanelIniting = true;
         const self = this;
         const ensure = () => {
-            const btn: any = document.querySelector("#save-list-button");
-            const modal: any = document.querySelector("#modal-save-list");
+            const btn: any = document.querySelector('#save-list-button');
+            const modal: any = document.querySelector('#modal-save-list');
             if (!btn || !modal) {
                 setTimeout(ensure, 400);
                 return;
             }
-            const listContainer: any = modal.querySelector(
-                '[data-list-target="listContainer"]',
-            );
+            const listContainer: any = modal.querySelector('[data-list-target="listContainer"]');
             if (!listContainer) return;
             // 程序化触发 ajax 加载清单
             if (!self._listAjaxTriggered) {
@@ -767,13 +725,12 @@ export class DetailPageButtonPlugin extends BasePlugin {
             if (!listContainer.__jhsListObserved) {
                 listContainer.__jhsListObserved = true;
                 const sync = () => {
-                    const panel: any =
-                        document.querySelector(".jhs-list-panel");
+                    const panel: any = document.querySelector('.jhs-list-panel');
                     if (!panel) return;
-                    panel.innerHTML = "";
+                    panel.innerHTML = '';
                     Array.from(listContainer.children).forEach((child: any) => {
                         // 跳过「預設清單」
-                        if (child.textContent.includes("預設清單")) return;
+                        if (child.textContent.includes('預設清單')) return;
                         const clone = child.cloneNode(true);
                         panel.appendChild(clone);
                     });
@@ -782,7 +739,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     childList: true,
                     subtree: true,
                     attributes: true,
-                    attributeFilter: ["checked", "disabled"],
+                    attributeFilter: ['checked', 'disabled']
                 });
                 // 初始同步
                 setTimeout(sync, 500);
@@ -795,9 +752,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * 注入星星评分组件的 CSS 样式。对应原 L5738-5778。
      */
     _injectRatingStyles(): void {
-        if (document.getElementById("jhs-rating-styles")) return;
-        const style = document.createElement("style");
-        style.id = "jhs-rating-styles";
+        if (document.getElementById('jhs-rating-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'jhs-rating-styles';
         style.textContent = ratingBarCssRaw;
         document.head?.appendChild(style);
     }
@@ -808,54 +765,48 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * 对应原 L5784-5832。
      */
     _syncRatingBar(): void {
-        let bar: any = document.querySelector(".jhs-rating-bar");
+        let bar: any = document.querySelector('.jhs-rating-bar');
         // 组件被 Rails ajax innerHTML 替换销毁 → 重建
         if (!bar) {
             const nav: any = document.querySelector(
-                "body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav",
+                'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav'
             );
             if (nav) this._buildRatingBar(nav);
-            bar = document.querySelector(".jhs-rating-bar");
+            bar = document.querySelector('.jhs-rating-bar');
         }
         if (!bar) return;
-        const rb: any = document.querySelector(".review-buttons");
+        const rb: any = document.querySelector('.review-buttons');
         if (!rb) return;
-        const want = !!rb.querySelector(
-            "a[href='/users/want_watch_videos'] .tag.is-info.is-light",
-        );
+        const want = !!rb.querySelector("a[href='/users/want_watch_videos'] .tag.is-info.is-light");
         const watched = !!rb.querySelector(
-            "a[href='/users/watched_videos'] .tag.is-success.is-light",
+            "a[href='/users/watched_videos'] .tag.is-success.is-light"
         );
-        const checked: any = rb.querySelector(
-            'input[name="video_review[score]"][checked]',
-        );
+        const checked: any = rb.querySelector('input[name="video_review[score]"][checked]');
         const score = checked ? +checked.value : 0;
 
-        const stars: any = bar.querySelectorAll(".jhs-star");
-        const starsEl: any = bar.querySelector(".jhs-stars");
-        const readBtn: any = bar.querySelector(".jhs-read-btn");
-        const favBtn: any = bar.querySelector(".jhs-fav-btn");
+        const stars: any = bar.querySelectorAll('.jhs-star');
+        const starsEl: any = bar.querySelector('.jhs-stars');
+        const readBtn: any = bar.querySelector('.jhs-read-btn');
+        const favBtn: any = bar.querySelector('.jhs-fav-btn');
 
         if (want) {
             // 想看：星星禁用全灰，收藏高亮
-            stars.forEach((s: any) => s.classList.remove("is-active"));
-            starsEl.classList.add("is-disabled");
-            readBtn.classList.remove("is-active");
-            favBtn.classList.add("is-active");
+            stars.forEach((s: any) => s.classList.remove('is-active'));
+            starsEl.classList.add('is-disabled');
+            readBtn.classList.remove('is-active');
+            favBtn.classList.add('is-active');
         } else if (watched) {
             // 已观看：前 N 星高亮，已读看 N 是否 0
-            stars.forEach((s: any, i: number) =>
-                s.classList.toggle("is-active", i < score),
-            );
-            starsEl.classList.remove("is-disabled");
-            readBtn.classList.toggle("is-active", score === 0);
-            favBtn.classList.remove("is-active");
+            stars.forEach((s: any, i: number) => s.classList.toggle('is-active', i < score));
+            starsEl.classList.remove('is-disabled');
+            readBtn.classList.toggle('is-active', score === 0);
+            favBtn.classList.remove('is-active');
         } else {
             // 未评价
-            stars.forEach((s: any) => s.classList.remove("is-active"));
-            starsEl.classList.remove("is-disabled");
-            readBtn.classList.remove("is-active");
-            favBtn.classList.remove("is-active");
+            stars.forEach((s: any) => s.classList.remove('is-active'));
+            starsEl.classList.remove('is-disabled');
+            readBtn.classList.remove('is-active');
+            favBtn.classList.remove('is-active');
         }
     }
 
@@ -864,8 +815,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @param busy 是否忙碌
      */
     _setRatingBusy(busy: boolean): void {
-        const bar: any = document.querySelector(".jhs-rating-bar");
-        if (bar) bar.classList.toggle("is-busy", busy);
+        const bar: any = document.querySelector('.jhs-rating-bar');
+        if (bar) bar.classList.toggle('is-busy', busy);
     }
 
     /**
@@ -881,12 +832,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
             if (carRecord && carRecord.status === FAVORITE_ACTION) {
                 await storageManager.removeCar(pageInfo.carNum);
             }
-            if (
-                carRecord &&
-                carRecord.status === HAS_WATCH_ACTION &&
-                carRecord.score === score
-            ) {
-                show.ok(pageInfo.carNum + " 评分未变化");
+            if (carRecord && carRecord.status === HAS_WATCH_ACTION && carRecord.score === score) {
+                show.ok(pageInfo.carNum + ' 评分未变化');
                 return;
             }
             await storageManager.saveCar({
@@ -895,21 +842,21 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 names: pageInfo.actress,
                 actionType: HAS_WATCH_ACTION,
                 publishTime: pageInfo.publishTime,
-                score: score,
+                score: score
             });
             this.broadcastWantWatchedSync({
                 carNum: pageInfo.carNum,
                 status: HAS_WATCH_ACTION,
-                op: "add",
+                op: 'add'
             });
             show.ok(
                 pageInfo.carNum +
-                    " \u5df2\u6807\u8bb0\u770b\u8fc7 " +
-                    (score > 0 ? "\u2605" + score : ""),
+                    ' \u5df2\u6807\u8bb0\u770b\u8fc7 ' +
+                    (score > 0 ? '\u2605' + score : '')
             );
         } catch (err: any) {
-            console.error("[JHS-快键] 设为已观看失败", err);
-            show.error("操作失败: " + err.message);
+            console.error('[JHS-快键] 设为已观看失败', err);
+            show.error('操作失败: ' + err.message);
             return;
         }
         // 串行化 javdb 原生端操作，避免连续点击并发冲突；
@@ -932,9 +879,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @returns CSRF token 或 null
      */
     _getCsrfToken(): string | null {
-        const meta = document.querySelector(
-            'meta[name="csrf-token"]',
-        ) as HTMLMetaElement | null;
+        const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
         return meta ? meta.content : null;
     }
 
@@ -952,10 +897,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
      */
     _getReviewId(): string | null {
         const del: any = document.querySelector(
-            ".review-buttons a[data-method='delete'][href*='/reviews/']",
+            ".review-buttons a[data-method='delete'][href*='/reviews/']"
         );
         if (!del) return null;
-        return del.getAttribute("href")?.match(/\/reviews\/(\d+)/)?.[1] || null;
+        return del.getAttribute('href')?.match(/\/reviews\/(\d+)/)?.[1] || null;
     }
 
     /**
@@ -966,12 +911,12 @@ export class DetailPageButtonPlugin extends BasePlugin {
      */
     _execRailsJs(jsText: string): void {
         try {
-            const script = document.createElement("script");
+            const script = document.createElement('script');
             script.textContent = jsText;
             document.head?.appendChild(script);
             script.remove();
         } catch (err: any) {
-            console.error("[JHS-快键] 执行 Rails JS 失败", err);
+            console.error('[JHS-快键] 执行 Rails JS 失败', err);
         }
     }
 
@@ -981,66 +926,57 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @param action 目标状态（'watched' 或 'wanted'）
      * @param score 评分 0-5（仅 watched 有效）
      */
-    async _javdbReviewApi(
-        action: "watched" | "wanted",
-        score: number = 0,
-    ): Promise<void> {
+    async _javdbReviewApi(action: 'watched' | 'wanted', score: number = 0): Promise<void> {
         const token = this._getCsrfToken();
-        if (!token) throw new Error("无法获取 CSRF token");
+        if (!token) throw new Error('无法获取 CSRF token');
         const videoId = this._getVideoId();
-        if (!videoId) throw new Error("无法获取 videoId");
+        if (!videoId) throw new Error('无法获取 videoId');
         const reviewId = this._getReviewId();
 
         const headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "X-CSRF-Token": token,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': token
         };
         const tokenParam = `authenticity_token=${encodeURIComponent(token)}`;
 
-        if (action === "watched") {
+        if (action === 'watched') {
             // 有 reviewId → PATCH 改状态；无 → POST 新建
-            const url = reviewId
-                ? `/v/${videoId}/reviews/${reviewId}`
-                : `/v/${videoId}/reviews`;
-            const methodParam = reviewId ? "&_method=patch" : "";
+            const url = reviewId ? `/v/${videoId}/reviews/${reviewId}` : `/v/${videoId}/reviews`;
+            const methodParam = reviewId ? '&_method=patch' : '';
             const body = `${tokenParam}${methodParam}&video_review[status]=watched&video_review[score]=${score}&video_review[content]=`;
             const res = await fetch(url, {
-                method: "POST",
+                method: 'POST',
                 headers,
                 body,
-                credentials: "same-origin",
+                credentials: 'same-origin'
             });
             if (!res.ok) throw new Error(`设为已观看失败: HTTP ${res.status}`);
             // 执行 Rails 返回的 JS：更新 DOM + 重绑定 UJS 事件
             this._execRailsJs(await res.text());
-        } else if (action === "wanted") {
+        } else if (action === 'wanted') {
             // 想看与已评价互斥：已有 review 先删除再建想看
             if (reviewId) {
-                const delRes = await fetch(
-                    `/v/${videoId}/reviews/${reviewId}`,
-                    {
-                        method: "POST",
-                        headers,
-                        body: `${tokenParam}&_method=delete`,
-                        credentials: "same-origin",
-                    },
-                );
-                if (!delRes.ok)
-                    throw new Error(`删除旧评价失败: HTTP ${delRes.status}`);
+                const delRes = await fetch(`/v/${videoId}/reviews/${reviewId}`, {
+                    method: 'POST',
+                    headers,
+                    body: `${tokenParam}&_method=delete`,
+                    credentials: 'same-origin'
+                });
+                if (!delRes.ok) throw new Error(`删除旧评价失败: HTTP ${delRes.status}`);
                 this._execRailsJs(await delRes.text());
             }
             const res = await fetch(`/v/${videoId}/reviews/want_to_watch`, {
-                method: "POST",
+                method: 'POST',
                 headers,
                 body: tokenParam,
-                credentials: "same-origin",
+                credentials: 'same-origin'
             });
             if (!res.ok) throw new Error(`设为想看失败: HTTP ${res.status}`);
             this._execRailsJs(await res.text());
         }
 
         // 同步 _lastWantState 防止 MutationObserver 误触发
-        const rb: any = document.querySelector(".review-buttons");
+        const rb: any = document.querySelector('.review-buttons');
         if (rb && this._wantWatchedObserved) {
             this._lastWantState = this.detectWantWatchedState(rb);
         }
@@ -1051,7 +987,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * @param score 评分 0-5
      */
     async _triggerJavdbReview(score: number): Promise<void> {
-        await this._javdbReviewApi("watched", score);
+        await this._javdbReviewApi('watched', score);
     }
 
     /**
@@ -1123,7 +1059,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         try {
             const carRecord = await storageManager.getCar(pageInfo.carNum);
             if (carRecord && carRecord.status === FAVORITE_ACTION) {
-                show.ok(pageInfo.carNum + " 已是已收藏");
+                show.ok(pageInfo.carNum + ' 已是已收藏');
                 return;
             }
             if (carRecord) await storageManager.removeCar(pageInfo.carNum);
@@ -1132,17 +1068,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 url: pageInfo.url,
                 names: pageInfo.actress,
                 actionType: FAVORITE_ACTION,
-                publishTime: pageInfo.publishTime,
+                publishTime: pageInfo.publishTime
             });
             this.broadcastWantWatchedSync({
                 carNum: pageInfo.carNum,
                 status: FAVORITE_ACTION,
-                op: "add",
+                op: 'add'
             });
-            show.ok(pageInfo.carNum + " \u5df2\u8f6c\u4e3a\u6536\u85cf");
+            show.ok(pageInfo.carNum + ' \u5df2\u8f6c\u4e3a\u6536\u85cf');
         } catch (err: any) {
-            console.error("[JHS-快键] 转为已收藏失败", err);
-            show.error("操作失败: " + err.message);
+            console.error('[JHS-快键] 转为已收藏失败', err);
+            show.error('操作失败: ' + err.message);
             return;
         }
         this._reviewChain = (this._reviewChain || Promise.resolve())
@@ -1162,7 +1098,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * 将当前影片在 javdb 原生端设为「想看」（通过 API）。对应原 L6109-6111。
      */
     async _triggerJavdbWant(): Promise<void> {
-        await this._javdbReviewApi("wanted");
+        await this._javdbReviewApi('wanted');
     }
 
     /**
@@ -1175,7 +1111,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
             url: pageInfo.url,
             names: pageInfo.actress,
             actionType: FAVORITE_ACTION,
-            publishTime: pageInfo.publishTime,
+            publishTime: pageInfo.publishTime
         });
         this.showStatus(pageInfo.carNum).then();
         refresh();
@@ -1192,7 +1128,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
             url: pageInfo.url,
             names: pageInfo.actress,
             actionType: HAS_WATCH_ACTION,
-            publishTime: pageInfo.publishTime,
+            publishTime: pageInfo.publishTime
         });
         this.showStatus(pageInfo.carNum).then();
         refresh();
@@ -1206,133 +1142,114 @@ export class DetailPageButtonPlugin extends BasePlugin {
     searchXunLeiSubtitle(carNum: any): void {
         const loadingHandle = loading();
         gmHttp
-            .get(
-                `https://api-shoulei-ssl.xunlei.com/oracle/subtitle?gcid=&cid=&name=${carNum}`,
-            )
+            .get(`https://api-shoulei-ssl.xunlei.com/oracle/subtitle?gcid=&cid=&name=${carNum}`)
             .then((response: any) => {
                 const subtitleList = response.data;
                 if (subtitleList && subtitleList.length !== 0) {
                     layer.open({
                         type: 1,
-                        title: "迅雷字幕",
+                        title: '迅雷字幕',
                         content: jsxToString(<SubtitleTableDialog />),
                         scrollbar: false,
-                        area: utils.getResponsiveArea(["60%", "70%"]),
+                        area: utils.getResponsiveArea(['60%', '70%']),
                         anim: -1,
                         success: (_layero: any, index: any) => {
-                            new Tabulator("#xunlei-table-container", {
-                                layout: "fitColumns",
-                                placeholder: "暂无数据",
+                            new Tabulator('#xunlei-table-container', {
+                                layout: 'fitColumns',
+                                placeholder: '暂无数据',
                                 virtualDom: true,
                                 data: subtitleList,
-                                responsiveLayout: "collapse",
+                                responsiveLayout: 'collapse',
                                 responsiveLayoutCollapse: true,
                                 columnDefaults: {
-                                    headerHozAlign: "center",
-                                    hozAlign: "center",
+                                    headerHozAlign: 'center',
+                                    hozAlign: 'center'
                                 },
                                 columns: [
                                     {
-                                        title: "文件名",
-                                        field: "name",
+                                        title: '文件名',
+                                        field: 'name',
                                         headerSort: false,
-                                        responsive: 0,
+                                        responsive: 0
                                     },
                                     {
-                                        title: "类型",
-                                        field: "ext",
+                                        title: '类型',
+                                        field: 'ext',
                                         headerSort: false,
-                                        responsive: 0,
+                                        responsive: 0
                                     },
                                     {
-                                        title: "操作",
+                                        title: '操作',
                                         responsive: 0,
                                         headerSort: false,
                                         formatter: (
                                             cell: any,
                                             _formatterParams: any,
-                                            onRendered: any,
+                                            onRendered: any
                                         ) => {
                                             const rowData = cell.getData();
                                             onRendered(() => {
                                                 const previewBtn = cell
                                                     .getElement()
-                                                    .querySelector(
-                                                        ".a-primary",
-                                                    );
+                                                    .querySelector('.a-primary');
                                                 const downloadBtn = cell
                                                     .getElement()
-                                                    .querySelector(
-                                                        ".a-success",
-                                                    );
+                                                    .querySelector('.a-success');
                                                 if (previewBtn) {
                                                     previewBtn.addEventListener(
-                                                        "click",
+                                                        'click',
                                                         async (_event: any) => {
-                                                            const subUrl =
-                                                                rowData.url;
+                                                            const subUrl = rowData.url;
                                                             const subFilename =
-                                                                carNum +
-                                                                "." +
-                                                                rowData.ext;
+                                                                carNum + '.' + rowData.ext;
                                                             this.previewSubtitle(
                                                                 subUrl,
-                                                                subFilename,
+                                                                subFilename
                                                             );
-                                                        },
+                                                        }
                                                     );
                                                 }
                                                 if (downloadBtn) {
                                                     downloadBtn.addEventListener(
-                                                        "click",
+                                                        'click',
                                                         async (_event: any) => {
-                                                            const subUrl =
-                                                                rowData.url;
+                                                            const subUrl = rowData.url;
                                                             const subFilename =
-                                                                carNum +
-                                                                "." +
-                                                                rowData.ext;
+                                                                carNum + '.' + rowData.ext;
                                                             const content =
-                                                                await gmHttp.get(
-                                                                    subUrl,
-                                                                );
-                                                            utils.download(
-                                                                content,
-                                                                subFilename,
-                                                            );
-                                                        },
+                                                                await gmHttp.get(subUrl);
+                                                            utils.download(content, subFilename);
+                                                        }
                                                     );
                                                 }
                                             });
-                                            return jsxToString(
-                                                <SubtitleActionCell />,
-                                            );
-                                        },
-                                    },
+                                            return jsxToString(<SubtitleActionCell />);
+                                        }
+                                    }
                                 ],
-                                locale: "zh-cn",
+                                locale: 'zh-cn',
                                 langs: {
-                                    "zh-cn": {
+                                    'zh-cn': {
                                         pagination: {
-                                            first: "首页",
-                                            first_title: "首页",
-                                            last: "尾页",
-                                            last_title: "尾页",
-                                            prev: "上一页",
-                                            prev_title: "上一页",
-                                            next: "下一页",
-                                            next_title: "下一页",
-                                            all: "所有",
-                                            page_size: "每页行数",
-                                        },
-                                    },
-                                },
+                                            first: '首页',
+                                            first_title: '首页',
+                                            last: '尾页',
+                                            last_title: '尾页',
+                                            prev: '上一页',
+                                            prev_title: '上一页',
+                                            next: '下一页',
+                                            next_title: '下一页',
+                                            all: '所有',
+                                            page_size: '每页行数'
+                                        }
+                                    }
+                                }
                             });
                             utils.setupEscClose(index);
-                        },
+                        }
                     });
                 } else {
-                    show.error("迅雷中找不到相关字幕!");
+                    show.error('迅雷中找不到相关字幕!');
                 }
             })
             .catch((err: any) => {
@@ -1360,7 +1277,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 url: pageInfo.url,
                 names: pageInfo.actress,
                 actionType: FILTER_ACTION,
-                publishTime: pageInfo.publishTime,
+                publishTime: pageInfo.publishTime
             });
             this.showStatus(pageInfo.carNum).then();
             refresh();
@@ -1377,7 +1294,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                         url: pageInfo.url,
                         names: pageInfo.actress,
                         actionType: FILTER_ACTION,
-                        publishTime: pageInfo.publishTime,
+                        publishTime: pageInfo.publishTime
                     });
                     this.showStatus(pageInfo.carNum).then();
                     refresh();
@@ -1385,7 +1302,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 },
                 () => {
                     this.answerCount = 1;
-                },
+                }
             );
         }
     }
@@ -1394,17 +1311,15 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * 快进预览视频 5 秒（预览视频/iframe/容器/按钮多路径处理）。对应原 L6307-6338。
      */
     speedVideo(): void {
-        if ($("#preview-video").is(":visible")) {
-            const videoEl = document.getElementById(
-                "preview-video",
-            ) as HTMLVideoElement | null;
+        if ($('#preview-video').is(':visible')) {
+            const videoEl = document.getElementById('preview-video') as HTMLVideoElement | null;
             if (videoEl) {
                 videoEl.muted = false;
                 videoEl.controls = false;
                 if (videoEl.currentTime + 5 < videoEl.duration) {
                     videoEl.currentTime += 5;
                 } else {
-                    show.info("预览视频结束, 已回到开头");
+                    show.info('预览视频结束, 已回到开头');
                     videoEl.currentTime = 1;
                 }
             }
@@ -1412,21 +1327,19 @@ export class DetailPageButtonPlugin extends BasePlugin {
         }
         const $iframe = $('iframe[id^="layui-layer-iframe"]');
         if ($iframe.length > 0) {
-            $iframe[0].contentWindow.postMessage("speedVideo", "*");
+            $iframe[0].contentWindow.postMessage('speedVideo', '*');
             return;
         }
-        const $container = $(".preview-video-container");
+        const $container = $('.preview-video-container');
         if ($container.length > 0) {
             $container[0].click();
-            const videoEl = document.getElementById(
-                "preview-video",
-            ) as HTMLVideoElement | null;
+            const videoEl = document.getElementById('preview-video') as HTMLVideoElement | null;
             if (videoEl) {
                 videoEl.currentTime += 5;
                 videoEl.muted = false;
             }
         } else {
-            $("#javTrailersBtn").click();
+            $('#javTrailersBtn').click();
         }
     }
 
@@ -1434,8 +1347,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
      * 鼠标移入预览视频时显示原生控件。对应原 L6339-6343。
      */
     hideVideoControls(): void {
-        $(document).on("mouseenter", "#preview-video", function (this: any) {
-            $(this).prop("controls", true);
+        $(document).on('mouseenter', '#preview-video', function (this: any) {
+            $(this).prop('controls', true);
         });
     }
 
@@ -1468,17 +1381,17 @@ export class DetailPageButtonPlugin extends BasePlugin {
             Hotkey.registerHotkey(hotkeyStr, (_keyEvent: KeyboardEvent) => {
                 const activeEl = document.activeElement as any;
                 if (
-                    activeEl.tagName !== "INPUT" &&
-                    activeEl.tagName !== "TEXTAREA" &&
+                    activeEl.tagName !== 'INPUT' &&
+                    activeEl.tagName !== 'TEXTAREA' &&
                     !activeEl.isContentEditable
                 ) {
                     if ((window as any).isDetailPage) {
                         callback();
                     } else {
                         ((key: string) => {
-                            const $iframe = $(".layui-layer-content iframe");
+                            const $iframe = $('.layui-layer-content iframe');
                             if ($iframe.length !== 0) {
-                                $iframe[0].contentWindow.postMessage(key, "*");
+                                $iframe[0].contentWindow.postMessage(key, '*');
                             }
                         })(hotkeyStr);
                     }
@@ -1486,7 +1399,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
             });
         };
         if ((window as any).isDetailPage) {
-            window.addEventListener("message", (messageEvent: MessageEvent) => {
+            window.addEventListener('message', (messageEvent: MessageEvent) => {
                 if (hotkeyMap[messageEvent.data]) {
                     hotkeyMap[messageEvent.data]();
                 }
@@ -1504,49 +1417,45 @@ export class DetailPageButtonPlugin extends BasePlugin {
      */
     async previewSubtitle(url: any, filename: any): Promise<void> {
         if (!url) {
-            console.error("未提供文件URL");
+            console.error('未提供文件URL');
             return;
         }
-        const ext = url.split(".").pop().toLowerCase();
-        if (ext === "ass" || ext === "srt") {
+        const ext = url.split('.').pop().toLowerCase();
+        if (ext === 'ass' || ext === 'srt') {
             try {
                 const subtitleContent = await gmHttp.get(url);
-                let title = "字幕预览";
-                if (ext === "ass") {
-                    title = "ASS字幕预览 - " + filename;
-                } else if (ext === "srt") {
-                    title = "SRT字幕预览 - " + filename;
+                let title = '字幕预览';
+                if (ext === 'ass') {
+                    title = 'ASS字幕预览 - ' + filename;
+                } else if (ext === 'srt') {
+                    title = 'SRT字幕预览 - ' + filename;
                 }
-                const lines = subtitleContent.split("\n");
-                let output = "";
+                const lines = subtitleContent.split('\n');
+                let output = '';
                 const numWidth = String(lines.length).length;
                 lines.forEach((line: any, idx: number) => {
-                    const paddedNum = String(idx + 1).padStart(numWidth, " ");
-                    output += jsxToString(
-                        <SubtitleLine paddedNum={paddedNum} line={line} />,
-                    );
+                    const paddedNum = String(idx + 1).padStart(numWidth, ' ');
+                    output += jsxToString(<SubtitleLine paddedNum={paddedNum} line={line} />);
                 });
                 const htmlContent = output;
                 layer.open({
                     type: 1,
                     title: title,
-                    area: ["80%", "80%"],
+                    area: ['80%', '80%'],
                     scrollbar: false,
-                    content: jsxToString(
-                        <SubtitlePreviewDialog content={htmlContent} />,
-                    ),
-                    btn: ["下载", "关闭"],
+                    content: jsxToString(<SubtitlePreviewDialog content={htmlContent} />),
+                    btn: ['下载', '关闭'],
                     btn1: function (_index: any, _layero: any, _instance: any) {
                         utils.download(subtitleContent, filename);
                         return false;
-                    },
+                    }
                 });
             } catch (err: any) {
                 show.error(`预览失败: ${err.message}`);
-                console.error("预览字幕文件出错:", err);
+                console.error('预览字幕文件出错:', err);
             }
         } else {
-            show.error("仅支持预览ASS和SRT字幕文件");
+            show.error('仅支持预览ASS和SRT字幕文件');
         }
     }
 }

@@ -45,69 +45,69 @@ export function Top250ToolBar({
     handleType,
     typeValue,
     hasCnsub,
-    yearButtonsHtml,
+    yearButtonsHtml
 }: Top250ToolBarProps) {
     return (
         <div className="button-group">
             <div
                 className="buttons has-addons"
                 id="conditionBox"
-                style={{ marginBottom: "0!important" }}
+                style={{ marginBottom: '0!important' }}
             >
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${handleType === "all" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${handleType === 'all' ? 'is-info' : ''}`}
                     href={`/advanced_search?handleTop=1&handleType=all&type_value=&has_cnsub=${hasCnsub}`}
                 >
                     全部
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${typeValue === "0" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${typeValue === '0' ? 'is-info' : ''}`}
                     href={`/advanced_search?handleTop=1&handleType=video_type&type_value=0&has_cnsub=${hasCnsub}`}
                 >
                     有码
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${typeValue === "1" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${typeValue === '1' ? 'is-info' : ''}`}
                     href={`/advanced_search?handleTop=1&handleType=video_type&type_value=1&has_cnsub=${hasCnsub}`}
                 >
                     无码
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${typeValue === "2" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${typeValue === '2' ? 'is-info' : ''}`}
                     href={`/advanced_search?handleTop=1&handleType=video_type&type_value=2&has_cnsub=${hasCnsub}`}
                 >
                     欧美
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${typeValue === "3" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${typeValue === '3' ? 'is-info' : ''}`}
                     href={`/advanced_search?handleTop=1&handleType=video_type&type_value=3&has_cnsub=${hasCnsub}`}
                 >
                     Fc2
-                </a>{" "}
+                </a>{' '}
                 <a
                     style={{
-                        padding: "18px 18px !important",
-                        marginLeft: "50px",
+                        padding: '18px 18px !important',
+                        marginLeft: '50px'
                     }}
-                    className={`button is-small ${hasCnsub === "1" ? "is-info" : ""}`}
+                    className={`button is-small ${hasCnsub === '1' ? 'is-info' : ''}`}
                     data-cnsub-value="1"
                 >
                     含中字磁鏈
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${hasCnsub === "0" ? "is-info" : ""}`}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${hasCnsub === '0' ? 'is-info' : ''}`}
                     data-cnsub-value="0"
                 >
                     无字幕
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
+                    style={{ padding: '18px 18px !important' }}
                     className="button is-small"
                     data-cnsub-value=""
                 >

@@ -29,18 +29,18 @@
  * RelatedItem/RelatedLoadMore/RelatedLoading）已转 TSX 原生 React 组件，
  * 调用点改 jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  */
-import { BasePlugin } from "./base-plugin";
-import { fetchRelatedCollections as K } from "../constants/api";
-import { YES, NO } from "../constants/status";
-import { jsxToString } from "../core/jsx-to-string";
-import { RelatedContainers } from "../components/related-containers";
-import { RelatedEmpty } from "../components/related-empty";
-import { RelatedEnd } from "../components/related-end";
-import { RelatedError } from "../components/related-error";
-import { RelatedHeader } from "../components/related-header";
-import { RelatedItem } from "../components/related-item";
-import { RelatedLoadMore } from "../components/related-load-more";
-import { RelatedLoading } from "../components/related-loading";
+import { BasePlugin } from './base-plugin';
+import { fetchRelatedCollections as K } from '../constants/api';
+import { YES, NO } from '../constants/status';
+import { jsxToString } from '../core/jsx-to-string';
+import { RelatedContainers } from '../components/related-containers';
+import { RelatedEmpty } from '../components/related-empty';
+import { RelatedEnd } from '../components/related-end';
+import { RelatedError } from '../components/related-error';
+import { RelatedHeader } from '../components/related-header';
+import { RelatedItem } from '../components/related-item';
+import { RelatedLoadMore } from '../components/related-load-more';
+import { RelatedLoading } from '../components/related-loading';
 
 export class RelatedPlugin extends BasePlugin {
     /** 合集条目序号（渲染时自增）。 */
@@ -50,7 +50,7 @@ export class RelatedPlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。 */
     getName(): string {
-        return "RelatedPlugin";
+        return 'RelatedPlugin';
     }
 
     /**
@@ -61,39 +61,36 @@ export class RelatedPlugin extends BasePlugin {
      * @returns 无返回值；首次展开或设置已展开时会异步触发 fetchAndDisplayRelateds
      */
     async showRelated(container: any, movieId: any): Promise<void> {
-        const isExpanded = await storageManager.getSetting(
-            "enableLoadRelated",
-            NO,
-        );
-        const target = container || $("#magnets-content");
+        const isExpanded = await storageManager.getSetting('enableLoadRelated', NO);
+        const target = container || $('#magnets-content');
         target.append(
             jsxToString(
                 <RelatedHeader
-                    foldText={isExpanded === YES ? "折叠" : "展开"}
-                    iconText={isExpanded === YES ? "▲" : "▼"}
-                />,
-            ),
+                    foldText={isExpanded === YES ? '折叠' : '展开'}
+                    iconText={isExpanded === YES ? '▲' : '▼'}
+                />
+            )
         );
-        $("#relatedFold").on("click", (event: any) => {
+        $('#relatedFold').on('click', (event: any) => {
             event.preventDefault();
             event.stopPropagation();
-            const toggleText = $("#relatedFold .toggle-text");
-            const toggleIcon = $("#relatedFold .toggle-icon");
-            const isExpand = toggleText.text() === "展开";
-            toggleText.text(isExpand ? "折叠" : "展开");
-            toggleIcon.text(isExpand ? "▲" : "▼");
+            const toggleText = $('#relatedFold .toggle-text');
+            const toggleIcon = $('#relatedFold .toggle-icon');
+            const isExpand = toggleText.text() === '展开';
+            toggleText.text(isExpand ? '折叠' : '展开');
+            toggleIcon.text(isExpand ? '▲' : '▼');
             if (isExpand) {
-                $("#relatedContainer").show();
-                $("#relatedFooter").show();
+                $('#relatedContainer').show();
+                $('#relatedFooter').show();
                 if (!this.isInit) {
                     this.fetchAndDisplayRelateds(movieId);
                     this.isInit = true;
                 }
-                storageManager.saveSettingItem("enableLoadRelated", YES);
+                storageManager.saveSettingItem('enableLoadRelated', YES);
             } else {
-                $("#relatedContainer").hide();
-                $("#relatedFooter").hide();
-                storageManager.saveSettingItem("enableLoadRelated", NO);
+                $('#relatedContainer').hide();
+                $('#relatedFooter').hide();
+                storageManager.saveSettingItem('enableLoadRelated', NO);
             }
         });
         target.append(jsxToString(<RelatedContainers />));
@@ -109,26 +106,26 @@ export class RelatedPlugin extends BasePlugin {
      * @returns 无返回值；签名过期等异常会被 catch 并提示，不会向外抛出
      */
     async fetchAndDisplayRelateds(movieId: any): Promise<void> {
-        const container = $("#relatedContainer");
-        const footer = $("#relatedFooter");
+        const container = $('#relatedContainer');
+        const footer = $('#relatedFooter');
         container.append(jsxToString(<RelatedLoading />));
         const limit = 20;
         let list: any = null;
         try {
             list = await K(movieId, 1, limit);
         } catch (err: any) {
-            if (err.toString().includes("簽名已過期")) {
-                show.error("生成签名失败, 请检查系统时间及时区是否正确!");
+            if (err.toString().includes('簽名已過期')) {
+                show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
-            clog.error("获取清单失败:", err);
-            console.error("获取清单失败:", err);
+            clog.error('获取清单失败:', err);
+            console.error('获取清单失败:', err);
         } finally {
-            $("#relatedLoading").remove();
+            $('#relatedLoading').remove();
         }
         if (!list) {
             container.append(jsxToString(<RelatedError />));
-            $("#retryFetchRelateds").on("click", async () => {
-                $("#retryFetchRelateds").parent().remove();
+            $('#retryFetchRelateds').on('click', async () => {
+                $('#retryFetchRelateds').parent().remove();
                 await this.fetchAndDisplayRelateds(movieId);
             });
             return;
@@ -141,29 +138,25 @@ export class RelatedPlugin extends BasePlugin {
         if (list.length === limit) {
             footer.html(jsxToString(<RelatedLoadMore />));
             let page = 1;
-            const loadMoreBtn = $("#loadMoreRelateds");
-            loadMoreBtn.on("click", async () => {
+            const loadMoreBtn = $('#loadMoreRelateds');
+            loadMoreBtn.on('click', async () => {
                 let moreList: any;
-                loadMoreBtn.text("加载中...").prop("disabled", true);
+                loadMoreBtn.text('加载中...').prop('disabled', true);
                 page++;
                 try {
                     moreList = await K(movieId, page, limit);
                 } catch (err: any) {
-                    console.error("加载更多清单失败:", err);
+                    console.error('加载更多清单失败:', err);
                 } finally {
-                    loadMoreBtn
-                        .text("加载失败, 请点击重试")
-                        .prop("disabled", false);
+                    loadMoreBtn.text('加载失败, 请点击重试').prop('disabled', false);
                 }
                 if (moreList) {
                     this.displayRelateds(moreList, container);
                     if (moreList.length < limit) {
                         loadMoreBtn.remove();
-                        $("#relatedEnd").show();
+                        $('#relatedEnd').show();
                     } else {
-                        loadMoreBtn
-                            .text("加载更多清单")
-                            .prop("disabled", false);
+                        loadMoreBtn.text('加载更多清单').prop('disabled', false);
                     }
                 }
             });
@@ -190,7 +183,7 @@ export class RelatedPlugin extends BasePlugin {
                         collectionCount={item.collectionCount}
                         viewCount={item.viewCount}
                         createTime={item.createTime}
-                    />,
+                    />
                 );
                 container.append(html);
             });

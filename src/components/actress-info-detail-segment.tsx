@@ -62,17 +62,13 @@ interface ActressInfoDetailSegmentProps {
 export function ActressInfoDetailSegment({
     actressName,
     info,
-    wikiApiUrl,
+    wikiApiUrl
 }: ActressInfoDetailSegmentProps) {
     if (info) {
         return (
             <div className="panel-block actress-info">
                 <strong>{actressName}:</strong>
-                <a
-                    href={info.url}
-                    style={{ marginLeft: "5px" }}
-                    target="_blank"
-                >
+                <a href={info.url} style={{ marginLeft: '5px' }} target="_blank">
                     <span className="info-tag">
                         {info.birthday} {info.age}
                     </span>

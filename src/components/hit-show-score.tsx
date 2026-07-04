@@ -22,7 +22,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
-import type { ReactElement } from "react";
+import type { ReactElement } from 'react';
 
 /** HitShowScore 的属性。 */
 export interface HitShowScoreProps {
@@ -58,8 +58,8 @@ function getStarRating(score: number): ReactElement[] {
 export function HitShowScore({ score, watchedCount }: HitShowScoreProps) {
     return (
         <span className="value">
-            <span className="score-stars">{getStarRating(score)}</span> &nbsp;{" "}
-            {score}分，由{watchedCount}人評價
+            <span className="score-stars">{getStarRating(score)}</span> &nbsp; {score}分，由
+            {watchedCount}人評價
         </span>
     );
 }

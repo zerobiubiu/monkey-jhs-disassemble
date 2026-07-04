@@ -29,15 +29,15 @@ export function RelatedLoadMore() {
             <button
                 id="loadMoreRelateds"
                 style={{
-                    width: "100%",
-                    backgroundColor: "#e1f5fe",
-                    border: "none",
-                    padding: "10px",
-                    marginTop: "10px",
-                    cursor: "pointer",
-                    color: "#0277bd",
-                    fontWeight: "bold",
-                    borderRadius: "4px",
+                    width: '100%',
+                    backgroundColor: '#e1f5fe',
+                    border: 'none',
+                    padding: '10px',
+                    marginTop: '10px',
+                    cursor: 'pointer',
+                    color: '#0277bd',
+                    fontWeight: 'bold',
+                    borderRadius: '4px'
                 }}
             >
                 加载更多清单
@@ -45,11 +45,11 @@ export function RelatedLoadMore() {
             <div
                 id="relatedEnd"
                 style={{
-                    display: "none",
-                    textAlign: "center",
-                    padding: "10px",
-                    color: "#666",
-                    marginTop: "10px",
+                    display: 'none',
+                    textAlign: 'center',
+                    padding: '10px',
+                    color: '#666',
+                    marginTop: '10px'
                 }}
             >
                 已加载全部清单

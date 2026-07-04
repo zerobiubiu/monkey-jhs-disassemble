@@ -32,19 +32,19 @@ export interface SimpleSettingPanelProps {
 /** hr 分隔线内联样式（渐变背景，原模板中重复 6 次）。 */
 const HR_STYLE = {
     border: 0,
-    height: "1px",
-    margin: "10px 0",
+    height: '1px',
+    margin: '10px 0',
     backgroundImage:
-        "linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0))",
+        'linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0))'
 } as const;
 
 /** 单番号/演员/关键词/收藏/已观看 标签 span 的内联样式。 */
 const LABEL_SPAN_STYLE = {
-    display: "inline-block",
-    width: "80px",
-    fontSize: "13px",
-    fontWeight: "bold",
-    textAlign: "left",
+    display: 'inline-block',
+    width: '80px',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    textAlign: 'left'
 } as const;
 
 /**
@@ -52,95 +52,60 @@ const LABEL_SPAN_STYLE = {
  * @param props.isJavdbSite 是否 JavDb 站点
  * @returns 简化设置面板 JSX，经 jsxToString 转 HTML 字符串后供 `.html()` 消费。
  */
-export function SimpleSettingPanel({
-    isJavdbSite,
-}: SimpleSettingPanelProps) {
+export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
     return (
         <div
             className="jhs-scrollbar"
             style={{
-                marginTop: "20px",
-                maxHeight: "90vh",
-                overflowY: "auto",
+                marginTop: '20px',
+                maxHeight: '90vh',
+                overflowY: 'auto'
             }}
         >
-            <div style={{ margin: "0 10px" }}>
+            <div style={{ margin: '0 10px' }}>
                 <div className="setting-item">
                     <span className="setting-label">显示已鉴定内容:</span>
                     <div
                         className="form-content"
                         style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            justifyContent: "flex-end",
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end'
                         }}
                     >
-                        <span style={LABEL_SPAN_STYLE}>
-                            {"屏蔽单番号: "}
-                        </span>
-                        <input
-                            type="checkbox"
-                            id="showFilterItem"
-                            className="mini-switch"
-                        />
+                        <span style={LABEL_SPAN_STYLE}>{'屏蔽单番号: '}</span>
+                        <input type="checkbox" id="showFilterItem" className="mini-switch" />
                         <br />
-                        <span style={LABEL_SPAN_STYLE}>
-                            {"屏蔽演员: "}
-                        </span>
-                        <input
-                            type="checkbox"
-                            id="showFilterActorItem"
-                            className="mini-switch"
-                        />
+                        <span style={LABEL_SPAN_STYLE}>{'屏蔽演员: '}</span>
+                        <input type="checkbox" id="showFilterActorItem" className="mini-switch" />
                         <br />
-                        <span style={LABEL_SPAN_STYLE}>
-                            {"屏蔽关键词: "}
-                        </span>
-                        <input
-                            type="checkbox"
-                            id="showFilterKeywordItem"
-                            className="mini-switch"
-                        />
+                        <span style={LABEL_SPAN_STYLE}>{'屏蔽关键词: '}</span>
+                        <input type="checkbox" id="showFilterKeywordItem" className="mini-switch" />
                         <br />
-                        <span style={LABEL_SPAN_STYLE}>{"收藏: "}</span>
-                        <input
-                            type="checkbox"
-                            id="showFavoriteItem"
-                            className="mini-switch"
-                        />
+                        <span style={LABEL_SPAN_STYLE}>{'收藏: '}</span>
+                        <input type="checkbox" id="showFavoriteItem" className="mini-switch" />
                         <br />
-                        <span style={LABEL_SPAN_STYLE}>{"已观看: "}</span>
-                        <input
-                            type="checkbox"
-                            id="showHasWatchItem"
-                            className="mini-switch"
-                        />
+                        <span style={LABEL_SPAN_STYLE}>{'已观看: '}</span>
+                        <input type="checkbox" id="showHasWatchItem" className="mini-switch" />
                         <br />
                     </div>
                 </div>
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="快速显示所有已鉴定内容,减少对以上开关的频繁操作">
-                            ❓
-                        </span>
-                        {" "}
+                        <span data-tip="快速显示所有已鉴定内容,减少对以上开关的频繁操作">❓</span>{' '}
                         显示所有:
                     </span>
                     <div
                         className="form-content"
                         style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            justifyContent: "flex-end",
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end'
                         }}
                     >
-                        <input
-                            type="checkbox"
-                            id="showAllItem"
-                            className="mini-switch"
-                        />
+                        <input type="checkbox" id="showAllItem" className="mini-switch" />
                     </div>
                 </div>
 
@@ -148,37 +113,17 @@ export function SimpleSettingPanel({
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="点击封面的打开方式,弹窗|新窗口">
-                            ❓
-                        </span>
-                        {" "}
-                        弹窗方式打开页面:
+                        <span data-tip="点击封面的打开方式,弹窗|新窗口">❓</span> 弹窗方式打开页面:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="dialogOpenDetail"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="dialogOpenDetail" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
-                    <span className="setting-label">
-                        鉴定后立即关闭页面:
-                    </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="needClosePage"
-                            className="mini-switch"
-                        />
+                    <span className="setting-label">鉴定后立即关闭页面:</span>
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="needClosePage" className="mini-switch" />
                     </div>
                 </div>
 
@@ -186,63 +131,31 @@ export function SimpleSettingPanel({
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="使用瀑布流模式, 排序方式将调整为默认">
-                            ❓
-                        </span>
-                        {" "}
-                        瀑布流模式:
+                        <span data-tip="使用瀑布流模式, 排序方式将调整为默认">❓</span> 瀑布流模式:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="autoPage"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="autoPage" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
                     <span className="setting-label">启用标题翻译:</span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="translateTitle"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="translateTitle" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
                     <span className="setting-label">启用悬浮大图:</span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="hoverBigImg"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="hoverBigImg" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
                     <span className="setting-label">启用115视频匹配: </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="enable115Match"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="enable115Match" className="mini-switch" />
                     </div>
                 </div>
 
@@ -251,16 +164,10 @@ export function SimpleSettingPanel({
                 {isJavdbSite && (
                     <div className="setting-item">
                         <span className="setting-label">
-                            <span data-tip="详情页是否展示女优年龄、三围等信息">
-                                ❓
-                            </span>
-                            {" "}
+                            <span data-tip="详情页是否展示女优年龄、三围等信息">❓</span>{' '}
                             加载女优信息:
                         </span>
-                        <div
-                            className="form-content"
-                            style={{ textAlign: "right" }}
-                        >
+                        <div className="form-content" style={{ textAlign: 'right' }}>
                             <input
                                 type="checkbox"
                                 id="enableLoadActressInfo"
@@ -272,56 +179,29 @@ export function SimpleSettingPanel({
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="详情页第三方资源检测,如missAv,123AV">
-                            ❓
-                        </span>
-                        {" "}
+                        <span data-tip="详情页第三方资源检测,如missAv,123AV">❓</span>{' '}
                         加载第三方视频资源:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="enableLoadOtherSite"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="enableLoadOtherSite" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="详情页图片区首列位置加载长缩略图">
-                            ❓
-                        </span>
-                        {" "}
-                        加载长缩略图:
+                        <span data-tip="详情页图片区首列位置加载长缩略图">❓</span> 加载长缩略图:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="enableLoadScreenShot"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="enableLoadScreenShot" className="mini-switch" />
                     </div>
                 </div>
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="详情页解析更多更高画质的预览视频">
-                            ❓
-                        </span>
-                        {" "}
+                        <span data-tip="详情页解析更多更高画质的预览视频">❓</span>{' '}
                         更高画质预览视频:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
+                    <div className="form-content" style={{ textAlign: 'right' }}>
                         <input
                             type="checkbox"
                             id="enableLoadPreviewVideo"
@@ -334,21 +214,10 @@ export function SimpleSettingPanel({
 
                 <div className="setting-item">
                     <span className="setting-label">
-                        <span data-tip="列数6以上,建议开启竖图">
-                            ❓
-                        </span>
-                        {" "}
-                        竖图模式:
+                        <span data-tip="列数6以上,建议开启竖图">❓</span> 竖图模式:
                     </span>
-                    <div
-                        className="form-content"
-                        style={{ textAlign: "right" }}
-                    >
-                        <input
-                            type="checkbox"
-                            id="enableVerticalModel"
-                            className="mini-switch"
-                        />
+                    <div className="form-content" style={{ textAlign: 'right' }}>
+                        <input type="checkbox" id="enableVerticalModel" className="mini-switch" />
                     </div>
                 </div>
 
@@ -363,7 +232,7 @@ export function SimpleSettingPanel({
                             min="2"
                             max="10"
                             step="1"
-                            style={{ padding: "5px 0" }}
+                            style={{ padding: '5px 0' }}
                         />
                     </div>
                 </div>
@@ -379,19 +248,19 @@ export function SimpleSettingPanel({
                             min="0"
                             max="30"
                             step="1"
-                            style={{ padding: "5px 0" }}
+                            style={{ padding: '5px 0' }}
                         />
                     </div>
                 </div>
             </div>
             <div
                 style={{
-                    padding: "0 20px 15px",
-                    textAlign: "right",
-                    borderTop: "1px solid #eee",
+                    padding: '0 20px 15px',
+                    textAlign: 'right',
+                    borderTop: '1px solid #eee'
                 }}
             >
-                <button id="helpBtn" style={{ float: "left" }}>
+                <button id="helpBtn" style={{ float: 'left' }}>
                     常见问题
                 </button>
                 <button id="moreBtn">更多设置</button>

@@ -14,13 +14,13 @@
  * $ / utils 已由 ../types/globals.d.ts 声明为 any；jQuery .each 回调按本仓库既有
  * 约定改写为 (_index, element) 箭头形式，规避 noImplicitThis。
  */
-import { isJavdbSite, isJavbusSite } from "../constants/site";
-import { BasePlugin } from "./base-plugin";
+import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { BasePlugin } from './base-plugin';
 
 export class HighlightMagnetPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L3928-3930。 */
     getName(): string {
-        return "HighlightMagnetPlugin";
+        return 'HighlightMagnetPlugin';
     }
 
     /**
@@ -43,31 +43,31 @@ export class HighlightMagnetPlugin extends BasePlugin {
         if (!isJavdbSite) {
             return;
         }
-        const nameEls = $("#magnets-content .name");
+        const nameEls = $('#magnets-content .name');
         if (nameEls.length === 0) {
             return;
         }
-        const highQualityMarkers: string[] = ["4k", "-c", "-u", "-uc"];
+        const highQualityMarkers: string[] = ['4k', '-c', '-u', '-uc'];
         let hasHighQuality = false;
         nameEls.each((_index: number, element: any) => {
             const nameEl = $(element);
             const nameText: string = nameEl.text().toLowerCase();
             const isHighQuality: boolean = highQualityMarkers.some((marker) =>
-                nameText.includes(marker),
+                nameText.includes(marker)
             );
-            nameEl.parent().parent().parent().addClass("magnet-row");
-            if (nameText.includes("4k")) {
-                nameEl.css("color", "#f40");
+            nameEl.parent().parent().parent().addClass('magnet-row');
+            if (nameText.includes('4k')) {
+                nameEl.css('color', '#f40');
             }
             if (isHighQuality) {
                 hasHighQuality = true;
-                nameEl.parent().parent().parent().addClass("high-quality");
+                nameEl.parent().parent().parent().addClass('high-quality');
             }
         });
         if (hasHighQuality) {
-            $("#magnets-content .magnet-row").not(".high-quality").hide();
+            $('#magnets-content .magnet-row').not('.high-quality').hide();
         } else {
-            $("#enable-magnets-filter").addClass("do-hide");
+            $('#enable-magnets-filter').addClass('do-hide');
         }
     }
 
@@ -81,49 +81,39 @@ export class HighlightMagnetPlugin extends BasePlugin {
     handleBus(): void {
         if (isJavbusSite && (window as any).isDetailPage) {
             utils.loopDetector(
-                () => $("#magnet-table td a").length > 0,
+                () => $('#magnet-table td a').length > 0,
                 () => {
-                    const rowEls = $("#magnet-table tr");
-                    const highQualityMarkers: string[] = [
-                        "4k",
-                        "-c",
-                        "-u",
-                        "-uc",
-                    ];
+                    const rowEls = $('#magnet-table tr');
+                    const highQualityMarkers: string[] = ['4k', '-c', '-u', '-uc'];
                     let hasHighQuality = false;
                     rowEls.each((_index: number, element: any) => {
                         const rowEl = $(element);
-                        const firstCell = rowEl.find("td:first-child");
-                        const firstLink = firstCell.find("a:first-child");
-                        const secondLink = firstCell.find("a:nth-child(2)");
-                        const linkText: string = firstLink
-                            .text()
-                            .toLowerCase();
-                        if (linkText.includes("4k")) {
-                            firstLink.css("color", "#f40");
+                        const firstCell = rowEl.find('td:first-child');
+                        const firstLink = firstCell.find('a:first-child');
+                        const secondLink = firstCell.find('a:nth-child(2)');
+                        const linkText: string = firstLink.text().toLowerCase();
+                        if (linkText.includes('4k')) {
+                            firstLink.css('color', '#f40');
                         }
                         if (
-                            highQualityMarkers.some((marker) =>
-                                linkText.includes(marker),
-                            ) ||
-                            (secondLink.length &&
-                                secondLink.text().includes("字幕"))
+                            highQualityMarkers.some((marker) => linkText.includes(marker)) ||
+                            (secondLink.length && secondLink.text().includes('字幕'))
                         ) {
                             hasHighQuality = true;
-                            rowEl.addClass("high-quality");
+                            rowEl.addClass('high-quality');
                         }
                     });
                     if (hasHighQuality) {
                         rowEls.each((_index: number, element: any) => {
                             const rowEl = $(element);
-                            if (!rowEl.hasClass("high-quality")) {
+                            if (!rowEl.hasClass('high-quality')) {
                                 rowEl.hide();
                             }
                         });
                     } else {
-                        $("#enable-magnets-filter").addClass("do-hide");
+                        $('#enable-magnets-filter').addClass('do-hide');
                     }
-                },
+                }
             );
         }
     }
@@ -135,12 +125,12 @@ export class HighlightMagnetPlugin extends BasePlugin {
      */
     showAll(): void {
         if (isJavdbSite) {
-            $("#magnets-content .item")
+            $('#magnets-content .item')
                 .toArray()
                 .forEach((element: any) => $(element).show());
         }
         if (isJavbusSite) {
-            $("#magnet-table tr")
+            $('#magnet-table tr')
                 .toArray()
                 .forEach((element: any) => $(element).show());
         }

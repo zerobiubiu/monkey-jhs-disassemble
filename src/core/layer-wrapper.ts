@@ -21,9 +21,8 @@
  */
 function resetOverflowByShadeCount(delay: number = 10): void {
     setTimeout(() => {
-        const shadeCount = document.querySelectorAll(".layui-layer-shade").length;
-        document.documentElement.style.overflow =
-            shadeCount > 0 ? "hidden" : "";
+        const shadeCount = document.querySelectorAll('.layui-layer-shade').length;
+        document.documentElement.style.overflow = shadeCount > 0 ? 'hidden' : '';
     }, delay);
 }
 
@@ -49,7 +48,7 @@ export function setupLayerWrapper(): void {
         const opts = options || {};
         const originalSuccess = opts.success;
         opts.success = function (el: any, index: any) {
-            if (typeof originalSuccess == "function") {
+            if (typeof originalSuccess == 'function') {
                 originalSuccess.call(this, el, index);
             }
             utils.setupEscClose(index);

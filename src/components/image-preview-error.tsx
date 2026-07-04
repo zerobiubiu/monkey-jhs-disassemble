@@ -16,12 +16,12 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** 失败提示 div 的内联 style（padding/color），与原版一致。 */
 const errorStyle: CSSProperties = {
-    padding: "10px",
-    color: "#f00",
+    padding: '10px',
+    color: '#f00'
 };
 
 /**

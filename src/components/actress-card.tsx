@@ -30,7 +30,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** ActressCard 的属性。 */
 export interface ActressCardProps {
@@ -88,42 +88,38 @@ export function ActressCard({
     btnStyle,
     typeLabel,
     typeColor,
-    newVideoCount,
+    newVideoCount
 }: ActressCardProps) {
     return (
         <div
             className="actress-card"
             data-starId={starId}
             style={{
-                ...(isStale ? { background: "#d4cece" } : null),
-                minHeight: "370px",
+                ...(isStale ? { background: '#d4cece' } : null),
+                minHeight: '370px'
             }}
         >
             <a
                 href={actressUrl}
                 target="_blank"
                 style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                    display: "block",
-                    flexGrow: 1,
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    display: 'block',
+                    flexGrow: 1
                 }}
             >
-                <img
-                    src={avatar}
-                    alt={allNameText}
-                    className="actress-card-avatar"
-                />
+                <img src={avatar} alt={allNameText} className="actress-card-avatar" />
             </a>
             <div>
                 <a
                     href={actressUrl}
                     target="_blank"
                     style={{
-                        textDecoration: "none",
-                        color: "inherit",
-                        display: "block",
-                        flexGrow: 1,
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        display: 'block',
+                        flexGrow: 1
                     }}
                 >
                     <div className="actress-card-name">{name}</div>
@@ -132,42 +128,38 @@ export function ActressCard({
                     {allNameText}
                 </div>
             </div>
-            <div style={{ fontSize: "0.8em", marginTop: "5px" }}>
+            <div style={{ fontSize: '0.8em', marginTop: '5px' }}>
                 <span>上次检测: {lastCheckTime}</span>
             </div>
-            <div style={{ fontSize: "0.8em", marginTop: "5px" }}>
+            <div style={{ fontSize: '0.8em', marginTop: '5px' }}>
                 <span>最后发行作品: {lastPublishTime}</span>
             </div>
             <div
                 style={{
-                    fontSize: "0.7em",
-                    color: "#cc4444",
-                    marginTop: "5px",
-                    minHeight: "18px",
+                    fontSize: '0.7em',
+                    color: '#cc4444',
+                    marginTop: '5px',
+                    minHeight: '18px'
                 }}
             >
-                <span>
-                    {isStale
-                        ? `停更${ruleTimeYears}年以上, 下轮任务不再进行检测`
-                        : ""}
-                </span>
+                <span>{isStale ? `停更${ruleTimeYears}年以上, 下轮任务不再进行检测` : ''}</span>
             </div>
             <div
                 style={{
-                    fontSize: "0.8em",
-                    marginTop: "5px",
-                    color: "#3765c5",
-                    minHeight: "10px",
+                    fontSize: '0.8em',
+                    marginTop: '5px',
+                    color: '#3765c5',
+                    minHeight: '10px'
                 }}
             >
                 <span>{remark}</span>
             </div>
             <div
                 style={{
-                    marginTop: "10px",
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: "10px",
+                    marginTop: '10px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '10px'
                 }}
             >
                 <a
@@ -185,16 +177,10 @@ export function ActressCard({
                     dangerouslySetInnerHTML={{ __html: deleteSvg }}
                 />
             </div>
-            <div
-                className="card-tag"
-                style={{ backgroundColor: typeColor }}
-            >
+            <div className="card-tag" style={{ backgroundColor: typeColor }}>
                 {typeLabel}
             </div>
-            <div
-                className="card-new-count-tag"
-                data-tip={`最新作品数量: ${newVideoCount}`}
-            >
+            <div className="card-new-count-tag" data-tip={`最新作品数量: ${newVideoCount}`}>
                 🔔 {newVideoCount}
             </div>
         </div>

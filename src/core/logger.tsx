@@ -11,8 +11,8 @@
  * 面板样式由原脚本顶部注入的 `<style>` 块提供，本模块不重复注入。
  */
 
-import { jsxToString } from "./jsx-to-string";
-import { LoggerLogEntry } from "../components/logger-log-entry";
+import { jsxToString } from './jsx-to-string';
+import { LoggerLogEntry } from '../components/logger-log-entry';
 
 export interface LogEntry {
     /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
@@ -32,26 +32,26 @@ const LOG_TYPE_STYLES: Record<
     string,
     { label: string; background: string; borderLeftColor: string }
 > = {
-    base: { label: "信息", background: "#e8f4fd", borderLeftColor: "#3498db" },
-    warn: { label: "警告", background: "#fef9e7", borderLeftColor: "#f39c12" },
-    error: { label: "错误", background: "#fdedec", borderLeftColor: "#e74c3c" },
-    debug: { label: "调试", background: "#f4f6f6", borderLeftColor: "#95a5a6" },
+    base: { label: '信息', background: '#e8f4fd', borderLeftColor: '#3498db' },
+    warn: { label: '警告', background: '#fef9e7', borderLeftColor: '#f39c12' },
+    error: { label: '错误', background: '#fdedec', borderLeftColor: '#e74c3c' },
+    debug: { label: '调试', background: '#f4f6f6', borderLeftColor: '#95a5a6' }
 };
 
 /** 过滤器 → 命中类型映射：决定某过滤器下显示哪些类型的日志 */
 const FILTER_TYPE_MAP: Record<string, string[]> = {
-    base: ["base", "warn", "error"],
-    warn: ["warn"],
-    error: ["error"],
-    debug: ["base", "warn", "error", "debug"],
+    base: ['base', 'warn', 'error'],
+    warn: ['warn'],
+    error: ['error'],
+    debug: ['base', 'warn', 'error', 'debug']
 };
 
 /** localStorage 键：最大化状态 */
-const MAXIMIZE_KEY = "jhs_clog_maximize";
+const MAXIMIZE_KEY = 'jhs_clog_maximize';
 /** localStorage 键：展开/折叠状态 */
-const EXPAND_KEY = "jhs_clog_expand";
+const EXPAND_KEY = 'jhs_clog_expand';
 /** localStorage 键：当前过滤器 */
-const FILTER_KEY = "jhs_clog_filter";
+const FILTER_KEY = 'jhs_clog_filter';
 
 export class Logger {
     /** 当前生效的过滤器名 */
@@ -89,8 +89,7 @@ export class Logger {
      */
     constructor() {
         const stored = localStorage.getItem(FILTER_KEY);
-        this.currentFilter =
-            stored && LOG_TYPE_STYLES[stored] ? stored : "base";
+        this.currentFilter = stored && LOG_TYPE_STYLES[stored] ? stored : 'base';
     }
 
     /**
@@ -99,9 +98,8 @@ export class Logger {
      */
     tryInitialize(): boolean {
         return (
-            document.readyState !== "loading" &&
-            (this.isInitialized ||
-                (this.init(), (this.isInitialized = true), true))
+            document.readyState !== 'loading' &&
+            (this.isInitialized || (this.init(), (this.isInitialized = true), true))
         );
     }
 
@@ -115,78 +113,77 @@ export class Logger {
 
     /** 构建面板 DOM 树并追加到 body，按 LOG_TYPE_STYLES 生成过滤器按钮。 */
     createContainer(): void {
-        this.container = document.createElement("div");
-        this.container.className = "console-logger-container";
-        this.container.style.display = "none";
-        this.toggleBtn = document.createElement("div");
-        this.toggleBtn.className = "console-logger-toggle collapsed";
+        this.container = document.createElement('div');
+        this.container.className = 'console-logger-container';
+        this.container.style.display = 'none';
+        this.toggleBtn = document.createElement('div');
+        this.toggleBtn.className = 'console-logger-toggle collapsed';
         this.container.appendChild(this.toggleBtn);
-        this.window = document.createElement("div");
-        this.window.className = "console-logger-window collapsed";
-        const header = document.createElement("div");
-        header.className = "console-logger-header";
-        const title = document.createElement("div");
-        title.className = "console-logger-title";
-        title.textContent = "JHS V3.3.2";
-        const controls = document.createElement("div");
-        controls.className = "console-logger-controls";
-        this.maximizeBtn = document.createElement("button");
-        this.maximizeBtn.textContent = "";
-        this.maximizeBtn.classList.add("console-logger-maximize-toggle");
+        this.window = document.createElement('div');
+        this.window.className = 'console-logger-window collapsed';
+        const header = document.createElement('div');
+        header.className = 'console-logger-header';
+        const title = document.createElement('div');
+        title.className = 'console-logger-title';
+        title.textContent = 'JHS V3.3.2';
+        const controls = document.createElement('div');
+        controls.className = 'console-logger-controls';
+        this.maximizeBtn = document.createElement('button');
+        this.maximizeBtn.textContent = '';
+        this.maximizeBtn.classList.add('console-logger-maximize-toggle');
         controls.appendChild(this.maximizeBtn);
-        const clearBtn = document.createElement("button");
-        clearBtn.textContent = "清空";
-        clearBtn.addEventListener("click", () => this.clear());
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = '清空';
+        clearBtn.addEventListener('click', () => this.clear());
         controls.appendChild(clearBtn);
         header.appendChild(title);
         header.appendChild(controls);
-        this.filtersContainer = document.createElement("div");
-        this.filtersContainer.className = "console-logger-filters";
-        this.filterButtonGroup = document.createElement("div");
-        this.filterButtonGroup.className = "console-logger-filter-group";
+        this.filtersContainer = document.createElement('div');
+        this.filtersContainer.className = 'console-logger-filters';
+        this.filterButtonGroup = document.createElement('div');
+        this.filterButtonGroup.className = 'console-logger-filter-group';
         this.filtersContainer.appendChild(this.filterButtonGroup);
-        this.scrollToBottomBtn = document.createElement("button");
-        this.scrollToBottomBtn.className = "console-logger-scroll-to-bottom";
-        this.scrollToBottomBtn.textContent = "到底部";
+        this.scrollToBottomBtn = document.createElement('button');
+        this.scrollToBottomBtn.className = 'console-logger-scroll-to-bottom';
+        this.scrollToBottomBtn.textContent = '到底部';
         this.filtersContainer.appendChild(this.scrollToBottomBtn);
-        this.content = document.createElement("div");
-        this.content.className = "console-logger-content jhs-scrollbar";
+        this.content = document.createElement('div');
+        this.content.className = 'console-logger-content jhs-scrollbar';
         this.window.appendChild(header);
         this.window.appendChild(this.filtersContainer);
         this.window.appendChild(this.content);
         this.container.appendChild(this.window);
         document.body.appendChild(this.container);
         Object.keys(LOG_TYPE_STYLES).forEach((typeName) => {
-            const filterBtn = document.createElement("div");
-            filterBtn.className = "console-logger-filter";
+            const filterBtn = document.createElement('div');
+            filterBtn.className = 'console-logger-filter';
             if (typeName === this.currentFilter) {
-                filterBtn.classList.add("active");
+                filterBtn.classList.add('active');
             }
             filterBtn.textContent = LOG_TYPE_STYLES[typeName].label;
             filterBtn.dataset.type = typeName;
-            filterBtn.addEventListener("click", () => this.setFilter(typeName));
+            filterBtn.addEventListener('click', () => this.setFilter(typeName));
             this.filterButtonGroup.appendChild(filterBtn);
         });
     }
 
     /** 绑定折叠、最大化、滚到底部、滚动方向锁定等事件。 */
     bindEvents(): void {
-        this.toggleBtn.addEventListener("click", () => {
+        this.toggleBtn.addEventListener('click', () => {
             this.toggleExpandCollapsed();
         });
-        this.maximizeBtn.addEventListener("click", () => this.toggleMaximize());
-        this.scrollToBottomBtn.addEventListener("click", () => {
+        this.maximizeBtn.addEventListener('click', () => this.toggleMaximize());
+        this.scrollToBottomBtn.addEventListener('click', () => {
             this.content.scrollTop = this.content.scrollHeight;
             this.userScrolledUp = false;
         });
-        this.content.addEventListener("scroll", () => {
+        this.content.addEventListener('scroll', () => {
             const atBottom =
-                this.content.scrollHeight - this.content.clientHeight <=
-                this.content.scrollTop + 5;
+                this.content.scrollHeight - this.content.clientHeight <= this.content.scrollTop + 5;
             this.userScrolledUp = !atBottom;
         });
         this.content.addEventListener(
-            "wheel",
+            'wheel',
             (evt: WheelEvent) => {
                 const atTop = this.content.scrollTop === 0;
                 const atBottom =
@@ -197,18 +194,18 @@ export class Logger {
                     evt.stopPropagation();
                 }
             },
-            { passive: false },
+            { passive: false }
         );
     }
 
     /** 切换日志窗口展开/折叠，并持久化状态；展开时重渲染全部日志。 */
     toggleExpandCollapsed(): void {
-        const isCollapsed = this.window.classList.toggle("collapsed");
-        this.toggleBtn.classList.toggle("collapsed");
+        const isCollapsed = this.window.classList.toggle('collapsed');
+        this.toggleBtn.classList.toggle('collapsed');
         if (isCollapsed) {
-            localStorage.setItem(EXPAND_KEY, "no");
+            localStorage.setItem(EXPAND_KEY, 'no');
         } else {
-            localStorage.setItem(EXPAND_KEY, "yes");
+            localStorage.setItem(EXPAND_KEY, 'yes');
             this.reRenderAllLogs();
         }
     }
@@ -216,36 +213,36 @@ export class Logger {
     /** 根据 EXPAND_KEY 恢复初始展开/折叠状态。 */
     checkInitialCollapseState(): void {
         const stored = localStorage.getItem(EXPAND_KEY);
-        if (stored && stored !== "no") {
-            this.window.classList.toggle("collapsed");
-            this.toggleBtn.classList.toggle("collapsed");
+        if (stored && stored !== 'no') {
+            this.window.classList.toggle('collapsed');
+            this.toggleBtn.classList.toggle('collapsed');
             setTimeout(() => {
                 this.content.scrollTop = this.content.scrollHeight;
             }, 0);
         } else {
-            this.window.classList.add("collapsed");
-            this.toggleBtn.classList.add("collapsed");
+            this.window.classList.add('collapsed');
+            this.toggleBtn.classList.add('collapsed');
         }
     }
 
     /** 根据 MAXIMIZE_KEY 恢复初始最大化状态。 */
     checkInitialMaximizeState(): void {
-        if (localStorage.getItem(MAXIMIZE_KEY) === "maximized") {
-            this.window.classList.add("maximized");
-            this.maximizeBtn.classList.add("active");
+        if (localStorage.getItem(MAXIMIZE_KEY) === 'maximized') {
+            this.window.classList.add('maximized');
+            this.maximizeBtn.classList.add('active');
         }
     }
 
     /** 切换最大化/还原，持久化状态并在展开时滚到底部。 */
     toggleMaximize(): void {
-        const isMaximized = this.window.classList.toggle("maximized");
-        this.maximizeBtn.classList.toggle("active", isMaximized);
+        const isMaximized = this.window.classList.toggle('maximized');
+        this.maximizeBtn.classList.toggle('active', isMaximized);
         if (isMaximized) {
-            localStorage.setItem(MAXIMIZE_KEY, "maximized");
+            localStorage.setItem(MAXIMIZE_KEY, 'maximized');
         } else {
-            localStorage.setItem(MAXIMIZE_KEY, "minimized");
+            localStorage.setItem(MAXIMIZE_KEY, 'minimized');
         }
-        if (!this.window.classList.contains("collapsed")) {
+        if (!this.window.classList.contains('collapsed')) {
             this.content.scrollTop = this.content.scrollHeight;
         }
     }
@@ -263,14 +260,12 @@ export class Logger {
      * @param extraArgs 其余参数，拼接到消息
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addLog(message: any, typeArg: any = "base", ...extraArgs: any[]): void {
+    addLog(message: any, typeArg: any = 'base', ...extraArgs: any[]): void {
         if (!this.maxLogCountInitialized) {
             this.maxLogCountInitialized = true;
-            storageManager
-                .getSetting("clogMsgCount", 2000)
-                .then((v: number) => {
-                    this.maxLogCount = v;
-                });
+            storageManager.getSetting('clogMsgCount', 2000).then((v: number) => {
+                this.maxLogCount = v;
+            });
         }
         const initialized = this.tryInitialize();
         let resolvedType: string;
@@ -279,36 +274,35 @@ export class Logger {
             resolvedType = typeArg;
             resolvedExtra = extraArgs;
         } else {
-            resolvedType = "base";
+            resolvedType = 'base';
             resolvedExtra = [typeArg, ...extraArgs];
         }
-        resolvedType = LOG_TYPE_STYLES[resolvedType] ? resolvedType : "base";
+        resolvedType = LOG_TYPE_STYLES[resolvedType] ? resolvedType : 'base';
         const allParts: any[] = [message, ...resolvedExtra];
-        let messageType: string = "msg";
+        let messageType: string = 'msg';
         const parts: string[] = [];
         allParts.forEach((part) => {
-            if (Object.prototype.toString.call(part) === "[object Error]") {
+            if (Object.prototype.toString.call(part) === '[object Error]') {
                 parts.push(String(part));
-            } else if (typeof part === "object" && part !== null) {
+            } else if (typeof part === 'object' && part !== null) {
                 try {
-                    parts.push("<br/>" + JSON.stringify(part, null, 2));
-                    messageType = "json";
+                    parts.push('<br/>' + JSON.stringify(part, null, 2));
+                    messageType = 'json';
                 } catch {
                     parts.push(String(part));
-                    messageType = "msg";
+                    messageType = 'msg';
                 }
             } else {
                 parts.push(String(part));
             }
         });
-        let formattedMessage: string = parts.join("  ");
+        let formattedMessage: string = parts.join('  ');
         formattedMessage = formattedMessage.replace(
             /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]/gi,
             (match) => {
-                const isHttpOrFtp =
-                    match.startsWith("http") || match.startsWith("ftp");
-                const isProtocolRelative = match.startsWith("//");
-                const isWww = match.startsWith("www.");
+                const isHttpOrFtp = match.startsWith('http') || match.startsWith('ftp');
+                const isProtocolRelative = match.startsWith('//');
+                const isWww = match.startsWith('www.');
                 let href = match;
                 if (isProtocolRelative) {
                     href = `http:${match}`;
@@ -316,21 +310,21 @@ export class Logger {
                     href = `http://${match}`;
                 }
                 return `<a href="${href}" target="_blank">${match}</a>`;
-            },
+            }
         );
         const entry: LogEntry = {
             message: formattedMessage,
             messageType,
             type: resolvedType,
             timestamp: new Date(),
-            id: Date.now() + Math.random(),
+            id: Date.now() + Math.random()
         };
         this.logs.push(entry);
         if (this.logs.length > this.maxLogCount) {
             const firstEntry = this.logs[0];
             if (initialized) {
                 const oldEl = this.content.querySelector<HTMLDivElement>(
-                    `.console-logger-entry[data-id="${firstEntry.id}"]`,
+                    `.console-logger-entry[data-id="${firstEntry.id}"]`
                 );
                 if (oldEl) {
                     this.logs.shift();
@@ -348,7 +342,7 @@ export class Logger {
     log(...args: any[]): void {
         const [first, ...rest] = args;
         setTimeout(() => {
-            this.addLog(first, "base", ...rest);
+            this.addLog(first, 'base', ...rest);
         }, 0);
     }
 
@@ -358,7 +352,7 @@ export class Logger {
         const [first, ...rest] = args;
         console.error(...args);
         setTimeout(() => {
-            this.addLog(first, "error", ...rest);
+            this.addLog(first, 'error', ...rest);
         }, 0);
     }
 
@@ -367,7 +361,7 @@ export class Logger {
     warn(...args: any[]): void {
         const [first, ...rest] = args;
         setTimeout(() => {
-            this.addLog(first, "warn", ...rest);
+            this.addLog(first, 'warn', ...rest);
         }, 0);
     }
 
@@ -376,7 +370,7 @@ export class Logger {
     debug(...args: any[]): void {
         const [first, ...rest] = args;
         setTimeout(() => {
-            this.addLog(first, "debug", ...rest);
+            this.addLog(first, 'debug', ...rest);
         }, 0);
     }
 
@@ -385,10 +379,10 @@ export class Logger {
      * @param entry 待渲染条目
      */
     renderLog(entry: LogEntry): void {
-        if (this.container.style.display === "none") {
+        if (this.container.style.display === 'none') {
             return;
         }
-        if (this.window.classList.contains("collapsed")) {
+        if (this.window.classList.contains('collapsed')) {
             return;
         }
         if (!(FILTER_TYPE_MAP[this.currentFilter] || []).includes(entry.type)) {
@@ -396,25 +390,21 @@ export class Logger {
         }
         const el = this._createLogElement(entry);
         this.content.appendChild(el);
-        if (
-            !this.window.classList.contains("collapsed") &&
-            !this.userScrolledUp
-        ) {
+        if (!this.window.classList.contains('collapsed') && !this.userScrolledUp) {
             this.content.scrollTop = this.content.scrollHeight;
         }
     }
 
     /** 重新渲染全部日志（清空内容区后按当前过滤器批量重建）。 */
     reRenderAllLogs(): void {
-        if (this.container.style.display !== "none") {
-            if (!this.window.classList.contains("collapsed")) {
+        if (this.container.style.display !== 'none') {
+            if (!this.window.classList.contains('collapsed')) {
                 setTimeout(() => {
-                    this.content.innerHTML = "";
+                    this.content.innerHTML = '';
                     if (this.logs.length === 0) {
                         return;
                     }
-                    const filterTypes =
-                        FILTER_TYPE_MAP[this.currentFilter] || [];
+                    const filterTypes = FILTER_TYPE_MAP[this.currentFilter] || [];
                     const fragment = document.createDocumentFragment();
                     this.logs.forEach((entry) => {
                         if (filterTypes.includes(entry.type)) {
@@ -435,26 +425,24 @@ export class Logger {
      * @returns 日志条目 DOM
      */
     _createLogElement(entry: LogEntry): HTMLDivElement {
-        const el = document.createElement("div");
-        el.className = "console-logger-entry";
+        const el = document.createElement('div');
+        el.className = 'console-logger-entry';
         el.dataset.type = entry.type;
         el.dataset.id = String(entry.id);
         const style = LOG_TYPE_STYLES[entry.type] || LOG_TYPE_STYLES.base;
-        el.style.borderLeft = "3px solid " + style.borderLeftColor;
+        el.style.borderLeft = '3px solid ' + style.borderLeftColor;
         el.style.background = style.background;
         const timeStr = (
-            entry.timestamp instanceof Date
-                ? entry.timestamp
-                : new Date(entry.timestamp)
+            entry.timestamp instanceof Date ? entry.timestamp : new Date(entry.timestamp)
         )
             .toTimeString()
-            .split(" ")[0];
+            .split(' ')[0];
         el.innerHTML = jsxToString(
             <LoggerLogEntry
                 timeStr={timeStr}
                 messageType={entry.messageType}
                 message={entry.message}
-            />,
+            />
         );
         return el;
     }
@@ -470,12 +458,12 @@ export class Logger {
         this.currentFilter = filterType;
         localStorage.setItem(FILTER_KEY, filterType);
         this.filterButtonGroup
-            .querySelectorAll<HTMLDivElement>(".console-logger-filter")
+            .querySelectorAll<HTMLDivElement>('.console-logger-filter')
             .forEach((btn) => {
                 if (btn.dataset.type === filterType) {
-                    btn.classList.add("active");
+                    btn.classList.add('active');
                 } else {
-                    btn.classList.remove("active");
+                    btn.classList.remove('active');
                 }
             });
         this.reRenderAllLogs();
@@ -484,16 +472,13 @@ export class Logger {
     /** 清空全部日志与内容区 DOM。 */
     clear(): void {
         this.logs = [];
-        this.content.innerHTML = "";
+        this.content.innerHTML = '';
     }
 
     /** 显示面板并重渲染日志；未初始化时尝试初始化。 */
     show(): void {
-        if (
-            (this.isInitialized && this.container) ||
-            (this.tryInitialize() && this.container)
-        ) {
-            this.container.style.display = "";
+        if ((this.isInitialized && this.container) || (this.tryInitialize() && this.container)) {
+            this.container.style.display = '';
             this.reRenderAllLogs();
         }
     }
@@ -501,21 +486,21 @@ export class Logger {
     /** 隐藏面板（display:none）。 */
     hide(): void {
         if (this.isInitialized && this.container) {
-            this.container.style.display = "none";
+            this.container.style.display = 'none';
         }
     }
 
     /** 将面板 z-index 调低（让位于弹窗等）。 */
     lowZIndex(): void {
         if (this.isInitialized && this.container) {
-            this.container.style.zIndex = "12345678";
+            this.container.style.zIndex = '12345678';
         }
     }
 
     /** 将面板 z-index 调高（恢复到最前）。 */
     highZIndex(): void {
         if (this.isInitialized && this.container) {
-            this.container.style.zIndex = "999999999";
+            this.container.style.zIndex = '999999999';
         }
     }
 }

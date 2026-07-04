@@ -49,7 +49,7 @@ export class WebDavClient {
      * @param password 密码
      */
     constructor(davUrl: string, username: string, password: string) {
-        this.davUrl = davUrl.endsWith("/") ? davUrl : davUrl + "/";
+        this.davUrl = davUrl.endsWith('/') ? davUrl : davUrl + '/';
         this.username = username;
         this.password = password;
         this.folderName = null;
@@ -59,7 +59,7 @@ export class WebDavClient {
     _getAuthHeaders(): HttpHeaders {
         return {
             Authorization: `Basic ${btoa(`${this.username}:${this.password}`)}`,
-            Depth: "1",
+            Depth: '1'
         };
     }
 
@@ -75,13 +75,13 @@ export class WebDavClient {
         method: string,
         path: string,
         headers: HttpHeaders = {},
-        body?: string,
+        body?: string
     ): Promise<WebDavResponse> {
         return new Promise((resolve, reject) => {
             const url = this.davUrl + path;
             const requestHeaders: HttpHeaders = {
                 ...this._getAuthHeaders(),
-                ...headers,
+                ...headers
             };
             GM_xmlhttpRequest({
                 method,
@@ -93,21 +93,13 @@ export class WebDavClient {
                         resolve(response);
                     } else {
                         console.error(response);
-                        reject(
-                            new Error(
-                                `请求失败 ${response.status}: ${response.statusText}`,
-                            ),
-                        );
+                        reject(new Error(`请求失败 ${response.status}: ${response.statusText}`));
                     }
                 },
                 onerror: (error: unknown) => {
-                    console.error("请求WebDav发生错误:", error);
-                    reject(
-                        new Error(
-                            "请求WebDav失败, 请检查服务是否启动, 凭证是否正确",
-                        ),
-                    );
-                },
+                    console.error('请求WebDav发生错误:', error);
+                    reject(new Error('请求WebDav失败, 请检查服务是否启动, 凭证是否正确'));
+                }
             });
         });
     }
@@ -119,19 +111,10 @@ export class WebDavClient {
      * @param filename 文件名
      * @param content  文本内容
      */
-    async backup(
-        folder: string,
-        filename: string,
-        content: string,
-    ): Promise<void> {
-        await this._sendRequest("MKCOL", folder);
-        const path = folder + "/" + filename;
-        await this._sendRequest(
-            "PUT",
-            path,
-            { "Content-Type": "text/plain" },
-            content,
-        );
+    async backup(folder: string, filename: string, content: string): Promise<void> {
+        await this._sendRequest('MKCOL', folder);
+        const path = folder + '/' + filename;
+        await this._sendRequest('PUT', path, { 'Content-Type': 'text/plain' }, content);
     }
 
     /**
@@ -142,15 +125,15 @@ export class WebDavClient {
     async getFileList(folder: string): Promise<WebDavFileItem[]> {
         const responseText = (
             await this._sendRequest(
-                "PROPFIND",
+                'PROPFIND',
                 folder,
-                { "Content-Type": "application/xml" },
-                '<?xml version="1.0"?>\n                <d:propfind xmlns:d="DAV:">\n                    <d:prop>\n                        <d:displayname />\n                        <d:getcontentlength />\n                        <d:creationdate />\n                        <d:getlastmodified />\n                        <d:iscollection />\n                    </d:prop>\n                </d:propfind>\n            ',
+                { 'Content-Type': 'application/xml' },
+                '<?xml version="1.0"?>\n                <d:propfind xmlns:d="DAV:">\n                    <d:prop>\n                        <d:displayname />\n                        <d:getcontentlength />\n                        <d:creationdate />\n                        <d:getlastmodified />\n                        <d:iscollection />\n                    </d:prop>\n                </d:propfind>\n            '
             )
         ).responseText;
         const responses = new DOMParser()
-            .parseFromString(responseText, "text/xml")
-            .getElementsByTagNameNS("DAV:", "response");
+            .parseFromString(responseText, 'text/xml')
+            .getElementsByTagNameNS('DAV:', 'response');
         const items: WebDavFileItem[] = [];
         for (let index = 0; index < responses.length; index++) {
             if (index === 0) {
@@ -159,27 +142,20 @@ export class WebDavClient {
             const responseElement = responses[index];
             console.log(responseElement);
             const displayName =
-                responseElement.getElementsByTagNameNS("DAV:", "displayname")[0]
-                    ?.textContent || "";
+                responseElement.getElementsByTagNameNS('DAV:', 'displayname')[0]?.textContent || '';
             const contentLength =
-                responseElement.getElementsByTagNameNS(
-                    "DAV:",
-                    "getcontentlength",
-                )[0]?.textContent || "0";
+                responseElement.getElementsByTagNameNS('DAV:', 'getcontentlength')[0]
+                    ?.textContent || '0';
             const createTime =
-                responseElement.getElementsByTagNameNS("DAV:", "creationdate")[0]
-                    ?.textContent ||
-                responseElement.getElementsByTagNameNS(
-                    "DAV:",
-                    "getlastmodified",
-                )[0]?.textContent ||
-                "";
-            if (contentLength !== "0") {
+                responseElement.getElementsByTagNameNS('DAV:', 'creationdate')[0]?.textContent ||
+                responseElement.getElementsByTagNameNS('DAV:', 'getlastmodified')[0]?.textContent ||
+                '';
+            if (contentLength !== '0') {
                 items.push({
                     fileId: displayName,
                     name: displayName,
                     size: Number(contentLength),
-                    createTime,
+                    createTime
                 });
             }
         }
@@ -192,9 +168,9 @@ export class WebDavClient {
      * @param filename 文件名（会经 encodeURI 编码）
      */
     async deleteFile(filename: string): Promise<void> {
-        const path = this.folderName! + "/" + encodeURI(filename);
-        await this._sendRequest("DELETE", path, {
-            "Cache-Control": "no-cache",
+        const path = this.folderName! + '/' + encodeURI(filename);
+        await this._sendRequest('DELETE', path, {
+            'Cache-Control': 'no-cache'
         });
     }
 
@@ -205,7 +181,7 @@ export class WebDavClient {
      */
     async getBackupList(folder: string): Promise<WebDavFileItem[]> {
         this.folderName = folder;
-        await this._sendRequest("MKCOL", folder);
+        await this._sendRequest('MKCOL', folder);
         return this.getFileList(folder);
     }
 
@@ -215,10 +191,10 @@ export class WebDavClient {
      * @returns 文件文本内容
      */
     async getFileContent(filename: string): Promise<string> {
-        const path = this.folderName! + "/" + filename;
+        const path = this.folderName! + '/' + filename;
         return (
-            await this._sendRequest("GET", path, {
-                Accept: "application/octet-stream",
+            await this._sendRequest('GET', path, {
+                Accept: 'application/octet-stream'
             })
         ).responseText;
     }

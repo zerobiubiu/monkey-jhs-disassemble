@@ -10,12 +10,12 @@
  * jQuery `.each` 回调按本仓库 base-plugin 既有约定改写为 (index, element) 箭头形式，
  * 规避 noImplicitThis；其余控制流与原脚本一致。
  */
-import { BasePlugin } from "./base-plugin";
+import { BasePlugin } from './base-plugin';
 
 export class DetailPagePlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L3333-3335。 */
     getName(): string {
-        return "DetailPagePlugin";
+        return 'DetailPagePlugin';
     }
 
     /** 构造函数：仅调用父类构造，保留原 L3336-3338 结构。 */
@@ -33,15 +33,15 @@ export class DetailPagePlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if ((window as any).isDetailPage) {
-            $(".video-meta-panel a").each((_index: number, element: any) => {
-                const href: string | undefined = $(element).attr("href");
+            $('.video-meta-panel a').each((_index: number, element: any) => {
+                const href: string | undefined = $(element).attr('href');
                 if (
                     href &&
-                    (href.startsWith("http://") ||
-                        href.startsWith("https://") ||
-                        href.startsWith("/"))
+                    (href.startsWith('http://') ||
+                        href.startsWith('https://') ||
+                        href.startsWith('/'))
                 ) {
-                    $(element).attr("target", "_blank");
+                    $(element).attr('target', '_blank');
                 }
             });
             this.handleFancyBox();
@@ -58,23 +58,16 @@ export class DetailPagePlugin extends BasePlugin {
      * 无参数，无返回值，不会抛出异常。
      */
     handleFancyBox(): void {
-        document.addEventListener("click", (event) => {
-            if ((event.target as Element).closest(".fancybox-button--thumbs")) {
-                const thumbsVisible: boolean =
-                    !$(".fancybox-thumbs").is(":hidden");
-                localStorage.setItem(
-                    "jhs_fancyboxThumbs",
-                    thumbsVisible.toString(),
-                );
-                unsafeWindow.$.fancybox.defaults.thumbs.autoStart =
-                    thumbsVisible;
+        document.addEventListener('click', (event) => {
+            if ((event.target as Element).closest('.fancybox-button--thumbs')) {
+                const thumbsVisible: boolean = !$('.fancybox-thumbs').is(':hidden');
+                localStorage.setItem('jhs_fancyboxThumbs', thumbsVisible.toString());
+                unsafeWindow.$.fancybox.defaults.thumbs.autoStart = thumbsVisible;
             }
         });
         if (unsafeWindow.$.fancybox !== undefined) {
-            const storedValue: string | null =
-                localStorage.getItem("jhs_fancyboxThumbs");
-            unsafeWindow.$.fancybox.defaults.thumbs.autoStart =
-                storedValue === "true";
+            const storedValue: string | null = localStorage.getItem('jhs_fancyboxThumbs');
+            unsafeWindow.$.fancybox.defaults.thumbs.autoStart = storedValue === 'true';
         }
     }
 }

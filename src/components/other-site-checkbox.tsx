@@ -36,17 +36,13 @@ export interface OtherSiteCheckboxProps {
  * 渲染单个站点启用复选框的 JSX。
  * @returns checkbox div JSX，经 jsxToString 转 HTML 字符串后供 innerHTML 拼接。
  */
-export function OtherSiteCheckbox({
-    id,
-    isEnabled,
-    isJavdbSite,
-}: OtherSiteCheckboxProps) {
+export function OtherSiteCheckbox({ id, isEnabled, isJavdbSite }: OtherSiteCheckboxProps) {
     return (
         <div
             style={{
-                marginRight: "15px",
-                display: "flex",
-                alignItems: isJavdbSite ? "center" : "flex-start",
+                marginRight: '15px',
+                display: 'flex',
+                alignItems: isJavdbSite ? 'center' : 'flex-start'
             }}
         >
             <input
@@ -54,17 +50,17 @@ export function OtherSiteCheckbox({
                 id={`checkbox-${id}`}
                 data-site-id={id}
                 checked={isEnabled}
-                style={{ marginRight: "8px", cursor: "pointer" }}
+                style={{ marginRight: '8px', cursor: 'pointer' }}
             />
             <label
-                {...{ for: `checkbox-${id}` } as Record<string, string>}
+                {...({ for: `checkbox-${id}` } as Record<string, string>)}
                 style={{
-                    color: "#333",
-                    fontWeight: "500",
-                    cursor: "pointer",
+                    color: '#333',
+                    fontWeight: '500',
+                    cursor: 'pointer'
                 }}
             >
-                {id.replace("Btn", "")}
+                {id.replace('Btn', '')}
             </label>
         </div>
     );

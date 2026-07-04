@@ -15,17 +15,13 @@
  * 仅 JS→TS 转换与命名优化，控制流与原脚本保持一致。
  */
 
-import { ACTOR, ACTRESS, CENSORED, UNCENSORED } from "../constants/site";
-import {
-    FAVORITE_ACTION,
-    FILTER_ACTION,
-    HAS_WATCH_ACTION,
-} from "../constants/status";
+import { ACTOR, ACTRESS, CENSORED, UNCENSORED } from '../constants/site';
+import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../constants/status';
 
 /** 「已下载」状态兼容常量（原 g，已下载功能删除后保留以兼容历史数据） */
-const HAS_DOWN_STATUS = "hasDown";
+const HAS_DOWN_STATUS = 'hasDown';
 /** 无码标签（原 addFavoriteActressList 内局部 d） */
-const UNCENSORED_TAG = "(無碼)";
+const UNCENSORED_TAG = '(無碼)';
 
 /** 番号记录（carList / blacklistCarList 通用） */
 export interface CarRecord {
@@ -106,21 +102,21 @@ export class StorageManager {
     /** 单例实例（原 n.instance） */
     private static instance: StorageManager | null = null;
 
-    private readonly car_list_key = "car_list";
-    private readonly filter_keyword_title_key = "filter_keyword_title";
-    private readonly filter_keyword_review_key = "filter_keyword_review";
-    private readonly setting_key = "setting";
-    private readonly blacklist_key = "blacklist";
-    private readonly blacklist_car_list_key = "blacklist_car_list";
-    private readonly favorite_actresses_key = "favorite_actresses";
-    private readonly highlighted_tags_key = "highlighted_tags";
+    private readonly car_list_key = 'car_list';
+    private readonly filter_keyword_title_key = 'filter_keyword_title';
+    private readonly filter_keyword_review_key = 'filter_keyword_review';
+    private readonly setting_key = 'setting';
+    private readonly blacklist_key = 'blacklist';
+    private readonly blacklist_car_list_key = 'blacklist_car_list';
+    private readonly favorite_actresses_key = 'favorite_actresses';
+    private readonly highlighted_tags_key = 'highlighted_tags';
 
     /** localforage 实例 */
     private readonly forage: any = localforage.createInstance({
         driver: localforage.INDEXEDDB,
-        name: "JAV-JHS",
+        name: 'JAV-JHS',
         version: 1,
-        storeName: "appData",
+        storeName: 'appData'
     });
 
     /** 黑名单番号清单缓存 */
@@ -130,7 +126,7 @@ export class StorageManager {
 
     constructor() {
         if (StorageManager.instance) {
-            throw new Error("StorageManager已被实例化过了!");
+            throw new Error('StorageManager已被实例化过了!');
         }
         StorageManager.instance = this;
     }
@@ -154,17 +150,16 @@ export class StorageManager {
      * @throws carNum 为空 / url 为空 / 已在对应列表 / actionType 非法
      */
     _saveSingleCar(input: CarSaveInput, list: CarRecord[]): void {
-        let { carNum, url, names, actionType, publishTime, starId, score } =
-            input;
+        let { carNum, url, names, actionType, publishTime, starId, score } = input;
         if (!carNum) {
-            show.error("番号为空!");
-            throw new Error("番号为空!");
+            show.error('番号为空!');
+            throw new Error('番号为空!');
         }
         if (!url) {
-            show.error("url为空!");
-            throw new Error("url为空!");
+            show.error('url为空!');
+            throw new Error('url为空!');
         }
-        if (!url.includes("http")) {
+        if (!url.includes('http')) {
             url = window.location.origin + url;
         }
         if (names) {
@@ -191,10 +186,10 @@ export class StorageManager {
                 carNum,
                 url,
                 names,
-                status: "",
+                status: '',
                 createDate: now,
                 updateDate: now,
-                publishTime,
+                publishTime
             };
             if (starId) {
                 car.starId = starId;
@@ -228,7 +223,7 @@ export class StorageManager {
                 car.status = HAS_WATCH_ACTION;
                 break;
             default: {
-                const msg = "actionType错误, 请联系作者更正: " + actionType;
+                const msg = 'actionType错误, 请联系作者更正: ' + actionType;
                 show.error(msg);
                 throw new Error(msg);
             }
@@ -241,8 +236,7 @@ export class StorageManager {
      * @throws 透传 _saveSingleCar
      */
     async saveCar(input: CarSaveInput): Promise<void> {
-        const list: CarRecord[] =
-            (await this.forage.getItem(this.car_list_key)) || [];
+        const list: CarRecord[] = (await this.forage.getItem(this.car_list_key)) || [];
         this._saveSingleCar(input, list);
         await this.forage.setItem(this.car_list_key, list);
         await this.removeNewVideoList([input.carNum]);
@@ -256,21 +250,20 @@ export class StorageManager {
     async updateCarInfo(input: CarSaveInput): Promise<void> {
         let { carNum, url, names, actionType, remark } = input;
         if (!carNum) {
-            show.error("番号为空!");
-            throw new Error("番号为空!");
+            show.error('番号为空!');
+            throw new Error('番号为空!');
         }
         if (!url) {
-            show.error("url为空!");
-            throw new Error("url为空!");
+            show.error('url为空!');
+            throw new Error('url为空!');
         }
         if (names) {
             names = names.trim();
         }
-        const list: CarRecord[] =
-            (await this.forage.getItem(this.car_list_key)) || [];
+        const list: CarRecord[] = (await this.forage.getItem(this.car_list_key)) || [];
         const car = list.find((item) => item.carNum === carNum);
         if (!car) {
-            const msg = "数据不存在: " + carNum;
+            const msg = '数据不存在: ' + carNum;
             show.error(msg);
             throw new Error(msg);
         }
@@ -286,7 +279,7 @@ export class StorageManager {
                 car.status = HAS_WATCH_ACTION;
                 break;
             default: {
-                const msg = "actionType错误, 请联系作者更正: " + actionType;
+                const msg = 'actionType错误, 请联系作者更正: ' + actionType;
                 show.error(msg);
                 throw new Error(msg);
             }
@@ -301,11 +294,10 @@ export class StorageManager {
      */
     async saveCarList(inputs: CarSaveInput[]): Promise<void> {
         if (!inputs || !Array.isArray(inputs) || inputs.length === 0) {
-            show.error("记录列表为空!");
-            throw new Error("记录列表为空!");
+            show.error('记录列表为空!');
+            throw new Error('记录列表为空!');
         }
-        const list: CarRecord[] =
-            (await this.forage.getItem(this.car_list_key)) || [];
+        const list: CarRecord[] = (await this.forage.getItem(this.car_list_key)) || [];
         for (const item of inputs) {
             try {
                 this._saveSingleCar(item, list);
@@ -327,7 +319,7 @@ export class StorageManager {
             const filtered = actress.newVideoList.filter((carNum) => {
                 const matched = carNums.includes(carNum);
                 if (matched) {
-                    clog.log("移除关联女优新作品", actress.name, carNum);
+                    clog.log('移除关联女优新作品', actress.name, carNum);
                     changed = true;
                 }
                 return !matched;
@@ -368,10 +360,7 @@ export class StorageManager {
         const numSet = new Set(carNums);
         const filtered = list.filter((item) => !numSet.has(item.carNum));
         const removed = beforeLen - filtered.length;
-        return (
-            removed !== 0 &&
-            (await this.forage.setItem(this.car_list_key, filtered), removed)
-        );
+        return removed !== 0 && (await this.forage.setItem(this.car_list_key, filtered), removed);
     }
 
     // ===== 黑名单演员 =====
@@ -389,13 +378,13 @@ export class StorageManager {
     async addBlacklistItem(item: BlacklistItem): Promise<void> {
         let { starId, name, allName, role, movieType, url } = item;
         if (!starId) {
-            throw new Error("缺失starId");
+            throw new Error('缺失starId');
         }
         if (!name) {
-            throw new Error("缺失name");
+            throw new Error('缺失name');
         }
         if (!role) {
-            throw new Error("缺失role");
+            throw new Error('缺失role');
         }
         const list = await this.getBlacklist();
         const existing = list.find((entry) => entry.starId === starId);
@@ -403,7 +392,7 @@ export class StorageManager {
             existing.url = url;
             existing.role = role;
             existing.movieType = movieType;
-            clog.log("更新黑名单演员信息", existing);
+            clog.log('更新黑名单演员信息', existing);
         } else {
             const created: BlacklistItem = {
                 starId,
@@ -412,10 +401,10 @@ export class StorageManager {
                 createTime: utils.getNowStr(),
                 role,
                 movieType,
-                url,
+                url
             };
             list.push(created);
-            clog.log("增加黑名单演员信息", created);
+            clog.log('增加黑名单演员信息', created);
         }
         await this.forage.setItem(this.blacklist_key, list);
     }
@@ -427,7 +416,7 @@ export class StorageManager {
      */
     async updateBlacklistItem(item: BlacklistItem): Promise<void> {
         if (!item || !item.starId) {
-            throw new Error("参数不全");
+            throw new Error('参数不全');
         }
         const list = await this.getBlacklist();
         const existing = list.find((entry) => entry.starId === item.starId);
@@ -460,8 +449,7 @@ export class StorageManager {
         if (cached && cached.length > 0) {
             return cached;
         }
-        const fresh: CarRecord[] =
-            (await this.forage.getItem(this.blacklist_car_list_key)) || [];
+        const fresh: CarRecord[] = (await this.forage.getItem(this.blacklist_car_list_key)) || [];
         this.cache_filter_actor_actress_car_list = fresh;
         return fresh;
     }
@@ -477,12 +465,10 @@ export class StorageManager {
         let changed = false;
         const newCarNums: string[] = [];
         for (const item of inputs) {
-            if (
-                !cloned.find((entry: CarRecord) => entry.carNum === item.carNum)
-            ) {
+            if (!cloned.find((entry: CarRecord) => entry.carNum === item.carNum)) {
                 this._saveSingleCar(item, cloned);
                 clog.log(
-                    `屏蔽演员番号: <span style="color: #f40">${item.names} ${item.carNum}</span>`,
+                    `屏蔽演员番号: <span style="color: #f40">${item.names} ${item.carNum}</span>`
                 );
                 changed = true;
                 newCarNums.push(item.carNum);
@@ -522,58 +508,46 @@ export class StorageManager {
         const list = await this.getFavoriteActressList();
         let count = 0;
         for (const item of inputs) {
-            let {
-                starId,
-                name,
-                allName,
-                avatar,
-                lastCheckTime,
-                lastPublishTime,
-                actressType,
-            } = item;
+            let { starId, name, allName, avatar, lastCheckTime, lastPublishTime, actressType } =
+                item;
             if (!starId) {
-                throw new Error("缺失starId");
+                throw new Error('缺失starId');
             }
             if (!name) {
-                throw new Error("缺失name");
+                throw new Error('缺失name');
             }
             if (!allName) {
                 allName = [name];
             }
             if (!actressType) {
                 actressType =
-                    name.includes(UNCENSORED_TAG) ||
-                    allName.some((n) => n.includes(UNCENSORED_TAG))
+                    name.includes(UNCENSORED_TAG) || allName.some((n) => n.includes(UNCENSORED_TAG))
                         ? UNCENSORED
                         : CENSORED;
             }
-            name = name.replace(UNCENSORED_TAG, "");
-            allName = allName.map((n) => n.replace(UNCENSORED_TAG, ""));
+            name = name.replace(UNCENSORED_TAG, '');
+            allName = allName.map((n) => n.replace(UNCENSORED_TAG, ''));
             const existing = list.find((entry) => entry.starId === starId);
             if (existing) {
-                if (!existing.avatar || !existing.avatar.includes("https")) {
+                if (!existing.avatar || !existing.avatar.includes('https')) {
                     if (avatar) {
                         clog.log(avatar);
                         existing.avatar = avatar;
-                        clog.log(
-                            `<span style="color: #f40">补全女优头像: ${name}</span>`,
-                        );
+                        clog.log(`<span style="color: #f40">补全女优头像: ${name}</span>`);
                         count++;
                     }
                 }
                 if (!existing.actressType && actressType) {
                     existing.actressType = actressType;
                     clog.log(
-                        `<span style="color: #f40">补全女优类别: ${name} ${actressType}</span>`,
+                        `<span style="color: #f40">补全女优类别: ${name} ${actressType}</span>`
                     );
                     count++;
                 }
                 if (existing.name.includes(UNCENSORED_TAG)) {
                     existing.name = name;
                     existing.allName = allName;
-                    clog.log(
-                        `<span style="color: #f40">更正女优名字: ${name} ${allName}</span>`,
-                    );
+                    clog.log(`<span style="color: #f40">更正女优名字: ${name} ${allName}</span>`);
                     count++;
                 }
                 continue;
@@ -588,17 +562,15 @@ export class StorageManager {
                 lastPublishTime,
                 createDate: now,
                 updateDate: now,
-                actressType,
+                actressType
             });
-            clog.log(
-                `<span style="color: #f40">同步JavDB已收藏的演员: ${name}</span>`,
-            );
+            clog.log(`<span style="color: #f40">同步JavDB已收藏的演员: ${name}</span>`);
             count++;
         }
         if (count > 0) {
             await this.forage.setItem(this.favorite_actresses_key, list);
         } else {
-            clog.log("信息已记录, 无需要进行同步收藏的演员");
+            clog.log('信息已记录, 无需要进行同步收藏的演员');
         }
         return count;
     }
@@ -627,9 +599,7 @@ export class StorageManager {
      * @returns false 表示未找到演员；否则更新落库后无返回
      * @throws 缺失 starId
      */
-    async updateFavoriteActress(
-        item: FavoriteActress,
-    ): Promise<boolean | void> {
+    async updateFavoriteActress(item: FavoriteActress): Promise<boolean | void> {
         const list = await this.getFavoriteActressList();
         const {
             starId,
@@ -640,14 +610,14 @@ export class StorageManager {
             newVideoList,
             lastPublishTime,
             actressType,
-            remark,
+            remark
         } = item;
         if (!starId) {
-            throw new Error("缺失starId");
+            throw new Error('缺失starId');
         }
         const existing = list.find((entry) => entry.starId === starId);
         if (!existing) {
-            clog.error("未找到演员信息", starId, name);
+            clog.error('未找到演员信息', starId, name);
             return false;
         }
         if (name) {
@@ -700,11 +670,7 @@ export class StorageManager {
      * @returns 保存后的列表
      * @throws 单个关键词已存在
      */
-    async #saveKeyword(
-        keyword: string | string[],
-        key: string,
-        label: string,
-    ): Promise<string[]> {
+    async #saveKeyword(keyword: string | string[], key: string, label: string): Promise<string[]> {
         let list: string[];
         if (Array.isArray(keyword)) {
             list = [...keyword];
@@ -727,14 +693,8 @@ export class StorageManager {
      * @returns 列表入参时返回 null，否则无返回
      * @throws 透传 #saveKeyword
      */
-    async saveTitleFilterKeyword(
-        keyword: string | string[],
-    ): Promise<void | null> {
-        await this.#saveKeyword(
-            keyword,
-            this.filter_keyword_title_key,
-            "标题关键词",
-        );
+    async saveTitleFilterKeyword(keyword: string | string[]): Promise<void | null> {
+        await this.#saveKeyword(keyword, this.filter_keyword_title_key, '标题关键词');
         if (Array.isArray(keyword)) {
             return null;
         }
@@ -747,7 +707,7 @@ export class StorageManager {
             const filtered = actress.newVideoList.filter((carNum) => {
                 const matched = carNum.startsWith(keyword);
                 if (matched) {
-                    clog.log("移除关联女优新作品", actress.name, carNum);
+                    clog.log('移除关联女优新作品', actress.name, carNum);
                     changed = true;
                 }
                 return !matched;
@@ -765,14 +725,8 @@ export class StorageManager {
      * @returns 保存后的列表
      * @throws 透传 #saveKeyword
      */
-    async saveReviewFilterKeyword(
-        keyword: string | string[],
-    ): Promise<string[]> {
-        return this.#saveKeyword(
-            keyword,
-            this.filter_keyword_review_key,
-            "评论关键词",
-        );
+    async saveReviewFilterKeyword(keyword: string | string[]): Promise<string[]> {
+        return this.#saveKeyword(keyword, this.filter_keyword_review_key, '评论关键词');
     }
 
     /** 获取标题过滤关键词列表。 @returns 列表（空时返回 []） */
@@ -782,9 +736,7 @@ export class StorageManager {
 
     /** 获取评论过滤关键词列表。 @returns 列表（空时返回 []） */
     async getReviewFilterKeywordList(): Promise<string[]> {
-        return (
-            (await this.forage.getItem(this.filter_keyword_review_key)) || []
-        );
+        return (await this.forage.getItem(this.filter_keyword_review_key)) || [];
     }
 
     // ===== 设置 =====
@@ -795,13 +747,9 @@ export class StorageManager {
      * @param defaultValue 键不存在时的返回值
      * @returns 布尔/数值/原值，或 defaultValue
      */
-    async getSetting(
-        key: string | null = null,
-        defaultValue?: any,
-    ): Promise<any> {
+    async getSetting(key: string | null = null, defaultValue?: any): Promise<any> {
         if (!this.cacheSettingObj) {
-            this.cacheSettingObj =
-                (await this.forage.getItem(this.setting_key)) || {};
+            this.cacheSettingObj = (await this.forage.getItem(this.setting_key)) || {};
         }
         const setting = this.cacheSettingObj!;
         if (key === null) {
@@ -809,13 +757,9 @@ export class StorageManager {
         }
         const val = setting[key];
         if (val) {
-            if (val === "true" || val === "false") {
-                return val.toLowerCase() === "true";
-            } else if (
-                typeof val != "string" ||
-                val.trim() === "" ||
-                isNaN(Number(val))
-            ) {
+            if (val === 'true' || val === 'false') {
+                return val.toLowerCase() === 'true';
+            } else if (typeof val != 'string' || val.trim() === '' || isNaN(Number(val))) {
                 return val;
             } else {
                 return Number(val);
@@ -834,7 +778,7 @@ export class StorageManager {
             await this.forage.setItem(this.setting_key, setting);
             (window as any).clean_cacheSettingObj();
         } else {
-            show.error("设置对象为空");
+            show.error('设置对象为空');
         }
     }
 
@@ -845,7 +789,7 @@ export class StorageManager {
      */
     async saveSettingItem(key: string, value: any): Promise<void> {
         if (!key) {
-            show.error("key 不能为空");
+            show.error('key 不能为空');
             return;
         }
         const setting = await this.getSetting();
@@ -875,7 +819,7 @@ export class StorageManager {
             data[key] = value;
         });
         if (Object.keys(data).length === 0) {
-            throw new Error("没有可导出的数据");
+            throw new Error('没有可导出的数据');
         }
         return data;
     }
@@ -884,45 +828,45 @@ export class StorageManager {
 
     /** 迁移旧表名到新键名（一次性）。 */
     async merge_table_name(): Promise<void> {
-        let oldKey = "filter_actor_actress_info_list";
+        let oldKey = 'filter_actor_actress_info_list';
         let items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.blacklist_key, items);
         }
         await this.forage.removeItem(oldKey);
-        oldKey = "favorite_actresses_info_list";
+        oldKey = 'favorite_actresses_info_list';
         items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.favorite_actresses_key, items);
         }
         await this.forage.removeItem(oldKey);
-        oldKey = "car_list_filter_actor_actress";
+        oldKey = 'car_list_filter_actor_actress';
         items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.blacklist_car_list_key, items);
         }
         await this.forage.removeItem(oldKey);
-        oldKey = "title_filter_keyword";
+        oldKey = 'title_filter_keyword';
         items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.filter_keyword_title_key, items);
         }
         await this.forage.removeItem(oldKey);
-        oldKey = "review_filter_keyword";
+        oldKey = 'review_filter_keyword';
         items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.filter_keyword_review_key, items);
         }
         await this.forage.removeItem(oldKey);
-        oldKey = "highlightedTags";
+        oldKey = 'highlightedTags';
         items = (await this.forage.getItem(oldKey)) || [];
         if (items && items.length > 0) {
-            console.log("更正", oldKey);
+            console.log('更正', oldKey);
             await this.forage.setItem(this.highlighted_tags_key, items);
         }
         await this.forage.removeItem(oldKey);
@@ -932,32 +876,25 @@ export class StorageManager {
     async clean_no_url_blacklist(): Promise<void> {
         const [blacklistCars, blacklist] = await Promise.all([
             this.getBlacklistCarList(),
-            this.getBlacklist(),
+            this.getBlacklist()
         ]);
         if (blacklistCars.length && !blacklistCars[0].actress) {
             return;
         }
-        const nameSet: Set<string | undefined> = new Set(
-            blacklist.map((item) => item.name),
-        );
+        const nameSet: Set<string | undefined> = new Set(blacklist.map((item) => item.name));
         const filteredCars = blacklistCars.filter(
-            (item) => !item.actress || nameSet.has(item.actress),
+            (item) => !item.actress || nameSet.has(item.actress)
         );
         if (blacklistCars.length !== filteredCars.length) {
-            clog.debug("清理 blacklistCarList 前", blacklistCars.length);
-            clog.debug("清理 blacklistCarList 后", filteredCars.length);
-            await this.forage.setItem(
-                this.blacklist_car_list_key,
-                filteredCars,
-            );
+            clog.debug('清理 blacklistCarList 前', blacklistCars.length);
+            clog.debug('清理 blacklistCarList 后', filteredCars.length);
+            await this.forage.setItem(this.blacklist_car_list_key, filteredCars);
             this.cache_filter_actor_actress_car_list = null;
         }
         const actressSet: Set<string | undefined> = new Set(
-            filteredCars.map((item) => item.actress),
+            filteredCars.map((item) => item.actress)
         );
-        let cleanedBlacklist = blacklist.filter((item) =>
-            actressSet.has(item.name),
-        );
+        let cleanedBlacklist = blacklist.filter((item) => actressSet.has(item.name));
         cleanedBlacklist = cleanedBlacklist.map((item) => {
             const cleaned: BlacklistItem = { ...item };
             delete cleaned.key;
@@ -969,10 +906,10 @@ export class StorageManager {
         });
         if (
             blacklist.length !== cleanedBlacklist.length ||
-            blacklist.some((item) => "key" in item || "recordTime" in item)
+            blacklist.some((item) => 'key' in item || 'recordTime' in item)
         ) {
-            clog.debug("清理 Blacklist 前", blacklist.length);
-            clog.debug("清理 Blacklist 后", cleanedBlacklist.length);
+            clog.debug('清理 Blacklist 前', blacklist.length);
+            clog.debug('清理 Blacklist 后', cleanedBlacklist.length);
             await this.forage.setItem(this.blacklist_key, cleanedBlacklist);
         }
     }
@@ -982,24 +919,24 @@ export class StorageManager {
         const setting = await this.getSetting();
         let changed = false;
         const deprecatedKeys = [
-            "enableCheckFilterActorActress",
-            "checkIntervalTime_filterActorActress",
-            "checkIntervalTime_ruleTime",
-            "checkIntervalTime_newVideo",
-            "checkIntervalTime_favoriteActress",
-            "checkFilterTime",
-            "checkFilterConcurrencyCount",
-            "checkFilterSleep",
-            "enableCheckBlacklist",
-            "checkBlacklist_intervalTime",
-            "checkBlacklist_ruleTime",
-            "enableCheckFavoriteActress",
-            "checkFavoriteActress_IntervalTime",
-            "enableCheckNewVideo",
-            "checkNewVideo_intervalTime",
-            "checkNewVideo_ruleTime",
-            "checkConcurrencyCount",
-            "checkRequestSleep",
+            'enableCheckFilterActorActress',
+            'checkIntervalTime_filterActorActress',
+            'checkIntervalTime_ruleTime',
+            'checkIntervalTime_newVideo',
+            'checkIntervalTime_favoriteActress',
+            'checkFilterTime',
+            'checkFilterConcurrencyCount',
+            'checkFilterSleep',
+            'enableCheckBlacklist',
+            'checkBlacklist_intervalTime',
+            'checkBlacklist_ruleTime',
+            'enableCheckFavoriteActress',
+            'checkFavoriteActress_IntervalTime',
+            'enableCheckNewVideo',
+            'checkNewVideo_intervalTime',
+            'checkNewVideo_ruleTime',
+            'checkConcurrencyCount',
+            'checkRequestSleep'
         ];
         for (const key of deprecatedKeys) {
             if (Object.prototype.hasOwnProperty.call(setting, key)) {
@@ -1013,7 +950,7 @@ export class StorageManager {
         }
         if (changed) {
             await this.saveSetting(setting);
-            clog.debug("配置数据已更正");
+            clog.debug('配置数据已更正');
         }
     }
 
@@ -1026,10 +963,7 @@ export class StorageManager {
         let changed = false;
         const merged = list.map((item) => {
             let itemChanged = false;
-            if (
-                Object.prototype.hasOwnProperty.call(item, "isActor") &&
-                !item.role
-            ) {
+            if (Object.prototype.hasOwnProperty.call(item, 'isActor') && !item.role) {
                 item.role = item.isActor ? ACTOR : ACTRESS;
                 delete item.isActor;
                 itemChanged = true;
@@ -1038,15 +972,15 @@ export class StorageManager {
                 try {
                     const pathname = new URL(item.url).pathname;
                     const extracted = pathname
-                        .split("/")
-                        .filter((seg) => seg.trim() !== "")
+                        .split('/')
+                        .filter((seg) => seg.trim() !== '')
                         .pop();
                     if (item.starId !== extracted) {
                         item.starId = extracted;
                         itemChanged = true;
                     }
                 } catch (err) {
-                    clog.error("提取url-starId发生错误", item.url, err);
+                    clog.error('提取url-starId发生错误', item.url, err);
                 }
             }
             if (!item.allName) {
@@ -1058,11 +992,11 @@ export class StorageManager {
                 itemChanged = true;
             }
             // 保留原脚本分支（条件恒为 false，仅对 url 为 undefined 时抛错）
-            if (!item.url && (item.url as any).includes("sort_type")) {
+            if (!item.url && (item.url as any).includes('sort_type')) {
                 const urlObj = new URL(item.url as any);
-                urlObj.searchParams.delete("sort_type");
+                urlObj.searchParams.delete('sort_type');
                 item.url = urlObj.toString();
-                clog.debug("去除黑名单地址sort_type参数");
+                clog.debug('去除黑名单地址sort_type参数');
             }
             if (itemChanged) {
                 changed = true;
@@ -1070,7 +1004,7 @@ export class StorageManager {
             return item;
         });
         if (changed) {
-            clog.debug("更正 Blacklist 数据结构");
+            clog.debug('更正 Blacklist 数据结构');
             await this.forage.setItem(this.blacklist_key, merged);
         }
         const carList = await this.getBlacklistCarList();
@@ -1090,7 +1024,7 @@ export class StorageManager {
             return item;
         });
         if (changed) {
-            clog.debug("更正 blacklistCarList 数据结构");
+            clog.debug('更正 blacklistCarList 数据结构');
             await this.forage.setItem(this.blacklist_car_list_key, mergedCars);
         }
     }
@@ -1115,7 +1049,7 @@ export class StorageManager {
             return item;
         });
         if (changed) {
-            clog.debug("更正 favoriteActressesInfoList 数据结构");
+            clog.debug('更正 favoriteActressesInfoList 数据结构');
             await this.forage.setItem(this.favorite_actresses_key, merged);
         }
     }
@@ -1138,11 +1072,8 @@ export class StorageManager {
             return item;
         });
         if (changed) {
-            clog.debug("更正 blacklistCarList 数据结构 actress->names");
-            await this.forage.setItem(
-                this.blacklist_car_list_key,
-                mergedBlacklistCars,
-            );
+            clog.debug('更正 blacklistCarList 数据结构 actress->names');
+            await this.forage.setItem(this.blacklist_car_list_key, mergedBlacklistCars);
         }
         changed = false;
         const mergedCars = carList.map((item) => {
@@ -1158,7 +1089,7 @@ export class StorageManager {
             return item;
         });
         if (changed) {
-            clog.debug("更正 carList 数据结构 actress->names");
+            clog.debug('更正 carList 数据结构 actress->names');
             await this.forage.setItem(this.car_list_key, mergedCars);
         }
     }

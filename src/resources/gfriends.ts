@@ -20,13 +20,13 @@ export const GFRIENDS_SOURCES: GfriendsSource[] = [
     {
         name: 'jsDelivr (全球CDN)',
         json: 'https://cdn.jsdelivr.net/gh/gfriends/gfriends/Filetree.json',
-        base: 'https://cdn.jsdelivr.net/gh/gfriends/gfriends/Content/',
+        base: 'https://cdn.jsdelivr.net/gh/gfriends/gfriends/Content/'
     },
     {
         name: 'GitHub Raw (备用)',
         json: 'https://raw.githubusercontent.com/gfriends/gfriends/master/Filetree.json',
-        base: 'https://raw.githubusercontent.com/gfriends/gfriends/master/Content/',
-    },
+        base: 'https://raw.githubusercontent.com/gfriends/gfriends/master/Content/'
+    }
 ];
 
 /** 原 nt */

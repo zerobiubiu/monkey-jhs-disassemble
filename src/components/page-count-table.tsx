@@ -21,7 +21,7 @@
  * 经轻量 `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时
  * 依赖，不引入 react-dom/server）。属性值不做转义。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** PageCountTable 的属性。 */
 export interface PageCountTableProps {
@@ -66,20 +66,20 @@ export function PageCountTable({
     keywordFilterCount,
     hasWatchCount,
     waitCheckCount,
-    totalCount,
+    totalCount
 }: PageCountTableProps) {
     const tableStyle: CSSProperties = {
-        borderCollapse: "collapse",
-        width: "100%",
+        borderCollapse: 'collapse',
+        width: '100%'
     };
     const tdStyle: CSSProperties = {
-        padding: "3px",
-        border: "1px solid #ccc",
+        padding: '3px',
+        border: '1px solid #ccc'
     };
     const tdBoldStyle: CSSProperties = {
-        padding: "3px",
-        border: "1px solid #ccc",
-        fontWeight: "bold",
+        padding: '3px',
+        border: '1px solid #ccc',
+        fontWeight: 'bold'
     };
     return (
         <table className="countTable" style={tableStyle}>

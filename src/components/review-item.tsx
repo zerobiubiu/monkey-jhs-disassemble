@@ -45,47 +45,37 @@ export interface ReviewItemProps {
  * 渲染单条评论卡片的 JSX。
  * @returns review item JSX，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
-export function ReviewItem({
-    floor,
-    username,
-    stars,
-    time,
-    likesCount,
-    content,
-}: ReviewItemProps) {
+export function ReviewItem({ floor, username, stars, time, likesCount, content }: ReviewItemProps) {
     return (
         <div
             className="item columns is-desktop"
             style={{
-                display: "block",
-                marginTop: "6px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
-                wordBreak: "break-word",
-                position: "relative",
+                display: 'block',
+                marginTop: '6px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px',
+                wordBreak: 'break-word',
+                position: 'relative'
             }}
         >
             <span
                 style={{
-                    position: "absolute",
-                    top: "5px",
-                    right: "10px",
-                    color: "#999",
-                    fontSize: "12px",
+                    position: 'absolute',
+                    top: '5px',
+                    right: '10px',
+                    color: '#999',
+                    fontSize: '12px'
                 }}
             >
                 #{floor}楼
             </span>
-            {username} &nbsp;&nbsp;{" "}
-            <span
-                className="score-stars"
-                dangerouslySetInnerHTML={{ __html: stars }}
-            />{" "}
+            {username} &nbsp;&nbsp;{' '}
+            <span className="score-stars" dangerouslySetInnerHTML={{ __html: stars }} />{' '}
             <span className="time">{time}</span> &nbsp;&nbsp; 点赞:{likesCount}
             <p
                 className="review-content"
-                style={{ marginTop: "5px" }}
+                style={{ marginTop: '5px' }}
                 dangerouslySetInnerHTML={{ __html: ` ${content} ` }}
             />
         </div>

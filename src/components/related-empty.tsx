@@ -23,10 +23,10 @@ export function RelatedEmpty() {
     return (
         <div
             style={{
-                marginTop: "15px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
+                marginTop: '15px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px'
             }}
         >
             无清单

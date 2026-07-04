@@ -35,7 +35,7 @@
  * react-dom/server）。本表单含动态值（字段值/样式/类别），故用 props。属性
  * 值（value 等）不做转义，与原 layer.open content 字符串拼接行为一致。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** EditActressDialog 的属性。 */
 interface EditActressDialogProps {
@@ -57,13 +57,13 @@ interface EditActressDialogProps {
 
 /** 各 label 的统一样式（原内联 style 对象化）。 */
 const LABEL_STYLE: CSSProperties = {
-    display: "block",
-    marginBottom: "5px",
-    fontWeight: "bold",
+    display: 'block',
+    marginBottom: '5px',
+    fontWeight: 'bold'
 };
 
 /** 各字段容器 div 的统一样式（原 `margin-bottom: 15px`）。 */
-const FIELD_ROW_STYLE: CSSProperties = { marginBottom: "15px" };
+const FIELD_ROW_STYLE: CSSProperties = { marginBottom: '15px' };
 
 /**
  * 渲染编辑女优表单的 JSX。
@@ -84,49 +84,49 @@ export function EditActressDialog({
     allNameText,
     actressType,
     newVideoText,
-    remark,
+    remark
 }: EditActressDialogProps) {
     return (
-        <div style={{ padding: "20px" }}>
-            <div style={{ marginBottom: "15px", textAlign: "center" }}>
+        <div style={{ padding: '20px' }}>
+            <div style={{ marginBottom: '15px', textAlign: 'center' }}>
                 <img
                     id="edit-avatar-preview"
                     src={avatar}
                     alt="Avatar Preview"
                     style={{
-                        width: "100px",
-                        height: "100px",
-                        borderRadius: "50%",
-                        objectFit: "cover",
-                        marginBottom: "10px",
-                        border: "2px solid #ddd",
+                        width: '100px',
+                        height: '100px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        marginBottom: '10px',
+                        border: '2px solid #ddd'
                     }}
                 />
-                <div style={{ textAlign: "left" }}>
+                <div style={{ textAlign: 'left' }}>
                     <label style={LABEL_STYLE}>头像链接:</label>
                     <input
                         type="text"
                         id="edit-actress-avatar"
                         value={avatar}
                         style={{
-                            width: "100%",
-                            padding: "8px",
-                            border: "1px solid #ccc",
-                            borderRadius: "4px",
+                            width: '100%',
+                            padding: '8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px'
                         }}
                     />
-                    <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+                    <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
                         <button
                             type="button"
                             id="search-avatar-btn"
                             style={{
                                 flexGrow: 1,
-                                padding: "8px",
-                                backgroundColor: "#007bff",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
+                                padding: '8px',
+                                backgroundColor: '#007bff',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
                             }}
                         >
                             搜索头像
@@ -135,14 +135,14 @@ export function EditActressDialog({
                             type="button"
                             id="select-cdn-btn"
                             style={{
-                                width: "100px",
-                                padding: "8px",
-                                backgroundColor: "#6c757d",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                                fontSize: "12px",
+                                width: '100px',
+                                padding: '8px',
+                                backgroundColor: '#6c757d',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
                             }}
                         >
                             选择 CDN 源
@@ -157,10 +157,10 @@ export function EditActressDialog({
                     id="edit-actress-name"
                     value={name}
                     style={{
-                        width: "100%",
-                        padding: "8px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px'
                     }}
                 />
             </div>
@@ -175,24 +175,18 @@ export function EditActressDialog({
                 <select
                     id="actressType"
                     style={{
-                        width: "100%",
-                        padding: "10px",
-                        border: "1px solid #ddd",
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd'
                     }}
                 >
-                    <option value="" selected={actressType === ""}>
+                    <option value="" selected={actressType === ''}>
                         未知
                     </option>
-                    <option
-                        value="censored"
-                        selected={actressType === "censored"}
-                    >
+                    <option value="censored" selected={actressType === 'censored'}>
                         有码
                     </option>
-                    <option
-                        value="uncensored"
-                        selected={actressType === "uncensored"}
-                    >
+                    <option value="uncensored" selected={actressType === 'uncensored'}>
                         无码
                     </option>
                 </select>

@@ -15,14 +15,10 @@
  * any；运行时挂载到 window 的 isListPage 以 (window as any).isListPage 访问；
  * 内联 CSS/HTML 模板字符串原样保留。
  */
-import {
-    currentHref,
-    isJavdbSite,
-    isJavbusSite,
-} from "../constants/site";
-import { NO, YES } from "../constants/status";
-import { BasePlugin } from "./base-plugin";
-import autoPageCssRaw from "../styles/auto-page-plugin.css?raw";
+import { currentHref, isJavdbSite, isJavbusSite } from '../constants/site';
+import { NO, YES } from '../constants/status';
+import { BasePlugin } from './base-plugin';
+import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
 
 /** 单页元信息（滚动同步当前页码用）。 */
 export interface PageItem {
@@ -58,7 +54,7 @@ export class AutoPagePlugin extends BasePlugin {
      * @returns "AutoPagePlugin"
      */
     getName(): string {
-        return "AutoPagePlugin";
+        return 'AutoPagePlugin';
     }
 
     /**
@@ -118,30 +114,30 @@ export class AutoPagePlugin extends BasePlugin {
         const selectorConfig = this.getSelector();
         this.container = document.querySelector(selectorConfig.boxSelector);
         if (!this.container) {
-            console.error("没有找到容器节点,停止瀑布流!");
+            console.error('没有找到容器节点,停止瀑布流!');
             return;
         }
         const container = this.container;
-        this.loader = document.createElement("div");
+        this.loader = document.createElement('div');
         const loader = this.loader;
-        loader.className = "jhs-scroll";
+        loader.className = 'jhs-scroll';
         container.parentNode!.insertBefore(loader, container.nextSibling);
         this.pageItems.push({
             page: this.currentPage,
             top: 0,
-            url: window.location.href,
+            url: window.location.href
         });
-        loader.addEventListener("click", () => {
-            if (loader.classList.contains("waterfall-error")) {
+        loader.addEventListener('click', () => {
+            if (loader.classList.contains('waterfall-error')) {
                 this.loadNextPage().then();
             }
         });
-        window.addEventListener("scroll", () => {
+        window.addEventListener('scroll', () => {
             this.checkLoad();
             this.checkScrollPosition();
         });
         const nextLinkEl = document.querySelector<HTMLAnchorElement>(
-            selectorConfig.nextPageSelector,
+            selectorConfig.nextPageSelector
         );
         this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.href;
         this.hasMore = !!this.nextUrl;
@@ -149,7 +145,7 @@ export class AutoPagePlugin extends BasePlugin {
             this.checkLoad();
         }, 1000);
         if (!this.hasMore) {
-            this.setState("waterfall-no-more", "已经到底了");
+            this.setState('waterfall-no-more', '已经到底了');
         }
     }
 
@@ -161,58 +157,55 @@ export class AutoPagePlugin extends BasePlugin {
      * @returns Promise<void>；抓取失败时切换错误态，不抛出
      */
     async loadNextPage(): Promise<void> {
-        if ((await storageManager.getSetting("autoPage", YES)) === NO) {
-            this.setState("waterfall-loading", "");
+        if ((await storageManager.getSetting('autoPage', YES)) === NO) {
+            this.setState('waterfall-loading', '');
             return;
         }
         if (this.isLoading || !this.nextUrl) {
             return;
         }
         this.isLoading = true;
-        this.setState("waterfall-loading", "加载中...");
+        this.setState('waterfall-loading', '加载中...');
         const selectorConfig = this.getSelector();
         try {
-            const pageNum = utils.getUrlParam(this.nextUrl, "page");
+            const pageNum = utils.getUrlParam(this.nextUrl, 'page');
             let maxPage = 60;
-            if (currentHref.includes("c11")) {
+            if (currentHref.includes('c11')) {
                 maxPage = 30;
             }
-            if ((isJavdbSite && pageNum > maxPage) || currentHref.includes("month")) {
-                const beyond60Plugin = this.getBean("Beyond60Plugin");
+            if ((isJavdbSite && pageNum > maxPage) || currentHref.includes('month')) {
+                const beyond60Plugin = this.getBean('Beyond60Plugin');
                 if (beyond60Plugin) {
                     const {
                         html,
                         nextUrl: beyondNextUrl,
-                        hasMore: beyondHasMore,
+                        hasMore: beyondHasMore
                     } = await beyond60Plugin.handleBeyond60(this.nextUrl);
                     if (html) {
                         const scrollHeight = this.container!.scrollHeight;
                         this.pageItems.push({
                             page: this.currentPage + 1,
                             top: scrollHeight,
-                            url: this.nextUrl,
+                            url: this.nextUrl
                         });
-                        $(".movie-list").append(html);
+                        $('.movie-list').append(html);
                     }
                     this.hasMore = beyondHasMore;
                     this.nextUrl = beyondNextUrl;
-                    const paginationHtml = beyond60Plugin.createPagination(
-                        pageNum,
-                        beyondHasMore,
-                    );
-                    $(".pagination").html(paginationHtml);
-                    this.setState("waterfall-loading", "");
+                    const paginationHtml = beyond60Plugin.createPagination(pageNum, beyondHasMore);
+                    $('.pagination').html(paginationHtml);
+                    this.setState('waterfall-loading', '');
                     if (!this.hasMore) {
-                        this.setState("waterfall-no-more", "已经到底了");
+                        this.setState('waterfall-no-more', '已经到底了');
                     }
                     return;
                 }
             }
             const responseHtml = await gmHttp.get(this.nextUrl);
-            clog.log("请求下一页内容:", this.nextUrl);
+            clog.log('请求下一页内容:', this.nextUrl);
             const $dom = utils.htmlTo$dom(responseHtml);
-            if (isJavbusSite && $dom.find(".avatar-box").length > 0) {
-                $dom.find(".avatar-box").parent().remove();
+            if (isJavbusSite && $dom.find('.avatar-box').length > 0) {
+                $dom.find('.avatar-box').parent().remove();
             }
             const items = $dom.find(this.getSelector().requestDomItemSelector);
             const existingList = this.getBoxCarInfoList();
@@ -221,8 +214,8 @@ export class AutoPagePlugin extends BasePlugin {
                 this.nextUrl = null;
                 this.hasMore = false;
                 this.setState(
-                    "waterfall-error",
-                    "翻页内容出现重复数据, 页码受JavDB限制, 已停止瀑布流",
+                    'waterfall-error',
+                    '翻页内容出现重复数据, 页码受JavDB限制, 已停止瀑布流'
                 );
                 return;
             }
@@ -230,25 +223,24 @@ export class AutoPagePlugin extends BasePlugin {
             this.pageItems.push({
                 page: this.currentPage + 1,
                 top: scrollHeight,
-                url: this.nextUrl,
+                url: this.nextUrl
             });
-            const listPagePlugin = this.getBean("ListPagePlugin");
+            const listPagePlugin = this.getBean('ListPagePlugin');
             const coverImgs = $dom.find(this.getSelector().coverImgSelector);
             listPagePlugin.replaceHdImg(coverImgs);
             $(this.getSelector().boxSelector).append(items);
             const nextLinkEl = $dom.find(selectorConfig.nextPageSelector);
-            this.nextUrl =
-                nextLinkEl == null ? undefined : nextLinkEl.attr("href");
+            this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.attr('href');
             this.hasMore = !!this.nextUrl;
-            const paginationEl = $dom.find(".pagination");
-            $(".pagination").replaceWith(paginationEl);
-            this.setState("waterfall-loading", "");
+            const paginationEl = $dom.find('.pagination');
+            $('.pagination').replaceWith(paginationEl);
+            this.setState('waterfall-loading', '');
             if (!this.hasMore) {
-                this.setState("waterfall-no-more", "已经到底了");
+                this.setState('waterfall-no-more', '已经到底了');
             }
         } catch (err) {
-            clog.error("加载失败:", err);
-            this.setState("waterfall-error", "加载失败，点击重试");
+            clog.error('加载失败:', err);
+            this.setState('waterfall-error', '加载失败，点击重试');
         } finally {
             this.isLoading = false;
         }
@@ -279,10 +271,7 @@ export class AutoPagePlugin extends BasePlugin {
         if (!this.loader) {
             return;
         }
-        if (
-            this.loader.getBoundingClientRect().top <
-            window.innerHeight + this.preloadDistance
-        ) {
+        if (this.loader.getBoundingClientRect().top < window.innerHeight + this.preloadDistance) {
             this.loadNextPage().then();
         }
     }
@@ -297,14 +286,14 @@ export class AutoPagePlugin extends BasePlugin {
         if (!(window as any).isListPage) {
             return true;
         }
-        await storageManager.getSetting("autoPage", YES);
+        await storageManager.getSetting('autoPage', YES);
         return [
-            "search?q",
-            "handlePlayback=1",
-            "handleTop=1",
-            "/want_watch_videos",
-            "/watched_videos",
-            "/advanced_search?type=100",
+            'search?q',
+            'handlePlayback=1',
+            'handleTop=1',
+            '/want_watch_videos',
+            '/watched_videos',
+            '/advanced_search?type=100'
         ].some((pattern) => currentHref.includes(pattern));
     }
 
@@ -315,14 +304,11 @@ export class AutoPagePlugin extends BasePlugin {
      * @param url 目标页 URL
      */
     updatePageUrl_old(url: string): void {
-        window.history.pushState({}, "", url);
+        window.history.pushState({}, '', url);
         if (isJavbusSite) {
             const match = url.match(/\/(page|star\/.*?)\/(\d+)/);
             const pageNum = match ? parseInt(match[2], 10) : null;
-            document.title = document.title.replace(
-                /第\d+頁/,
-                "第" + pageNum + "頁",
-            );
+            document.title = document.title.replace(/第\d+頁/, '第' + pageNum + '頁');
         }
     }
 
@@ -333,12 +319,9 @@ export class AutoPagePlugin extends BasePlugin {
      * @param url 目标页 URL
      */
     updatePageUrl(url: string): void {
-        window.history.replaceState({}, "", url);
+        window.history.replaceState({}, '', url);
         if (isJavbusSite) {
-            document.title = document.title.replace(
-                /第\d+頁/,
-                `第${this.currentPage}頁`,
-            );
+            document.title = document.title.replace(/第\d+頁/, `第${this.currentPage}頁`);
         }
     }
 

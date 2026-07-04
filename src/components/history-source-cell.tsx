@@ -33,9 +33,6 @@ export interface HistorySourceCellProps {
  * @returns `<span style="color:...">text</span>` 的 React 元素，经 jsxToString
  *          转 HTML 字符串后供 Tabulator formatter 返回。
  */
-export function HistorySourceCell({
-    text,
-    color,
-}: HistorySourceCellProps) {
+export function HistorySourceCell({ text, color }: HistorySourceCellProps) {
     return <span style={{ color }}>{text}</span>;
 }

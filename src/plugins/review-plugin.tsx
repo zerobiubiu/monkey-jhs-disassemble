@@ -17,24 +17,20 @@
  *   仅替换其中的模板插值变量名。
  * - 控制流（分支、for 循环、IIFE、try/catch/finally、fire-and-forget .then()）与原脚本一致。
  */
-import { BasePlugin } from "./base-plugin";
-import { isJavdbSite, isJavbusSite } from "../constants/site";
-import {
-    API_BASE,
-    reBuildSignature,
-    fetchMovieReviews,
-} from "../constants/api";
-import { YES, NO } from "../constants/status";
-import { ReviewContainers } from "../components/review-containers";
-import { ReviewEmpty } from "../components/review-empty";
-import { ReviewEnd } from "../components/review-end";
-import { ReviewError } from "../components/review-error";
-import { ReviewHeader } from "../components/review-header";
-import { ReviewItem } from "../components/review-item";
-import { ReviewLinkContent } from "../components/review-link-content";
-import { ReviewLoadMore } from "../components/review-load-more";
-import { ReviewLoading } from "../components/review-loading";
-import { jsxToString } from "../core/jsx-to-string";
+import { BasePlugin } from './base-plugin';
+import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { API_BASE, reBuildSignature, fetchMovieReviews } from '../constants/api';
+import { YES, NO } from '../constants/status';
+import { ReviewContainers } from '../components/review-containers';
+import { ReviewEmpty } from '../components/review-empty';
+import { ReviewEnd } from '../components/review-end';
+import { ReviewError } from '../components/review-error';
+import { ReviewHeader } from '../components/review-header';
+import { ReviewItem } from '../components/review-item';
+import { ReviewLinkContent } from '../components/review-link-content';
+import { ReviewLoadMore } from '../components/review-load-more';
+import { ReviewLoading } from '../components/review-loading';
+import { jsxToString } from '../core/jsx-to-string';
 
 export class ReviewPlugin extends BasePlugin {
     /** 评论楼层序号（渲染时自增） */
@@ -49,7 +45,7 @@ export class ReviewPlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L7087-7089。 */
     getName(): string {
-        return "ReviewPlugin";
+        return 'ReviewPlugin';
     }
 
     /**
@@ -66,30 +62,27 @@ export class ReviewPlugin extends BasePlugin {
             if (isJavdbSite) {
                 const movieId = this.parseMovieId(window.location.href);
                 await this.showReview(movieId);
-                await this.getBean("RelatedPlugin").showRelated(
-                    $("#magnets-content"),
-                    movieId,
-                );
+                await this.getBean('RelatedPlugin').showRelated($('#magnets-content'), movieId);
             }
             if (isJavbusSite) {
                 const carNum = this.getPageInfo().carNum!;
                 const searchResults = await (async (query: string) => {
                     const url = `${API_BASE}/v2/search`;
                     const headers = {
-                        "user-agent": "Dart/3.5 (dart:io)",
-                        "accept-language": "zh-TW",
-                        host: "jdforrepam.com",
-                        jdsignature: await reBuildSignature(),
+                        'user-agent': 'Dart/3.5 (dart:io)',
+                        'accept-language': 'zh-TW',
+                        host: 'jdforrepam.com',
+                        jdsignature: await reBuildSignature()
                     };
                     const params = {
                         q: query,
                         page: 1,
-                        type: "movie",
+                        type: 'movie',
                         limit: 1,
-                        movie_type: "all",
-                        from_recent: "false",
-                        movie_filter_by: "all",
-                        movie_sort_by: "relevance",
+                        movie_type: 'all',
+                        from_recent: 'false',
+                        movie_filter_by: 'all',
+                        movie_sort_by: 'relevance'
                     };
                     return (await gmHttp.get(url, params, headers)).data.movies;
                 })(carNum);
@@ -104,7 +97,7 @@ export class ReviewPlugin extends BasePlugin {
                 if (!movieId) {
                     return;
                 }
-                this.showReview(movieId, $("#sample-waterfall")).then();
+                this.showReview(movieId, $('#sample-waterfall')).then();
             }
         }
     }
@@ -118,39 +111,36 @@ export class ReviewPlugin extends BasePlugin {
      * @returns 无返回值；首次展开或设置已展开时会异步触发 fetchAndDisplayReviews
      */
     async showReview(movieId: any, container?: any): Promise<void> {
-        const isExpanded = await storageManager.getSetting(
-            "enableLoadReview",
-            YES,
-        );
-        const target = container || $("#magnets-content");
+        const isExpanded = await storageManager.getSetting('enableLoadReview', YES);
+        const target = container || $('#magnets-content');
         target.append(
             jsxToString(
                 <ReviewHeader
-                    foldText={isExpanded === YES ? "折叠" : "展开"}
-                    iconText={isExpanded === YES ? "▲" : "▼"}
-                />,
-            ),
+                    foldText={isExpanded === YES ? '折叠' : '展开'}
+                    iconText={isExpanded === YES ? '▲' : '▼'}
+                />
+            )
         );
-        $("#reviewsFold").on("click", (event: any) => {
+        $('#reviewsFold').on('click', (event: any) => {
             event.preventDefault();
             event.stopPropagation();
-            const toggleText = $("#reviewsFold .toggle-text");
-            const toggleIcon = $("#reviewsFold .toggle-icon");
-            const isExpand = toggleText.text() === "展开";
-            toggleText.text(isExpand ? "折叠" : "展开");
-            toggleIcon.text(isExpand ? "▲" : "▼");
+            const toggleText = $('#reviewsFold .toggle-text');
+            const toggleIcon = $('#reviewsFold .toggle-icon');
+            const isExpand = toggleText.text() === '展开';
+            toggleText.text(isExpand ? '折叠' : '展开');
+            toggleIcon.text(isExpand ? '▲' : '▼');
             if (isExpand) {
-                $("#reviewsContainer").show();
-                $("#reviewsFooter").show();
+                $('#reviewsContainer').show();
+                $('#reviewsFooter').show();
                 if (!this.isInit) {
                     this.fetchAndDisplayReviews(movieId);
                     this.isInit = true;
                 }
-                storageManager.saveSettingItem("enableLoadReview", YES);
+                storageManager.saveSettingItem('enableLoadReview', YES);
             } else {
-                $("#reviewsContainer").hide();
-                $("#reviewsFooter").hide();
-                storageManager.saveSettingItem("enableLoadReview", NO);
+                $('#reviewsContainer').hide();
+                $('#reviewsFooter').hide();
+                storageManager.saveSettingItem('enableLoadReview', NO);
             }
         });
         target.append(jsxToString(<ReviewContainers />));
@@ -166,29 +156,26 @@ export class ReviewPlugin extends BasePlugin {
      * @returns 无返回值；签名过期等异常会被 catch 并提示，不会向外抛出
      */
     async fetchAndDisplayReviews(movieId: any): Promise<void> {
-        const container = $("#reviewsContainer");
-        const footer = $("#reviewsFooter");
+        const container = $('#reviewsContainer');
+        const footer = $('#reviewsFooter');
         container.append(jsxToString(<ReviewLoading />));
-        const limit: number = await storageManager.getSetting(
-            "reviewCount",
-            20,
-        );
+        const limit: number = await storageManager.getSetting('reviewCount', 20);
         let reviews: any = null;
         try {
             reviews = await fetchMovieReviews(movieId, 1, limit);
         } catch (err: any) {
-            if (err.toString().includes("簽名已過期")) {
-                show.error("生成签名失败, 请检查系统时间及时区是否正确!");
+            if (err.toString().includes('簽名已過期')) {
+                show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
-            clog.error("获取评论失败:", err);
-            console.error("获取评论失败:", err);
+            clog.error('获取评论失败:', err);
+            console.error('获取评论失败:', err);
         } finally {
-            $("#reviewsLoading").remove();
+            $('#reviewsLoading').remove();
         }
         if (!reviews) {
             container.append(jsxToString(<ReviewError />));
-            $("#retryFetchReviews").on("click", async () => {
-                $("#retryFetchReviews").parent().remove();
+            $('#retryFetchReviews').on('click', async () => {
+                $('#retryFetchReviews').parent().remove();
                 await this.fetchAndDisplayReviews(movieId);
             });
             return;
@@ -197,35 +184,30 @@ export class ReviewPlugin extends BasePlugin {
             container.append(jsxToString(<ReviewEmpty />));
             return;
         }
-        const filterKeywords =
-            await storageManager.getReviewFilterKeywordList();
+        const filterKeywords = await storageManager.getReviewFilterKeywordList();
         this.displayReviews(reviews, container, filterKeywords);
         if (reviews.length === limit) {
             footer.html(jsxToString(<ReviewLoadMore />));
             let page = 1;
-            const loadMoreBtn = $("#loadMoreReviews");
-            loadMoreBtn.on("click", async () => {
+            const loadMoreBtn = $('#loadMoreReviews');
+            loadMoreBtn.on('click', async () => {
                 let moreReviews: any;
-                loadMoreBtn.text("加载中...").prop("disabled", true);
+                loadMoreBtn.text('加载中...').prop('disabled', true);
                 page++;
                 try {
                     moreReviews = await fetchMovieReviews(movieId, page, limit);
                 } catch (err: any) {
-                    console.error("加载更多评论失败:", err);
+                    console.error('加载更多评论失败:', err);
                 } finally {
-                    loadMoreBtn
-                        .text("加载失败, 请点击重试")
-                        .prop("disabled", false);
+                    loadMoreBtn.text('加载失败, 请点击重试').prop('disabled', false);
                 }
                 if (moreReviews) {
                     this.displayReviews(moreReviews, container, filterKeywords);
                     if (moreReviews.length < limit) {
                         loadMoreBtn.remove();
-                        $("#reviewsEnd").show();
+                        $('#reviewsEnd').show();
                     } else {
-                        loadMoreBtn
-                            .text("加载更多评论")
-                            .prop("disabled", false);
+                        loadMoreBtn.text('加载更多评论').prop('disabled', false);
                     }
                 }
             });
@@ -246,20 +228,13 @@ export class ReviewPlugin extends BasePlugin {
     displayReviews(reviews: any, container: any, filterKeywords: any): void {
         if (reviews.length) {
             reviews.forEach((review: any) => {
-                if (
-                    filterKeywords.some((keyword: any) =>
-                        review.content.includes(keyword),
-                    )
-                ) {
+                if (filterKeywords.some((keyword: any) => review.content.includes(keyword))) {
                     return;
                 }
-                const stars = Array(review.score)
-                    .fill('<i class="icon-star"></i>')
-                    .join("");
+                const stars = Array(review.score).fill('<i class="icon-star"></i>').join('');
                 const content = review.content.replace(
                     /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
-                    (match: any) =>
-                        jsxToString(<ReviewLinkContent match={match} />),
+                    (match: any) => jsxToString(<ReviewLinkContent match={match} />)
                 );
                 const html = jsxToString(
                     <ReviewItem
@@ -269,7 +244,7 @@ export class ReviewPlugin extends BasePlugin {
                         time={utils.formatDate(review.created_at)}
                         likesCount={review.likes_count}
                         content={content}
-                    />,
+                    />
                 );
                 container.append(html);
             });
@@ -285,32 +260,17 @@ export class ReviewPlugin extends BasePlugin {
      * @returns 无返回值；右键回调内部异步保存关键词并提示，不阻塞本方法
      */
     async rightClickFilter(): Promise<void> {
-        if (
-            (await storageManager.getSetting(
-                "enableTitleSelectFilter",
-                YES,
-            )) === YES
-        ) {
-            utils.rightClick(
-                document.body,
-                ".review-content",
-                async (event: any) => {
-                    const selectedText = window.getSelection()!.toString();
-                    if (selectedText) {
-                        event.preventDefault();
-                        await utils.q(
-                            event,
-                            `是否将 '${selectedText}' 加入评论区关键词?`,
-                            async () => {
-                                await storageManager.saveReviewFilterKeyword(
-                                    selectedText,
-                                );
-                                show.ok("操作成功, 刷新页面后生效");
-                            },
-                        );
-                    }
-                },
-            );
+        if ((await storageManager.getSetting('enableTitleSelectFilter', YES)) === YES) {
+            utils.rightClick(document.body, '.review-content', async (event: any) => {
+                const selectedText = window.getSelection()!.toString();
+                if (selectedText) {
+                    event.preventDefault();
+                    await utils.q(event, `是否将 '${selectedText}' 加入评论区关键词?`, async () => {
+                        await storageManager.saveReviewFilterKeyword(selectedText);
+                        show.ok('操作成功, 刷新页面后生效');
+                    });
+                }
+            });
         }
     }
 }

@@ -37,23 +37,22 @@ export function ReviewHeader({ foldText, iconText }: ReviewHeaderProps) {
     return (
         <div
             style={{
-                display: "flex",
-                alignItems: "center",
-                margin: "16px 0",
-                color: "#666",
-                fontSize: "14px",
+                display: 'flex',
+                alignItems: 'center',
+                margin: '16px 0',
+                color: '#666',
+                fontSize: '14px'
             }}
         >
             <span
                 style={{
                     flex: 1,
-                    height: "1px",
-                    background:
-                        "linear-gradient(to right, transparent, #999, transparent)",
+                    height: '1px',
+                    background: 'linear-gradient(to right, transparent, #999, transparent)'
                 }}
             ></span>
             <span
-                style={{ padding: "0 10px" }}
+                style={{ padding: '0 10px' }}
                 data-tip="想要发表评论? 滑上去, 点击上面的按钮-看过"
             >
                 ❓ 评论区
@@ -61,24 +60,23 @@ export function ReviewHeader({ foldText, iconText }: ReviewHeaderProps) {
             <a
                 id="reviewsFold"
                 style={{
-                    marginLeft: "8px",
-                    color: "#1890ff",
-                    textDecoration: "none",
-                    display: "flex",
-                    alignItems: "center",
+                    marginLeft: '8px',
+                    color: '#1890ff',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center'
                 }}
             >
                 <span className="toggle-text">{foldText}</span>
-                <span className="toggle-icon" style={{ marginLeft: "4px" }}>
+                <span className="toggle-icon" style={{ marginLeft: '4px' }}>
                     {iconText}
                 </span>
             </a>
             <span
                 style={{
                     flex: 1,
-                    height: "1px",
-                    background:
-                        "linear-gradient(to right, transparent, #999, transparent)",
+                    height: '1px',
+                    background: 'linear-gradient(to right, transparent, #999, transparent)'
                 }}
             ></span>
         </div>

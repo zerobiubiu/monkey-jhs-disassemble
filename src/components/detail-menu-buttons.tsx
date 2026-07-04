@@ -29,7 +29,7 @@
  * react，零运行时依赖，不引入 react-dom/server）渲染为 HTML 字符串。
  * 属性值不做转义，与原 jQuery `.after(htmlString)` 行为一致。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** DetailMenuButtons 的属性。 */
 export interface DetailMenuButtonsProps {
@@ -49,19 +49,19 @@ export interface DetailMenuButtonsProps {
 
 /** 外层容器内联样式：flex 两端对齐 + 自动水平边距 + 换行 + 20px 间距。 */
 const wrapperStyle: CSSProperties = {
-    margin: "10px auto",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "20px",
+    margin: '10px auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '20px'
 };
 
 /** 按钮行容器内联样式：flex + 10px 间距 + 换行。 */
 const rowStyle: CSSProperties = {
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap",
+    display: 'flex',
+    gap: '10px',
+    flexWrap: 'wrap'
 };
 
 /**
@@ -74,9 +74,9 @@ function statusBtnStyle(width: string, backgroundColor: string): CSSProperties {
     return {
         width,
         backgroundColor,
-        color: "white",
-        textAlign: "center",
-        padding: "8px 0",
+        color: 'white',
+        textAlign: 'center',
+        padding: '8px 0'
     };
 }
 
@@ -97,29 +97,25 @@ export function DetailMenuButtons({
     favoriteText,
     favoriteColor,
     watchedText,
-    watchedColor,
+    watchedColor
 }: DetailMenuButtonsProps) {
     return (
         <div style={wrapperStyle}>
             <div style={rowStyle}>
-                <a
-                    id="filterBtn"
-                    className="menu-btn"
-                    style={statusBtnStyle("120px", filterColor)}
-                >
+                <a id="filterBtn" className="menu-btn" style={statusBtnStyle('120px', filterColor)}>
                     <span>{filterText}</span>
                 </a>
                 <a
                     id="favoriteBtn"
                     className="menu-btn"
-                    style={statusBtnStyle("120px", favoriteColor)}
+                    style={statusBtnStyle('120px', favoriteColor)}
                 >
                     <span>{favoriteText}</span>
                 </a>
                 <a
                     id="hasWatchBtn"
                     className="menu-btn"
-                    style={statusBtnStyle("120px", watchedColor)}
+                    style={statusBtnStyle('120px', watchedColor)}
                 >
                     <span>{watchedText}</span>
                 </a>
@@ -130,11 +126,11 @@ export function DetailMenuButtons({
                     id="enable-magnets-filter"
                     className="menu-btn"
                     style={{
-                        width: "140px",
-                        backgroundColor: "#c2bd4c",
-                        color: "white",
-                        textAlign: "center",
-                        padding: "8px 0",
+                        width: '140px',
+                        backgroundColor: '#c2bd4c',
+                        color: 'white',
+                        textAlign: 'center',
+                        padding: '8px 0'
                     }}
                 >
                     <span id="magnets-span">关闭磁力过滤</span>
@@ -143,11 +139,11 @@ export function DetailMenuButtons({
                     id="xunLeiSubtitleBtn"
                     className="menu-btn"
                     style={{
-                        width: "120px",
-                        background: "linear-gradient(to left, #375f7c, #2196F3)",
-                        color: "white",
-                        textAlign: "center",
-                        padding: "8px 0",
+                        width: '120px',
+                        background: 'linear-gradient(to left, #375f7c, #2196F3)',
+                        color: 'white',
+                        textAlign: 'center',
+                        padding: '8px 0'
                     }}
                 >
                     <span>字幕 (迅雷)</span>
@@ -156,12 +152,11 @@ export function DetailMenuButtons({
                     id="search-subtitle-btn"
                     className="menu-btn"
                     style={{
-                        width: "160px",
-                        background:
-                            "linear-gradient(to bottom, #8d5656, rgb(196,159,91))",
-                        color: "white",
-                        textAlign: "center",
-                        padding: "8px 0",
+                        width: '160px',
+                        background: 'linear-gradient(to bottom, #8d5656, rgb(196,159,91))',
+                        color: 'white',
+                        textAlign: 'center',
+                        padding: '8px 0'
                     }}
                 >
                     <span>字幕 (SubTitleCat)</span>

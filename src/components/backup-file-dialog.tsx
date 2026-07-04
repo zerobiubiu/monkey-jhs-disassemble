@@ -28,11 +28,8 @@
  */
 export function BackupFileDialog() {
     return (
-        <div style={{ height: "100%", overflow: "hidden" }}>
-            <div
-                id="table-container"
-                style={{ margin: "auto auto !important" }}
-            />
+        <div style={{ height: '100%', overflow: 'hidden' }}>
+            <div id="table-container" style={{ margin: 'auto auto !important' }} />
         </div>
     );
 }

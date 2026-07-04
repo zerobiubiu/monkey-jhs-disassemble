@@ -26,7 +26,7 @@
  * 依赖，不引入 react-dom/server）。属性值不做转义（data-tip/title 等
  * 按本工程约定不转义，与原 jQuery `.append(htmlString)` 行为一致）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** BlacklistDialog 的属性。 */
 interface BlacklistDialogProps {
@@ -42,29 +42,23 @@ interface BlacklistDialogProps {
  */
 export function BlacklistDialog({ showUrlType }: BlacklistDialogProps) {
     const urlTypeStyle: CSSProperties = {
-        textAlign: "center",
-        minWidth: "150px",
-        display: showUrlType ? undefined : "none",
+        textAlign: 'center',
+        minWidth: '150px',
+        display: showUrlType ? undefined : 'none'
     };
     return (
-        <div style={{ padding: "10px 20px", height: "100%", overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", gap: "5px" }}></div>
-                <div style={{ display: "flex", gap: "5px" }}>
-                    <select
-                        id="dataType"
-                        style={{ textAlign: "center", minWidth: "150px" }}
-                    >
+        <div style={{ padding: '10px 20px', height: '100%', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '5px' }}></div>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    <select id="dataType" style={{ textAlign: 'center', minWidth: '150px' }}>
                         <option value="" selected>
                             所有
                         </option>
                         <option value="actor">男演员</option>
                         <option value="actress">女演员</option>
                     </select>
-                    <select
-                        id="statusType"
-                        style={{ textAlign: "center", minWidth: "150px" }}
-                    >
+                    <select id="statusType" style={{ textAlign: 'center', minWidth: '150px' }}>
                         <option value="" selected>
                             --检测状态--
                         </option>
@@ -86,21 +80,14 @@ export function BlacklistDialog({ showUrlType }: BlacklistDialogProps) {
                         id="searchValue"
                         type="text"
                         placeholder="搜索演员"
-                        style={{ padding: "4px 5px" }}
+                        style={{ padding: '4px 5px' }}
                     />
-                    <a
-                        id="cleanQueryBtn"
-                        className="a-info"
-                        style={{ marginLeft: "0" }}
-                    >
+                    <a id="cleanQueryBtn" className="a-info" style={{ marginLeft: '0' }}>
                         重置
                     </a>
                 </div>
             </div>
-            <div
-                id="table-container"
-                style={{ height: "calc(100% - 50px)" }}
-            ></div>
+            <div id="table-container" style={{ height: 'calc(100% - 50px)' }}></div>
         </div>
     );
 }

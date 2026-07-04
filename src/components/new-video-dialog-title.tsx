@@ -21,10 +21,7 @@
  */
 export function NewVideoDialogTitle() {
     return (
-        <span
-            style={{ padding: "0 10px" }}
-            data-tip="数据来源: 女优页面首页,含磁链分类"
-        >
+        <span style={{ padding: '0 10px' }} data-tip="数据来源: 女优页面首页,含磁链分类">
             新作品检测 ❓
         </span>
     );

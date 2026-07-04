@@ -46,8 +46,8 @@ export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
                     <img
                         loading="lazy"
                         src={movie.cover_url.replace(
-                            "https://tp-iu.cmastd.com/rhe951l4q",
-                            "https://c0.jdbstatic.com",
+                            'https://tp-iu.cmastd.com/rhe951l4q',
+                            'https://c0.jdbstatic.com'
                         )}
                         alt=""
                     />
@@ -64,10 +64,8 @@ export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
                         <span className="tag is-success">含磁鏈</span>
                     ) : (
                         <span className="tag is-info">无磁鏈</span>
-                    )}{" "}
-                    {movie.new_magnets ? (
-                        <span className="tag is-info">今日新種</span>
-                    ) : null}
+                    )}{' '}
+                    {movie.new_magnets ? <span className="tag is-info">今日新種</span> : null}
                 </div>
             </a>
         </div>

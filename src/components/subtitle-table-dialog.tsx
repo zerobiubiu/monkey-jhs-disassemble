@@ -31,11 +31,8 @@
  */
 export function SubtitleTableDialog() {
     return (
-        <div style={{ height: "100%", overflow: "hidden" }}>
-            <div
-                id="xunlei-table-container"
-                style={{ height: "100%", paddingBottom: "20px" }}
-            />
+        <div style={{ height: '100%', overflow: 'hidden' }}>
+            <div id="xunlei-table-container" style={{ height: '100%', paddingBottom: '20px' }} />
         </div>
     );
 }

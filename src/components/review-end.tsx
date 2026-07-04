@@ -22,10 +22,10 @@ export function ReviewEnd() {
     return (
         <div
             style={{
-                textAlign: "center",
-                padding: "10px",
-                color: "#666",
-                marginTop: "10px",
+                textAlign: 'center',
+                padding: '10px',
+                color: '#666',
+                marginTop: '10px'
             }}
         >
             已加载全部评论

@@ -32,8 +32,8 @@ import {
     isJavdbSite,
     isJavbusSite,
     isSearchOrUserPage,
-    ACTOR,
-} from "../constants/site";
+    ACTOR
+} from '../constants/site';
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -45,16 +45,16 @@ import {
     WATCHED_TEXT,
     WATCHED_COLOR,
     NO,
-    YES,
-} from "../constants/status";
-import { BasePlugin } from "./base-plugin";
-import { Hotkey } from "../core/hotkey";
-import { ImagePreview } from "../core/image-preview";
-import { VideoTitleSpan } from "../components/video-title-span";
-import { StatusTagHtml } from "../components/status-tag-html";
-import { JumpPageControl } from "../components/jump-page-control";
-import { PageCountTable } from "../components/page-count-table";
-import { jsxToString } from "../core/jsx-to-string";
+    YES
+} from '../constants/status';
+import { BasePlugin } from './base-plugin';
+import { Hotkey } from '../core/hotkey';
+import { ImagePreview } from '../core/image-preview';
+import { VideoTitleSpan } from '../components/video-title-span';
+import { StatusTagHtml } from '../components/status-tag-html';
+import { JumpPageControl } from '../components/jump-page-control';
+import { PageCountTable } from '../components/page-count-table';
+import { jsxToString } from '../core/jsx-to-string';
 
 /** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
 interface StatusTagConfig {
@@ -73,52 +73,52 @@ const STATUS_TAG_CONFIG: Record<string, StatusTagConfig> = {
     IS_FILTERED: {
         text: BLOCKED_TEXT,
         color: BLOCK_COLOR,
-        reasonType: "单番号屏蔽",
+        reasonType: '单番号屏蔽',
         isCounted: true,
-        countKey: "currentPageFilterCount",
+        countKey: 'currentPageFilterCount'
     },
     IS_FAVORITE: {
         text: FAVORITED_TEXT,
         color: FAVORITE_COLOR,
-        reasonType: "",
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageFavoriteCount",
+        countKey: 'currentPageFavoriteCount'
     },
     IS_HAS_WATCH: {
         text: WATCHED_TEXT,
         color: WATCHED_COLOR,
-        reasonType: "",
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageHasWatchCount",
+        countKey: 'currentPageHasWatchCount'
     },
     IS_KEYWORD_FILTER: {
-        text: "❌ 关键词屏蔽",
-        color: "#de3333",
-        reasonType: "",
+        text: '❌ 关键词屏蔽',
+        color: '#de3333',
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageKeywordFilterCount",
+        countKey: 'currentPageKeywordFilterCount'
     },
     IS_ACTOR_FILTER: {
-        text: "♂️ 男演员屏蔽",
-        color: "#b22222",
-        reasonType: "",
+        text: '♂️ 男演员屏蔽',
+        color: '#b22222',
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageActorFilterCount",
+        countKey: 'currentPageActorFilterCount'
     },
     IS_ACTRESS_FILTER: {
-        text: "♀️ 女演员屏蔽",
-        color: "#cd5c5c",
-        reasonType: "",
+        text: '♀️ 女演员屏蔽',
+        color: '#cd5c5c',
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageActorFilterCount",
+        countKey: 'currentPageActorFilterCount'
     },
     IS_WAIT_CHECK: {
-        text: "",
-        color: "",
-        reasonType: "",
+        text: '',
+        color: '',
+        reasonType: '',
         isCounted: true,
-        countKey: "currentPageWaitCheckCount",
-    },
+        countKey: 'currentPageWaitCheckCount'
+    }
 };
 
 /**
@@ -130,21 +130,21 @@ const STATUS_TAG_CONFIG: Record<string, StatusTagConfig> = {
  */
 async function translateText(
     text: string,
-    sourceLang: string = "ja",
-    targetLang: string = "zh-CN",
+    sourceLang: string = 'ja',
+    targetLang: string = 'zh-CN'
 ): Promise<string> {
     if (!text) {
-        throw new Error("翻译文本不能为空");
+        throw new Error('翻译文本不能为空');
     }
     const url =
-        "https://translate-pa.googleapis.com/v1/translate?" +
+        'https://translate-pa.googleapis.com/v1/translate?' +
         new URLSearchParams({
-            "params.client": "gtx",
-            dataTypes: "TRANSLATION",
-            key: "AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA",
-            "query.sourceLanguage": sourceLang,
-            "query.targetLanguage": targetLang,
-            "query.text": text,
+            'params.client': 'gtx',
+            dataTypes: 'TRANSLATION',
+            key: 'AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA',
+            'query.sourceLanguage': sourceLang,
+            'query.targetLanguage': targetLang,
+            'query.text': text
         });
     const response = await fetch(url);
     if (!response.ok) {
@@ -164,8 +164,8 @@ export class ListPagePlugin extends BasePlugin {
     currentPageTotalCount = 0;
 
     /** 翻译缓存（localStorage["jhs_translate"]，番号→译文）。 */
-    cache: Record<string, string> = localStorage.getItem("jhs_translate")
-        ? JSON.parse(localStorage.getItem("jhs_translate") as string)
+    cache: Record<string, string> = localStorage.getItem('jhs_translate')
+        ? JSON.parse(localStorage.getItem('jhs_translate') as string)
         : {};
 
     /** 翻译写入队列，串行化 localStorage 写入。 */
@@ -184,37 +184,32 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L8298-8300。 */
     getName(): string {
-        return "ListPagePlugin";
+        return 'ListPagePlugin';
     }
 
     /** 列表页主处理。对应原 L8301-8339。 */
     async handle(): Promise<void> {
-        new BroadcastChannel("channel-refresh").addEventListener(
-            "message",
+        new BroadcastChannel('channel-refresh').addEventListener(
+            'message',
             async (event: MessageEvent) => {
                 const msgType = event.data.type;
-                if (msgType === "refresh") {
+                if (msgType === 'refresh') {
                     await this.doFilter();
-                    const historyPlugin = this.getBean("HistoryPlugin");
+                    const historyPlugin = this.getBean('HistoryPlugin');
                     if (historyPlugin.tableObj) {
                         historyPlugin.tableObj.setData();
                     }
-                    const newVideoPlugin = this.getBean("NewVideoPlugin");
+                    const newVideoPlugin = this.getBean('NewVideoPlugin');
                     if (newVideoPlugin) {
                         newVideoPlugin.showNewVideoCount().then();
                         newVideoPlugin.loadData();
                     }
-                } else if (
-                    msgType === "cleanCache_filter_actor_actress_car_list"
-                ) {
+                } else if (msgType === 'cleanCache_filter_actor_actress_car_list') {
                     storageManager.cache_filter_actor_actress_car_list &&= null;
-                } else if (
-                    msgType === "clean_cacheSettingObj" &&
-                    storageManager.cacheSettingObj
-                ) {
+                } else if (msgType === 'clean_cacheSettingObj' && storageManager.cacheSettingObj) {
                     storageManager.cacheSettingObj = null;
                 }
-            },
+            }
         );
         this.cleanRepeatId();
         this.replaceHdImg();
@@ -224,30 +219,30 @@ export class ListPagePlugin extends BasePlugin {
         this.bindClick().then();
         this.bindListPageHotKey().then();
         this.rememberTagExpand();
-        $(this.getSelector().itemSelector + " a").attr("target", "_blank");
+        $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
         this.checkDom();
         // 列表页挂载"想看/观看"同步监听器，刷新本页 .item 卡片 status-tag
-        this.getBean("DetailPageButtonPlugin").setupWantWatchedSyncListener();
+        this.getBean('DetailPageButtonPlugin').setupWantWatchedSyncListener();
     }
 
     /** 记忆演员页标签展开态（localStorage["jhs_tag_expand"]）。对应原 L8340-8359。 */
     rememberTagExpand(): void {
-        if (!window.location.href.includes("actors")) {
+        if (!window.location.href.includes('actors')) {
             return;
         }
-        const expandBtn = $(".tag-expand");
+        const expandBtn = $('.tag-expand');
         if (expandBtn.length === 0) {
             return;
         }
-        const storageKey = "jhs_tag_expand";
-        const wasExpanded = localStorage.getItem(storageKey) === "true";
-        const contentEl = $(".actor-tags .content");
-        if (wasExpanded && contentEl.hasClass("collapse")) {
+        const storageKey = 'jhs_tag_expand';
+        const wasExpanded = localStorage.getItem(storageKey) === 'true';
+        const contentEl = $('.actor-tags .content');
+        if (wasExpanded && contentEl.hasClass('collapse')) {
             expandBtn[0].click();
         }
-        expandBtn.on("click", function () {
-            const isExpanded = !contentEl.hasClass("collapse");
-            console.log("触发");
+        expandBtn.on('click', function () {
+            const isExpanded = !contentEl.hasClass('collapse');
+            console.log('触发');
             localStorage.setItem(storageKey, isExpanded.toString());
         });
     }
@@ -260,12 +255,12 @@ export class ListPagePlugin extends BasePlugin {
         const selectorConfig = this.getSelector();
         const containerEl = document.querySelector(selectorConfig.boxSelector);
         if (!containerEl) {
-            console.error("没有找到容器节点!");
+            console.error('没有找到容器节点!');
             return;
         }
         const observerOptions: MutationObserverInit = {
             childList: true,
-            subtree: false,
+            subtree: false
         };
         const observer = new MutationObserver(async () => {
             observer.disconnect();
@@ -274,12 +269,9 @@ export class ListPagePlugin extends BasePlugin {
                 this.addJumpPageControl();
                 this.fixBusTitleBox();
                 await this.doFilter();
-                await this.getBean("ListPageButtonPlugin").sortItems();
-                $(this.getSelector().itemSelector + " a").attr(
-                    "target",
-                    "_blank",
-                );
-                this.getBean("AutoPagePlugin").checkLoad();
+                await this.getBean('ListPageButtonPlugin').sortItems();
+                $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
+                this.getBean('AutoPagePlugin').checkLoad();
             } finally {
                 observer.observe(containerEl, observerOptions);
             }
@@ -296,16 +288,16 @@ export class ListPagePlugin extends BasePlugin {
             .toArray()
             .forEach((itemEl: any) => {
                 const $item = $(itemEl);
-                if ($item.find(".avatar-box").length > 0) {
+                if ($item.find('.avatar-box').length > 0) {
                     return;
                 }
-                const imgTitle = $item.find("img").attr("title")?.trim() || "";
+                const imgTitle = $item.find('img').attr('title')?.trim() || '';
                 $item
-                    .find(".photo-info span:first")
+                    .find('.photo-info span:first')
                     .contents()
                     .first()
                     .wrap(jsxToString(<VideoTitleSpan imgTitle={imgTitle} />));
-                $item.find("br").remove();
+                $item.find('br').remove();
             });
     }
 
@@ -314,12 +306,12 @@ export class ListPagePlugin extends BasePlugin {
         if (!isJavbusSite) {
             return;
         }
-        $("#waterfall_h").removeAttr("id").attr("id", "no-page");
+        $('#waterfall_h').removeAttr('id').attr('id', 'no-page');
         const waterfallEls = $('[id="waterfall"]');
         if (waterfallEls.length !== 0) {
             waterfallEls.each((_index: number, element: any) => {
                 const $el = $(element);
-                if (!$el.hasClass("masonry")) {
+                if (!$el.hasClass('masonry')) {
                     $el.children().insertAfter($el);
                     $el.remove();
                 }
@@ -349,9 +341,9 @@ export class ListPagePlugin extends BasePlugin {
         try {
             const $item = $(item);
             const carInfo = await storageManager.getCar(carNum);
-            const status = carInfo ? carInfo.status : "";
+            const status = carInfo ? carInfo.status : '';
             // 移除旧 status-tag
-            $item.find(".status-tag").remove();
+            $item.find('.status-tag').remove();
             // 根据 JHS 状态决定新 tag
             let tagConfig: StatusTagConfig | null = null;
             if (status === FAVORITE_ACTION) {
@@ -365,12 +357,9 @@ export class ListPagePlugin extends BasePlugin {
                 return;
             }
             // 与 filterMovieList 中保持一致的注入逻辑
-            const tagPosition =
-                (await storageManager.getSetting()).tagPosition || "rightTop";
+            const tagPosition = (await storageManager.getSetting()).tagPosition || 'rightTop';
             const positionStyle =
-                tagPosition === "rightTop"
-                    ? "right: 0; top:5px;"
-                    : "left: 0; top:5px;";
+                tagPosition === 'rightTop' ? 'right: 0; top:5px;' : 'left: 0; top:5px;';
             const tagHtml = jsxToString(
                 <StatusTagHtml
                     site="javdb"
@@ -379,21 +368,21 @@ export class ListPagePlugin extends BasePlugin {
                     color={tagConfig.color}
                     dataTip={tagConfig.reasonType}
                     positionStyle={positionStyle}
-                />,
+                />
             );
-            const tagsEl = $item.find(".tags");
+            const tagsEl = $item.find('.tags');
             if (tagsEl.length) {
                 tagsEl.append(tagHtml);
                 return;
             }
-            const itemTagEl = $item.find(".item-tag");
+            const itemTagEl = $item.find('.item-tag');
             if (itemTagEl.length) {
                 itemTagEl.append(tagHtml);
                 return;
             }
-            $item.find(".photo-info > span > div").append(tagHtml);
+            $item.find('.photo-info > span > div').append(tagHtml);
         } catch (err) {
-            console.error("[JHS-想看/观看] renderItemStatusTag 失败", err);
+            console.error('[JHS-想看/观看] renderItemStatusTag 失败', err);
         }
     }
 
@@ -403,22 +392,17 @@ export class ListPagePlugin extends BasePlugin {
      * @param itemEls .item 元素数组（jQuery .toArray() 结果）
      */
     async filterMovieList(itemEls: any): Promise<void> {
-        utils.time("累计耗费时间");
-        utils.time("读取数据耗时");
-        const [
-            carList,
-            titleFilterKeywords,
-            blacklist,
-            blacklistCarList,
-            setting,
-        ] = await Promise.all([
-            storageManager.getCarList(),
-            storageManager.getTitleFilterKeyword(),
-            storageManager.getBlacklist(),
-            storageManager.getBlacklistCarList(),
-            storageManager.getSetting(),
-        ]);
-        const readDataTime = utils.time("读取数据耗时");
+        utils.time('累计耗费时间');
+        utils.time('读取数据耗时');
+        const [carList, titleFilterKeywords, blacklist, blacklistCarList, setting] =
+            await Promise.all([
+                storageManager.getCarList(),
+                storageManager.getTitleFilterKeyword(),
+                storageManager.getBlacklist(),
+                storageManager.getBlacklistCarList(),
+                storageManager.getSetting()
+            ]);
+        const readDataTime = utils.time('读取数据耗时');
         const statusCarSets: Record<string, Set<string>> = carList.reduce(
             (acc: Record<string, Set<string>>, car: any) => {
                 const status = car.status;
@@ -430,49 +414,46 @@ export class ListPagePlugin extends BasePlugin {
             {
                 [FILTER_ACTION]: new Set<string>(),
                 [FAVORITE_ACTION]: new Set<string>(),
-                [HAS_WATCH_ACTION]: new Set<string>(),
-            },
+                [HAS_WATCH_ACTION]: new Set<string>()
+            }
         );
-        utils.time("组装数据耗时");
+        utils.time('组装数据耗时');
         const blacklistRoleMap: Map<string, any> = new Map(
-            blacklist.map((item: any) => [item.starId, item.role]),
+            blacklist.map((item: any) => [item.starId, item.role])
         );
-        const { actorCarNumToNameMap, actressCarNumToNameMap } =
-            blacklistCarList.reduce(
-                (
-                    acc: {
-                        actorCarNumToNameMap: Map<string, any>;
-                        actressCarNumToNameMap: Map<string, any>;
-                    },
-                    item: any,
-                ) => {
-                    const role = blacklistRoleMap.get(item.starId);
-                    if (!role) {
-                        clog.error("黑名单数据源丢失演员信息", item);
-                        return acc;
-                    }
-                    const targetMap =
-                        role === ACTOR
-                            ? acc.actorCarNumToNameMap
-                            : acc.actressCarNumToNameMap;
-                    if (!targetMap.has(item.carNum)) {
-                        targetMap.set(item.carNum, item.names);
-                    }
+        const { actorCarNumToNameMap, actressCarNumToNameMap } = blacklistCarList.reduce(
+            (
+                acc: {
+                    actorCarNumToNameMap: Map<string, any>;
+                    actressCarNumToNameMap: Map<string, any>;
+                },
+                item: any
+            ) => {
+                const role = blacklistRoleMap.get(item.starId);
+                if (!role) {
+                    clog.error('黑名单数据源丢失演员信息', item);
                     return acc;
-                },
-                {
-                    actorCarNumToNameMap: new Map<string, any>(),
-                    actressCarNumToNameMap: new Map<string, any>(),
-                },
-            );
-        const assembleDataTime = utils.time("组装数据耗时");
+                }
+                const targetMap =
+                    role === ACTOR ? acc.actorCarNumToNameMap : acc.actressCarNumToNameMap;
+                if (!targetMap.has(item.carNum)) {
+                    targetMap.set(item.carNum, item.names);
+                }
+                return acc;
+            },
+            {
+                actorCarNumToNameMap: new Map<string, any>(),
+                actressCarNumToNameMap: new Map<string, any>()
+            }
+        );
+        const assembleDataTime = utils.time('组装数据耗时');
         const showFilterItem = setting?.showFilterItem ?? NO;
         const showFilterActorItem = setting?.showFilterActorItem ?? NO;
         const showFilterKeywordItem = setting?.showFilterKeywordItem ?? NO;
         const showFavoriteItem = setting?.showFavoriteItem ?? YES;
         const showHasWatchItem = setting?.showHasWatchItem ?? YES;
         const showAllItem = setting?.showAllItem ?? NO;
-        const tagPosition = setting?.tagPosition || "rightTop";
+        const tagPosition = setting?.tagPosition || 'rightTop';
         this.currentPageFilterCount = 0;
         this.currentPageFavoriteCount = 0;
         this.currentPageHasWatchCount = 0;
@@ -480,18 +461,18 @@ export class ListPagePlugin extends BasePlugin {
         this.currentPageActorFilterCount = 0;
         this.currentPageWaitCheckCount = 0;
         this.currentPageTotalCount = 0;
-        utils.time("处理页面耗时");
+        utils.time('处理页面耗时');
         await Promise.all(
             itemEls.map(async (itemEl: any) => {
                 const $item = $(itemEl);
-                if (isJavbusSite && $item.find(".avatar-box").length > 0) {
+                if (isJavbusSite && $item.find('.avatar-box').length > 0) {
                     return;
                 }
                 const { carNum, title } = this.findCarNumAndHref($item);
                 const {
                     filter: filterSet,
                     favorite: favoriteSet,
-                    hasWatch: hasWatchSet,
+                    hasWatch: hasWatchSet
                 } = statusCarSets;
                 const isFavorite = favoriteSet.has(carNum);
                 const isHasWatch = hasWatchSet.has(carNum);
@@ -500,32 +481,27 @@ export class ListPagePlugin extends BasePlugin {
                 const isActressBlacklist = actressCarNumToNameMap.has(carNum);
                 const isBlacklistActor = isActorBlacklist || isActressBlacklist;
                 const matchedKeyword = titleFilterKeywords.find(
-                    (keyword: string) =>
-                        title.includes(keyword) || carNum.startsWith(keyword),
+                    (keyword: string) => title.includes(keyword) || carNum.startsWith(keyword)
                 );
                 const hasKeywordMatch = !!matchedKeyword;
                 if (!isSearchOrUserPage) {
                     let shouldHide =
                         (showFavoriteItem === NO && isFavorite) ||
                         (showHasWatchItem === NO && isHasWatch) ||
-                        (showFilterItem === NO &&
-                            isFiltered &&
-                            !isFavorite &&
-                            !isHasWatch) ||
+                        (showFilterItem === NO && isFiltered && !isFavorite && !isHasWatch) ||
                         (showFilterActorItem === NO && isBlacklistActor) ||
                         (showFilterKeywordItem === NO && hasKeywordMatch);
-                    const isHidden = $item.attr("data-hide") === YES;
+                    const isHidden = $item.attr('data-hide') === YES;
                     if (showAllItem === YES) {
                         shouldHide = false;
                     }
                     if (shouldHide && !isHidden) {
-                        $item.hide().attr("data-hide", YES);
+                        $item.hide().attr('data-hide', YES);
                     } else if (!shouldHide && isHidden) {
-                        $item.show().removeAttr("data-hide");
+                        $item.show().removeAttr('data-hide');
                     }
                 }
-                let tagConfig: StatusTagConfig =
-                    STATUS_TAG_CONFIG.IS_WAIT_CHECK;
+                let tagConfig: StatusTagConfig = STATUS_TAG_CONFIG.IS_WAIT_CHECK;
                 let reasonText: string | null = null;
                 if (isFiltered) {
                     tagConfig = STATUS_TAG_CONFIG.IS_FILTERED;
@@ -535,57 +511,51 @@ export class ListPagePlugin extends BasePlugin {
                     tagConfig = STATUS_TAG_CONFIG.IS_HAS_WATCH;
                 } else if (hasKeywordMatch) {
                     tagConfig = STATUS_TAG_CONFIG.IS_KEYWORD_FILTER;
-                    reasonText = matchedKeyword || "未知";
+                    reasonText = matchedKeyword || '未知';
                 } else if (isActorBlacklist) {
                     tagConfig = STATUS_TAG_CONFIG.IS_ACTOR_FILTER;
-                    reasonText = actorCarNumToNameMap.get(carNum) || "";
+                    reasonText = actorCarNumToNameMap.get(carNum) || '';
                 } else if (isActressBlacklist) {
                     tagConfig = STATUS_TAG_CONFIG.IS_ACTRESS_FILTER;
-                    reasonText = actressCarNumToNameMap.get(carNum) || "";
+                    reasonText = actressCarNumToNameMap.get(carNum) || '';
                 }
                 reasonText ||= tagConfig.reasonType;
                 if (tagConfig.isCounted) {
                     (this as any)[tagConfig.countKey]++;
                 }
                 this.currentPageTotalCount++;
-                $item.find(".status-tag").remove();
+                $item.find('.status-tag').remove();
                 const positionStyle =
-                    tagPosition === "rightTop"
-                        ? "right: 0; top:5px;"
-                        : "left: 0; top:5px;";
+                    tagPosition === 'rightTop' ? 'right: 0; top:5px;' : 'left: 0; top:5px;';
                 if (tagConfig.text) {
                     const tagHtml = jsxToString(
                         <StatusTagHtml
-                            site={isJavdbSite ? "javdb" : "javbus"}
+                            site={isJavdbSite ? 'javdb' : 'javbus'}
                             variant="filter"
                             text={tagConfig.text}
                             color={tagConfig.color}
                             dataTip={reasonText as string}
                             positionStyle={positionStyle}
-                        />,
+                        />
                     );
                     if (isJavdbSite) {
-                        $item.find(".tags").append(tagHtml);
+                        $item.find('.tags').append(tagHtml);
                     }
                     if (isJavbusSite) {
-                        const itemTagEl = $item.find(".item-tag");
+                        const itemTagEl = $item.find('.item-tag');
                         if (itemTagEl.length) {
                             itemTagEl.append(tagHtml);
                         } else {
-                            $item
-                                .find(".photo-info > span > div")
-                                .append(tagHtml);
+                            $item.find('.photo-info > span > div').append(tagHtml);
                         }
                     }
                 }
                 await this.translate($item);
-            }),
+            })
         );
-        const processPageTime = utils.time("处理页面耗时");
-        const totalTime = utils.time("累计耗费时间");
-        $("#waitDownBtn span").text(
-            `打开已收藏 (${statusCarSets.favorite.size})`,
-        );
+        const processPageTime = utils.time('处理页面耗时');
+        const totalTime = utils.time('累计耗费时间');
+        $('#waitDownBtn span').text(`打开已收藏 (${statusCarSets.favorite.size})`);
         clog.log(
             jsxToString(
                 <PageCountTable
@@ -600,98 +570,68 @@ export class ListPagePlugin extends BasePlugin {
                     hasWatchCount={this.currentPageHasWatchCount}
                     waitCheckCount={this.currentPageWaitCheckCount}
                     totalCount={this.currentPageTotalCount}
-                />,
-            ),
+                />
+            )
         );
     }
 
     /** 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。 */
     async bindClick(): Promise<void> {
         const selectorConfig = this.getSelector();
+        $(selectorConfig.boxSelector).on('click', '.item img', async (event: any) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if ($(event.target).closest('div.meta-buttons').length) {
+                return;
+            }
+            const $item = $(event.target).closest('.item');
+            const { carNum, aHref } = this.findCarNumAndHref($item);
+            const dialogOpenDetail = await storageManager.getSetting('dialogOpenDetail', YES);
+            if (carNum.includes('FC2-')) {
+                const movieId = this.parseMovieId(aHref);
+                this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carNum, aHref);
+            } else if (dialogOpenDetail === YES) {
+                utils.openPage(aHref, carNum, true, event);
+                this.$currentImage = null;
+            } else {
+                window.open(aHref);
+            }
+        });
+        $(selectorConfig.boxSelector).on('click', '.item video', async (event: any) => {
+            const videoEl = event.currentTarget;
+            if (videoEl.paused) {
+                videoEl.play().catch((err: any) => console.error('播放失败:', err));
+            } else {
+                videoEl.pause();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        $(selectorConfig.boxSelector).on('click', '.item .video-title', async (event: any) => {
+            if ($(event.target).closest('[class^="jhs-match-"]').length) {
+                return;
+            }
+            const $item = $(event.currentTarget).closest('.item');
+            const { carNum, aHref } = this.findCarNumAndHref($item);
+            if (carNum.includes('FC2-')) {
+                event.preventDefault();
+                const movieId = this.parseMovieId(aHref);
+                this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carNum, aHref);
+            }
+        });
         $(selectorConfig.boxSelector).on(
-            "click",
-            ".item img",
+            'contextmenu',
+            '.item img, .item video',
             async (event: any) => {
                 event.preventDefault();
-                event.stopPropagation();
-                if ($(event.target).closest("div.meta-buttons").length) {
-                    return;
-                }
-                const $item = $(event.target).closest(".item");
-                const { carNum, aHref } = this.findCarNumAndHref($item);
-                const dialogOpenDetail = await storageManager.getSetting(
-                    "dialogOpenDetail",
-                    YES,
-                );
-                if (carNum.includes("FC2-")) {
-                    const movieId = this.parseMovieId(aHref);
-                    this.getBean("Fc2Plugin")?.openFc2Dialog(
-                        movieId,
-                        carNum,
-                        aHref,
-                    );
-                } else if (dialogOpenDetail === YES) {
-                    utils.openPage(aHref, carNum, true, event);
-                    this.$currentImage = null;
-                } else {
-                    window.open(aHref);
-                }
-            },
-        );
-        $(selectorConfig.boxSelector).on(
-            "click",
-            ".item video",
-            async (event: any) => {
-                const videoEl = event.currentTarget;
-                if (videoEl.paused) {
-                    videoEl
-                        .play()
-                        .catch((err: any) => console.error("播放失败:", err));
-                } else {
-                    videoEl.pause();
-                }
-                event.preventDefault();
-                event.stopPropagation();
-            },
-        );
-        $(selectorConfig.boxSelector).on(
-            "click",
-            ".item .video-title",
-            async (event: any) => {
-                if ($(event.target).closest('[class^="jhs-match-"]').length) {
-                    return;
-                }
-                const $item = $(event.currentTarget).closest(".item");
-                const { carNum, aHref } = this.findCarNumAndHref($item);
-                if (carNum.includes("FC2-")) {
-                    event.preventDefault();
-                    const movieId = this.parseMovieId(aHref);
-                    this.getBean("Fc2Plugin")?.openFc2Dialog(
-                        movieId,
-                        carNum,
-                        aHref,
-                    );
-                }
-            },
-        );
-        $(selectorConfig.boxSelector).on(
-            "contextmenu",
-            ".item img, .item video",
-            async (event: any) => {
-                event.preventDefault();
-                const $item = $(event.target).closest(".item");
-                const { carNum, url, publishTime } =
-                    this.findCarNumAndHref($item);
+                const $item = $(event.target).closest('.item');
+                const { carNum, url, publishTime } = this.findCarNumAndHref($item);
                 const nameEl = isJavdbSite
-                    ? $(".actor-section-name")
-                    : $(".avatar-box .photo-info .pb10");
-                let actressName: string | null = "";
+                    ? $('.actor-section-name')
+                    : $('.avatar-box .photo-info .pb10');
+                let actressName: string | null = '';
                 if (nameEl.length) {
-                    actressName = nameEl
-                        .text()
-                        .trim()
-                        .split(",")[0]
-                        .replace("(無碼)", "");
+                    actressName = nameEl.text().trim().split(',')[0].replace('(無碼)', '');
                 }
                 utils.q(event, `是否屏蔽番号 ${carNum}?`, async () => {
                     setTimeout(async () => {
@@ -701,44 +641,39 @@ export class ListPagePlugin extends BasePlugin {
                             url,
                             names: actressName,
                             actionType: FILTER_ACTION,
-                            publishTime,
+                            publishTime
                         });
                         refresh();
-                        show.ok("操作成功");
+                        show.ok('操作成功');
                     });
                 });
-            },
+            }
         );
     }
 
     /** 解析详情页女演员名称（若启用补录）。对应原 L8712-8739。 */
     async parseActressName(url: string): Promise<string | null> {
         let actressName: string | null = null;
-        if (
-            (await storageManager.getSetting(
-                "enableSaveActressCarInfo",
-                NO,
-            )) === YES
-        ) {
-            clog.debug("鉴定补录演员信息-已启用, 开始解析详情页");
-            clog.debug("开始解析演员详情页", url);
+        if ((await storageManager.getSetting('enableSaveActressCarInfo', NO)) === YES) {
+            clog.debug('鉴定补录演员信息-已启用, 开始解析详情页');
+            clog.debug('开始解析演员详情页', url);
             const html = await gmHttp.get(url);
             const $dom = utils.htmlTo$dom(html);
             if (isJavdbSite) {
                 actressName = $dom
-                    .find(".female")
+                    .find('.female')
                     .prev()
                     .map((_index: number, el: any) => $(el).text())
                     .get()
-                    .join(" ");
+                    .join(' ');
             } else if (isJavbusSite) {
                 actressName = $dom
                     .find('span[onmouseover*="star_"] a')
                     .map((_index: number, el: any) => $(el).text())
                     .get()
-                    .join(" ");
+                    .join(' ');
             }
-            clog.debug("解析到名称:", actressName);
+            clog.debug('解析到名称:', actressName);
         }
         return actressName;
     }
@@ -747,14 +682,10 @@ export class ListPagePlugin extends BasePlugin {
     async bindListPageHotKey(): Promise<void> {
         this.$currentImage = null;
         $(document)
-            .on(
-                "mouseenter",
-                this.getSelector().coverImgSelector,
-                (event: any) => {
-                    this.$currentImage = $(event.currentTarget);
-                },
-            )
-            .on("mouseleave", this.getSelector().coverImgSelector, () => {
+            .on('mouseenter', this.getSelector().coverImgSelector, (event: any) => {
+                this.$currentImage = $(event.currentTarget);
+            })
+            .on('mouseleave', this.getSelector().coverImgSelector, () => {
                 this.$currentImage = null;
             });
         const setting = await storageManager.getSetting();
@@ -775,10 +706,10 @@ export class ListPagePlugin extends BasePlugin {
                     url: carInfo.url,
                     names,
                     actionType,
-                    publishTime: carInfo.publishTime,
+                    publishTime: carInfo.publishTime
                 });
                 refresh();
-                show.ok("操作成功");
+                show.ok('操作成功');
             });
         };
         const hotkeyHandlers: Record<string, (carInfo: any) => void> = {};
@@ -804,25 +735,22 @@ export class ListPagePlugin extends BasePlugin {
         }
         if (this.foldCategoryHotKey) {
             Hotkey.registerHotkey(this.foldCategoryHotKey, () => {
-                const foldBtn = $("#foldCategoryBtn");
+                const foldBtn = $('#foldCategoryBtn');
                 if (foldBtn.length) {
                     foldBtn[0].click();
                 }
             });
         }
-        const registerImageHotkey = (
-            hotkey: any,
-            handler: (carInfo: any) => void,
-        ) => {
+        const registerImageHotkey = (hotkey: any, handler: (carInfo: any) => void) => {
             Hotkey.registerHotkey(hotkey, () => {
                 const activeEl = document.activeElement as HTMLElement;
                 if (
-                    activeEl.tagName !== "INPUT" &&
-                    activeEl.tagName !== "TEXTAREA" &&
+                    activeEl.tagName !== 'INPUT' &&
+                    activeEl.tagName !== 'TEXTAREA' &&
                     !activeEl.isContentEditable &&
                     this.$currentImage
                 ) {
-                    const $item = this.$currentImage.closest(".item");
+                    const $item = this.$currentImage.closest('.item');
                     const carInfo = this.findCarNumAndHref($item);
                     handler(carInfo);
                 }
@@ -849,67 +777,62 @@ export class ListPagePlugin extends BasePlugin {
         let carNum: string | undefined;
         let title: string | undefined;
         let publishTime: string | undefined;
-        const linkEl = $item.find("a");
-        const aHref = linkEl.attr("href");
-        const videoTitleEl = $item.find(".video-title");
+        const linkEl = $item.find('a');
+        const aHref = linkEl.attr('href');
+        const videoTitleEl = $item.find('.video-title');
         if (videoTitleEl.length > 0) {
-            const strongEl = videoTitleEl.find("strong");
+            const strongEl = videoTitleEl.find('strong');
             if (strongEl.length > 0) {
                 carNum = strongEl.text().trim();
             }
-            title = linkEl.attr("title")
-                ? linkEl.attr("title").trim()
+            title = linkEl.attr('title')
+                ? linkEl.attr('title').trim()
                 : carNum
-                  ? videoTitleEl.text().replace(carNum, "").trim()
+                  ? videoTitleEl.text().replace(carNum, '').trim()
                   : videoTitleEl.text().trim();
-            publishTime = $item.find(".meta").text().trim();
+            publishTime = $item.find('.meta').text().trim();
         }
         if (!carNum) {
-            const imgEl = $item.find("img");
+            const imgEl = $item.find('img');
             if (aHref && imgEl.length > 0) {
-                title =
-                    imgEl.attr("title")?.trim() ||
-                    imgEl.attr("data-title")?.trim();
+                title = imgEl.attr('title')?.trim() || imgEl.attr('data-title')?.trim();
             }
             const isDate = (val: string) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(val);
             publishTime = $item
-                .find("date")
+                .find('date')
                 .map((_index: number, el: any) => $(el).text().trim())
                 .get()
                 .find(isDate);
             carNum = $item
-                .find("date")
+                .find('date')
                 .map((_index: number, el: any) => $(el).text().trim())
                 .get()
                 .find((val: string) => !isDate(val));
         }
         if (!carNum) {
-            const errorMsg = "提取番号信息失败";
+            const errorMsg = '提取番号信息失败';
             show.error(errorMsg);
             throw new Error(errorMsg);
         }
         return {
             carNum,
-            aHref: aHref || "",
-            url: aHref || "",
-            title: title || "",
-            publishTime: publishTime || "",
+            aHref: aHref || '',
+            url: aHref || '',
+            title: title || '',
+            publishTime: publishTime || ''
         };
     }
 
     /** 显示被隐藏的指定番号卡片（取消 data-hide）。对应原 L8874-8885。 */
     showCarNumBox(carNum: string): void {
-        const matchedEl = $(".movie-list .item")
+        const matchedEl = $('.movie-list .item')
             .toArray()
-            .find(
-                (itemEl: any) =>
-                    $(itemEl).find(".video-title strong").text() === carNum,
-            );
+            .find((itemEl: any) => $(itemEl).find('.video-title strong').text() === carNum);
         if (matchedEl) {
             const $matched = $(matchedEl);
-            if ($matched.attr("data-hide") === `${carNum}-hide`) {
+            if ($matched.attr('data-hide') === `${carNum}-hide`) {
                 $matched.show();
-                $matched.removeAttr("data-hide");
+                $matched.removeAttr('data-hide');
             }
         }
     }
@@ -919,46 +842,34 @@ export class ListPagePlugin extends BasePlugin {
      * @param imgEls 可选的图片元素集合（jQuery 或 NodeList），缺省取封面选择器
      */
     replaceHdImg(imgEls?: any): void {
-        if (imgEls && typeof imgEls.jquery == "string") {
+        if (imgEls && typeof imgEls.jquery == 'string') {
             imgEls = imgEls.toArray();
         }
-        imgEls ||= document.querySelectorAll(
-            this.getSelector().coverImgSelector,
-        );
+        imgEls ||= document.querySelectorAll(this.getSelector().coverImgSelector);
         if (isJavdbSite) {
             imgEls.forEach((img: any) => {
-                img.src = img.src.replace("thumbs", "covers");
-                img.title = "";
+                img.src = img.src.replace('thumbs', 'covers');
+                img.title = '';
             });
         }
         if (isJavbusSite) {
             const thumbRegex = /\/(imgs|pics)\/(thumb|thumbs)\//;
             const extRegex = /(\.jpg|\.jpeg|\.png)$/i;
             const replaceImgsCover = (img: any) => {
-                if (
-                    img.src &&
-                    thumbRegex.test(img.src) &&
-                    img.dataset.hdReplaced !== "true"
-                ) {
-                    img.src = img.src
-                        .replace(thumbRegex, "/$1/cover/")
-                        .replace(extRegex, "_b$1");
-                    img.dataset.hdReplaced = "true";
+                if (img.src && thumbRegex.test(img.src) && img.dataset.hdReplaced !== 'true') {
+                    img.src = img.src.replace(thumbRegex, '/$1/cover/').replace(extRegex, '_b$1');
+                    img.dataset.hdReplaced = 'true';
                     img.dataset.title = img.title;
-                    img.title = "";
+                    img.title = '';
                 }
             };
             const psRegex = /ps(\.jpg|\.jpeg|\.png)$/i;
             const replacePsCover = (img: any) => {
-                if (
-                    img.src &&
-                    psRegex.test(img.src) &&
-                    img.dataset.hdReplaced !== "true"
-                ) {
-                    img.src = img.src.replace(psRegex, "pl$1");
-                    img.dataset.hdReplaced = "true";
+                if (img.src && psRegex.test(img.src) && img.dataset.hdReplaced !== 'true') {
+                    img.src = img.src.replace(psRegex, 'pl$1');
+                    img.dataset.hdReplaced = 'true';
                     img.dataset.title = img.title;
-                    img.title = "";
+                    img.title = '';
                 }
             };
             imgEls.forEach((img: any) => {
@@ -966,14 +877,14 @@ export class ListPagePlugin extends BasePlugin {
                 replacePsCover(img);
             });
         }
-        storageManager.getSetting("hoverBigImg", NO).then((setting: any) => {
+        storageManager.getSetting('hoverBigImg', NO).then((setting: any) => {
             if (setting === YES) {
                 const w = window as any;
                 if (w.imageHoverPreviewObj) {
                     w.imageHoverPreviewObj.bindEvents();
                 } else {
                     w.imageHoverPreviewObj = new ImagePreview({
-                        selector: this.getSelector().coverImgSelector,
+                        selector: this.getSelector().coverImgSelector
                     });
                 }
             }
@@ -982,69 +893,58 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
     async translate($item: any): Promise<void> {
-        if ((await storageManager.getSetting("translateTitle", YES)) !== YES) {
+        if ((await storageManager.getSetting('translateTitle', YES)) !== YES) {
             return;
         }
         let sourceText: any;
         let carNum: any;
-        const videoTitleEl = $item.find(".video-title");
+        const videoTitleEl = $item.find('.video-title');
         if (isJavdbSite) {
             sourceText = videoTitleEl
                 .contents()
                 .filter(
                     (_index: number, node: any) =>
-                        node.nodeType === 3 && node.textContent.trim() !== "",
+                        node.nodeType === 3 && node.textContent.trim() !== ''
                 )
                 .text()
                 .trim();
-            carNum = $item.find(".video-title strong").text().trim();
+            carNum = $item.find('.video-title strong').text().trim();
         } else {
-            sourceText = $item.find("img").attr("data-title").trim();
-            carNum = $item
-                .find("a")
-                .attr("href")
-                .split("/")
-                .filter(Boolean)
-                .pop()
-                .trim();
+            sourceText = $item.find('img').attr('data-title').trim();
+            carNum = $item.find('a').attr('href').split('/').filter(Boolean).pop().trim();
         }
         if (this.cache[carNum]) {
             videoTitleEl.contents().each((_index: number, node: any) => {
-                if (node.nodeType === 3 && node.textContent.trim() !== "") {
-                    node.textContent = " " + this.cache[carNum] + " ";
+                if (node.nodeType === 3 && node.textContent.trim() !== '') {
+                    node.textContent = ' ' + this.cache[carNum] + ' ';
                 }
             });
-            videoTitleEl.attr("title", this.cache[carNum]);
+            videoTitleEl.attr('title', this.cache[carNum]);
             return;
         }
         translateText(sourceText)
             .then((translation) => {
                 if (isJavdbSite) {
-                    videoTitleEl
-                        .contents()
-                        .each((_index: number, node: any) => {
-                            if (
-                                node.nodeType === 3 &&
-                                node.textContent.trim() !== "" &&
-                                !node.textContent.includes(carNum)
-                            ) {
-                                node.textContent = " " + translation + " ";
-                            }
-                        });
-                    videoTitleEl.attr("title", translation);
+                    videoTitleEl.contents().each((_index: number, node: any) => {
+                        if (
+                            node.nodeType === 3 &&
+                            node.textContent.trim() !== '' &&
+                            !node.textContent.includes(carNum)
+                        ) {
+                            node.textContent = ' ' + translation + ' ';
+                        }
+                    });
+                    videoTitleEl.attr('title', translation);
                 } else {
                     videoTitleEl.text(translation);
                 }
                 this.writeQueue = this.writeQueue.then(() => {
                     this.cache[carNum] = translation;
-                    localStorage.setItem(
-                        "jhs_translate",
-                        JSON.stringify(this.cache),
-                    );
+                    localStorage.setItem('jhs_translate', JSON.stringify(this.cache));
                 });
             })
             .catch((err: any) => {
-                console.error("翻译失败:", err);
+                console.error('翻译失败:', err);
             });
     }
 
@@ -1055,47 +955,42 @@ export class ListPagePlugin extends BasePlugin {
             .forEach((itemEl: any) => {
                 const $item = $(itemEl);
                 const originalTitle =
-                    $item.find(".box").attr("title") ||
-                    $item.find(".video-title").attr("title") ||
-                    $item.find("img").attr("data-title");
+                    $item.find('.box').attr('title') ||
+                    $item.find('.video-title').attr('title') ||
+                    $item.find('img').attr('data-title');
                 const carNum = isJavdbSite
-                    ? $item.find(".video-title strong").text().trim()
+                    ? $item.find('.video-title strong').text().trim()
                     : undefined;
-                const videoTitleEl = $item.find(".video-title");
+                const videoTitleEl = $item.find('.video-title');
                 videoTitleEl.contents().each((_index: number, node: any) => {
                     if (
                         node.nodeType === 3 &&
-                        node.textContent.trim() !== "" &&
+                        node.textContent.trim() !== '' &&
                         !node.textContent.includes(carNum)
                     ) {
-                        node.textContent = " " + originalTitle + " ";
+                        node.textContent = ' ' + originalTitle + ' ';
                     }
                 });
-                videoTitleEl.removeAttr("title");
+                videoTitleEl.removeAttr('title');
             });
     }
 
     /** 在分页栏挂载"跳转到指定页"控件。对应原 L9024-9068。 */
     addJumpPageControl(): void {
-        const controlId = "gemini-jump-page-control";
-        if ($("#" + controlId).length > 0) {
+        const controlId = 'gemini-jump-page-control';
+        if ($('#' + controlId).length > 0) {
             return;
         }
-        if ($(".pagination-link.is-current").length === 0) {
+        if ($('.pagination-link.is-current').length === 0) {
             return;
         }
-        const currentPage = utils.getUrlParam(currentHref, "page") || 1;
+        const currentPage = utils.getUrlParam(currentHref, 'page') || 1;
         const $li = $(
-            jsxToString(
-                <JumpPageControl
-                    controlId={controlId}
-                    value={currentPage + 1}
-                />,
-            ),
+            jsxToString(<JumpPageControl controlId={controlId} value={currentPage + 1} />)
         );
-        $(".pagination-list").append($li);
-        const $pageInput = $li.find("#jumpPageInput");
-        const $jumpBtn = $li.find("button");
+        $('.pagination-list').append($li);
+        const $pageInput = $li.find('#jumpPageInput');
+        const $jumpBtn = $li.find('button');
         const jumpToPage = () => {
             const pageNum = parseInt($pageInput.val(), 10);
             if (isNaN(pageNum) || pageNum < 1) {
@@ -1103,11 +998,11 @@ export class ListPagePlugin extends BasePlugin {
                 return;
             }
             const url = new URL(window.location.href);
-            url.searchParams.set("page", pageNum.toString());
+            url.searchParams.set('page', pageNum.toString());
             window.location.href = url.toString();
         };
-        $jumpBtn.on("click", jumpToPage);
-        $pageInput.on("keypress", (event: any) => {
+        $jumpBtn.on('click', jumpToPage);
+        $pageInput.on('keypress', (event: any) => {
             if (event.which === 13) {
                 jumpToPage();
                 event.preventDefault();

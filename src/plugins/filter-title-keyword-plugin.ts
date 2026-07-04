@@ -11,14 +11,14 @@
  * 此处以 (window as any). 访问，保持原逻辑并满足 strict 类型检查。
  * utils / storageManager 已由 ../types/globals.d.ts 声明为 any。
  */
-import { isJavdbSite, isJavbusSite } from "../constants/site";
-import { YES } from "../constants/status";
-import { BasePlugin } from "./base-plugin";
+import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { YES } from '../constants/status';
+import { BasePlugin } from './base-plugin';
 
 export class FilterTitleKeywordPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L7287-7289。 */
     getName(): string {
-        return "FilterTitleKeywordPlugin";
+        return 'FilterTitleKeywordPlugin';
     }
 
     /**
@@ -30,44 +30,31 @@ export class FilterTitleKeywordPlugin extends BasePlugin {
      * 确认则保存关键词并刷新页面。无参数，返回 Promise<void>，不会抛出异常。
      */
     async handle(): Promise<void> {
-        if (
-            !(window as any).isDetailPage &&
-            !(window as any).isFc2Page
-        ) {
+        if (!(window as any).isDetailPage && !(window as any).isFc2Page) {
             return;
         }
-        if (
-            (await storageManager.getSetting("enableTitleSelectFilter", YES)) !==
-            YES
-        ) {
+        if ((await storageManager.getSetting('enableTitleSelectFilter', YES)) !== YES) {
             return;
         }
         let selector: string | undefined;
         if (isJavdbSite) {
-            selector = ".title strong, .current-title";
+            selector = '.title strong, .current-title';
         } else if (isJavbusSite) {
-            selector = "h3";
+            selector = 'h3';
         }
         utils.rightClick(document.body, selector, (event: MouseEvent) => {
-            const selectedText: string =
-                window.getSelection()?.toString() ?? "";
+            const selectedText: string = window.getSelection()?.toString() ?? '';
             if (selectedText) {
                 event.preventDefault();
                 const position = {
                     clientX: event.clientX,
-                    clientY: event.clientY + 80,
+                    clientY: event.clientY + 80
                 };
-                utils.q(
-                    position,
-                    `是否屏蔽标题关键词 ${selectedText}?`,
-                    async () => {
-                        await storageManager.saveTitleFilterKeyword(
-                            selectedText,
-                        );
-                        (window as any).refresh();
-                        utils.closePage();
-                    },
-                );
+                utils.q(position, `是否屏蔽标题关键词 ${selectedText}?`, async () => {
+                    await storageManager.saveTitleFilterKeyword(selectedText);
+                    (window as any).refresh();
+                    utils.closePage();
+                });
             }
         });
     }

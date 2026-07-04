@@ -33,75 +33,73 @@ export interface ReviewLinkContentProps {
  * @returns 替换 JSX（Fragment 或字符串），经 jsxToString 转 HTML 字符串后供正则 replace 回调返回。
  */
 export function ReviewLinkContent({ match }: ReviewLinkContentProps) {
-    if (match.startsWith("ed2k://")) {
+    if (match.startsWith('ed2k://')) {
         return (
             <>
-                {" "}
+                {' '}
                 <span
                     style={{
-                        wordBreak: "break-all",
-                        background: "#e0f2fe",
-                        color: "#0369a1",
+                        wordBreak: 'break-all',
+                        background: '#e0f2fe',
+                        color: '#0369a1'
                     }}
                 >
                     {match}
-                </span>
-                {" "}
+                </span>{' '}
                 <button
                     className="button is-info down-115"
                     data-magnet={match}
-                    style={{ fontSize: "11px" }}
+                    style={{ fontSize: '11px' }}
                 >
                     115离线下载
-                </button>{" "}
+                </button>{' '}
             </>
         );
     }
-    if (match.startsWith("magnet:")) {
+    if (match.startsWith('magnet:')) {
         return (
             <>
-                {" "}
+                {' '}
                 <a
                     href={match}
                     className="a-primary"
                     style={{
                         padding: 0,
-                        wordBreak: "break-all",
-                        whiteSpace: "pre-wrap",
+                        wordBreak: 'break-all',
+                        whiteSpace: 'pre-wrap'
                     }}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
                     {match}
-                </a>
-                {" "}
+                </a>{' '}
                 <button
                     className="button is-info down-115"
                     data-magnet={match}
-                    style={{ fontSize: "11px" }}
+                    style={{ fontSize: '11px' }}
                 >
                     115离线下载
-                </button>{" "}
+                </button>{' '}
             </>
         );
     }
-    if (match.startsWith("http://") || match.startsWith("https://")) {
+    if (match.startsWith('http://') || match.startsWith('https://')) {
         return (
             <>
-                {" "}
+                {' '}
                 <a
                     href={match}
                     className="a-primary"
                     style={{
                         padding: 0,
-                        wordBreak: "break-all",
-                        whiteSpace: "pre-wrap",
+                        wordBreak: 'break-all',
+                        whiteSpace: 'pre-wrap'
                     }}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
                     {match}
-                </a>{" "}
+                </a>{' '}
             </>
         );
     }

@@ -21,16 +21,16 @@
  * 签名（行为等价，子任务均为同步调用）；内联 HTML 已提取为组件
  * （NavSearchBox / NavOtherDropdown）。
  */
-import { BasePlugin } from "./base-plugin";
-import { NavOtherDropdown } from "../components/nav-other-dropdown";
-import { NavSearchBox } from "../components/nav-search-box";
-import { jsxToString } from "../core/jsx-to-string";
-import navBarCssRaw from "../styles/nav-bar-plugin.css?raw";
+import { BasePlugin } from './base-plugin';
+import { NavOtherDropdown } from '../components/nav-other-dropdown';
+import { NavSearchBox } from '../components/nav-search-box';
+import { jsxToString } from '../core/jsx-to-string';
+import navBarCssRaw from '../styles/nav-bar-plugin.css?raw';
 
 export class NavBarPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4727-4729。 */
     getName(): string {
-        return "NavBarPlugin";
+        return 'NavBarPlugin';
     }
 
     /**
@@ -53,13 +53,13 @@ export class NavBarPlugin extends BasePlugin {
         this.hookOldSearch();
         this.toggleOtherNavItem();
         $(window).resize(this.toggleOtherNavItem);
-        if (window.location.href.includes("/search")) {
+        if (window.location.href.includes('/search')) {
             const params = new URLSearchParams(window.location.search);
-            const keyword: string | null = params.get("q");
-            const searchType: string | null = params.get("f");
-            $("#search-keyword").val(keyword);
+            const keyword: string | null = params.get('q');
+            const searchType: string | null = params.get('f');
+            $('#search-keyword').val(keyword);
             if (searchType) {
-                $("#search-type").val(searchType);
+                $('#search-type').val(searchType);
             }
             if (keyword) {
                 this.highlightKeyword(keyword);
@@ -78,10 +78,10 @@ export class NavBarPlugin extends BasePlugin {
             return;
         }
         const lower: string = trimmed.toLowerCase();
-        $(".video-title strong, .actor-box strong").each(function (this: any) {
+        $('.video-title strong, .actor-box strong').each(function (this: any) {
             const el = $(this);
             if (el.text().toLowerCase().includes(lower)) {
-                el.addClass("highlight-red");
+                el.addClass('highlight-red');
             }
         });
     }
@@ -92,35 +92,34 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值，不抛出异常。
      */
     hookSearch(): void {
-        $("#navbar-menu-hero").after(jsxToString(<NavSearchBox />));
-        $("#search-keyword")
-            .on("paste", (event: any) => {
+        $('#navbar-menu-hero').after(jsxToString(<NavSearchBox />));
+        $('#search-keyword')
+            .on('paste', (event: any) => {
                 const items: any = event.originalEvent.clipboardData.items;
                 for (let index = 0; index < items.length; index++) {
-                    if (items[index].type.indexOf("image") !== -1) {
+                    if (items[index].type.indexOf('image') !== -1) {
                         return;
                     }
                 }
                 setTimeout(() => {
-                    $("#search-btn").click();
+                    $('#search-btn').click();
                 }, 0);
             })
-            .on("keypress", (event: any) => {
-                if (event.key === "Enter") {
+            .on('keypress', (event: any) => {
+                if (event.key === 'Enter') {
                     setTimeout(() => {
-                        $("#search-btn").click();
+                        $('#search-btn').click();
                     }, 0);
                 }
             });
-        $("#search-btn").on("click", (_event: any) => {
-            const keyword: any = $("#search-keyword").val();
-            const searchType: any = $("#search-type option:selected").val();
-            if (keyword !== "") {
-                if (window.location.href.includes("/search")) {
-                    window.location.href =
-                        "/search?q=" + keyword + "&f=" + searchType;
+        $('#search-btn').on('click', (_event: any) => {
+            const keyword: any = $('#search-keyword').val();
+            const searchType: any = $('#search-type option:selected').val();
+            if (keyword !== '') {
+                if (window.location.href.includes('/search')) {
+                    window.location.href = '/search?q=' + keyword + '&f=' + searchType;
                 } else {
-                    window.open("/search?q=" + keyword + "&f=" + searchType);
+                    window.open('/search?q=' + keyword + '&f=' + searchType);
                 }
             }
         });
@@ -132,14 +131,13 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值；无 .search-image 元素时短路返回。
      */
     hookOldSearch(): void {
-        const searchImageEl: Element | null =
-            document.querySelector(".search-image");
+        const searchImageEl: Element | null = document.querySelector('.search-image');
         if (!searchImageEl) {
             return;
         }
         const clonedEl: Node = searchImageEl.cloneNode(true);
         searchImageEl.parentNode!.replaceChild(clonedEl, searchImageEl);
-        $("#button-search-image").attr("data-tooltip", "以图识图");
+        $('#button-search-image').attr('data-tooltip', '以图识图');
     }
 
     /**
@@ -162,8 +160,8 @@ export class NavBarPlugin extends BasePlugin {
      * 无参数，无返回值；作为 resize 回调被调用时不依赖 this。
      */
     toggleOtherNavItem(): void {
-        const searchBox: any = $("#search-box");
-        const searchBarContainer: any = $("#search-bar-container");
+        const searchBox: any = $('#search-box');
+        const searchBarContainer: any = $('#search-bar-container');
         if ($(window).width() < 1600 && $(window).width() > 1023) {
             searchBox.hide();
             searchBarContainer.show();

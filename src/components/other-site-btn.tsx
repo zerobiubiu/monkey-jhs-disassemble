@@ -37,10 +37,10 @@ export function OtherSiteBtn({ id, enabled }: OtherSiteBtnProps) {
         <a
             target="_blank"
             className="site-btn"
-            style={enabled ? undefined : { display: "none" }}
+            style={enabled ? undefined : { display: 'none' }}
             id={id}
         >
-            <span>{id.replace("Btn", "")}</span>
+            <span>{id.replace('Btn', '')}</span>
         </a>
     );
 }

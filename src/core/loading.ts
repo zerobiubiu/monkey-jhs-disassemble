@@ -21,6 +21,6 @@ export function createLoading(): LoadingHandle {
             if (container && container.parentNode) {
                 container.parentNode.removeChild(container);
             }
-        },
+        }
     };
 }

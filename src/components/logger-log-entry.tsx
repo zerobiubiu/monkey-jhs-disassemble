@@ -32,11 +32,11 @@ export interface LoggerLogEntryProps {
 }
 
 /** 前导换行 + 16 空格缩进（与原 innerHTML 模板字符串首段一致）。 */
-const INDENT_BEFORE = "\n                ";
+const INDENT_BEFORE = '\n                ';
 /** 两个 span 之间的换行 + 16 空格缩进。 */
-const INDENT_BETWEEN = "\n                ";
+const INDENT_BETWEEN = '\n                ';
 /** 末尾换行 + 12 空格缩进（闭合 div 前的缩进）。 */
-const INDENT_AFTER = "\n            ";
+const INDENT_AFTER = '\n            ';
 
 /**
  * 渲染单条日志条目的 JSX。
@@ -45,11 +45,7 @@ const INDENT_AFTER = "\n            ";
  * @param props.message 已格式化消息 HTML，原样注入不转义
  * @returns 日志条目 JSX，经 jsxToString 转 HTML 字符串后供 `el.innerHTML` 消费。
  */
-export function LoggerLogEntry({
-    timeStr,
-    messageType,
-    message,
-}: LoggerLogEntryProps) {
+export function LoggerLogEntry({ timeStr, messageType, message }: LoggerLogEntryProps) {
     return (
         <>
             {INDENT_BEFORE}

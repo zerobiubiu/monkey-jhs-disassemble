@@ -20,11 +20,11 @@
  * importWantWatchVideos 的首参（原 jQuery 点击事件 e）在内部被 let e = loading() 遮蔽、
  * 从未使用，按 TS 惯例加下划线前缀 _clickEvent 以豁免 noUnusedParameters，签名保持不变。
  */
-import { FAVORITE_ACTION, HAS_WATCH_ACTION } from "../constants/status";
-import { BasePlugin } from "./base-plugin";
-import { WantWatchedHintSpan } from "../components/want-watched-hint-span";
-import { WantWatchedImportButton } from "../components/want-watched-import-button";
-import { jsxToString } from "../core/jsx-to-string";
+import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../constants/status';
+import { BasePlugin } from './base-plugin';
+import { WantWatchedHintSpan } from '../components/want-watched-hint-span';
+import { WantWatchedImportButton } from '../components/want-watched-import-button';
+import { jsxToString } from '../core/jsx-to-string';
 
 export class WantAndWatchedVideosPlugin extends BasePlugin {
     /** 当前导入动作类型（"favorite" 或 "hasWatch"），由按钮点击时设定。对应原 L10588。 */
@@ -32,7 +32,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L10590-10592。 */
     getName(): string {
-        return "WantAndWatchedVideosPlugin";
+        return 'WantAndWatchedVideosPlugin';
     }
 
     /**
@@ -41,32 +41,20 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
      * 无参数，返回 Promise<void>，不抛异常；按钮点击触发 importWantWatchVideos。
      */
     async handle(): Promise<void> {
-        if (window.location.href.includes("/want_watch_videos")) {
-            $("h3").append(
-                jsxToString(<WantWatchedImportButton variant="want" />),
-            );
-            $("h3").append(jsxToString(<WantWatchedHintSpan variant="want" />));
-            $("#wantWatchBtn").on("click", (clickEvent: any) => {
+        if (window.location.href.includes('/want_watch_videos')) {
+            $('h3').append(jsxToString(<WantWatchedImportButton variant="want" />));
+            $('h3').append(jsxToString(<WantWatchedHintSpan variant="want" />));
+            $('#wantWatchBtn').on('click', (clickEvent: any) => {
                 this.type = FAVORITE_ACTION;
-                this.importWantWatchVideos(
-                    clickEvent,
-                    "是否将 想看的影片 导入到 JHS-收藏?",
-                );
+                this.importWantWatchVideos(clickEvent, '是否将 想看的影片 导入到 JHS-收藏?');
             });
         }
-        if (window.location.href.includes("/watched_videos")) {
-            $("h3").append(
-                jsxToString(<WantWatchedImportButton variant="watched" />),
-            );
-            $("h3").append(
-                jsxToString(<WantWatchedHintSpan variant="watched" />),
-            );
-            $("#wantWatchBtn").on("click", (clickEvent: any) => {
+        if (window.location.href.includes('/watched_videos')) {
+            $('h3').append(jsxToString(<WantWatchedImportButton variant="watched" />));
+            $('h3').append(jsxToString(<WantWatchedHintSpan variant="watched" />));
+            $('#wantWatchBtn').on('click', (clickEvent: any) => {
                 this.type = HAS_WATCH_ACTION;
-                this.importWantWatchVideos(
-                    clickEvent,
-                    "是否将 看过的影片 导入到 JHS-已观看?",
-                );
+                this.importWantWatchVideos(clickEvent, '是否将 看过的影片 导入到 JHS-已观看?');
             });
         }
     }
@@ -91,7 +79,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
                 } finally {
                     loadingOverlay.close();
                 }
-            },
+            }
         );
     }
 
@@ -108,19 +96,16 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         let nextPageHref: string;
         if (rootEl) {
             itemElements = rootEl.find(this.getSelector().itemSelector);
-            nextPageHref = rootEl.find(".pagination-next").attr("href");
+            nextPageHref = rootEl.find('.pagination-next').attr('href');
         } else {
             itemElements = $(this.getSelector().itemSelector);
-            nextPageHref = $(".pagination-next").attr("href");
+            nextPageHref = $('.pagination-next').attr('href');
         }
         for (const rawItem of itemElements) {
             const $item = $(rawItem);
-            const href: string = $item.find("a").attr("href");
-            const carNum: string = $item
-                .find(".video-title strong")
-                .text()
-                .trim();
-            const metaText: string = $item.find(".meta").text().trim();
+            const href: string = $item.find('a').attr('href');
+            const carNum: string = $item.find('.video-title strong').text().trim();
+            const metaText: string = $item.find('.meta').text().trim();
             if (href && carNum) {
                 try {
                     if (await storageManager.getCar(carNum)) {
@@ -132,7 +117,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
                         url: href,
                         names: null,
                         actionType: this.type,
-                        publishTime: metaText,
+                        publishTime: metaText
                     });
                 } catch (error) {
                     console.error(`保存失败 [${carNum}]:`, error);
@@ -140,25 +125,23 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
             }
         }
         if (nextPageHref) {
-            show.info("发现下一页，正在解析:", nextPageHref);
+            show.info('发现下一页，正在解析:', nextPageHref);
             await new Promise<void>((resolve) => setTimeout(resolve, 1000));
             $.ajax({
                 url: nextPageHref,
-                method: "GET",
+                method: 'GET',
                 success: (responseHtml: any) => {
                     const domParser = new DOMParser();
-                    const $parsedDom = $(
-                        domParser.parseFromString(responseHtml, "text/html"),
-                    );
+                    const $parsedDom = $(domParser.parseFromString(responseHtml, 'text/html'));
                     this.parseMovieList($parsedDom);
                 },
                 error: function (request: any) {
                     console.error(request);
-                    show.error("加载下一页失败:" + request.message);
-                },
+                    show.error('加载下一页失败:' + request.message);
+                }
             });
         } else {
-            show.ok("导入结束!");
+            show.ok('导入结束!');
             refresh();
         }
     }

@@ -7,7 +7,7 @@
  */
 
 /** 加密 salt，作为密文前后缀。 */
-export const Le = "x7k9p3";
+export const Le = 'x7k9p3';
 
 /**
  * 加密：salt 前后包裹后，每个码点 +5。
@@ -17,12 +17,12 @@ export const Le = "x7k9p3";
  */
 export function Me(value: string): string {
     return (Le + value + Le)
-        .split("")
+        .split('')
         .map((ch) => {
             const code = ch.codePointAt(0)!;
             return String.fromCodePoint(code + 5);
         })
-        .join("");
+        .join('');
 }
 
 /**
@@ -33,11 +33,11 @@ export function Me(value: string): string {
  */
 export function Ne(value: string): string {
     return value
-        .split("")
+        .split('')
         .map((ch) => {
             const code = ch.codePointAt(0)!;
             return String.fromCodePoint(code - 5);
         })
-        .join("")
+        .join('')
         .slice(Le.length, -Le.length);
 }

@@ -37,43 +37,41 @@ export function RelatedHeader({ foldText, iconText }: RelatedHeaderProps) {
     return (
         <div
             style={{
-                display: "flex",
-                alignItems: "center",
-                margin: "16px 0",
-                color: "#666",
-                fontSize: "14px",
+                display: 'flex',
+                alignItems: 'center',
+                margin: '16px 0',
+                color: '#666',
+                fontSize: '14px'
             }}
         >
             <span
                 style={{
                     flex: 1,
-                    height: "1px",
-                    background:
-                        "linear-gradient(to right, transparent, #999, transparent)",
+                    height: '1px',
+                    background: 'linear-gradient(to right, transparent, #999, transparent)'
                 }}
             ></span>
-            <span style={{ padding: "0 10px" }}>相关清单</span>
+            <span style={{ padding: '0 10px' }}>相关清单</span>
             <a
                 id="relatedFold"
                 style={{
-                    marginLeft: "8px",
-                    color: "#1897ff",
-                    textDecoration: "none",
-                    display: "flex",
-                    alignItems: "center",
+                    marginLeft: '8px',
+                    color: '#1897ff',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center'
                 }}
             >
                 <span className="toggle-text">{foldText}</span>
-                <span className="toggle-icon" style={{ marginLeft: "4px" }}>
+                <span className="toggle-icon" style={{ marginLeft: '4px' }}>
                     {iconText}
                 </span>
             </a>
             <span
                 style={{
                     flex: 1,
-                    height: "1px",
-                    background:
-                        "linear-gradient(to right, transparent, #999, transparent)",
+                    height: '1px',
+                    background: 'linear-gradient(to right, transparent, #999, transparent)'
                 }}
             ></span>
         </div>

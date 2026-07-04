@@ -11,8 +11,8 @@
  * 全局 $/layer/utils 由 src/types/globals.d.ts 声明为 any。
  */
 
-import tooltipCssRaw from "../styles/tooltip.css?raw";
-import { injectCss as H } from "./style-injector";
+import tooltipCssRaw from '../styles/tooltip.css?raw';
+import { injectCss as H } from './style-injector';
 
 /** 触发 tooltip 的元素，运行时挂载 tooltipElement 与 hoverTimeout。 */
 interface TooltipableElement extends HTMLElement {
@@ -23,11 +23,11 @@ interface TooltipableElement extends HTMLElement {
 }
 
 /** tooltip 支持的定位方向。 */
-type TooltipDirection = "top" | "bottom" | "left" | "right";
+type TooltipDirection = 'top' | 'bottom' | 'left' | 'right';
 
 /** 匹配所有支持 data-tip* 属性的元素的选择器。 */
 const TOOLTIP_SELECTOR =
-    "[data-tip-top], [data-tip-bottom], [data-tip-left], [data-tip-right], [data-tip]";
+    '[data-tip-top], [data-tip-bottom], [data-tip-left], [data-tip-right], [data-tip]';
 
 /**
  * 创建 tooltip DOM 并挂到 body（原 IIFE 内的匿名工厂）。
@@ -36,9 +36,9 @@ const TOOLTIP_SELECTOR =
  * @returns tooltip 根元素（.js-tooltip）
  */
 function createTooltipElement(content: string): HTMLElement {
-    const wrapper = document.createElement("div");
-    wrapper.classList.add("js-tooltip");
-    const inner = document.createElement("div");
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('js-tooltip');
+    const inner = document.createElement('div');
     inner.innerHTML = content;
     wrapper.appendChild(inner);
     document.body.appendChild(wrapper);
@@ -61,65 +61,60 @@ function createTooltipElement(content: string): HTMLElement {
 export function positionTooltip(
     element: TooltipableElement,
     content: string,
-    direction: TooltipDirection,
+    direction: TooltipDirection
 ): void {
     const tooltip = createTooltipElement(content);
-    tooltip.style.display = "block";
+    tooltip.style.display = 'block';
     const elementRect = element.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
-    tooltip.style.display = "none";
+    tooltip.style.display = 'none';
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     let left: number | undefined;
     let top: number | undefined;
     let actualDirection: TooltipDirection = direction;
-    const fitsVertically = (y: number) =>
-        y >= 8 && y + tooltipRect.height <= viewportHeight - 8;
-    const fitsHorizontally = (x: number) =>
-        x >= 8 && x + tooltipRect.width <= viewportWidth - 8;
-    const centerX =
-        elementRect.left + elementRect.width / 2 - tooltipRect.width / 2;
-    const centerY =
-        elementRect.top + elementRect.height / 2 - tooltipRect.height / 2;
+    const fitsVertically = (y: number) => y >= 8 && y + tooltipRect.height <= viewportHeight - 8;
+    const fitsHorizontally = (x: number) => x >= 8 && x + tooltipRect.width <= viewportWidth - 8;
+    const centerX = elementRect.left + elementRect.width / 2 - tooltipRect.width / 2;
+    const centerY = elementRect.top + elementRect.height / 2 - tooltipRect.height / 2;
     switch (direction) {
-        case "top":
+        case 'top':
             top = elementRect.top - tooltipRect.height - 0;
             if (top < 8 && fitsVertically(elementRect.bottom + 0)) {
                 top = elementRect.bottom + 0;
-                actualDirection = "bottom";
+                actualDirection = 'bottom';
             }
             break;
-        case "bottom":
+        case 'bottom':
             top = elementRect.bottom + 0;
             if (
                 top + tooltipRect.height > viewportHeight - 8 &&
                 fitsVertically(elementRect.top - tooltipRect.height - 0)
             ) {
                 top = elementRect.top - tooltipRect.height - 0;
-                actualDirection = "top";
+                actualDirection = 'top';
             }
             break;
-        case "left":
+        case 'left':
             left = elementRect.left - tooltipRect.width - 0;
             if (left < 8 && fitsHorizontally(elementRect.right + 0)) {
                 left = elementRect.right + 0;
-                actualDirection = "right";
+                actualDirection = 'right';
             }
             break;
-        case "right":
+        case 'right':
             left = elementRect.right + 0;
             if (
                 left + tooltipRect.width > viewportWidth - 8 &&
                 fitsHorizontally(elementRect.left - tooltipRect.width - 0)
             ) {
                 left = elementRect.left - tooltipRect.width - 0;
-                actualDirection = "left";
+                actualDirection = 'left';
             }
             break;
     }
-    const isHorizontal =
-        actualDirection === "left" || actualDirection === "right";
-    if (actualDirection === "top" || actualDirection === "bottom") {
+    const isHorizontal = actualDirection === 'left' || actualDirection === 'right';
+    if (actualDirection === 'top' || actualDirection === 'bottom') {
         left = centerX;
         if (left < 8) {
             left = 8;
@@ -136,7 +131,7 @@ export function positionTooltip(
     }
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;
-    tooltip.classList.add("is-active");
+    tooltip.classList.add('is-active');
     element.tooltipElement = tooltip;
 }
 
@@ -148,42 +143,42 @@ export function positionTooltip(
 export function setupTooltip(): void {
     // tooltipCssRaw 为纯 CSS（无 <style> 包裹），由 injectCss 创建 <style> 元素注入
     H(tooltipCssRaw);
-    document.addEventListener("mouseover", (event) => {
+    document.addEventListener('mouseover', (event) => {
         const target = (event.target as HTMLElement).closest(
-            TOOLTIP_SELECTOR,
+            TOOLTIP_SELECTOR
         ) as TooltipableElement | null;
         if (target && !target.tooltipElement) {
-            let content = "";
-            let direction: TooltipDirection = "top";
-            if (target.hasAttribute("data-tip-bottom")) {
-                content = target.getAttribute("data-tip-bottom") ?? "";
-                direction = "bottom";
-            } else if (target.hasAttribute("data-tip-left")) {
-                content = target.getAttribute("data-tip-left") ?? "";
-                direction = "left";
-            } else if (target.hasAttribute("data-tip-right")) {
-                content = target.getAttribute("data-tip-right") ?? "";
-                direction = "right";
-            } else if (target.hasAttribute("data-tip-top")) {
-                content = target.getAttribute("data-tip-top") ?? "";
-                direction = "top";
-            } else if (target.hasAttribute("data-tip")) {
-                content = target.getAttribute("data-tip") ?? "";
-                direction = "top";
+            let content = '';
+            let direction: TooltipDirection = 'top';
+            if (target.hasAttribute('data-tip-bottom')) {
+                content = target.getAttribute('data-tip-bottom') ?? '';
+                direction = 'bottom';
+            } else if (target.hasAttribute('data-tip-left')) {
+                content = target.getAttribute('data-tip-left') ?? '';
+                direction = 'left';
+            } else if (target.hasAttribute('data-tip-right')) {
+                content = target.getAttribute('data-tip-right') ?? '';
+                direction = 'right';
+            } else if (target.hasAttribute('data-tip-top')) {
+                content = target.getAttribute('data-tip-top') ?? '';
+                direction = 'top';
+            } else if (target.hasAttribute('data-tip')) {
+                content = target.getAttribute('data-tip') ?? '';
+                direction = 'top';
             }
             if (!content) {
                 return;
             }
             target.hoverTimeout = window.setTimeout(() => {
-                if (target.matches(":hover") && !target.tooltipElement) {
+                if (target.matches(':hover') && !target.tooltipElement) {
                     positionTooltip(target, content, direction);
                 }
             }, 50);
         }
     });
-    document.addEventListener("mouseout", (event) => {
+    document.addEventListener('mouseout', (event) => {
         const target = (event.target as HTMLElement).closest(
-            TOOLTIP_SELECTOR,
+            TOOLTIP_SELECTOR
         ) as TooltipableElement | null;
         if (!target) {
             return;

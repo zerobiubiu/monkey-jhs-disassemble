@@ -1,18 +1,16 @@
-
-            .video-control-btn {
-                min-width:120px;
-                padding: 7px 12px;
-                font-size: 12px;
-                background: rgba(0,0,0,0.7);
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            .video-control-btn.active {
-                background-color: #1890ff;
-                color: white;
-                font-weight: bold;
-                border: 2px solid #096dd9;
-            }
-        
+.video-control-btn {
+    min-width: 120px;
+    padding: 7px 12px;
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.video-control-btn.active {
+    background-color: #1890ff;
+    color: white;
+    font-weight: bold;
+    border: 2px solid #096dd9;
+}

@@ -98,7 +98,7 @@ export const VIEWER_CONFIG = (ctx: ViewerConfigContext): ViewerOptions => ({
         rotateLeft: 0,
         rotateRight: 0,
         flipHorizontal: 0,
-        flipVertical: 0,
+        flipVertical: 0
     },
     title: false,
     keyboard: false,
@@ -113,29 +113,29 @@ export const VIEWER_CONFIG = (ctx: ViewerConfigContext): ViewerOptions => ({
         if (ctx.isTemporary) {
             ctx.container.remove();
         }
-        document.documentElement.style.overflow = "hidden";
-        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
         viewer.handleKeydown = function (event: KeyboardEvent) {
-            if (event.key === "Escape" || event.key === " ") {
+            if (event.key === 'Escape' || event.key === ' ') {
                 event.preventDefault();
                 event.stopPropagation();
                 viewer.destroy();
-                document.removeEventListener("keydown", viewer.handleKeydown);
-                document.documentElement.style.overflow = "";
-                document.body.style.overflow = "";
+                document.removeEventListener('keydown', viewer.handleKeydown);
+                document.documentElement.style.overflow = '';
+                document.body.style.overflow = '';
                 ctx.resetOverflow();
             }
         };
-        document.addEventListener("keydown", viewer.handleKeydown);
+        document.addEventListener('keydown', viewer.handleKeydown);
     },
     hidden() {
         const viewer = ctx.viewerRef.current;
         if (viewer && viewer.handleKeydown) {
-            document.removeEventListener("keydown", viewer.handleKeydown);
+            document.removeEventListener('keydown', viewer.handleKeydown);
         }
         viewer.destroy();
-        document.documentElement.style.overflow = "";
-        document.body.style.overflow = "";
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
         ctx.resetOverflow();
-    },
+    }
 });

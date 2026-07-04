@@ -23,7 +23,7 @@
 }
 
 .image-hover-preview::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 0;
     left: 0;
@@ -34,7 +34,7 @@
 }
 
 .image-hover-preview.loading::before {
-    content: "加载中...";
+    content: '加载中...';
     position: absolute;
     top: 50%;
     left: 50%;

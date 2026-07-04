@@ -46,32 +46,32 @@ export function NewVideoDialog({ refreshSvg }: NewVideoDialogProps) {
         <div
             className="newVideoToolBox"
             style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                overflow: "hidden",
-                padding: "10px",
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflow: 'hidden',
+                padding: '10px'
             }}
         >
             <div
                 style={{
-                    marginBottom: "15px",
-                    display: "flex",
-                    justifyContent: "space-between",
+                    marginBottom: '15px',
+                    display: 'flex',
+                    justifyContent: 'space-between'
                 }}
             >
                 <div>
                     <span id="checkNewVideoMsg"></span>
                 </div>
-                <div style={{ display: "flex", alignItems: "flex-start" }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                     <select
                         id="paramActressType"
                         style={{
-                            textAlign: "center",
-                            height: "100%",
-                            minWidth: "150px",
-                            border: "1px solid #ddd",
-                            marginRight: "10px",
+                            textAlign: 'center',
+                            height: '100%',
+                            minWidth: '150px',
+                            border: '1px solid #ddd',
+                            marginRight: '10px'
                         }}
                     >
                         <option value="all" selected>
@@ -85,7 +85,7 @@ export function NewVideoDialog({ refreshSvg }: NewVideoDialogProps) {
                         className="a-normal"
                         id="reLoad"
                         dangerouslySetInnerHTML={{
-                            __html: `${refreshSvg} &nbsp;&nbsp; 刷新`,
+                            __html: `${refreshSvg} &nbsp;&nbsp; 刷新`
                         }}
                     />
                 </div>

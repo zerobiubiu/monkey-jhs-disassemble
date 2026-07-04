@@ -30,7 +30,7 @@ export const createToast = (
     type: 'info' | 'success' | 'error',
     position: any,
     duration: any,
-    onClick: any,
+    onClick: any
 ): any => {
     let userOptions: any;
     if (typeof position == 'object') {
@@ -42,7 +42,7 @@ export const createToast = (
     }
     if (!userOptions.gravity || userOptions.gravity === 'center') {
         userOptions.offset = {
-            y: 'calc(50vh - 150px)',
+            y: 'calc(50vh - 150px)'
         };
     }
     const infoFrom = '#60A5FA';
@@ -58,7 +58,7 @@ export const createToast = (
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
         minWidth: '150px',
         textAlign: 'center',
-        zIndex: 999999999,
+        zIndex: 999999999
     };
     const toastOptions = {
         text: message,
@@ -69,20 +69,20 @@ export const createToast = (
         style: {
             info: {
                 ...baseStyle,
-                background: `linear-gradient(to right, ${infoFrom}, ${infoTo})`,
+                background: `linear-gradient(to right, ${infoFrom}, ${infoTo})`
             },
             success: {
                 ...baseStyle,
-                background: `linear-gradient(to right, ${successFrom}, ${successTo})`,
+                background: `linear-gradient(to right, ${successFrom}, ${successTo})`
             },
             error: {
                 ...baseStyle,
-                background: `linear-gradient(to right, ${errorFrom}, ${errorTo})`,
-            },
+                background: `linear-gradient(to right, ${errorFrom}, ${errorTo})`
+            }
         }[type],
         stopOnFocus: true,
         oldestFirst: false,
-        ...userOptions,
+        ...userOptions
     };
     if (toastOptions.duration === -1) {
         toastOptions.close = true;
@@ -120,5 +120,5 @@ export const show = {
      * 显示 info 样式 toast。参数同 ok。
      */
     info: (message: string, position: any = 'center', duration?: any, onClick?: any) =>
-        createToast(message, 'info', position, duration, onClick),
+        createToast(message, 'info', position, duration, onClick)
 };

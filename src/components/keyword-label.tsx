@@ -22,10 +22,10 @@
  * react-dom/server）。属性值不做转义（data-keyword/keyword 等按本工程约定
  * 不转义，与原 jQuery `$(htmlString)` 行为一致）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** KeywordLabel 的变体（link=可跳转的 a，div=纯块）。 */
-export type KeywordLabelVariant = "link" | "div";
+export type KeywordLabelVariant = 'link' | 'div';
 
 /** KeywordLabel 的属性。 */
 export interface KeywordLabelProps {
@@ -51,18 +51,12 @@ export interface KeywordLabelProps {
  * @returns keyword-label JSX，经 jsxToString 转 HTML 字符串后供 `$(html)`
  *          创建后 `.append()` 消费。
  */
-export function KeywordLabel({
-    keyword,
-    bgColor,
-    textColor,
-    variant,
-    href,
-}: KeywordLabelProps) {
+export function KeywordLabel({ keyword, bgColor, textColor, variant, href }: KeywordLabelProps) {
     const style: CSSProperties = {
         backgroundColor: bgColor,
-        color: textColor,
+        color: textColor
     };
-    if (variant === "link") {
+    if (variant === 'link') {
         return (
             <a
                 className="keyword-label"

@@ -23,7 +23,7 @@
  * react-dom/server）。属性值不做转义，与原始 jQuery `.append(htmlString)`
  * 行为一致。
  */
-import type { ActressWikiInfo } from "./actress-info-detail-segment";
+import type { ActressWikiInfo } from './actress-info-detail-segment';
 
 /** ActressInfoStarPageHtml 的属性。 */
 interface ActressInfoStarPageHtmlProps {
@@ -37,54 +37,36 @@ interface ActressInfoStarPageHtmlProps {
  * @returns actress-info 块 React 元素，经 jsxToString 转 HTML 字符串后供
  *          handleStarPage `.append()` 消费。
  */
-export function ActressInfoStarPageHtml({
-    info,
-}: ActressInfoStarPageHtmlProps) {
+export function ActressInfoStarPageHtml({ info }: ActressInfoStarPageHtmlProps) {
     if (info) {
         return (
-            <a
-                className="actress-info"
-                href={info.url}
-                target="_blank"
-            >
+            <a className="actress-info" href={info.url} target="_blank">
                 <div
                     style={{
-                        fontSize: "17px",
-                        fontWeight: "normal",
-                        marginTop: "5px",
+                        fontSize: '17px',
+                        fontWeight: 'normal',
+                        marginTop: '5px'
                     }}
                 >
                     <div
                         style={{
-                            display: "flex",
-                            marginBottom: "10px",
+                            display: 'flex',
+                            marginBottom: '10px'
                         }}
                     >
-                        <span style={{ width: "300px" }}>
-                            出生日期: {info.birthday}
-                        </span>
-                        <span style={{ width: "200px" }}>
-                            年龄: {info.age}
-                        </span>
-                        <span style={{ width: "200px" }}>
-                            身高: {info.height}
-                        </span>
+                        <span style={{ width: '300px' }}>出生日期: {info.birthday}</span>
+                        <span style={{ width: '200px' }}>年龄: {info.age}</span>
+                        <span style={{ width: '200px' }}>身高: {info.height}</span>
                     </div>
                     <div
                         style={{
-                            display: "flex",
-                            marginBottom: "10px",
+                            display: 'flex',
+                            marginBottom: '10px'
                         }}
                     >
-                        <span style={{ width: "300px" }}>
-                            体重: {info.weight}
-                        </span>
-                        <span style={{ width: "200px" }}>
-                            三围: {info.threeSizeText}
-                        </span>
-                        <span style={{ width: "200px" }}>
-                            罩杯: {info.braSize}
-                        </span>
+                        <span style={{ width: '300px' }}>体重: {info.weight}</span>
+                        <span style={{ width: '200px' }}>三围: {info.threeSizeText}</span>
+                        <span style={{ width: '200px' }}>罩杯: {info.braSize}</span>
                     </div>
                 </div>
             </a>
@@ -94,9 +76,9 @@ export function ActressInfoStarPageHtml({
         <div
             className="actress-info"
             style={{
-                fontSize: "17px",
-                fontWeight: "normal",
-                marginTop: "5px",
+                fontSize: '17px',
+                fontWeight: 'normal',
+                marginTop: '5px'
             }}
         >
             无此相关演员信息

@@ -34,15 +34,9 @@ export interface BlacklistStatusCellProps {
  * @param props.statusText 状态文案
  * @returns `<span data-tip="..." style="...">statusText</span>` JSX，经 jsxToString 转 HTML 字符串后供 Tabulator formatter 返回。
  */
-export function BlacklistStatusCell({
-    tipText,
-    statusText,
-}: BlacklistStatusCellProps) {
+export function BlacklistStatusCell({ tipText, statusText }: BlacklistStatusCellProps) {
     return (
-        <span
-            data-tip={tipText}
-            style={{ color: tipText ? "#cc4444" : undefined }}
-        >
+        <span data-tip={tipText} style={{ color: tipText ? '#cc4444' : undefined }}>
             {statusText}
         </span>
     );

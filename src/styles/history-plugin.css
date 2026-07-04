@@ -1,32 +1,29 @@
+/* 下拉菜单容器（相对定位） */
+.sub-btns {
+    position: relative;
+    display: inline-block;
+}
 
-                /* 下拉菜单容器（相对定位） */
-                .sub-btns {
-                    position: relative;
-                    display: inline-block;
-                }
-                
-                /* 下拉菜单内容（默认隐藏） */
-                .sub-btns-menu {
-                    display: none;
-                    position: absolute;
-                    right: 80px;
-                    top:-10px;
-                    background: white;
-                    padding:10px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-                    z-index: 100;
-                    border-radius: 4px;
-                    overflow: hidden;
-                }
-                
-                
-                /* 点击后显示菜单（JS 控制） */
-                .sub-btns-menu.show {
-                    display: flex !important;
-                    flex-direction: column;
-                }
-                
-                .table-link-param {
-                    cursor: pointer;
-                }
-        
+/* 下拉菜单内容（默认隐藏） */
+.sub-btns-menu {
+    display: none;
+    position: absolute;
+    right: 80px;
+    top: -10px;
+    background: white;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* 点击后显示菜单（JS 控制） */
+.sub-btns-menu.show {
+    display: flex !important;
+    flex-direction: column;
+}
+
+.table-link-param {
+    cursor: pointer;
+}

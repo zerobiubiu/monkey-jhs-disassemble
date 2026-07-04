@@ -32,8 +32,8 @@ export interface BlacklistUrlTypeCellProps {
  */
 export function BlacklistUrlTypeCell({ hasTag }: BlacklistUrlTypeCellProps) {
     return (
-        <span style={{ color: hasTag ? "#cc4444" : undefined }}>
-            {hasTag ? "按所选分类屏蔽" : "未筛选分类"}
+        <span style={{ color: hasTag ? '#cc4444' : undefined }}>
+            {hasTag ? '按所选分类屏蔽' : '未筛选分类'}
         </span>
     );
 }

@@ -20,7 +20,7 @@
  * 经轻量 `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时
  * 依赖，不引入 react-dom/server）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /**
  * 渲染折叠分类 section-title 按钮的 JSX。
@@ -29,12 +29,12 @@ import type { CSSProperties } from "react";
  */
 export function FoldCategorySectionButton() {
     const anchorStyle: CSSProperties = {
-        backgroundColor: "#d23e60 !important",
-        marginLeft: "20px",
-        borderBottom: "none !important",
-        borderRadius: "3px",
+        backgroundColor: '#d23e60 !important',
+        marginLeft: '20px',
+        borderBottom: 'none !important',
+        borderRadius: '3px'
     };
-    const iconStyle: CSSProperties = { marginLeft: "10px" };
+    const iconStyle: CSSProperties = { marginLeft: '10px' };
     return (
         <div id="foldCategoryBtn">
             <a className="menu-btn" style={anchorStyle}>

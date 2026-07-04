@@ -27,10 +27,10 @@
  * 依赖，不引入 react-dom/server）。属性值不做转义，与原始 jQuery
  * `.append(htmlString)` 行为一致。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** 站点变体：javdb 两行布局 / javbus 单行布局。 */
-export type MenuButtonSite = "javdb" | "javbus";
+export type MenuButtonSite = 'javdb' | 'javbus';
 
 /** MenuButtonBoxHtml 的属性。 */
 export interface MenuButtonBoxHtmlProps {
@@ -58,12 +58,12 @@ export interface MenuButtonBoxHtmlProps {
     starPage?: boolean;
 }
 
-const BLACKLIST_DEFAULT_LABEL = "加入黑名单";
-const BLACKLIST_DEFAULT_COLOR = "#d22020";
+const BLACKLIST_DEFAULT_LABEL = '加入黑名单';
+const BLACKLIST_DEFAULT_COLOR = '#d22020';
 /** 原 data-tip 文案（演员页与标签页均沿用此句，忠实保留）。 */
-const BLACKLIST_TIP = "将演员加入黑名单, 后续有作品更新也会纳入屏蔽中";
-const FILTER_ALL_TIP = "一键屏蔽已选分类的视频列表至鉴定记录中";
-const SORT_DEFAULT_LABEL = "当前排序方式: 默认";
+const BLACKLIST_TIP = '将演员加入黑名单, 后续有作品更新也会纳入屏蔽中';
+const FILTER_ALL_TIP = '一键屏蔽已选分类的视频列表至鉴定记录中';
+const SORT_DEFAULT_LABEL = '当前排序方式: 默认';
 
 /**
  * 构造通用菜单按钮内联样式（background-color !important）。
@@ -98,22 +98,22 @@ export function MenuButtonBoxHtml({
     searchOrUserPage = false,
     sortLabel = SORT_DEFAULT_LABEL,
     newVideoCount = 0,
-    starPage = false,
+    starPage = false
 }: MenuButtonBoxHtmlProps) {
-    if (site === "javbus") {
+    if (site === 'javbus') {
         return (
-            <div style={{ margin: "10px", display: "flex" }}>
+            <div style={{ margin: '10px', display: 'flex' }}>
                 <a
                     id="waitCheckBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#56c938")}
+                    style={menuBtnStyle('#56c938')}
                 >
                     <span>打开待鉴定</span>
                 </a>
                 <a
                     id="waitDownBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#2caac0")}
+                    style={menuBtnStyle('#2caac0')}
                 >
                     <span>打开已收藏</span>
                 </a>
@@ -130,7 +130,7 @@ export function MenuButtonBoxHtml({
                         <a
                             id="filterAllVideo"
                             className="menu-btn main-tab-btn"
-                            style={menuBtnStyle("#e8ab39")}
+                            style={menuBtnStyle('#e8ab39')}
                             data-tip={FILTER_ALL_TIP}
                         >
                             <span>一键屏蔽所有作品</span>
@@ -140,7 +140,7 @@ export function MenuButtonBoxHtml({
                     <a
                         id="blacklistBtn"
                         className="menu-btn main-tab-btn"
-                        style={menuBtnStyle("#34393f")}
+                        style={menuBtnStyle('#34393f')}
                     >
                         <span>演员黑名单</span>
                     </a>
@@ -154,22 +154,22 @@ export function MenuButtonBoxHtml({
         <>
             <div
                 style={{
-                    display: "flex",
-                    alignItems: "center",
-                    flexGrow: advancedSearch ? undefined : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexGrow: advancedSearch ? undefined : 1
                 }}
             >
                 <a
                     id="waitCheckBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#56c938")}
+                    style={menuBtnStyle('#56c938')}
                 >
                     <span>打开待鉴定</span>
                 </a>
                 <a
                     id="waitDownBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#2caac0")}
+                    style={menuBtnStyle('#2caac0')}
                 >
                     <span>打开已收藏</span>
                 </a>
@@ -187,8 +187,8 @@ export function MenuButtonBoxHtml({
                             id="filterAllVideo"
                             className="menu-btn main-tab-btn"
                             style={{
-                                backgroundColor: "#e8ab39 !important",
-                                marginRight: "30px!important",
+                                backgroundColor: '#e8ab39 !important',
+                                marginRight: '30px!important'
                             }}
                             data-tip={FILTER_ALL_TIP}
                         >
@@ -207,22 +207,22 @@ export function MenuButtonBoxHtml({
                     </a>
                 )}
             </div>
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
                 <a
                     id="newVideoBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#2c6cc0")}
+                    style={menuBtnStyle('#2c6cc0')}
                 >
                     <span>
-                        {"新作品检测 ("}
+                        {'新作品检测 ('}
                         <span id="newVideoCount">{newVideoCount}</span>
-                        {")"}
+                        {')'}
                     </span>
                 </a>
                 <a
                     id="blacklistBtn"
                     className="menu-btn main-tab-btn"
-                    style={menuBtnStyle("#34393f")}
+                    style={menuBtnStyle('#34393f')}
                 >
                     <span>演员黑名单</span>
                 </a>
@@ -230,7 +230,7 @@ export function MenuButtonBoxHtml({
                     <a
                         id="sort-toggle-btn"
                         className="menu-btn main-tab-btn"
-                        style={menuBtnStyle("#8783ab")}
+                        style={menuBtnStyle('#8783ab')}
                     >
                         {` ${sortLabel} `}
                     </a>

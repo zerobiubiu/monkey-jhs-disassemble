@@ -35,23 +35,17 @@ export function Top250Pagination({ page }: Top250PaginationProps) {
     const hasMore = page >= 5;
     return (
         <nav className="pagination">
-            <a
-                className={`pagination-previous ${page <= 1 ? "do-hide" : ""}`}
-                data-page={page - 1}
-            >
+            <a className={`pagination-previous ${page <= 1 ? 'do-hide' : ''}`} data-page={page - 1}>
                 上一頁
             </a>
-            <a
-                className={`pagination-next ${hasMore ? "do-hide" : ""}`}
-                data-page={page + 1}
-            >
+            <a className={`pagination-next ${hasMore ? 'do-hide' : ''}`} data-page={page + 1}>
                 下一頁
             </a>
             <ul className="pagination-list">
                 {Array.from({ length: 5 }, (_, i) => i + 1).map((i) => (
                     <li key={i}>
                         <a
-                            className={`pagination-link ${page === i ? "is-current" : ""}`}
+                            className={`pagination-link ${page === i ? 'is-current' : ''}`}
                             data-page={i}
                         >
                             {i}

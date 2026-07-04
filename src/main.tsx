@@ -9,53 +9,53 @@
 //
 // 详见 doc/ 目录下的迁移文档。
 
-import { isJavdbSite as r, isJavbusSite as l } from "./constants/site";
-import loadingCssRaw from "./styles/loading.css?raw";
-import viewerCssRaw from "./styles/viewer.css?raw";
-import loggerCssRaw from "./styles/logger.css?raw";
-import javbusMasonryCssRaw from "./styles/javbus-masonry.css?raw";
-import javdbSiteCssRaw from "./styles/javdb-site.css?raw";
-import commonToolbarCssRaw from "./styles/common-toolbar.css?raw";
-import aNormalButtonsCssRaw from "./styles/a-normal-buttons.css?raw";
-import { Hotkey as ie } from "./core/hotkey";
-import { injectCss as H } from "./core/style-injector";
-import { loadGfriends as gt, filetreeDb as lt } from "./core/gfriends";
-import { WebDavClient as De } from "./core/webdav";
-import { createLoading } from "./core/loading";
-import { show } from "./core/toast";
-import { VIEWER_CONFIG } from "./core/viewer";
-import { jsxToString } from "./core/jsx-to-string";
-import { TemporaryImageContainer } from "./components/temporary-image-container";
-import { Logger } from "./core/logger";
-import { StorageManager } from "./core/storage-manager";
-import { CommonUtil } from "./core/common-util";
-import { GmHttp } from "./core/gm-http";
-import { setupLayerWrapper } from "./core/layer-wrapper";
-import { setupTooltip } from "./core/tooltip";
-import { Me, Ne } from "./core/webdav-crypto";
-import { PluginManager } from "./plugins/plugin-manager";
-import { DetailPagePlugin } from "./plugins/detail-page-plugin";
-import { FilterTitleKeywordPlugin } from "./plugins/filter-title-keyword-plugin";
-import { HighlightMagnetPlugin } from "./plugins/highlight-magnet-plugin";
-import { FoldCategoryPlugin } from "./plugins/fold-category-plugin";
-import { ActressInfoPlugin } from "./plugins/actress-info-plugin";
-import { HitShowPlugin } from "./plugins/hit-show-plugin";
-import { Top250Plugin } from "./plugins/top250-plugin";
-import { NavBarPlugin } from "./plugins/nav-bar-plugin";
-import { OtherSitePlugin } from "./plugins/other-site-plugin";
-import { ReviewPlugin } from "./plugins/review-plugin";
-import { ListPageButtonPlugin } from "./plugins/list-page-button-plugin";
-import { AutoPagePlugin } from "./plugins/auto-page-plugin";
-import { BlacklistPlugin } from "./plugins/blacklist-plugin";
-import { WantAndWatchedVideosPlugin } from "./plugins/want-and-watched-videos-plugin";
-import { RelatedPlugin } from "./plugins/related-plugin";
-import { FavoriteActressesPlugin } from "./plugins/favorite-actresses-plugin";
-import { NewVideoPlugin } from "./plugins/new-video-plugin";
-import { HistoryPlugin } from "./plugins/history-plugin";
-import { SettingPlugin } from "./plugins/setting-plugin";
-import { DetailPageButtonPlugin } from "./plugins/detail-page-button-plugin";
-import { ListPagePlugin } from "./plugins/list-page-plugin";
-import { PreviewVideoPlugin } from "./plugins/preview-video-plugin";
+import { isJavdbSite as r, isJavbusSite as l } from './constants/site';
+import loadingCssRaw from './styles/loading.css?raw';
+import viewerCssRaw from './styles/viewer.css?raw';
+import loggerCssRaw from './styles/logger.css?raw';
+import javbusMasonryCssRaw from './styles/javbus-masonry.css?raw';
+import javdbSiteCssRaw from './styles/javdb-site.css?raw';
+import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
+import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
+import { Hotkey as ie } from './core/hotkey';
+import { injectCss as H } from './core/style-injector';
+import { loadGfriends as gt, filetreeDb as lt } from './core/gfriends';
+import { WebDavClient as De } from './core/webdav';
+import { createLoading } from './core/loading';
+import { show } from './core/toast';
+import { VIEWER_CONFIG } from './core/viewer';
+import { jsxToString } from './core/jsx-to-string';
+import { TemporaryImageContainer } from './components/temporary-image-container';
+import { Logger } from './core/logger';
+import { StorageManager } from './core/storage-manager';
+import { CommonUtil } from './core/common-util';
+import { GmHttp } from './core/gm-http';
+import { setupLayerWrapper } from './core/layer-wrapper';
+import { setupTooltip } from './core/tooltip';
+import { Me, Ne } from './core/webdav-crypto';
+import { PluginManager } from './plugins/plugin-manager';
+import { DetailPagePlugin } from './plugins/detail-page-plugin';
+import { FilterTitleKeywordPlugin } from './plugins/filter-title-keyword-plugin';
+import { HighlightMagnetPlugin } from './plugins/highlight-magnet-plugin';
+import { FoldCategoryPlugin } from './plugins/fold-category-plugin';
+import { ActressInfoPlugin } from './plugins/actress-info-plugin';
+import { HitShowPlugin } from './plugins/hit-show-plugin';
+import { Top250Plugin } from './plugins/top250-plugin';
+import { NavBarPlugin } from './plugins/nav-bar-plugin';
+import { OtherSitePlugin } from './plugins/other-site-plugin';
+import { ReviewPlugin } from './plugins/review-plugin';
+import { ListPageButtonPlugin } from './plugins/list-page-button-plugin';
+import { AutoPagePlugin } from './plugins/auto-page-plugin';
+import { BlacklistPlugin } from './plugins/blacklist-plugin';
+import { WantAndWatchedVideosPlugin } from './plugins/want-and-watched-videos-plugin';
+import { RelatedPlugin } from './plugins/related-plugin';
+import { FavoriteActressesPlugin } from './plugins/favorite-actresses-plugin';
+import { NewVideoPlugin } from './plugins/new-video-plugin';
+import { HistoryPlugin } from './plugins/history-plugin';
+import { SettingPlugin } from './plugins/setting-plugin';
+import { DetailPageButtonPlugin } from './plugins/detail-page-button-plugin';
+import { ListPagePlugin } from './plugins/list-page-plugin';
+import { PreviewVideoPlugin } from './plugins/preview-video-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -84,39 +84,35 @@ declare global {
 }
 
 // ===== CSS replace（原 M/N/j/E/F/H） =====
-let M: string = "";
-if (window.location.href.includes("hideNav=1")) {
+let M: string = '';
+if (window.location.href.includes('hideNav=1')) {
     M =
-        "\n         .navbar-default {\n            display: none !important;\n        }\n        body {\n            padding-top:0px!important;\n        }\n    ";
+        '\n         .navbar-default {\n            display: none !important;\n        }\n        body {\n            padding-top:0px!important;\n        }\n    ';
 }
-const N = javbusMasonryCssRaw.replace("/*__HIDENAV__*/", M);
-let j: string = "";
-if (window.location.href.includes("hideNav=1")) {
+const N = javbusMasonryCssRaw.replace('/*__HIDENAV__*/', M);
+let j: string = '';
+if (window.location.href.includes('hideNav=1')) {
     j =
-        "\n        .main-nav,#search-bar-container {\n            display: none !important;\n        }\n        \n        html {\n            padding-top:0px!important;\n        }\n    ";
+        '\n        .main-nav,#search-bar-container {\n            display: none !important;\n        }\n        \n        html {\n            padding-top:0px!important;\n        }\n    ';
 }
-const E = javdbSiteCssRaw.replace("/*__HIDENAV2__*/", j);
+const E = javdbSiteCssRaw.replace('/*__HIDENAV2__*/', j);
 function generateScrollbarCss(): string {
     const e: string[] = [
-        ".jhs-scrollbar",
-        ".content-panel",
-        ".tabulator-tableholder",
-        ".has-navbar-fixed-top",
-        ".layui-layer-content",
+        '.jhs-scrollbar',
+        '.content-panel',
+        '.tabulator-tableholder',
+        '.has-navbar-fixed-top',
+        '.layui-layer-content'
     ];
-    const t = (e: string[], t: string) =>
-        e.map((e: string) => `${e}${t}`).join(",");
-    const n = "::-webkit-scrollbar-track";
-    const a = "::-webkit-scrollbar-thumb";
-    const i = "::-webkit-scrollbar-thumb:hover";
-    return `\n    ${t(e, "::-webkit-scrollbar")}{width:6px;height:6px;}\n    ${t(e, n)}{background:#f1f1f1;border-radius:10px;}\n    ${t(e, a)}{background:#888;border-radius:10px;}\n    ${t(e, i)}{background:#555;}\n    `
+    const t = (e: string[], t: string) => e.map((e: string) => `${e}${t}`).join(',');
+    const n = '::-webkit-scrollbar-track';
+    const a = '::-webkit-scrollbar-thumb';
+    const i = '::-webkit-scrollbar-thumb:hover';
+    return `\n    ${t(e, '::-webkit-scrollbar')}{width:6px;height:6px;}\n    ${t(e, n)}{background:#f1f1f1;border-radius:10px;}\n    ${t(e, a)}{background:#888;border-radius:10px;}\n    ${t(e, i)}{background:#555;}\n    `
         .trim()
-        .replace(/\n/g, "");
+        .replace(/\n/g, '');
 }
-const F = commonToolbarCssRaw.replace(
-    "/*__SCROLLBAR__*/",
-    generateScrollbarCss(),
-);
+const F = commonToolbarCssRaw.replace('/*__SCROLLBAR__*/', generateScrollbarCss());
 if (l) {
     H(N);
 }
@@ -135,20 +131,20 @@ unsafeWindow.lt = window.lt = lt;
 unsafeWindow.De = window.De = De;
 
 // ===== BroadcastChannel 跨标签页刷新/清缓存（原 G） =====
-const G = new BroadcastChannel("channel-refresh");
+const G = new BroadcastChannel('channel-refresh');
 window.refresh = function () {
     G.postMessage({
-        type: "refresh",
+        type: 'refresh'
     });
 };
 window.cleanCache_filter_actor_actress_car_list = function () {
     G.postMessage({
-        type: "cleanCache_filter_actor_actress_car_list",
+        type: 'cleanCache_filter_actor_actress_car_list'
     });
 };
 window.clean_cacheSettingObj = function () {
     G.postMessage({
-        type: "clean_cacheSettingObj",
+        type: 'clean_cacheSettingObj'
     });
 };
 
@@ -161,20 +157,18 @@ unsafeWindow.show = window.show = show;
 (function () {
     function e(e = 10) {
         setTimeout(() => {
-            const e = document.querySelectorAll(".layui-layer-shade").length;
-            document.documentElement.style.overflow = e > 0 ? "hidden" : "";
+            const e = document.querySelectorAll('.layui-layer-shade').length;
+            document.documentElement.style.overflow = e > 0 ? 'hidden' : '';
         }, e);
     }
     H(viewerCssRaw);
-    window.showImageViewer = function (t: any, n: string = "") {
+    window.showImageViewer = function (t: any, n: string = '') {
         let a: any = null;
         let i = false;
-        if (typeof t == "string" || t instanceof String) {
-            a = $(
-                jsxToString(
-                    <TemporaryImageContainer src={String(t)} alt={n} />,
-                ),
-            ).appendTo("body");
+        if (typeof t == 'string' || t instanceof String) {
+            a = $(jsxToString(<TemporaryImageContainer src={String(t)} alt={n} />)).appendTo(
+                'body'
+            );
             i = true;
         } else {
             a = $(t);
@@ -184,7 +178,7 @@ unsafeWindow.show = window.show = show;
             container: a,
             isTemporary: i,
             resetOverflow: e,
-            viewerRef,
+            viewerRef
         });
         viewerRef.current = new Viewer(a[0], s);
         viewerRef.current.show();
@@ -195,39 +189,36 @@ unsafeWindow.show = window.show = show;
 (async function () {
     H(loggerCssRaw);
     try {
-        if (
-            unsafeWindow.parent.clog &&
-            typeof unsafeWindow.parent.clog.log == "function"
-        ) {
+        if (unsafeWindow.parent.clog && typeof unsafeWindow.parent.clog.log == 'function') {
             window.clog = unsafeWindow.clog = unsafeWindow.parent.clog;
         } else {
             window.clog = unsafeWindow.clog = new Logger();
         }
     } catch (r) {
-        console.error("创建日志控制台出现异常", r);
+        console.error('创建日志控制台出现异常', r);
         window.clog = unsafeWindow.clog = new Logger();
     }
     (function () {
         const e = window.clog || console;
-        window.addEventListener("error", function (t) {
+        window.addEventListener('error', function (t) {
             const n = t.filename;
             const a = t.message;
-            if (!n.includes("javdb") && !n.includes("javbus")) {
+            if (!n.includes('javdb') && !n.includes('javbus')) {
                 e.error(`[全局 Error 异常捕获] ${a} 来源: ${n}`);
             }
         });
-        window.addEventListener("unhandledrejection", function (t) {
+        window.addEventListener('unhandledrejection', function (t) {
             const n = t.reason;
-            const a = (n == null ? undefined : n.message) ?? "";
-            if (a.includes("play()")) {
+            const a = (n == null ? undefined : n.message) ?? '';
+            if (a.includes('play()')) {
                 return;
             }
-            if (a.includes("The element has no supported sources")) {
-                show.error("播放失败, 请检查是否已对节点分流?");
-                e.error("播放失败, 请检查是否已对节点分流?");
+            if (a.includes('The element has no supported sources')) {
+                show.error('播放失败, 请检查是否已对节点分流?');
+                e.error('播放失败, 请检查是否已对节点分流?');
                 return;
             }
-            if (a.includes("<span>1005</span>") && a.includes("fc2ppvdb")) {
+            if (a.includes('<span>1005</span>') && a.includes('fc2ppvdb')) {
                 return;
             }
             const i = `[全局 Promise 异常捕获] ${n.message || n}`;
@@ -235,17 +226,15 @@ unsafeWindow.show = window.show = show;
             t.preventDefault();
         });
     })();
-    document.addEventListener("mousedown", (e) => {
+    document.addEventListener('mousedown', (e) => {
         const t = window.clog;
         if (!t.isInitialized || !t.container) {
             return;
         }
         const n = e.target as HTMLElement;
-        const a = [
-            ".console-logger-container",
-            ".layui-layer-shade",
-            ".loading-container",
-        ].join(",");
+        const a = ['.console-logger-container', '.layui-layer-shade', '.loading-container'].join(
+            ','
+        );
         if (n.closest(a)) {
             t.highZIndex();
         } else {
@@ -257,10 +246,10 @@ unsafeWindow.show = window.show = show;
 // ===== Tooltip + 快捷键监听 =====
 setupTooltip();
 let se = ie;
-document.addEventListener("keydown", (e) => {
+document.addEventListener('keydown', (e) => {
     se.handleKeydown(e);
 });
-document.addEventListener("keyup", (e) => {
+document.addEventListener('keyup', (e) => {
     se.handleKeyup(e);
 });
 
@@ -270,17 +259,11 @@ unsafeWindow.Ne = window.Ne = Ne;
 setupLayerWrapper();
 
 // ===== 库 CSS importResource（由全局 utils 加载 CDN 样式） =====
+utils.importResource('https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/layer.min.css');
+utils.importResource('https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css');
+utils.importResource('https://cdn.jsdelivr.net/npm/viewerjs@1.11.1/dist/viewer.min.css');
 utils.importResource(
-    "https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/layer.min.css",
-);
-utils.importResource(
-    "https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css",
-);
-utils.importResource(
-    "https://cdn.jsdelivr.net/npm/viewerjs@1.11.1/dist/viewer.min.css",
-);
-utils.importResource(
-    "https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/css/tabulator_semanticui.min.css",
+    'https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/css/tabulator_semanticui.min.css'
 );
 
 // ===== 启动序列：PluginManager + 注册 22 插件 =====
@@ -320,25 +303,22 @@ vt.processCss().then();
     window.isDetailPage = (function () {
         let e = window.location.href;
         if (r) {
-            return e.split("?")[0].includes("/v/");
+            return e.split('?')[0].includes('/v/');
         } else {
-            return !!l && $("#magnet-table").length > 0;
+            return !!l && $('#magnet-table').length > 0;
         }
     })();
     window.isListPage = (function () {
         let e = window.location.href;
         if (r) {
-            return $(".movie-list").length > 0 || e.includes("advanced_search");
+            return $('.movie-list').length > 0 || e.includes('advanced_search');
         } else {
-            return !!l && $(".masonry > div .item").length > 0;
+            return !!l && $('.masonry > div .item').length > 0;
         }
     })();
     window.isFc2Page = (function () {
         let e = window.location.href;
-        return (
-            e.includes("advanced_search?type=3") ||
-            e.includes("advanced_search?type=100")
-        );
+        return e.includes('advanced_search?type=3') || e.includes('advanced_search?type=100');
     })();
     await storageManager.merge_table_name();
     await storageManager.clean_no_url_blacklist();
@@ -347,8 +327,8 @@ vt.processCss().then();
     await storageManager.merge_favoriteActress();
     await storageManager.merge_tow_car_list_table();
     if (r && /(^|;)\s*locale\s*=\s*en\s*($|;)/i.test(document.cookie)) {
-        show.error("请切换到中文语言下才可正常使用本脚本", {
-            duration: -1,
+        show.error('请切换到中文语言下才可正常使用本脚本', {
+            duration: -1
         });
     }
     vt.processPlugins().then();

@@ -40,19 +40,11 @@ export interface MovieListWrapperProps {
  * @returns `<div class="movie-list">html</div>` + 可选 pagination-next a 的 JSX，
  *          经 jsxToString 转 HTML 字符串后供 htmlTo$dom 消费。
  */
-export function MovieListWrapper({
-    html,
-    nextUrl,
-}: MovieListWrapperProps) {
+export function MovieListWrapper({ html, nextUrl }: MovieListWrapperProps) {
     return (
         <>
-            <div
-                className="movie-list"
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
-            {nextUrl ? (
-                <a className="pagination-next" href={nextUrl} />
-            ) : null}
+            <div className="movie-list" dangerouslySetInnerHTML={{ __html: html }} />
+            {nextUrl ? <a className="pagination-next" href={nextUrl} /> : null}
         </>
     );
 }

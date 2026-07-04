@@ -1,12 +1,10 @@
+.viewer-canvas {
+    overflow: auto !important;
+}
 
-            .viewer-canvas {
-                overflow: auto !important;
-            }
-            
-            .viewer-close {
-                background: rgba(255,0,0,0.6) !important;
-            }
-            .viewer-close:hover {
-                background: rgba(255,0,0,0.8) !important;
-            }
-    
+.viewer-close {
+    background: rgba(255, 0, 0, 0.6) !important;
+}
+.viewer-close:hover {
+    background: rgba(255, 0, 0, 0.8) !important;
+}

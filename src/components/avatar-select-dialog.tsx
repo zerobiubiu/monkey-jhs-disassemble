@@ -49,14 +49,14 @@ export function AvatarSelectDialog({ avatarUrls }: AvatarSelectDialogProps) {
             <p
                 id="gfriends-prompt"
                 style={{
-                    textAlign: "center",
-                    fontSize: "15px",
-                    marginBottom: "15px",
+                    textAlign: 'center',
+                    fontSize: '15px',
+                    marginBottom: '15px'
                 }}
             >
                 点击图片即可选择（初始共 {avatarUrls.length} 张）
             </p>
-            <div style={{ overflowY: "auto", height: "calc(100% - 40px)" }}>
+            <div style={{ overflowY: 'auto', height: 'calc(100% - 40px)' }}>
                 <div id="gfriends-image-list">
                     {avatarUrls.map((url, index) => (
                         <div
@@ -71,10 +71,7 @@ export function AvatarSelectDialog({ avatarUrls }: AvatarSelectDialogProps) {
                                 className="gfriends-selectable-img"
                                 data-wrapper-id={`wrapper-${index}`}
                             />
-                            <div
-                                className="gfriends-size-tag"
-                                data-size-for={`wrapper-${index}`}
-                            >
+                            <div className="gfriends-size-tag" data-size-for={`wrapper-${index}`}>
                                 ...
                             </div>
                         </div>

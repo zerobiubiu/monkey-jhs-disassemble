@@ -35,13 +35,7 @@ export interface BlacklistNameCellProps {
  */
 export function BlacklistNameCell({ url, name }: BlacklistNameCellProps) {
     return (
-        <a
-            className="open-url"
-            data-url={url}
-            href={url}
-            data-name={name}
-            target="_blank"
-        >
+        <a className="open-url" data-url={url} href={url} data-name={name} target="_blank">
             {name}
         </a>
     );

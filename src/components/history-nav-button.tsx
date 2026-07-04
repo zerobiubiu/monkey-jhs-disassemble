@@ -28,7 +28,7 @@
  */
 
 /** HistoryNavButton 的变体。 */
-export type HistoryNavButtonVariant = "desktop" | "mini" | "javbus";
+export type HistoryNavButtonVariant = 'desktop' | 'mini' | 'javbus';
 
 /** HistoryNavButton 的属性。 */
 export interface HistoryNavButtonProps {
@@ -44,43 +44,43 @@ export interface HistoryNavButtonProps {
  */
 export function HistoryNavButton({ variant }: HistoryNavButtonProps) {
     switch (variant) {
-        case "desktop":
+        case 'desktop':
             return (
                 <div className="navbar-item has-sub-btns is-hoverable historyBtnBox">
                     <a
                         id="historyBtn"
                         className="navbar-link nav-btn"
                         style={{
-                            color: "#aade66 !important",
-                            paddingRight: "15px !important",
+                            color: '#aade66 !important',
+                            paddingRight: '15px !important'
                         }}
                     >
                         鉴定记录
                     </a>
                 </div>
             );
-        case "mini":
+        case 'mini':
             return (
                 <div className="navbar-item miniHistoryBtnBox">
                     <a
                         id="miniHistoryBtn"
                         className="navbar-link nav-btn"
                         style={{
-                            color: "#aade66 !important",
-                            paddingLeft: "0 !important",
-                            paddingRight: "0 !important",
+                            color: '#aade66 !important',
+                            paddingLeft: '0 !important',
+                            paddingRight: '0 !important'
                         }}
                     >
                         鉴定记录
                     </a>
                 </div>
             );
-        case "javbus":
+        case 'javbus':
             return (
                 <a
                     id="historyBtn"
                     className="menu-btn main-tab-btn"
-                    style={{ backgroundColor: "#b68625 !important" }}
+                    style={{ backgroundColor: '#b68625 !important' }}
                 >
                     鉴定记录
                 </a>

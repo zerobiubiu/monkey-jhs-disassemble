@@ -34,45 +34,45 @@ export function LoginDialog() {
     return (
         <div
             style={{
-                padding: "30px",
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                padding: '30px',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif"
             }}
         >
-            <div style={{ marginBottom: "25px" }}>
+            <div style={{ marginBottom: '25px' }}>
                 <input
                     type="text"
                     id="username"
                     name="username"
                     style={{
-                        width: "100%",
-                        padding: "12px 15px",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "4px",
-                        boxSizing: "border-box",
-                        transition: "all 0.3s",
-                        fontSize: "14px",
-                        background: "#f9f9f9",
-                        color: "#333",
+                        width: '100%',
+                        padding: '12px 15px',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '4px',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.3s',
+                        fontSize: '14px',
+                        background: '#f9f9f9',
+                        color: '#333'
                     }}
                     placeholder="用户名 | 邮箱"
                 />
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
+            <div style={{ marginBottom: '15px' }}>
                 <input
                     type="password"
                     id="password"
                     name="password"
                     style={{
-                        width: "100%",
-                        padding: "12px 15px",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "4px",
-                        boxSizing: "border-box",
-                        transition: "all 0.3s",
-                        fontSize: "14px",
-                        background: "#f9f9f9",
-                        color: "#333",
+                        width: '100%',
+                        padding: '12px 15px',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '4px',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.3s',
+                        fontSize: '14px',
+                        background: '#f9f9f9',
+                        color: '#333'
                     }}
                     placeholder="密码"
                 />
@@ -81,15 +81,15 @@ export function LoginDialog() {
             <button
                 id="loginBtn"
                 style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "#4a8bfc",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    fontSize: "15px",
-                    cursor: "pointer",
-                    transition: "background 0.3s",
+                    width: '100%',
+                    padding: '12px',
+                    background: '#4a8bfc',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    transition: 'background 0.3s'
                 }}
             >
                 登录

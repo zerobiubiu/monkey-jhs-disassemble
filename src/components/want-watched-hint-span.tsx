@@ -16,7 +16,7 @@
  */
 
 /** WantWatchedHintSpan 的变体。 */
-export type WantWatchedHintVariant = "want" | "watched";
+export type WantWatchedHintVariant = 'want' | 'watched';
 
 /** WantWatchedHintSpan 的属性。 */
 export interface WantWatchedHintSpanProps {
@@ -29,13 +29,13 @@ export interface WantWatchedHintSpanProps {
  * @returns 提示 span JSX，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
 export function WantWatchedHintSpan({ variant }: WantWatchedHintSpanProps) {
-    const label = variant === "want" ? "想看" : "看過";
+    const label = variant === 'want' ? '想看' : '看過';
     return (
         <span
             style={{
-                marginLeft: "8px",
-                color: "#888",
-                fontSize: "12px",
+                marginLeft: '8px',
+                color: '#888',
+                fontSize: '12px'
             }}
         >
             （JHS 现已在详情页自动同步"{label}"，本页按钮仅用于初始补录）

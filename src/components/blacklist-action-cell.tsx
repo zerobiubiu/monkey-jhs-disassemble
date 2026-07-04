@@ -32,8 +32,8 @@ export function BlacklistActionCell() {
         <>
             {/* <a class="a-normal keyword-btn"> <span>提取屏蔽词</span> </a>*/}
             <a className="a-danger delete-btn">
-                {" "}
-                <span>✂️ 删除</span>{" "}
+                {' '}
+                <span>✂️ 删除</span>{' '}
             </a>
         </>
     );

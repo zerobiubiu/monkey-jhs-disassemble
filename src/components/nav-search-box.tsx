@@ -27,18 +27,18 @@ export function NavSearchBox() {
         <div className="navbar-menu" id="search-box">
             <div
                 className="navbar-start"
-                style={{ display: "flex", alignItems: "center", gap: "5px" }}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
             >
                 <select
                     id="search-type"
                     style={{
-                        padding: "8px 12px",
-                        border: "1px solid #555",
-                        borderRadius: "4px",
-                        backgroundColor: "#333",
-                        color: "#eee",
-                        fontSize: "14px",
-                        outline: "none",
+                        padding: '8px 12px',
+                        border: '1px solid #555',
+                        borderRadius: '4px',
+                        backgroundColor: '#333',
+                        color: '#eee',
+                        fontSize: '14px',
+                        outline: 'none'
                     }}
                 >
                     <option value="all">影片</option>
@@ -54,27 +54,27 @@ export function NavSearchBox() {
                     type="text"
                     placeholder="輸入影片番號，演員名等關鍵字進行檢索"
                     style={{
-                        padding: "8px 12px",
-                        border: "1px solid #555",
-                        borderRadius: "4px",
-                        flexGrow: "1",
-                        fontSize: "14px",
-                        backgroundColor: "#333",
-                        color: "#eee",
-                        outline: "none",
+                        padding: '8px 12px',
+                        border: '1px solid #555',
+                        borderRadius: '4px',
+                        flexGrow: '1',
+                        fontSize: '14px',
+                        backgroundColor: '#333',
+                        color: '#eee',
+                        outline: 'none'
                     }}
                 />
                 <a
                     href="/advanced_search?noFold=1"
                     title="進階檢索"
                     style={{
-                        padding: "6px 12px",
-                        backgroundColor: "#444",
-                        borderRadius: "4px",
-                        textDecoration: "none",
-                        color: "#ddd",
-                        fontSize: "14px",
-                        border: "1px solid #555",
+                        padding: '6px 12px',
+                        backgroundColor: '#444',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        color: '#ddd',
+                        fontSize: '14px',
+                        border: '1px solid #555'
                     }}
                 >
                     <span>...</span>
@@ -82,14 +82,14 @@ export function NavSearchBox() {
                 <a
                     id="search-btn"
                     style={{
-                        padding: "6px 16px",
-                        backgroundColor: "#444",
-                        color: "#fff",
-                        borderRadius: "4px",
-                        textDecoration: "none",
-                        fontWeight: "500",
-                        cursor: "pointer",
-                        border: "1px solid #555",
+                        padding: '6px 16px',
+                        backgroundColor: '#444',
+                        color: '#fff',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        border: '1px solid #555'
                     }}
                 >
                     检索

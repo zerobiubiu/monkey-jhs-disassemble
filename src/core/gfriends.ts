@@ -22,8 +22,8 @@ import {
     FILETREE_STORE,
     GFRIENDS_CDN_INDEX_KEY,
     GFRIENDS_DB_NAME,
-    GFRIENDS_SOURCES,
-} from "../resources/gfriends";
+    GFRIENDS_SOURCES
+} from '../resources/gfriends';
 
 /** Gfriends Filetree.json 数据结构 */
 export interface FiletreeData {
@@ -62,8 +62,8 @@ class FiletreeDb {
                 resolve(database);
             };
             request.onerror = () => {
-                console.error("IndexedDB open error:", request.error);
-                reject(new Error("Failed to open IndexedDB"));
+                console.error('IndexedDB open error:', request.error);
+                reject(new Error('Failed to open IndexedDB'));
             };
         });
     }
@@ -73,7 +73,7 @@ class FiletreeDb {
         const db = await this.open();
         return new Promise<T | null>((resolve) => {
             const request = db
-                .transaction([FILETREE_STORE], "readonly")
+                .transaction([FILETREE_STORE], 'readonly')
                 .objectStore(FILETREE_STORE)
                 .get(key);
             request.onsuccess = () => resolve(request.result ?? null);
@@ -86,13 +86,13 @@ class FiletreeDb {
         const db = await this.open();
         return new Promise<void>((resolve, reject) => {
             const request = db
-                .transaction([FILETREE_STORE], "readwrite")
+                .transaction([FILETREE_STORE], 'readwrite')
                 .objectStore(FILETREE_STORE)
                 .put(value, key);
             request.onsuccess = () => resolve();
             request.onerror = () => {
-                console.error("IndexedDB set error:", request.error);
-                reject(new Error("Failed to write to IndexedDB"));
+                console.error('IndexedDB set error:', request.error);
+                reject(new Error('Failed to write to IndexedDB'));
             };
         });
     }
@@ -141,12 +141,8 @@ export interface CurrentCdnSource {
  * @returns 当前 CDN 源信息：json（Filetree.json URL）、base（Content 基址）、index（源索引）
  */
 export function getCurrentCdnSource(): CurrentCdnSource {
-    const rawIndex = parseInt(
-        localStorage.getItem(GFRIENDS_CDN_INDEX_KEY) || "0",
-        10,
-    );
-    const index =
-        rawIndex >= 0 && rawIndex < GFRIENDS_SOURCES.length ? rawIndex : 0;
+    const rawIndex = parseInt(localStorage.getItem(GFRIENDS_CDN_INDEX_KEY) || '0', 10);
+    const index = rawIndex >= 0 && rawIndex < GFRIENDS_SOURCES.length ? rawIndex : 0;
     const source = GFRIENDS_SOURCES[index];
     return { json: source.json, base: source.base, index };
 }
@@ -171,20 +167,18 @@ export function parseFiletree(data: FiletreeData | null): FiletreeIndex | null {
         const encodedFolder = encodeURIComponent(folderKey);
         const folder = content[folderKey];
         for (const fileName in folder) {
-            let namePart = fileName.replace(/\.jpg$/i, "").split("-")[0];
-            if (namePart.startsWith("AI-Fix-")) {
+            let namePart = fileName.replace(/\.jpg$/i, '').split('-')[0];
+            if (namePart.startsWith('AI-Fix-')) {
                 namePart = namePart.substring(7);
             }
             const normalizedName = namePart.toLowerCase().trim();
             if (normalizedName.length > 0) {
                 const urlPath = folder[fileName];
-                const queryIndex = urlPath.indexOf("?");
+                const queryIndex = urlPath.indexOf('?');
                 let encodedPath: string;
-                let queryString = "";
+                let queryString = '';
                 if (queryIndex > -1) {
-                    encodedPath = encodeURIComponent(
-                        urlPath.substring(0, queryIndex),
-                    );
+                    encodedPath = encodeURIComponent(urlPath.substring(0, queryIndex));
                     queryString = urlPath.substring(queryIndex);
                 } else {
                     encodedPath = encodeURIComponent(urlPath);
@@ -215,7 +209,7 @@ async function ensureFiletreeLoaded(): Promise<void> {
     try {
         idbData = await filetreeDb.get<FiletreeData>(FILETREE_DATA_KEY);
     } catch (error) {
-        console.error("读取 IndexedDB 失败:", error);
+        console.error('读取 IndexedDB 失败:', error);
     }
     if (idbData && idbData.Content) {
         cachedFiletreeRaw = idbData;
@@ -224,7 +218,7 @@ async function ensureFiletreeLoaded(): Promise<void> {
             return;
         }
     }
-    show.info("正在载入头像数据源...");
+    show.info('正在载入头像数据源...');
     const response = await fetch(getCurrentCdnSource().json);
     if (!response.ok) {
         throw new Error(`请求头像源失败: ${response.status}`);
@@ -235,15 +229,15 @@ async function ensureFiletreeLoaded(): Promise<void> {
         cachedFiletreeParsed = parseFiletree(filetree);
         try {
             await filetreeDb.set(FILETREE_DATA_KEY, filetree);
-            clog.debug("载入头像数据源并写入缓存成功!");
+            clog.debug('载入头像数据源并写入缓存成功!');
         } catch (error) {
             clog.error(error);
-            show.error("头像数据源写入缓存失败，可能磁盘已满或其他权限问题。");
+            show.error('头像数据源写入缓存失败，可能磁盘已满或其他权限问题。');
         }
         return;
     }
     console.log(filetree);
-    throw new Error("解析头像数据源失败");
+    throw new Error('解析头像数据源失败');
 }
 
 /**

@@ -56,10 +56,10 @@ export interface SettingDialogProps {
 /** hr 分隔线内联样式（渐变背景，原模板中重复多次）。 */
 const HR_STYLE = {
     border: 0,
-    height: "1px",
-    margin: "20px 0",
+    height: '1px',
+    margin: '20px 0',
     backgroundImage:
-        "linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0))",
+        'linear-gradient(to right, rgba(0,0,0,0), rgba(159,137,137,0.75), rgba(0,0,0,0))'
 } as const;
 
 /**
@@ -81,52 +81,52 @@ export function SettingDialog({
     isJavdbSite,
     blockText,
     favoriteText,
-    watchedText,
+    watchedText
 }: SettingDialogProps) {
     return (
-        <div style={{ display: "flex", height: "100%" }}>
+        <div style={{ display: 'flex', height: '100%' }}>
             <div
                 style={{
-                    width: "140px",
+                    width: '140px',
                     flexShrink: 0,
-                    padding: "15px 0",
-                    background: "#f5f5f5",
-                    borderRight: "1px solid #ddd",
+                    padding: '15px 0',
+                    background: '#f5f5f5',
+                    borderRight: '1px solid #ddd'
                 }}
             >
                 <div
-                    className={`side-menu-item ${panelName === "backup-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'backup-panel' ? 'active' : ''}`}
                     data-panel="backup-panel"
                 >
                     💾 数据备份
                 </div>
                 <div
-                    className={`side-menu-item ${panelName === "base-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'base-panel' ? 'active' : ''}`}
                     data-panel="base-panel"
                 >
                     ⚙️ 基础配置
                 </div>
                 <div
-                    className={`side-menu-item ${panelName === "filter-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'filter-panel' ? 'active' : ''}`}
                     data-panel="filter-panel"
                 >
                     🚫 屏蔽配置
                 </div>
                 <div
-                    className={`side-menu-item ${panelName === "domain-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'domain-panel' ? 'active' : ''}`}
                     data-panel="domain-panel"
                     title="第三方视频资源域名配置"
                 >
                     🌐 外部网站
                 </div>
                 <div
-                    className={`side-menu-item ${panelName === "hotkey-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'hotkey-panel' ? 'active' : ''}`}
                     data-panel="hotkey-panel"
                 >
                     ⌨️ 快捷键配置
                 </div>
                 <div
-                    className={`side-menu-item ${panelName === "cache-panel" ? "active" : ""}`}
+                    className={`side-menu-item ${panelName === 'cache-panel' ? 'active' : ''}`}
                     data-panel="cache-panel"
                 >
                     🧹 清理缓存
@@ -136,17 +136,17 @@ export function SettingDialog({
             <div
                 style={{
                     flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%'
                 }}
             >
                 <div
                     style={{
                         flex: 1,
-                        margin: "0 10px",
-                        paddingBottom: "20px",
-                        overflow: "hidden",
+                        margin: '0 10px',
+                        paddingBottom: '20px',
+                        overflow: 'hidden'
                     }}
                 >
                     {/* 备份面板 */}
@@ -154,22 +154,21 @@ export function SettingDialog({
                         id="backup-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "backup-panel" ? "block" : "none",
+                            display: panelName === 'backup-panel' ? 'block' : 'none'
                         }}
                     >
-                        <div style={{ marginBottom: "20px" }}>
+                        <div style={{ marginBottom: '20px' }}>
                             <a
                                 id="importBtn"
                                 className="menu-btn"
-                                style={{ backgroundColor: "#d25a88" }}
+                                style={{ backgroundColor: '#d25a88' }}
                             >
                                 <span>导入数据</span>
                             </a>
                             <a
                                 id="exportBtn"
                                 className="menu-btn"
-                                style={{ backgroundColor: "#85d0a3" }}
+                                style={{ backgroundColor: '#85d0a3' }}
                             >
                                 <span>导出数据</span>
                             </a>
@@ -181,14 +180,14 @@ export function SettingDialog({
                                 <a
                                     id="webdavBackupListBtn"
                                     className="menu-btn"
-                                    style={{ backgroundColor: "#5d87c2" }}
+                                    style={{ backgroundColor: '#5d87c2' }}
                                 >
                                     <span>查看备份</span>
                                 </a>
                                 <a
                                     id="webdavBackupBtn"
                                     className="menu-btn"
-                                    style={{ backgroundColor: "#64bb69" }}
+                                    style={{ backgroundColor: '#64bb69' }}
                                 >
                                     <span>备份数据</span>
                                 </a>
@@ -219,29 +218,24 @@ export function SettingDialog({
                         id="base-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "base-panel" ? "block" : "none",
+                            display: panelName === 'base-panel' ? 'block' : 'none'
                         }}
                     >
                         <div className="setting-item">
-                            <span className="setting-label">
-                                打开待鉴定|已收藏 窗口数:
-                            </span>
+                            <span className="setting-label">打开待鉴定|已收藏 窗口数:</span>
                             <div className="form-content">
                                 <input
                                     type="number"
                                     id="waitCheckCount"
                                     min="1"
                                     max="20"
-                                    style={{ width: "100%" }}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
                         </div>
 
                         <div className="setting-item">
-                            <span className="setting-label">
-                                已鉴定标签展示位置:
-                            </span>
+                            <span className="setting-label">已鉴定标签展示位置:</span>
                             <div className="form-content">
                                 <select id="tagPosition">
                                     <option value="rightTop">右上</option>
@@ -254,12 +248,12 @@ export function SettingDialog({
                             <span
                                 className="setting-label"
                                 style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "5px",
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
                                 }}
                             >
-                                鉴定补录演员信息{" "}
+                                鉴定补录演员信息{' '}
                                 <span data-tip="在列表页进行鉴定是获取不到演员名称的, 开启后, 额外解析详情页补录演员名称, 因发请求解析费时, 会被以往慢1秒左右">
                                     ❓
                                 </span>
@@ -276,14 +270,12 @@ export function SettingDialog({
                         <hr style={HR_STYLE} />
 
                         <div className="setting-item">
-                            <span className="setting-label">
-                                预览视频默认画质:
-                            </span>
+                            <span className="setting-label">预览视频默认画质:</span>
                             <div className="form-content">
                                 <select
                                     id="videoQuality"
                                     dangerouslySetInnerHTML={{
-                                        __html: qualityOptionsHtml,
+                                        __html: qualityOptionsHtml
                                     }}
                                 />
                             </div>
@@ -302,14 +294,10 @@ export function SettingDialog({
                             </div>
                         </div>
 
-                        <div
-                            className={`setting-item ${isJavdbSite ? "" : "do-hide"}`}
-                        >
+                        <div className={`setting-item ${isJavdbSite ? '' : 'do-hide'}`}>
                             <span className="setting-label">
-                                高亮已收藏演员{" "}
-                                <span data-tip="详情页, 对已收藏的演员进行边框高亮提醒">
-                                    ❓
-                                </span>
+                                高亮已收藏演员{' '}
+                                <span data-tip="详情页, 对已收藏的演员进行边框高亮提醒">❓</span>
                             </span>
                             <div className="form-content">
                                 <input
@@ -320,28 +308,18 @@ export function SettingDialog({
                             </div>
                         </div>
 
-                        <div
-                            className={`setting-item ${isJavdbSite ? "" : "do-hide"}`}
-                        >
-                            <span
-                                id="highlightedTagLabel"
-                                className="setting-label"
-                            >
+                        <div className={`setting-item ${isJavdbSite ? '' : 'do-hide'}`}>
+                            <span id="highlightedTagLabel" className="setting-label">
                                 分类标签|高亮演员-边框样式:
                             </span>
                             <div
                                 className="form-content"
                                 style={{
-                                    display: "flex",
-                                    alignItems: "center",
+                                    display: 'flex',
+                                    alignItems: 'center'
                                 }}
                             >
-                                <input
-                                    type="number"
-                                    id="highlightedTagNumber"
-                                    min="0"
-                                    max="20"
-                                />
+                                <input type="number" id="highlightedTagNumber" min="0" max="20" />
                                 <input type="color" id="highlightedTagColor" />
                             </div>
                         </div>
@@ -349,31 +327,27 @@ export function SettingDialog({
                         <hr style={HR_STYLE} />
 
                         <div className="setting-item">
-                            <span className="setting-label">
-                                请求超时时间(毫秒):
-                            </span>
+                            <span className="setting-label">请求超时时间(毫秒):</span>
                             <div className="form-content">
                                 <input
                                     type="number"
                                     id="httpTimeout"
                                     min="1000"
                                     max="10000"
-                                    style={{ width: "100%" }}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
                         </div>
 
                         <div className="setting-item">
-                            <span className="setting-label">
-                                请求失败重试次数:
-                            </span>
+                            <span className="setting-label">请求失败重试次数:</span>
                             <div className="form-content">
                                 <input
                                     type="number"
                                     id="httpRetryCount"
                                     min="0"
                                     max="10"
-                                    style={{ width: "100%" }}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
                         </div>
@@ -381,9 +355,7 @@ export function SettingDialog({
                         <hr style={HR_STYLE} />
 
                         <div className="setting-item">
-                            <span className="setting-label">
-                                启用控制台日志:
-                            </span>
+                            <span className="setting-label">启用控制台日志:</span>
                             <div className="form-content">
                                 <select id="enableClog">
                                     <option value="no">禁用</option>
@@ -400,7 +372,7 @@ export function SettingDialog({
                                     id="clogMsgCount"
                                     min="100"
                                     max="3000"
-                                    style={{ width: "100%" }}
+                                    style={{ width: '100%' }}
                                 />
                             </div>
                         </div>
@@ -410,22 +382,17 @@ export function SettingDialog({
                         id="domain-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "domain-panel" ? "block" : "none",
+                            display: panelName === 'domain-panel' ? 'block' : 'none'
                         }}
                     >
                         <div className="setting-item">
-                            <span className="setting-label">
-                                域名 - MissAv:
-                            </span>
+                            <span className="setting-label">域名 - MissAv:</span>
                             <div className="form-content">
                                 <input id="missAvUrl" />
                             </div>
                         </div>
                         <div className="setting-item">
-                            <span className="setting-label">
-                                域名 - SupJav:
-                            </span>
+                            <span className="setting-label">域名 - SupJav:</span>
                             <div className="form-content">
                                 <input id="supJavUrl" />
                             </div>
@@ -437,13 +404,10 @@ export function SettingDialog({
                         id="hotkey-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "hotkey-panel" ? "block" : "none",
+                            display: panelName === 'hotkey-panel' ? 'block' : 'none'
                         }}
                     >
-                        <p style={{ color: "#666", fontSize: "0.9em" }}>
-                            修改后, 刷新页面生效
-                        </p>
+                        <p style={{ color: '#666', fontSize: '0.9em' }}>修改后, 刷新页面生效</p>
                         <div className="setting-item">
                             <span className="setting-label">{blockText}:</span>
                             <div className="form-content">
@@ -455,9 +419,7 @@ export function SettingDialog({
                             </div>
                         </div>
                         <div className="setting-item">
-                            <span className="setting-label">
-                                {favoriteText}:
-                            </span>
+                            <span className="setting-label">{favoriteText}:</span>
                             <div className="form-content">
                                 <input
                                     id="favoriteHotKey"
@@ -467,14 +429,9 @@ export function SettingDialog({
                             </div>
                         </div>
                         <div className="setting-item">
-                            <span className="setting-label">
-                                {watchedText}:
-                            </span>
+                            <span className="setting-label">{watchedText}:</span>
                             <div className="form-content">
-                                <input
-                                    id="hasWatchHotKey"
-                                    placeholder="录入快捷键"
-                                />
+                                <input id="hasWatchHotKey" placeholder="录入快捷键" />
                             </div>
                         </div>
                         <div className="setting-item">
@@ -491,20 +448,14 @@ export function SettingDialog({
                         <div className="setting-item">
                             <span className="setting-label">▲ 折叠:</span>
                             <div className="form-content">
-                                <input
-                                    id="foldCategoryHotKey"
-                                    placeholder="录入快捷键"
-                                />
+                                <input id="foldCategoryHotKey" placeholder="录入快捷键" />
                             </div>
                         </div>
 
                         <div className="setting-item">
                             <span className="setting-label">💻 控制台:</span>
                             <div className="form-content">
-                                <input
-                                    id="clogHotKey"
-                                    placeholder="录入快捷键"
-                                />
+                                <input id="clogHotKey" placeholder="录入快捷键" />
                             </div>
                         </div>
 
@@ -512,9 +463,7 @@ export function SettingDialog({
 
                         <div className="setting-item">
                             <span className="setting-label">
-                                <span data-tip="列表页,鼠标放置图片上时可使用快捷键">
-                                    ❓
-                                </span>{" "}
+                                <span data-tip="列表页,鼠标放置图片上时可使用快捷键">❓</span>{' '}
                                 对视频列表页启用快捷键:
                             </span>
                             <div className="form-content">
@@ -532,18 +481,17 @@ export function SettingDialog({
                         id="filter-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "filter-panel" ? "block" : "none",
+                            display: panelName === 'filter-panel' ? 'block' : 'none'
                         }}
                     >
                         <div className="setting-item">
                             <span className="setting-label">
-                                启用划词屏蔽{" "}
+                                启用划词屏蔽{' '}
                                 <span data-tip="视频详情页中, 标题或评论区选中文字, 按右键可快捷加入屏蔽词">
                                     ❓
                                 </span>
                             </span>
-                            <div style={{ display: "flex" }}>
+                            <div style={{ display: 'flex' }}>
                                 <input
                                     type="checkbox"
                                     id="enableTitleSelectFilter"
@@ -556,18 +504,14 @@ export function SettingDialog({
 
                         <div id="reviewKeywordContainer">
                             <div className="setting-item">
-                                <span className="setting-label">
-                                    评论区屏蔽词:
-                                </span>
-                                <div style={{ display: "flex" }}>
+                                <span className="setting-label">评论区屏蔽词:</span>
+                                <div style={{ display: 'flex' }}>
                                     <input
                                         type="text"
                                         className="keyword-input"
                                         placeholder="添加屏蔽词"
                                     />
-                                    <button className="add-tag-btn">
-                                        添加
-                                    </button>
+                                    <button className="add-tag-btn">添加</button>
                                 </div>
                             </div>
                             <div className="tag-box"> </div>
@@ -577,18 +521,14 @@ export function SettingDialog({
 
                         <div id="filterKeywordContainer">
                             <div className="setting-item">
-                                <span className="setting-label">
-                                    视频标题屏蔽词:
-                                </span>
-                                <div style={{ display: "flex" }}>
+                                <span className="setting-label">视频标题屏蔽词:</span>
+                                <div style={{ display: 'flex' }}>
                                     <input
                                         type="text"
                                         className="keyword-input"
                                         placeholder="添加屏蔽词"
                                     />
-                                    <button className="add-tag-btn">
-                                        添加
-                                    </button>
+                                    <button className="add-tag-btn">添加</button>
                                 </div>
                             </div>
                             <div className="tag-box"> </div>
@@ -599,15 +539,14 @@ export function SettingDialog({
                         id="cache-panel"
                         className="content-panel"
                         style={{
-                            display:
-                                panelName === "cache-panel" ? "block" : "none",
+                            display: panelName === 'cache-panel' ? 'block' : 'none'
                         }}
                     >
                         <h1
                             style={{
-                                textAlign: "center",
-                                fontSize: "20px",
-                                fontWeight: "bold",
+                                textAlign: 'center',
+                                fontSize: '20px',
+                                fontWeight: 'bold'
                             }}
                         >
                             以下操作, 不会对核心数据造成影响
@@ -615,29 +554,29 @@ export function SettingDialog({
                         <br />
                         <div
                             style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(2, 1fr)",
-                                gap: "15px",
-                                marginTop: "20px",
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                gap: '15px',
+                                marginTop: '20px'
                             }}
                             dangerouslySetInnerHTML={{
-                                __html: cacheItemsHtml,
+                                __html: cacheItemsHtml
                             }}
                         />
                         <div
                             id="cache-data-display"
                             style={{
-                                marginTop: "20px",
-                                display: "none",
+                                marginTop: '20px',
+                                display: 'none'
                             }}
                         >
                             <pre
                                 style={{
-                                    background: "#f5f5f5",
-                                    padding: "10px",
-                                    borderRadius: "5px",
-                                    maxHeight: "400px",
-                                    overflow: "auto",
+                                    background: '#f5f5f5',
+                                    padding: '10px',
+                                    borderRadius: '5px',
+                                    maxHeight: '400px',
+                                    overflow: 'auto'
                                 }}
                             />
                         </div>
@@ -646,14 +585,14 @@ export function SettingDialog({
                 <div
                     style={{
                         flexShrink: 0,
-                        padding: "15px 20px",
-                        textAlign: "right",
-                        borderTop: "1px solid #eee",
-                        background: "white",
+                        padding: '15px 20px',
+                        textAlign: 'right',
+                        borderTop: '1px solid #eee',
+                        background: 'white'
                     }}
                 >
                     <button id="saveBtn">保存设置</button>
-                    <button id="clean-all" style={{ display: "none" }}>
+                    <button id="clean-all" style={{ display: 'none' }}>
                         ♾️ 清理全部缓存
                     </button>
                 </div>

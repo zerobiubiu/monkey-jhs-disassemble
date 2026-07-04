@@ -43,13 +43,13 @@ export function SubtitlePreviewDialog({ content }: SubtitlePreviewDialogProps) {
     return (
         <div
             style={{
-                padding: "15px 5px",
-                background: "#1E1E1E",
-                color: "#FFF",
-                fontFamily: "Consolas,Monaco,monospace",
-                whiteSpace: "pre-wrap",
-                overflow: "auto",
-                height: "100%",
+                padding: '15px 5px',
+                background: '#1E1E1E',
+                color: '#FFF',
+                fontFamily: 'Consolas,Monaco,monospace',
+                whiteSpace: 'pre-wrap',
+                overflow: 'auto',
+                height: '100%'
             }}
             dangerouslySetInnerHTML={{ __html: content }}
         />

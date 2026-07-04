@@ -34,22 +34,19 @@ export interface OtherSiteBoxProps {
  * 渲染第三方站点按钮容器的 JSX。
  * @returns otherSiteBox JSX，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
-export function OtherSiteBox({
-    siteButtonsHtml,
-    isJavdbSite,
-}: OtherSiteBoxProps) {
+export function OtherSiteBox({ siteButtonsHtml, isJavdbSite }: OtherSiteBoxProps) {
     return (
         <div
             id="otherSiteBox"
             className="panel-block"
             style={{
-                marginTop: isJavdbSite ? "8px" : "10px",
-                fontSize: "13px",
-                userSelect: "none",
+                marginTop: isJavdbSite ? '8px' : '10px',
+                fontSize: '13px',
+                userSelect: 'none'
             }}
         >
             <div
-                style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}
+                style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}
                 dangerouslySetInnerHTML={{ __html: siteButtonsHtml }}
             />
         </div>

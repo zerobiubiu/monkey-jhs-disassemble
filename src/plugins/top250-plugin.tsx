@@ -34,34 +34,31 @@
  * 内联 HTML 已提取为组件（RankingContainers / Top250ToolBar / Top250YearButton /
  * Top250Pagination / Top250NavLink / Top250ErrorMessage）。
  */
-import { LoginDialog } from "../components/login-dialog";
-import { RankingContainers } from "../components/ranking-containers";
-import { jsxToString } from "../core/jsx-to-string";
-import {
-    Top250ErrorMessage,
-    Top250LoadError,
-} from "../components/top250-error-message";
-import { Top250NavLink } from "../components/top250-nav-link";
-import { Top250Pagination } from "../components/top250-pagination";
-import { Top250ToolBar } from "../components/top250-tool-bar";
-import { Top250YearButton } from "../components/top250-year-button";
-import { API_BASE, reBuildSignature, fetchTopMovies } from "../constants/api";
-import { BasePlugin } from "./base-plugin";
+import { LoginDialog } from '../components/login-dialog';
+import { RankingContainers } from '../components/ranking-containers';
+import { jsxToString } from '../core/jsx-to-string';
+import { Top250ErrorMessage, Top250LoadError } from '../components/top250-error-message';
+import { Top250NavLink } from '../components/top250-nav-link';
+import { Top250Pagination } from '../components/top250-pagination';
+import { Top250ToolBar } from '../components/top250-tool-bar';
+import { Top250YearButton } from '../components/top250-year-button';
+import { API_BASE, reBuildSignature, fetchTopMovies } from '../constants/api';
+import { BasePlugin } from './base-plugin';
 
 /** localStorage 中移动端 app 授权令牌的键（原顶层 me，对应 api.ts 内部 APP_AUTH_KEY）。 */
-const APP_AUTH_KEY = "jhs_appAuthorization";
+const APP_AUTH_KEY = 'jhs_appAuthorization';
 
 export class Top250Plugin extends BasePlugin {
     /** 中字过滤当前值（"1"=含中字 / "0"=无字幕 / ""=全部）。对应原 L4470。 */
-    hasCnsub: string = "";
+    hasCnsub: string = '';
     /** 内容容器 jQuery 对象，榜单/工具栏/分页挂载点。对应原 L4471。 */
-    contentBox: any = $(".section .container");
+    contentBox: any = $('.section .container');
     /** 最近一次拉取的影片数组，供中字过滤即时重渲染复用。对应原 L4472。 */
     movies: any[] = [];
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4474-4476。 */
     getName(): string {
-        return "TOP250Plugin";
+        return 'TOP250Plugin';
     }
 
     /**
@@ -71,17 +68,13 @@ export class Top250Plugin extends BasePlugin {
      * fire-and-forget）；无参数，返回 Promise<void>，不抛出异常。
      */
     async handle(): Promise<void> {
-        $('.main-tabs ul li:contains("猜你喜歡")').html(
-            jsxToString(<Top250NavLink />),
-        );
-        $('a[href*="rankings/top"]').on("click", (event: any) => {
+        $('.main-tabs ul li:contains("猜你喜歡")').html(jsxToString(<Top250NavLink />));
+        $('a[href*="rankings/top"]').on('click', (event: any) => {
             event.preventDefault();
             event.stopPropagation();
             const target = $(event.target);
-            const href = (target.is("a") ? target : target.closest("a")).attr(
-                "href",
-            );
-            const queryString = href.includes("?") ? href.split("?")[1] : href;
+            const href = (target.is('a') ? target : target.closest('a')).attr('href');
+            const queryString = href.includes('?') ? href.split('?')[1] : href;
             const params = new URLSearchParams(queryString);
             this.checkLogin(event, params);
         });
@@ -94,10 +87,10 @@ export class Top250Plugin extends BasePlugin {
      * 无参数，无返回值。
      */
     hookPage(): void {
-        $("h2.section-title").contents().first().replaceWith("Top250");
-        $(".empty-message").remove();
-        $(".section .container .box").remove();
-        $("#sort-toggle-btn").remove();
+        $('h2.section-title').contents().first().replaceWith('Top250');
+        $('.empty-message').remove();
+        $('.section .container .box').remove();
+        $('#sort-toggle-btn').remove();
         this.contentBox.append(jsxToString(<RankingContainers />));
         this.renderPagination();
     }
@@ -109,26 +102,22 @@ export class Top250Plugin extends BasePlugin {
      */
     renderPagination(): void {
         const params = new URLSearchParams(window.location.search);
-        const page = parseInt(params.get("page") ?? "") || 1;
+        const page = parseInt(params.get('page') ?? '') || 1;
         this.contentBox.append(jsxToString(<Top250Pagination page={page} />));
         this.contentBox.on(
-            "click",
-            ".pagination-link, .pagination-previous, .pagination-next",
+            'click',
+            '.pagination-link, .pagination-previous, .pagination-next',
             (event: any) => {
                 event.preventDefault();
-                const pageNum = parseInt($(event.currentTarget).data("page"));
+                const pageNum = parseInt($(event.currentTarget).data('page'));
                 if (!isNaN(pageNum) && pageNum > 0) {
                     ((targetPage: number) => {
-                        params.set("page", String(targetPage));
-                        window.history.pushState(
-                            {},
-                            "",
-                            "?" + params.toString(),
-                        );
+                        params.set('page', String(targetPage));
+                        window.history.pushState({}, '', '?' + params.toString());
                         window.location.reload();
                     })(pageNum);
                 }
-            },
+            }
         );
     }
 
@@ -140,75 +129,60 @@ export class Top250Plugin extends BasePlugin {
      * 拉取失败仅 clog.error 不向上抛出；finally 在成功或末次尝试后关闭 loading 覆盖层。
      */
     async handleTop(): Promise<void> {
-        if (!window.location.href.includes("handleTop=1")) {
+        if (!window.location.href.includes('handleTop=1')) {
             return;
         }
         const params = new URLSearchParams(window.location.search);
-        const handleType = params.get("handleType") || "all";
-        const typeValue = params.get("type_value") || "";
-        this.hasCnsub = params.get("has_cnsub") || "";
-        const page = parseInt(params.get("page") ?? "") || 1;
+        const handleType = params.get('handleType') || 'all';
+        const typeValue = params.get('type_value') || '';
+        this.hasCnsub = params.get('has_cnsub') || '';
+        const page = parseInt(params.get('page') ?? '') || 1;
         this.toolBar(handleType, typeValue, page);
         this.hookPage();
-        const movieListEl = $(".movie-list");
-        movieListEl.html("");
+        const movieListEl = $('.movie-list');
+        movieListEl.html('');
         const loadingOverlay = loading();
         let success = false;
         for (let attempt = 1; attempt <= 3 && !success; attempt++) {
             try {
-                const response = await fetchTopMovies(
-                    handleType,
-                    typeValue,
-                    page,
-                    50,
-                );
+                const response = await fetchTopMovies(handleType, typeValue, page, 50);
                 const successFlag = response.success;
                 const message = response.message;
                 const action = response.action;
                 if (successFlag === 1) {
                     const movies = response.data.movies;
                     if (movies.length === 0) {
-                        show.error("无数据");
+                        show.error('无数据');
                         loadingOverlay.close();
                         return;
                     }
                     this.movies = movies;
                     const filteredMovies = movies.filter((movie: any) =>
-                        this.hasCnsub === "1"
+                        this.hasCnsub === '1'
                             ? movie.has_cnsub
-                            : this.hasCnsub !== "0" || !movie.has_cnsub,
+                            : this.hasCnsub !== '0' || !movie.has_cnsub
                     );
-                    const hitShowPlugin = this.getBean("HitShowPlugin");
+                    const hitShowPlugin = this.getBean('HitShowPlugin');
                     const html = hitShowPlugin.markDataListHtml(filteredMovies);
                     movieListEl.html(html);
                     hitShowPlugin.loadScore(filteredMovies);
                     success = true;
                 } else {
                     console.error(response);
-                    movieListEl.html(
-                        jsxToString(<Top250ErrorMessage message={message} />),
-                    );
+                    movieListEl.html(jsxToString(<Top250ErrorMessage message={message} />));
                     show.error(message);
-                    if (action === "JWTVerificationError") {
+                    if (action === 'JWTVerificationError') {
                         await localStorage.removeItem(APP_AUTH_KEY);
-                        await this.checkLogin(
-                            null,
-                            new URLSearchParams(window.location.search),
-                        );
+                        await this.checkLogin(null, new URLSearchParams(window.location.search));
                     }
                     success = true;
                 }
             } catch (error: any) {
                 if (attempt < 3) {
-                    clog.error(
-                        `获取Top数据失败 (第 ${attempt} 次重试):`,
-                        error,
-                    );
-                    await new Promise<void>((resolve) =>
-                        setTimeout(resolve, 1000),
-                    );
+                    clog.error(`获取Top数据失败 (第 ${attempt} 次重试):`, error);
+                    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
                 } else {
-                    clog.error("所有重试尝试均失败，无法获取Top数据。", error);
+                    clog.error('所有重试尝试均失败，无法获取Top数据。', error);
                     movieListEl.html(jsxToString(<Top250LoadError />));
                 }
             } finally {
@@ -228,23 +202,19 @@ export class Top250Plugin extends BasePlugin {
      * @param page 当前页码（5 时移除下一頁按钮）。
      */
     toolBar(handleType: string, typeValue: string, page: number): void {
-        if (page.toString() === "5") {
-            $(".pagination-next").remove();
+        if (page.toString() === '5') {
+            $('.pagination-next').remove();
         }
-        $(".pagination-ellipsis").closest("li").remove();
-        $(".pagination-list li a").each(function (this: any) {
+        $('.pagination-ellipsis').closest('li').remove();
+        $('.pagination-list li a').each(function (this: any) {
             if (parseInt($(this).text()) > 5) {
-                $(this).closest("li").remove();
+                $(this).closest('li').remove();
             }
         });
-        let yearButtonsHtml = "";
+        let yearButtonsHtml = '';
         for (let year = new Date().getFullYear(); year >= 2008; year--) {
             yearButtonsHtml += jsxToString(
-                <Top250YearButton
-                    year={year}
-                    typeValue={typeValue}
-                    hasCnsub={this.hasCnsub}
-                />,
+                <Top250YearButton year={year} typeValue={typeValue} hasCnsub={this.hasCnsub} />
             );
         }
         this.contentBox.append(
@@ -254,33 +224,28 @@ export class Top250Plugin extends BasePlugin {
                     typeValue={typeValue}
                     hasCnsub={this.hasCnsub}
                     yearButtonsHtml={yearButtonsHtml}
-                />,
-            ),
+                />
+            )
         );
-        $("a[data-cnsub-value]").on("click", (event: any) => {
-            const cnsubValue = $(event.currentTarget).data("cnsub-value");
+        $('a[data-cnsub-value]').on('click', (event: any) => {
+            const cnsubValue = $(event.currentTarget).data('cnsub-value');
             this.hasCnsub = cnsubValue.toString();
-            $("a[data-cnsub-value]").removeClass("is-info");
-            $(event.currentTarget).addClass("is-info");
-            $(".toolbar a.button")
-                .not("[data-cnsub-value]")
+            $('a[data-cnsub-value]').removeClass('is-info');
+            $(event.currentTarget).addClass('is-info');
+            $('.toolbar a.button')
+                .not('[data-cnsub-value]')
                 .each((_index: number, el: any) => {
                     const hrefEl = $(el);
-                    const url = new URL(
-                        hrefEl.attr("href"),
-                        window.location.origin,
-                    );
-                    url.searchParams.set("has_cnsub", cnsubValue);
-                    hrefEl.attr("href", url.toString());
+                    const url = new URL(hrefEl.attr('href'), window.location.origin);
+                    url.searchParams.set('has_cnsub', cnsubValue);
+                    hrefEl.attr('href', url.toString());
                 });
             const filteredMovies = this.movies.filter((movie: any) =>
-                this.hasCnsub === "1"
-                    ? movie.has_cnsub
-                    : this.hasCnsub !== "0" || !movie.has_cnsub,
+                this.hasCnsub === '1' ? movie.has_cnsub : this.hasCnsub !== '0' || !movie.has_cnsub
             );
-            const hitShowPlugin = this.getBean("HitShowPlugin");
+            const hitShowPlugin = this.getBean('HitShowPlugin');
             const listHtml = hitShowPlugin.markDataListHtml(filteredMovies);
-            $(".movie-list").html(listHtml);
+            $('.movie-list').html(listHtml);
             hitShowPlugin.loadScore(filteredMovies);
         });
     }
@@ -295,24 +260,24 @@ export class Top250Plugin extends BasePlugin {
      */
     async checkLogin(event: any, params: URLSearchParams): Promise<void> {
         if (!localStorage.getItem(APP_AUTH_KEY)) {
-            show.error("该类别依赖移动端接口，请先完成登录");
+            show.error('该类别依赖移动端接口，请先完成登录');
             this.openLoginDialog();
             return;
         }
-        let handleType = "all";
-        let typeValue = "";
-        const tValue = params.get("t") || "";
+        let handleType = 'all';
+        let typeValue = '';
+        const tValue = params.get('t') || '';
         if (/^y\d+$/.test(tValue)) {
-            handleType = "year";
+            handleType = 'year';
             typeValue = tValue.substring(1);
-        } else if (tValue !== "") {
-            handleType = "video_type";
+        } else if (tValue !== '') {
+            handleType = 'video_type';
             typeValue = tValue;
         }
         const path = `/advanced_search?handleTop=1&handleType=${handleType}&type_value=${typeValue}`;
         if (event && (event.ctrlKey || event.metaKey)) {
             GM_openInTab(window.location.origin + path, {
-                insert: 0,
+                insert: 0
             });
         } else {
             window.location.href = path;
@@ -329,47 +294,47 @@ export class Top250Plugin extends BasePlugin {
     openLoginDialog(): void {
         layer.open({
             type: 1,
-            title: "JavDB",
+            title: 'JavDB',
             closeBtn: 1,
-            area: ["360px", "auto"],
+            area: ['360px', 'auto'],
             shadeClose: false,
             content: jsxToString(<LoginDialog />),
             success: (_layero: any, index: any) => {
                 // 补回原版内联 onfocus/onblur/onmouseover/onmouseout 视觉装饰
                 // （jsxToString 忽略 on* 事件属性，组件只保留静态结构）。
                 // jQuery `on` 回调内 `this` 为 DOM 元素，须用 function 非 arrow。
-                $("#username, #password")
-                    .on("focus", function (this: HTMLElement) {
-                        this.style.borderColor = "#4a8bfc";
-                        this.style.background = "#fff";
+                $('#username, #password')
+                    .on('focus', function (this: HTMLElement) {
+                        this.style.borderColor = '#4a8bfc';
+                        this.style.background = '#fff';
                     })
-                    .on("blur", function (this: HTMLElement) {
-                        this.style.borderColor = "#e0e0e0";
-                        this.style.background = "#f9f9f9";
+                    .on('blur', function (this: HTMLElement) {
+                        this.style.borderColor = '#e0e0e0';
+                        this.style.background = '#f9f9f9';
                     });
-                $("#loginBtn")
-                    .on("mouseover", function (this: HTMLElement) {
-                        this.style.background = "#3a7be0";
+                $('#loginBtn')
+                    .on('mouseover', function (this: HTMLElement) {
+                        this.style.background = '#3a7be0';
                     })
-                    .on("mouseout", function (this: HTMLElement) {
-                        this.style.background = "#4a8bfc";
+                    .on('mouseout', function (this: HTMLElement) {
+                        this.style.background = '#4a8bfc';
                     });
-                $("#loginBtn").click(function () {
-                    const username = $("#username").val();
-                    const password = $("#password").val();
+                $('#loginBtn').click(function () {
+                    const username = $('#username').val();
+                    const password = $('#password').val();
                     if (!username || !password) {
-                        show.error("请输入用户名和密码");
+                        show.error('请输入用户名和密码');
                         return;
                     }
                     const loadingOverlay = loading();
                     (async (username: any, password: any) => {
                         const url = `${API_BASE}/v1/sessions?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&device_uuid=04b9534d-5118-53de-9f87-2ddded77111e&device_name=iPhone&device_model=iPhone&platform=ios&system_version=17.4&app_version=official&app_version_number=1.9.29&app_channel=official`;
                         const headers = {
-                            "user-agent": "Dart/3.5 (dart:io)",
-                            "accept-language": "zh-TW",
-                            "content-type":
-                                "multipart/form-data; boundary=--dio-boundary-2210433284",
-                            jdsignature: await reBuildSignature(),
+                            'user-agent': 'Dart/3.5 (dart:io)',
+                            'accept-language': 'zh-TW',
+                            'content-type':
+                                'multipart/form-data; boundary=--dio-boundary-2210433284',
+                            jdsignature: await reBuildSignature()
                         };
                         return await gmHttp.post(url, null, headers);
                     })(username, password)
@@ -379,31 +344,28 @@ export class Top250Plugin extends BasePlugin {
                                 show.error(response.message);
                             } else {
                                 if (successFlag !== 1) {
-                                    clog.error("登录失败", response);
+                                    clog.error('登录失败', response);
                                     throw new Error(response.message);
                                 }
                                 {
                                     const token = response.data.token;
-                                    await localStorage.setItem(
-                                        APP_AUTH_KEY,
-                                        token,
-                                    );
-                                    show.ok("登录成功");
+                                    await localStorage.setItem(APP_AUTH_KEY, token);
+                                    show.ok('登录成功');
                                     layer.close(index);
                                     window.location.href =
-                                        "/advanced_search?handleTop=1&period=daily";
+                                        '/advanced_search?handleTop=1&period=daily';
                                 }
                             }
                         })
                         .catch((error: any) => {
-                            clog.error("登录异常:", error);
+                            clog.error('登录异常:', error);
                             show.error(error.message);
                         })
                         .finally(() => {
                             loadingOverlay.close();
                         });
                 });
-            },
+            }
         });
     }
 }

@@ -46,7 +46,7 @@ class Hotkey {
     static registerHotkey(
         e: string | string[],
         t: (e: KeyboardEvent) => void,
-        n: ((e: KeyboardEvent) => void) | null = null,
+        n: ((e: KeyboardEvent) => void) | null = null
     ) {
         if (Array.isArray(e)) {
             const ids: string[] = [];
@@ -68,13 +68,13 @@ class Hotkey {
     static recordHotkey(
         e: string,
         t: (e: KeyboardEvent) => void,
-        n: ((e: KeyboardEvent) => void) | null,
+        n: ((e: KeyboardEvent) => void) | null
     ) {
         const id = Math.random().toString(36).substr(2);
         Hotkey.registerHotKeyMap.set(id, {
             hotkeyString: e,
             callback: t,
-            keyupCallback: n,
+            keyupCallback: n
         });
         return id;
     }
@@ -90,11 +90,7 @@ class Hotkey {
             .toLowerCase()
             .split('+')
             .map((item) => item.trim())
-            .every(
-                (item) =>
-                    ['ctrl', 'shift', 'alt'].includes(item) ||
-                    item.length === 1,
-            );
+            .every((item) => ['ctrl', 'shift', 'alt'].includes(item) || item.length === 1);
     }
 
     static judgeHotkey(e: string, t: KeyboardEvent) {
@@ -105,9 +101,7 @@ class Hotkey {
         const withCtrl = parts.includes('ctrl');
         const withShift = parts.includes('shift');
         const withAlt = parts.includes('alt');
-        const mainKey = parts.find(
-            (item) => item !== 'ctrl' && item !== 'shift' && item !== 'alt',
-        );
+        const mainKey = parts.find((item) => item !== 'ctrl' && item !== 'shift' && item !== 'alt');
         return (
             (Hotkey.isMac ? t.metaKey : t.ctrlKey) === withCtrl &&
             t.shiftKey === withShift &&

@@ -30,31 +30,31 @@
  *
  * @module core/jsx-to-string
  */
-import type { ReactNode, ReactElement } from "react";
+import type { ReactNode, ReactElement } from 'react';
 
 /**
  * 自闭合标签集合（HTML void elements，无子节点也无闭合标签）。
  * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
  */
 const VOID_TAGS = new Set<string>([
-    "img",
-    "input",
-    "br",
-    "hr",
-    "meta",
-    "link",
-    "area",
-    "base",
-    "col",
-    "embed",
-    "param",
-    "source",
-    "track",
-    "wbr",
+    'img',
+    'input',
+    'br',
+    'hr',
+    'meta',
+    'link',
+    'area',
+    'base',
+    'col',
+    'embed',
+    'param',
+    'source',
+    'track',
+    'wbr'
 ]);
 
 /** Fragment 类型标识：`Symbol.for("react.fragment")`（兼容 React 18/19）。 */
-const REACT_FRAGMENT_TYPE: symbol = Symbol.for("react.fragment");
+const REACT_FRAGMENT_TYPE: symbol = Symbol.for('react.fragment');
 
 /** 元素 props 的宽松运行时形状（值类型未知，按字段名分发处理）。 */
 interface PropsRecord {
@@ -74,10 +74,10 @@ interface PropsRecord {
 function isReactElement(node: unknown): node is ReactElement {
     return (
         node != null &&
-        typeof node === "object" &&
-        "type" in node &&
-        "props" in node &&
-        typeof (node as { props: unknown }).props === "object" &&
+        typeof node === 'object' &&
+        'type' in node &&
+        'props' in node &&
+        typeof (node as { props: unknown }).props === 'object' &&
         (node as { props: unknown }).props !== null
     );
 }
@@ -92,7 +92,7 @@ function isReactElement(node: unknown): node is ReactElement {
  * @returns 转义后文本
  */
 function escapeText(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
@@ -123,7 +123,7 @@ function styleToCss(style: PropsRecord): string {
     return Object.entries(style)
         .filter(([, v]) => v != null && v !== false)
         .map(([k, v]) => `${camelToKebab(k)}:${v as string | number}`)
-        .join(";");
+        .join(';');
 }
 
 /**
@@ -145,17 +145,17 @@ function renderAttrs(props: PropsRecord): string {
     const parts: string[] = [];
     for (const [key, value] of Object.entries(props)) {
         if (value == null || value === false) continue;
-        if (key === "children") continue;
-        if (key === "dangerouslySetInnerHTML") continue;
-        if (key.startsWith("on")) continue;
-        if (key === "className") {
-            if (value !== "") parts.push(`class="${String(value)}"`);
+        if (key === 'children') continue;
+        if (key === 'dangerouslySetInnerHTML') continue;
+        if (key.startsWith('on')) continue;
+        if (key === 'className') {
+            if (value !== '') parts.push(`class="${String(value)}"`);
             continue;
         }
-        if (key === "style") {
-            if (typeof value === "string") {
+        if (key === 'style') {
+            if (typeof value === 'string') {
                 parts.push(`style="${value}"`);
-            } else if (typeof value === "object" && value !== null) {
+            } else if (typeof value === 'object' && value !== null) {
                 const css = styleToCss(value as PropsRecord);
                 if (css) parts.push(`style="${css}"`);
             }
@@ -167,7 +167,7 @@ function renderAttrs(props: PropsRecord): string {
         }
         parts.push(`${key}="${String(value)}"`);
     }
-    return parts.length ? " " + parts.join(" ") : "";
+    return parts.length ? ' ' + parts.join(' ') : '';
 }
 
 /**
@@ -184,18 +184,18 @@ function renderAttrs(props: PropsRecord): string {
  * @returns 拼接后的 HTML 字符串
  */
 function renderChildren(children: unknown): string {
-    if (children == null || typeof children === "boolean") return "";
-    if (typeof children === "string") return escapeText(children);
-    if (typeof children === "number" || typeof children === "bigint") {
+    if (children == null || typeof children === 'boolean') return '';
+    if (typeof children === 'string') return escapeText(children);
+    if (typeof children === 'number' || typeof children === 'bigint') {
         return String(children);
     }
     if (Array.isArray(children)) {
-        return children.map((c) => renderChildren(c)).join("");
+        return children.map((c) => renderChildren(c)).join('');
     }
     if (isReactElement(children)) {
         return jsxToString(children);
     }
-    return "";
+    return '';
 }
 
 /**
@@ -226,17 +226,17 @@ function renderChildren(children: unknown): string {
  *   // → `<div class="temporary-container" style="display:none"><img src="a.jpg" alt="A" /></div>`
  */
 export function jsxToString(node: ReactNode): string {
-    if (node == null || typeof node === "boolean") return "";
-    if (typeof node === "string") return escapeText(node);
-    if (typeof node === "number" || typeof node === "bigint") {
+    if (node == null || typeof node === 'boolean') return '';
+    if (typeof node === 'string') return escapeText(node);
+    if (typeof node === 'number' || typeof node === 'bigint') {
         return String(node);
     }
     if (Array.isArray(node)) {
-        return node.map(jsxToString).join("");
+        return node.map(jsxToString).join('');
     }
     if (!isReactElement(node)) {
         // Portal / Promise / 其他不支持节点，忽略
-        return "";
+        return '';
     }
     const { type, props } = node as ReactElement<PropsRecord> & {
         type: symbol | string | ((p: PropsRecord) => ReactNode);
@@ -248,15 +248,13 @@ export function jsxToString(node: ReactNode): string {
     }
 
     // 函数组件：调用并递归
-    if (typeof type === "function") {
-        const result = (type as (p: PropsRecord) => ReactNode)(
-            props as PropsRecord,
-        );
+    if (typeof type === 'function') {
+        const result = (type as (p: PropsRecord) => ReactNode)(props as PropsRecord);
         return jsxToString(result);
     }
 
     // DOM 元素：string tag
-    if (typeof type === "string") {
+    if (typeof type === 'string') {
         const tag = type;
         const attrs = renderAttrs(props as PropsRecord);
         if (VOID_TAGS.has(tag)) {
@@ -266,7 +264,7 @@ export function jsxToString(node: ReactNode): string {
         // 取 __html 作为原始 inner HTML（不转义），跳过 children 渲染。
         const dsi = (props as PropsRecord).dangerouslySetInnerHTML as
             { __html?: string } | undefined;
-        if (dsi && typeof dsi.__html === "string") {
+        if (dsi && typeof dsi.__html === 'string') {
             return `<${tag}${attrs}>${dsi.__html}</${tag}>`;
         }
         const inner = renderChildren((props as PropsRecord).children);
@@ -274,5 +272,5 @@ export function jsxToString(node: ReactNode): string {
     }
 
     // 未知类型（类组件/ExoticComponent 等）：本工程未使用，忽略
-    return "";
+    return '';
 }

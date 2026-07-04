@@ -22,7 +22,7 @@
  */
 export function SiteResultTag() {
     return (
-        <span className="site-tag" style={{ top: "-15px" }}>
+        <span className="site-tag" style={{ top: '-15px' }}>
             多结果
         </span>
     );

@@ -22,19 +22,19 @@
  * HighlightButton() 组件（返回 HTML 字符串，供 $(HighlightButton()) 消费）；
  * 折叠工具条与 section-title 按钮提取为 FoldCategoryToolbar / FoldCategorySectionButton。
  */
-import { currentHref } from "../constants/site";
-import { YES, NO } from "../constants/status";
-import { BasePlugin } from "./base-plugin";
-import { FoldCategorySectionButton } from "../components/fold-category-section-button";
-import { FoldCategoryToolbar } from "../components/fold-category-toolbar";
-import { HighlightButton } from "../components/highlight-button";
-import { jsxToString } from "../core/jsx-to-string";
-import foldCategoryCssRaw from "../styles/fold-category-plugin.css?raw";
+import { currentHref } from '../constants/site';
+import { YES, NO } from '../constants/status';
+import { BasePlugin } from './base-plugin';
+import { FoldCategorySectionButton } from '../components/fold-category-section-button';
+import { FoldCategoryToolbar } from '../components/fold-category-toolbar';
+import { HighlightButton } from '../components/highlight-button';
+import { jsxToString } from '../core/jsx-to-string';
+import foldCategoryCssRaw from '../styles/fold-category-plugin.css?raw';
 
 export class FoldCategoryPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4017-4019。 */
     getName(): string {
-        return "FoldCategoryPlugin";
+        return 'FoldCategoryPlugin';
     }
 
     /**
@@ -47,14 +47,8 @@ export class FoldCategoryPlugin extends BasePlugin {
     async initCss(): Promise<string> {
         const settings = await storageManager.getSetting();
         return foldCategoryCssRaw
-            .replace(
-                "__HIGHLIGHTED_TAG_NUMBER__",
-                String(settings.highlightedTagNumber || 1),
-            )
-            .replace(
-                "__HIGHLIGHTED_TAG_COLOR__",
-                settings.highlightedTagColor || "#ce2222",
-            );
+            .replace('__HIGHLIGHTED_TAG_NUMBER__', String(settings.highlightedTagNumber || 1))
+            .replace('__HIGHLIGHTED_TAG_COLOR__', settings.highlightedTagColor || '#ce2222');
     }
 
     /**
@@ -66,24 +60,22 @@ export class FoldCategoryPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if ((window as any).isListPage) {
-            if (!currentHref.includes("advanced_search")) {
+            if (!currentHref.includes('advanced_search')) {
                 this.highlightTag();
                 utils.loopDetector(
-                    () => $("#waitCheckBtn").length,
+                    () => $('#waitCheckBtn').length,
                     () => {
                         this.createFoldBtn();
                     },
                     1,
                     10000,
-                    true,
+                    true
                 );
-                $("#tags .tag-category .tag-expand").each(
-                    (_index: number, expandEl: any) => {
-                        if ($(expandEl).parent().hasClass("collapse")) {
-                            expandEl.click();
-                        }
-                    },
-                );
+                $('#tags .tag-category .tag-expand').each((_index: number, expandEl: any) => {
+                    if ($(expandEl).parent().hasClass('collapse')) {
+                        expandEl.click();
+                    }
+                });
             }
         }
     }
@@ -99,16 +91,12 @@ export class FoldCategoryPlugin extends BasePlugin {
             const highlightedTags = await storageManager.getHighlightedTags();
             if (highlightedTags) {
                 highlightedTags.forEach((tagName: any) => {
-                    $(`#tags a.tag:contains(${tagName})`).addClass(
-                        "highlighted",
-                    );
-                    $(`.tags a.tag:contains(${tagName})`).addClass(
-                        "highlighted",
-                    );
+                    $(`#tags a.tag:contains(${tagName})`).addClass('highlighted');
+                    $(`.tags a.tag:contains(${tagName})`).addClass('highlighted');
                 });
             }
         })().then();
-        $("#tags a.tag, .tags a.tag").hover(
+        $('#tags a.tag, .tags a.tag').hover(
             function (this: any) {
                 const tagEl = $(this);
                 const btnEl = $(jsxToString(<HighlightButton />));
@@ -117,38 +105,32 @@ export class FoldCategoryPlugin extends BasePlugin {
             },
             function (this: any) {
                 $(this)
-                    .find(".highlight-btn")
+                    .find('.highlight-btn')
                     .fadeOut(0, function (this: any) {
                         $(this).remove();
                     });
-            },
+            }
         );
-        $(document).on(
-            "click",
-            ".highlight-btn",
-            async function (this: any, event: any) {
-                event.stopPropagation();
-                event.preventDefault();
-                const tagEl = $(this).closest("a.tag");
-                const cloneEl = tagEl.clone();
-                cloneEl.find(".highlight-btn").remove();
-                const tagName = cloneEl
-                    .text()
-                    .trim()
-                    .replace(/\s*\(\d+\)$/, "");
-                let highlightedTags = await storageManager.getHighlightedTags();
-                if (highlightedTags.includes(tagName)) {
-                    highlightedTags = highlightedTags.filter(
-                        (item: any) => item !== tagName,
-                    );
-                    tagEl.removeClass("highlighted");
-                } else {
-                    highlightedTags.push(tagName);
-                    tagEl.addClass("highlighted");
-                }
-                await storageManager.setHighlightedTags(highlightedTags);
-            },
-        );
+        $(document).on('click', '.highlight-btn', async function (this: any, event: any) {
+            event.stopPropagation();
+            event.preventDefault();
+            const tagEl = $(this).closest('a.tag');
+            const cloneEl = tagEl.clone();
+            cloneEl.find('.highlight-btn').remove();
+            const tagName = cloneEl
+                .text()
+                .trim()
+                .replace(/\s*\(\d+\)$/, '');
+            let highlightedTags = await storageManager.getHighlightedTags();
+            if (highlightedTags.includes(tagName)) {
+                highlightedTags = highlightedTags.filter((item: any) => item !== tagName);
+                tagEl.removeClass('highlighted');
+            } else {
+                highlightedTags.push(tagName);
+                tagEl.addClass('highlighted');
+            }
+            await storageManager.setHighlightedTags(highlightedTags);
+        });
     }
 
     /**
@@ -159,62 +141,48 @@ export class FoldCategoryPlugin extends BasePlugin {
      * @returns Promise<void>；若无已选分类或目标容器则提前 return，不抛出异常
      */
     async createFoldBtn(): Promise<void> {
-        const hotkey = await storageManager.getSetting("foldCategoryHotKey");
-        let tagsEl = $("#tags");
-        let selectedTagsText = $("#tags dl div.tag.is-info")
+        const hotkey = await storageManager.getSetting('foldCategoryHotKey');
+        let tagsEl = $('#tags');
+        let selectedTagsText = $('#tags dl div.tag.is-info')
             .map(function (this: any) {
-                return $(this).text().replaceAll("\n", "").replaceAll(" ", "");
+                return $(this).text().replaceAll('\n', '').replaceAll(' ', '');
             })
             .get()
-            .join(" ");
+            .join(' ');
         if (!selectedTagsText) {
             return;
         }
-        $(".tabs").append(
+        $('.tabs').append(
             jsxToString(
-                <FoldCategoryToolbar
-                    selectedTagsText={selectedTagsText}
-                    hotkey={hotkey || ""}
-                />,
-            ),
+                <FoldCategoryToolbar selectedTagsText={selectedTagsText} hotkey={hotkey || ''} />
+            )
         );
-        let sectionTitleEl = $("h2.section-title");
+        let sectionTitleEl = $('h2.section-title');
         if (sectionTitleEl.length > 0) {
             sectionTitleEl.append(jsxToString(<FoldCategorySectionButton />));
-            tagsEl = $("section > div > div.box");
+            tagsEl = $('section > div > div.box');
         }
         if (!tagsEl) {
             return;
         }
-        const foldBtnEl = $("#foldCategoryBtn");
-        let isFolded: boolean =
-            localStorage.getItem("jhs_foldCategory") === YES;
+        const foldBtnEl = $('#foldCategoryBtn');
+        let isFolded: boolean = localStorage.getItem('jhs_foldCategory') === YES;
         let [label, iconClass] = isFolded
-            ? ["展开", "icon-angle-double-down"]
-            : ["折叠", "icon-angle-double-up"];
-        foldBtnEl
-            .find("span")
-            .text(label)
-            .end()
-            .find("i")
-            .attr("class", iconClass);
-        if (!window.location.href.includes("noFold=1")) {
-            tagsEl[isFolded ? "hide" : "show"]();
+            ? ['展开', 'icon-angle-double-down']
+            : ['折叠', 'icon-angle-double-up'];
+        foldBtnEl.find('span').text(label).end().find('i').attr('class', iconClass);
+        if (!window.location.href.includes('noFold=1')) {
+            tagsEl[isFolded ? 'hide' : 'show']();
         }
-        foldBtnEl.on("click", async (event: any) => {
+        foldBtnEl.on('click', async (event: any) => {
             event.preventDefault();
             isFolded = !isFolded;
-            localStorage.setItem("jhs_foldCategory", isFolded ? YES : NO);
+            localStorage.setItem('jhs_foldCategory', isFolded ? YES : NO);
             const [nextLabel, nextIconClass] = isFolded
-                ? ["展开", "icon-angle-double-down"]
-                : ["折叠", "icon-angle-double-up"];
-            foldBtnEl
-                .find("span")
-                .text(nextLabel)
-                .end()
-                .find("i")
-                .attr("class", nextIconClass);
-            tagsEl[isFolded ? "hide" : "show"]();
+                ? ['展开', 'icon-angle-double-down']
+                : ['折叠', 'icon-angle-double-up'];
+            foldBtnEl.find('span').text(nextLabel).end().find('i').attr('class', nextIconClass);
+            tagsEl[isFolded ? 'hide' : 'show']();
         });
     }
 }

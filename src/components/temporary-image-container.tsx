@@ -18,7 +18,7 @@
  * 本组件改用自定义 jsxToString（仅类型依赖 react，零运行时依赖），
  * 评估轻量方案是否可接受（详见 doc/16-jsx-to-string.md）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 export interface TemporaryImageContainerProps {
     /** 图片地址（对应原 showImageViewer 参数 t，已通过 typeof string 校验）。 */
@@ -33,11 +33,8 @@ export interface TemporaryImageContainerProps {
  * @param props.alt 图片 alt 文本（缺省为空串）
  * @returns React 元素 `<div class="temporary-container" style="display:none;"><img .../></div>`
  */
-export function TemporaryImageContainer({
-    src,
-    alt = "",
-}: TemporaryImageContainerProps) {
-    const style: CSSProperties = { display: "none" };
+export function TemporaryImageContainer({ src, alt = '' }: TemporaryImageContainerProps) {
+    const style: CSSProperties = { display: 'none' };
     return (
         <div className="temporary-container" style={style}>
             <img src={src} alt={alt} />

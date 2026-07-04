@@ -69,15 +69,15 @@ export function HistoryActionButtons({
     favoriteColor,
     favoriteText,
     blockColor,
-    blockText,
+    blockText
 }: HistoryActionButtonsProps) {
     return (
         <div
             className="action-btns"
             style={{
-                display: "flex",
-                gap: "5px",
-                justifyContent: "center",
+                display: 'flex',
+                gap: '5px',
+                justifyContent: 'center'
             }}
             data-car-num={carNum}
             data-href={url}
@@ -86,9 +86,9 @@ export function HistoryActionButtons({
                 <a
                     className="menu-btn sub-btns-toggle"
                     style={{
-                        backgroundColor: "#c59d36",
-                        color: "white",
-                        marginBottom: "5px",
+                        backgroundColor: '#c59d36',
+                        color: 'white',
+                        marginBottom: '5px'
                     }}
                 >
                     <span>✏️ 变更</span>
@@ -97,9 +97,9 @@ export function HistoryActionButtons({
                     <a
                         className="menu-btn history-editBtn"
                         style={{
-                            backgroundColor: "#007bff",
-                            color: "white",
-                            marginBottom: "5px",
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            marginBottom: '5px'
                         }}
                     >
                         <span>✏️ 编辑</span>
@@ -107,9 +107,9 @@ export function HistoryActionButtons({
                     <a
                         className="menu-btn history-deleteBtn"
                         style={{
-                            backgroundColor: "#8c8080",
-                            color: "white",
-                            marginBottom: "5px",
+                            backgroundColor: '#8c8080',
+                            color: 'white',
+                            marginBottom: '5px'
                         }}
                     >
                         <span>✂️ 移除</span>
@@ -118,7 +118,7 @@ export function HistoryActionButtons({
                         className="menu-btn history-hasWatchBtn"
                         style={{
                             backgroundColor: watchedColor,
-                            marginBottom: "5px",
+                            marginBottom: '5px'
                         }}
                     >
                         {watchedText}
@@ -127,7 +127,7 @@ export function HistoryActionButtons({
                         className="menu-btn history-favoriteBtn"
                         style={{
                             backgroundColor: favoriteColor,
-                            marginBottom: "5px",
+                            marginBottom: '5px'
                         }}
                     >
                         {favoriteText}
@@ -136,7 +136,7 @@ export function HistoryActionButtons({
                         className="menu-btn history-filterBtn"
                         style={{
                             backgroundColor: blockColor,
-                            marginBottom: "5px",
+                            marginBottom: '5px'
                         }}
                     >
                         {blockText}
@@ -146,9 +146,9 @@ export function HistoryActionButtons({
             <a
                 className="menu-btn history-detailBtn"
                 style={{
-                    backgroundColor: "#3397de",
-                    color: "white",
-                    marginBottom: "5px",
+                    backgroundColor: '#3397de',
+                    color: 'white',
+                    marginBottom: '5px'
                 }}
             >
                 <span>📄 详情页</span>

@@ -23,7 +23,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** ActressPagination 的属性。 */
 export interface ActressPaginationProps {
@@ -37,28 +37,28 @@ export interface ActressPaginationProps {
 
 /** 首页/上一页/下一页/尾页按钮的统一样式（原内联 style 对象化）。 */
 const NAV_BTN_STYLE: CSSProperties = {
-    padding: "8px 12px",
-    margin: "0 5px",
-    background: "#f0f0f0",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    cursor: "pointer",
+    padding: '8px 12px',
+    margin: '0 5px',
+    background: '#f0f0f0',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    cursor: 'pointer'
 };
 
 /** 页码按钮的基础样式（原 `padding: 8px 12px; margin: 0 3px; ...`）。 */
 const PAGE_BTN_BASE_STYLE: CSSProperties = {
-    padding: "8px 12px",
-    margin: "0 3px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    cursor: "pointer",
+    padding: '8px 12px',
+    margin: '0 3px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    cursor: 'pointer'
 };
 
 /** 页码按钮激活态附加样式（原 `background: #007bff; color: white; border-color: #007bff;`）。 */
 const ACTIVE_STYLE: CSSProperties = {
-    background: "#007bff",
-    color: "white",
-    borderColor: "#007bff",
+    background: '#007bff',
+    color: 'white',
+    borderColor: '#007bff'
 };
 
 /**
@@ -68,13 +68,9 @@ const ACTIVE_STYLE: CSSProperties = {
  * @param props.page 当前页码
  * @returns 分页栏 JSX（Fragment），经 jsxToString 转 HTML 字符串后供 `.html()` 消费。
  */
-export function ActressPagination({
-    totalCount,
-    totalPages,
-    page,
-}: ActressPaginationProps) {
+export function ActressPagination({ totalCount, totalPages, page }: ActressPaginationProps) {
     if (totalPages === 0) {
-        return <span style={{ color: "#666" }}>共 0 条记录</span>;
+        return <span style={{ color: '#666' }}>共 0 条记录</span>;
     }
     let rangeStart: number = Math.max(1, page - Math.floor(2.5));
     let rangeEnd: number = Math.min(totalPages, rangeStart + 5 - 1);
@@ -84,20 +80,12 @@ export function ActressPagination({
     return (
         <>
             {page > 1 && totalPages > 5 && (
-                <button
-                    className="pagination-btn"
-                    data-page={1}
-                    style={NAV_BTN_STYLE}
-                >
+                <button className="pagination-btn" data-page={1} style={NAV_BTN_STYLE}>
                     首页
                 </button>
             )}
             {page > 1 && (
-                <button
-                    className="pagination-btn"
-                    data-page={page - 1}
-                    style={NAV_BTN_STYLE}
-                >
+                <button className="pagination-btn" data-page={page - 1} style={NAV_BTN_STYLE}>
                     上一页
                 </button>
             )}
@@ -106,11 +94,11 @@ export function ActressPagination({
                 return (
                     <button
                         key={pageNum}
-                        className={`pagination-btn page-number-btn ${pageNum === page ? "active" : ""}`}
+                        className={`pagination-btn page-number-btn ${pageNum === page ? 'active' : ''}`}
                         data-page={pageNum}
                         style={{
                             ...PAGE_BTN_BASE_STYLE,
-                            ...(pageNum === page ? ACTIVE_STYLE : null),
+                            ...(pageNum === page ? ACTIVE_STYLE : null)
                         }}
                     >
                         {pageNum}
@@ -118,24 +106,16 @@ export function ActressPagination({
                 );
             })}
             {page < totalPages && (
-                <button
-                    className="pagination-btn"
-                    data-page={page + 1}
-                    style={NAV_BTN_STYLE}
-                >
+                <button className="pagination-btn" data-page={page + 1} style={NAV_BTN_STYLE}>
                     下一页
                 </button>
             )}
             {page < totalPages && totalPages > 5 && (
-                <button
-                    className="pagination-btn"
-                    data-page={totalPages}
-                    style={NAV_BTN_STYLE}
-                >
+                <button className="pagination-btn" data-page={totalPages} style={NAV_BTN_STYLE}>
                     尾页
                 </button>
             )}
-            <span style={{ marginLeft: "20px", color: "#666" }}>
+            <span style={{ marginLeft: '20px', color: '#666' }}>
                 共 {totalCount} 条记录 (第 {page}/{totalPages} 页)
             </span>
         </>

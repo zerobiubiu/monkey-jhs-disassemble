@@ -34,15 +34,11 @@ export interface Top250YearButtonProps {
  * 渲染单个 Top250 年份按钮的 JSX。
  * @returns 年份按钮 JSX，经 jsxToString 转 HTML 字符串后供循环拼接。
  */
-export function Top250YearButton({
-    year,
-    typeValue,
-    hasCnsub,
-}: Top250YearButtonProps) {
+export function Top250YearButton({ year, typeValue, hasCnsub }: Top250YearButtonProps) {
     return (
         <a
-            style={{ padding: "18px 18px !important" }}
-            className={`button is-small ${typeValue === year.toString() ? "is-info" : ""}`}
+            style={{ padding: '18px 18px !important' }}
+            className={`button is-small ${typeValue === year.toString() ? 'is-info' : ''}`}
             href={`/advanced_search?handleTop=1&handleType=year&type_value=${year}&has_cnsub=${hasCnsub}`}
         >
             {year}

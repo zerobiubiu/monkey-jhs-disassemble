@@ -24,11 +24,8 @@
 export function RankingContainers() {
     return (
         <>
-            <div className="tool-box" style={{ marginTop: "10px" }}></div>
-            <div
-                className="movie-list h cols-4 vcols-8"
-                style={{ marginTop: "10px" }}
-            ></div>
+            <div className="tool-box" style={{ marginTop: '10px' }}></div>
+            <div className="movie-list h cols-4 vcols-8" style={{ marginTop: '10px' }}></div>
         </>
     );
 }

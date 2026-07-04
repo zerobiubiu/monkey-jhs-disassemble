@@ -27,20 +27,14 @@ export interface PreviewVideoContainerProps {
  * 渲染预览视频封面入口的 JSX。
  * @returns preview-video-container JSX，经 jsxToString 转 HTML 字符串后供 `.prepend()` 消费。
  */
-export function PreviewVideoContainer({
-    coverSrc,
-}: PreviewVideoContainerProps) {
+export function PreviewVideoContainer({ coverSrc }: PreviewVideoContainerProps) {
     return (
-        <a
-            className="preview-video-container"
-            data-fancybox="gallery"
-            href="#preview-video"
-        >
+        <a className="preview-video-container" data-fancybox="gallery" href="#preview-video">
             <span>預告片</span>
             <img
                 src={coverSrc}
                 className="video-cover"
-                style={{ width: "150px", height: "auto" }}
+                style={{ width: '150px', height: 'auto' }}
                 alt=""
             />
         </a>

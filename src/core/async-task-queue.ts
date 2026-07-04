@@ -37,7 +37,7 @@ export class AsyncTaskQueue {
         this.queue = this.queue
             .then(() => task())
             .catch((err: unknown) => {
-                clog.error("执行异步队列任务失败:", err);
+                clog.error('执行异步队列任务失败:', err);
             });
     }
 

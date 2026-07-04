@@ -23,10 +23,10 @@ export function ReviewLoading() {
         <div
             id="reviewsLoading"
             style={{
-                marginTop: "15px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
+                marginTop: '15px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px'
             }}
         >
             获取评论中...

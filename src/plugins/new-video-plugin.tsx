@@ -38,29 +38,21 @@
  * jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。textareaStyle/
  * btnStyle 由原 string 改为 CSSProperties 对象（React 19 style 不再接受 string）。
  */
-import type { CSSProperties } from "react";
-import { UNCENSORED, CENSORED } from "../constants/site";
-import {
-    GFRIENDS_SOURCES,
-    GFRIENDS_CDN_INDEX_KEY,
-    FILETREE_DATA_KEY,
-} from "../resources/gfriends";
-import {
-    clearCache,
-    getCurrentCdnSource,
-    loadGfriends,
-} from "../core/gfriends";
-import { jsxToString } from "../core/jsx-to-string";
-import { BasePlugin } from "./base-plugin";
-import newVideoCssRaw from "../styles/new-video-plugin.css?raw";
-import avatarSelectDialogCssRaw from "../styles/avatar-select-dialog.css?raw";
-import { NewVideoDialog } from "../components/new-video-dialog";
-import { EditActressDialog } from "../components/edit-actress-dialog";
-import { CdnSelectDialog } from "../components/cdn-select-dialog";
-import { AvatarSelectDialog } from "../components/avatar-select-dialog";
-import { ActressCard } from "../components/actress-card";
-import { ActressPagination } from "../components/actress-pagination";
-import { NewVideoDialogTitle } from "../components/new-video-dialog-title";
+import type { CSSProperties } from 'react';
+import { UNCENSORED, CENSORED } from '../constants/site';
+import { GFRIENDS_SOURCES, GFRIENDS_CDN_INDEX_KEY, FILETREE_DATA_KEY } from '../resources/gfriends';
+import { clearCache, getCurrentCdnSource, loadGfriends } from '../core/gfriends';
+import { jsxToString } from '../core/jsx-to-string';
+import { BasePlugin } from './base-plugin';
+import newVideoCssRaw from '../styles/new-video-plugin.css?raw';
+import avatarSelectDialogCssRaw from '../styles/avatar-select-dialog.css?raw';
+import { NewVideoDialog } from '../components/new-video-dialog';
+import { EditActressDialog } from '../components/edit-actress-dialog';
+import { CdnSelectDialog } from '../components/cdn-select-dialog';
+import { AvatarSelectDialog } from '../components/avatar-select-dialog';
+import { ActressCard } from '../components/actress-card';
+import { ActressPagination } from '../components/actress-pagination';
+import { NewVideoDialogTitle } from '../components/new-video-dialog-title';
 
 /**
  * 收藏女优记录结构（storageManager.getFavoriteActressList() 返回元素）。
@@ -95,7 +87,7 @@ export class NewVideoPlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L11041-11043。 */
     getName(): string {
-        return "NewVideoPlugin";
+        return 'NewVideoPlugin';
     }
 
     /**
@@ -122,12 +114,13 @@ export class NewVideoPlugin extends BasePlugin {
      * 对应原 L11050-11062。无参数；返回 Promise<void>；不抛出异常。
      */
     async showNewVideoCount(): Promise<void> {
-        const totalCount: number = (
-            await storageManager.getFavoriteActressList()
-        ).reduce((total: number, actress: FavoriteActressRecord) => {
-            return total + (actress.newVideoList?.length ?? 0);
-        }, 0);
-        $("#newVideoCount").text(`${totalCount}`);
+        const totalCount: number = (await storageManager.getFavoriteActressList()).reduce(
+            (total: number, actress: FavoriteActressRecord) => {
+                return total + (actress.newVideoList?.length ?? 0);
+            },
+            0
+        );
+        $('#newVideoCount').text(`${totalCount}`);
     }
 
     /**
@@ -142,21 +135,19 @@ export class NewVideoPlugin extends BasePlugin {
      *（success 回调内 loadData/bindClick 异常由调用方兜底）。
      */
     async openDialog(): Promise<void> {
-        const dialogContent: string = jsxToString(
-            <NewVideoDialog refreshSvg={this.refreshSvg} />,
-        );
+        const dialogContent: string = jsxToString(<NewVideoDialog refreshSvg={this.refreshSvg} />);
         layer.open({
             type: 1,
             title: jsxToString(<NewVideoDialogTitle />),
             content: dialogContent,
             scrollbar: false,
-            area: utils.getResponsiveArea(["80%", "90%"]),
+            area: utils.getResponsiveArea(['80%', '90%']),
             anim: -1,
             success: async (_layerEl: any, layerIndex: any) => {
                 this.loadData();
                 this.bindClick();
                 utils.setupEscClose(layerIndex);
-            },
+            }
         });
     }
 
@@ -165,11 +156,11 @@ export class NewVideoPlugin extends BasePlugin {
      * 无参数；无返回值；不抛出异常。
      */
     bindClick(): void {
-        $("#reLoad").on("click", (_event: any) => {
+        $('#reLoad').on('click', (_event: any) => {
             this.loadData();
-            $("#checkNewVideoMsg").text("");
+            $('#checkNewVideoMsg').text('');
         });
-        $("#paramActressType").on("change", (_event: any) => {
+        $('#paramActressType').on('change', (_event: any) => {
             this.loadData();
         });
     }
@@ -190,146 +181,120 @@ export class NewVideoPlugin extends BasePlugin {
      *（容器不存在时短路返回；移除失败仅 show.error/clog.error）。
      */
     async renderActressCards(): Promise<void> {
-        const $container: any = $("#actress-card-container");
+        const $container: any = $('#actress-card-container');
         if (!$container.length) {
             return;
         }
         let favoriteActresses: FavoriteActressRecord[] =
             await storageManager.getFavoriteActressList();
-        const typeFilter: any = $("#paramActressType").val();
-        if (typeFilter !== "all") {
+        const typeFilter: any = $('#paramActressType').val();
+        if (typeFilter !== 'all') {
             favoriteActresses = favoriteActresses.filter(
-                (actress) => actress.actressType === typeFilter,
+                (actress) => actress.actressType === typeFilter
             );
         }
-        const sortedActresses: FavoriteActressRecord[] = utils.genericSort(
-            favoriteActresses,
-            [
-                {
-                    key: (actress: FavoriteActressRecord) =>
-                        actress.newVideoList?.length ?? 0,
-                    order: "desc",
-                },
-                {
-                    key: "lastPublishTime",
-                    order: "desc",
-                },
-            ],
-        );
+        const sortedActresses: FavoriteActressRecord[] = utils.genericSort(favoriteActresses, [
+            {
+                key: (actress: FavoriteActressRecord) => actress.newVideoList?.length ?? 0,
+                order: 'desc'
+            },
+            {
+                key: 'lastPublishTime',
+                order: 'desc'
+            }
+        ]);
         const totalCount: number = sortedActresses.length;
         const totalPages: number = Math.ceil(totalCount / this.pageSize);
         const startIndex: number = (this.currentPage - 1) * this.pageSize;
         const endIndex: number = startIndex + this.pageSize;
-        const pageActresses: FavoriteActressRecord[] = sortedActresses.slice(
-            startIndex,
-            endIndex,
-        );
-        const javDbUrl: string =
-            await this.getBean("OtherSitePlugin").getJavDbUrl();
+        const pageActresses: FavoriteActressRecord[] = sortedActresses.slice(startIndex, endIndex);
+        const javDbUrl: string = await this.getBean('OtherSitePlugin').getJavDbUrl();
         const ruleTimeHours: number =
-            (await storageManager.getSetting("checkNewVideo_ruleTime")) || 8760;
+            (await storageManager.getSetting('checkNewVideo_ruleTime')) || 8760;
         const cardsHtml: string = pageActresses
             .map((actress: FavoriteActressRecord) => {
                 const allNameText: string = Array.isArray(actress.allName)
-                    ? actress.allName.join("，")
-                    : "";
+                    ? actress.allName.join('，')
+                    : '';
                 // 保留原 no-op 语句（原 L11132-11134，join 结果未使用，控制流不变）
                 if (Array.isArray(actress.newVideoList)) {
-                    actress.newVideoList.join("，");
+                    actress.newVideoList.join('，');
                 }
                 const actressUrl: string = `${javDbUrl}/actors/${actress.starId}?t=d`;
                 let isStale: boolean = false;
                 if (actress.lastPublishTime) {
-                    isStale = !utils.isUnnecessaryCheck(
-                        actress.lastPublishTime,
-                        ruleTimeHours,
-                    );
+                    isStale = !utils.isUnnecessaryCheck(actress.lastPublishTime, ruleTimeHours);
                 }
-                let typeLabel: string = "未知";
-                let typeColor: string = "#9E9E9E";
+                let typeLabel: string = '未知';
+                let typeColor: string = '#9E9E9E';
                 if (actress.actressType === UNCENSORED) {
-                    typeLabel = "无码";
-                    typeColor = "#4CAF50";
+                    typeLabel = '无码';
+                    typeColor = '#4CAF50';
                 } else if (actress.actressType === CENSORED) {
-                    typeLabel = "有码";
-                    typeColor = "#FF9800";
+                    typeLabel = '有码';
+                    typeColor = '#FF9800';
                 }
                 let btnStyle: CSSProperties = {};
                 if (isStale) {
                     btnStyle = {
-                        background:
-                            "linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%)",
-                        boxShadow: "none",
+                        background: 'linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%)',
+                        boxShadow: 'none'
                     };
                 }
                 return jsxToString(
                     <ActressCard
                         starId={actress.starId}
                         avatar={
-                            actress.avatar ||
-                            "https://c0.jdbstatic.com/images/actor_unknow.jpg"
+                            actress.avatar || 'https://c0.jdbstatic.com/images/actor_unknow.jpg'
                         }
                         name={actress.name}
                         allNameText={allNameText}
                         actressUrl={actressUrl}
-                        lastCheckTime={actress.lastCheckTime || ""}
-                        lastPublishTime={actress.lastPublishTime || ""}
+                        lastCheckTime={actress.lastCheckTime || ''}
+                        lastPublishTime={actress.lastPublishTime || ''}
                         isStale={isStale}
                         ruleTimeYears={ruleTimeHours / 24 / 365}
-                        remark={actress.remark || ""}
+                        remark={actress.remark || ''}
                         editSvg={this.editSvg}
                         deleteSvg={this.deleteSvg}
                         btnStyle={btnStyle}
                         typeLabel={typeLabel}
                         typeColor={typeColor}
                         newVideoCount={actress.newVideoList?.length || 0}
-                    />,
+                    />
                 );
             })
-            .join("");
+            .join('');
         $container.html(cardsHtml);
-        $(".btn-delete-actress")
-            .off("click")
-            .on("click", (event: any) => {
+        $('.btn-delete-actress')
+            .off('click')
+            .on('click', (event: any) => {
                 event.preventDefault();
-                const starId: string = $(event.currentTarget).attr(
-                    "data-starId",
-                );
-                const actress = sortedActresses.find(
-                    (item) => item.starId === starId,
-                );
+                const starId: string = $(event.currentTarget).attr('data-starId');
+                const actress = sortedActresses.find((item) => item.starId === starId);
                 utils.q(event, `是否取消收藏 ${actress!.name}?`, async () => {
-                    const uncollectUrl: string = `${await this.getBean("OtherSitePlugin").getJavDbUrl()}/actors/${starId}/uncollect`;
+                    const uncollectUrl: string = `${await this.getBean('OtherSitePlugin').getJavDbUrl()}/actors/${starId}/uncollect`;
                     const csrfToken: string =
-                        document
-                            .querySelector("meta[name=csrf-token]")
-                            ?.getAttribute("content") ?? "";
-                    const response: any = await gmHttp.post(
-                        uncollectUrl,
-                        null,
-                        {
-                            "x-csrf-token": csrfToken,
-                        },
-                    );
-                    if (response.includes("removeClass")) {
+                        document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ??
+                        '';
+                    const response: any = await gmHttp.post(uncollectUrl, null, {
+                        'x-csrf-token': csrfToken
+                    });
+                    if (response.includes('removeClass')) {
                         await storageManager.removeFavoriteActress(starId);
                         this.loadData();
                     } else {
-                        show.error("移除失败");
-                        clog.error("移除失败,返回值:", response);
+                        show.error('移除失败');
+                        clog.error('移除失败,返回值:', response);
                     }
                 });
             });
-        $(".btn-edit-actress")
-            .off("click")
-            .on("click", (event: any) => {
+        $('.btn-edit-actress')
+            .off('click')
+            .on('click', (event: any) => {
                 event.preventDefault();
-                const starId: string = $(event.currentTarget).attr(
-                    "data-starId",
-                );
-                const actress = sortedActresses.find(
-                    (item) => item.starId === starId,
-                );
+                const starId: string = $(event.currentTarget).attr('data-starId');
+                const actress = sortedActresses.find((item) => item.starId === starId);
                 if (actress) {
                     this.editActress(actress);
                 } else {
@@ -337,7 +302,7 @@ export class NewVideoPlugin extends BasePlugin {
                 }
             });
         this.renderPagination(totalCount, totalPages);
-        show.ok("加载完成");
+        show.ok('加载完成');
     }
 
     /**
@@ -350,23 +315,23 @@ export class NewVideoPlugin extends BasePlugin {
     async editActress(actress: FavoriteActressRecord): Promise<void> {
         const name: string = actress.name;
         const avatar: string = actress.avatar;
-        const remark: string = actress.remark || "";
+        const remark: string = actress.remark || '';
         const allNameText: string = Array.isArray(actress.allName)
-            ? actress.allName.join("，")
-            : "";
+            ? actress.allName.join('，')
+            : '';
         const newVideoText: string = Array.isArray(actress.newVideoList)
-            ? actress.newVideoList.join("，")
-            : "";
+            ? actress.newVideoList.join('，')
+            : '';
         const starId: string = actress.starId;
         const textareaStyle: CSSProperties = {
-            width: "100%",
-            padding: "8px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            minHeight: "60px",
-            overflowY: "hidden",
+            width: '100%',
+            padding: '8px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            minHeight: '60px',
+            overflowY: 'hidden'
         };
-        const actressType: string = actress.actressType || "";
+        const actressType: string = actress.actressType || '';
         const dialogContent: string = jsxToString(
             <EditActressDialog
                 avatar={avatar}
@@ -376,106 +341,83 @@ export class NewVideoPlugin extends BasePlugin {
                 actressType={actressType}
                 newVideoText={newVideoText}
                 remark={remark}
-            />,
+            />
         );
         layer.open({
             type: 1,
             title: `编辑女优: ${name} (${starId})`,
-            area: ["500px", "750px"],
+            area: ['500px', '750px'],
             content: dialogContent,
-            btn: ["保存", "取消"],
+            btn: ['保存', '取消'],
             success: (_layerEl: any, layerIndex: any) => {
                 const autoHeight = ($textarea: any) => {
-                    $textarea.css("height", "auto");
-                    $textarea.css(
-                        "height",
-                        $textarea[0].scrollHeight + 15 + "px",
-                    );
+                    $textarea.css('height', 'auto');
+                    $textarea.css('height', $textarea[0].scrollHeight + 15 + 'px');
                 };
-                $("#edit-actress-avatar").on("input", (event: any) => {
+                $('#edit-actress-avatar').on('input', (event: any) => {
                     const val: string = $(event.currentTarget).val();
-                    $("#edit-avatar-preview").attr("src", val);
+                    $('#edit-avatar-preview').attr('src', val);
                 });
-                const $allNameArea: any = $("#edit-actress-allname");
-                $allNameArea.on("input", (event: any) => {
+                const $allNameArea: any = $('#edit-actress-allname');
+                $allNameArea.on('input', (event: any) => {
                     autoHeight($(event.currentTarget));
                 });
                 autoHeight($allNameArea);
-                const $newVideoArea: any = $("#edit-actress-newvideolist");
-                $newVideoArea.on("input", (event: any) => {
+                const $newVideoArea: any = $('#edit-actress-newvideolist');
+                $newVideoArea.on('input', (event: any) => {
                     autoHeight($(event.currentTarget));
                 });
                 autoHeight($newVideoArea);
-                $("#search-avatar-btn").on("click", async () => {
+                $('#search-avatar-btn').on('click', async () => {
                     await this.searchAvatar();
                 });
-                $("#select-cdn-btn").on("click", async () => {
+                $('#select-cdn-btn').on('click', async () => {
                     const currentIndex: number = getCurrentCdnSource().index;
                     const cdnDialogContent: string = jsxToString(
-                        <CdnSelectDialog
-                            sources={GFRIENDS_SOURCES}
-                            currentIndex={currentIndex}
-                        />,
+                        <CdnSelectDialog sources={GFRIENDS_SOURCES} currentIndex={currentIndex} />
                     );
                     layer.open({
                         type: 1,
-                        title: "选择 CDN 源",
-                        area: ["400px", "auto"],
+                        title: '选择 CDN 源',
+                        area: ['400px', 'auto'],
                         content: cdnDialogContent,
-                        btn: ["确定", "取消"],
+                        btn: ['确定', '取消'],
                         success: (_cdnLayerEl: any, cdnLayerIndex: any) => {
                             utils.setupEscClose(cdnLayerIndex);
                         },
                         yes: async (cdnLayerIndex: any) => {
-                            const selectedValue: any = $(
-                                'input[name="cdn-source"]:checked',
-                            ).val();
-                            const selectedIndex: number = parseInt(
-                                selectedValue,
-                                10,
-                            );
+                            const selectedValue: any = $('input[name="cdn-source"]:checked').val();
+                            const selectedIndex: number = parseInt(selectedValue, 10);
                             if (selectedIndex !== currentIndex) {
                                 localStorage.setItem(
                                     GFRIENDS_CDN_INDEX_KEY,
-                                    selectedIndex.toString(),
+                                    selectedIndex.toString()
                                 );
                                 clearCache();
                                 try {
-                                    await (window as any).lt.set(
-                                        FILETREE_DATA_KEY,
-                                        null,
-                                    );
+                                    await (window as any).lt.set(FILETREE_DATA_KEY, null);
                                 } catch (error: any) {
-                                    clog.error(
-                                        "清除 IndexedDB 缓存失败:",
-                                        error,
-                                    );
+                                    clog.error('清除 IndexedDB 缓存失败:', error);
                                 }
-                                show.ok(
-                                    `CDN 源已切换为: ${GFRIENDS_SOURCES[selectedIndex].name}`,
-                                );
+                                show.ok(`CDN 源已切换为: ${GFRIENDS_SOURCES[selectedIndex].name}`);
                                 layer.close(cdnLayerIndex);
                             } else {
                                 layer.close(cdnLayerIndex);
                             }
-                        },
+                        }
                     });
                 });
                 utils.setupEscClose(layerIndex);
             },
             yes: async (layerIndex: any) => {
-                const avatar: string = $("#edit-actress-avatar").val().trim();
-                const name: string = $("#edit-actress-name").val().trim();
-                const allNameText: string = $("#edit-actress-allname")
-                    .val()
-                    .trim();
-                const newVideoText: string = $("#edit-actress-newvideolist")
-                    .val()
-                    .trim();
-                const remark: string = $("#edit-remark").val().trim();
-                const actressType: string = $("#actressType").val();
+                const avatar: string = $('#edit-actress-avatar').val().trim();
+                const name: string = $('#edit-actress-name').val().trim();
+                const allNameText: string = $('#edit-actress-allname').val().trim();
+                const newVideoText: string = $('#edit-actress-newvideolist').val().trim();
+                const remark: string = $('#edit-remark').val().trim();
+                const actressType: string = $('#actressType').val();
                 if (!name) {
-                    show.error("主名称不能为空");
+                    show.error('主名称不能为空');
                     return false;
                 }
                 const allNameArray: string[] = allNameText
@@ -493,13 +435,13 @@ export class NewVideoPlugin extends BasePlugin {
                 actress.actressType = actressType;
                 actress.remark = remark;
                 if (await storageManager.updateFavoriteActress(actress)) {
-                    show.error("修改失败");
+                    show.error('修改失败');
                 } else {
                     this.renderActressCards().then();
                     show.ok(`女优 ${name} 信息已更新`);
                     layer.close(layerIndex);
                 }
-            },
+            }
         });
     }
 
@@ -512,25 +454,19 @@ export class NewVideoPlugin extends BasePlugin {
      */
     renderPagination(totalCount: number, totalPages: number): void {
         const page: number = this.currentPage;
-        const $pagination: any = $("#actress-pagination");
+        const $pagination: any = $('#actress-pagination');
         $pagination.html(
             jsxToString(
-                <ActressPagination
-                    totalCount={totalCount}
-                    totalPages={totalPages}
-                    page={page}
-                />,
-            ),
+                <ActressPagination totalCount={totalCount} totalPages={totalPages} page={page} />
+            )
         );
-        $(".pagination-btn")
-            .off("click")
-            .on("click", (event: any) => {
-                if ($(event.currentTarget).is("[disabled]")) {
+        $('.pagination-btn')
+            .off('click')
+            .on('click', (event: any) => {
+                if ($(event.currentTarget).is('[disabled]')) {
                     return;
                 }
-                const targetPage: number = parseInt(
-                    $(event.currentTarget).data("page"),
-                );
+                const targetPage: number = parseInt($(event.currentTarget).data('page'));
                 if (
                     targetPage >= 1 &&
                     targetPage <= totalPages &&
@@ -549,8 +485,8 @@ export class NewVideoPlugin extends BasePlugin {
      *（搜索失败/无结果/链接全失效均仅 show.error 后返回）。
      */
     async searchAvatar(): Promise<void> {
-        const $nameInput: any = $("#edit-actress-name");
-        const $allNameInput: any = $("#edit-actress-allname");
+        const $nameInput: any = $('#edit-actress-name');
+        const $allNameInput: any = $('#edit-actress-allname');
         const nameText: string = $nameInput.val().trim();
         const searchNames: string[] = $allNameInput
             .val()
@@ -562,14 +498,14 @@ export class NewVideoPlugin extends BasePlugin {
             searchNames.unshift(nameText);
         }
         if (searchNames.length === 0) {
-            show.error("请先填写女优主名称或别名进行搜索。");
+            show.error('请先填写女优主名称或别名进行搜索。');
             return;
         }
         const loader = (
             loading as (message: string) => {
                 close: () => void;
             }
-        )("正在搜索头像...");
+        )('正在搜索头像...');
         let avatarUrls: string[] = [];
         try {
             avatarUrls = await loadGfriends(searchNames);
@@ -580,77 +516,72 @@ export class NewVideoPlugin extends BasePlugin {
             loader.close();
         }
         if (avatarUrls.length === 0) {
-            show.error(
-                `未找到与 '${searchNames.join("、")}' 相关的头像。请检查名称。`,
-            );
+            show.error(`未找到与 '${searchNames.join('、')}' 相关的头像。请检查名称。`);
             return;
         }
         // content = 原 searchAvatar 的 r 模板：<style> 块（avatar-select-dialog.css）
         // + HTML（AvatarSelectDialog），与原 content 字符级一致。
         const dialogContent: string =
-            "<style>" +
+            '<style>' +
             avatarSelectDialogCssRaw +
-            "</style>" +
+            '</style>' +
             jsxToString(<AvatarSelectDialog avatarUrls={avatarUrls} />);
         let errorCount: number = 0;
         layer.open({
             type: 1,
             title: `选择女优头像 (${avatarUrls.length} 张)`,
-            area: utils.getResponsiveArea(["900px", "85%"]),
+            area: utils.getResponsiveArea(['900px', '85%']),
             content: dialogContent,
-            btn: ["关闭"],
+            btn: ['关闭'],
             success: (layerEl: any, layerIndex: any) => {
                 const $layer: any = $(layerEl);
-                const $images: any = $layer.find(".gfriends-selectable-img");
-                const $prompt: any = $layer.find("#gfriends-prompt");
+                const $images: any = $layer.find('.gfriends-selectable-img');
+                const $prompt: any = $layer.find('#gfriends-prompt');
                 $images.each((_index: number, element: any) => {
                     const $img: any = $(element);
-                    const wrapperId: any = $img.data("wrapper-id");
+                    const wrapperId: any = $img.data('wrapper-id');
                     const $wrapper: any = $layer.find(`#${wrapperId}`);
                     const $sizeTag: any = $layer.find(
-                        `.gfriends-size-tag[data-size-for="${wrapperId}"]`,
+                        `.gfriends-size-tag[data-size-for="${wrapperId}"]`
                     );
-                    $img.on("load", () => {
+                    $img.on('load', () => {
                         const width: number = element.naturalWidth;
                         const height: number = element.naturalHeight;
                         $sizeTag.text(`${width} x ${height}`);
                     });
-                    $img.on("error", () => {
+                    $img.on('error', () => {
                         $wrapper.remove();
                         errorCount++;
-                        const remaining: number =
-                            avatarUrls.length - errorCount;
+                        const remaining: number = avatarUrls.length - errorCount;
                         $prompt.text(
-                            `点击图片即可选择（已移除 ${errorCount} 张错误图片，剩余 ${remaining} 张）`,
+                            `点击图片即可选择（已移除 ${errorCount} 张错误图片，剩余 ${remaining} 张）`
                         );
                         if (remaining === 0) {
-                            show.error(
-                                "所有搜索到的头像链接均已失效，无法选择。",
-                            );
+                            show.error('所有搜索到的头像链接均已失效，无法选择。');
                             layer.close(layerIndex);
                         }
                     });
                     if (element.complete) {
                         if (element.naturalWidth > 0) {
-                            $img.trigger("load");
+                            $img.trigger('load');
                         } else {
-                            $img.trigger("error");
+                            $img.trigger('error');
                         }
                     }
                 });
-                $images.on("click", (event: any) => {
+                $images.on('click', (event: any) => {
                     const $img: any = $(event.currentTarget);
-                    const url: any = $img.data("url");
-                    $("#edit-actress-avatar").val(url);
-                    $("#edit-avatar-preview").attr("src", url);
-                    $images.removeClass("is-selected");
-                    $img.addClass("is-selected");
+                    const url: any = $img.data('url');
+                    $('#edit-actress-avatar').val(url);
+                    $('#edit-avatar-preview').attr('src', url);
+                    $images.removeClass('is-selected');
+                    $img.addClass('is-selected');
                     setTimeout(() => {
                         layer.close(layerIndex);
                     }, 150);
                 });
                 utils.setupEscClose(layerIndex);
-            },
+            }
         });
     }
 }

@@ -53,54 +53,50 @@ export function RelatedItem({
     movieCount,
     collectionCount,
     viewCount,
-    createTime,
+    createTime
 }: RelatedItemProps) {
     return (
         <div
             className="item columns is-desktop"
             style={{
-                display: "block",
-                marginTop: "6px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
-                wordBreak: "break-word",
-                position: "relative",
+                display: 'block',
+                marginTop: '6px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px',
+                wordBreak: 'break-word',
+                position: 'relative'
             }}
         >
             <span
                 style={{
-                    position: "absolute",
-                    top: "5px",
-                    right: "10px",
-                    color: "#999",
-                    fontSize: "12px",
+                    position: 'absolute',
+                    top: '5px',
+                    right: '10px',
+                    color: '#999',
+                    fontSize: '12px'
                 }}
             >
                 #{index}
             </span>
             <span
                 style={{
-                    position: "absolute",
-                    bottom: "5px",
-                    right: "10px",
-                    color: "#999",
-                    fontSize: "12px",
+                    position: 'absolute',
+                    bottom: '5px',
+                    right: '10px',
+                    color: '#999',
+                    fontSize: '12px'
                 }}
             >
                 创建时间: {createTime}
             </span>
             <p>
-                <a
-                    href={`/lists/${relatedId}`}
-                    target="_blank"
-                    style={{ color: "#2e8abb" }}
-                >
+                <a href={`/lists/${relatedId}`} target="_blank" style={{ color: '#2e8abb' }}>
                     {name}
                 </a>
             </p>
-            <p style={{ marginTop: "5px" }}>视频个数: {movieCount}</p>
-            <p style={{ marginTop: "5px" }}>
+            <p style={{ marginTop: '5px' }}>视频个数: {movieCount}</p>
+            <p style={{ marginTop: '5px' }}>
                 收藏次数: {collectionCount} 被查看次数: {viewCount}
             </p>
         </div>

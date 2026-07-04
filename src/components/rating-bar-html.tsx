@@ -47,18 +47,10 @@ export function RatingBarHtml() {
                 ))}
             </div>
             <div className="jhs-rating-actions">
-                <button
-                    className="jhs-fav-btn"
-                    type="button"
-                    title="设为想看（收藏）"
-                >
+                <button className="jhs-fav-btn" type="button" title="设为想看（收藏）">
                     ♥ 收藏
                 </button>
-                <button
-                    className="jhs-read-btn"
-                    type="button"
-                    title="设为已观看（0星）"
-                >
+                <button className="jhs-read-btn" type="button" title="设为已观看（0星）">
                     已读
                 </button>
             </div>

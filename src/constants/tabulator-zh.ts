@@ -62,6 +62,6 @@ export const TABULATOR_ZH_CN: TabulatorZhCnLocale = {
         next: '下一页',
         next_title: '下一页',
         all: '所有',
-        page_size: '每页行数',
-    },
+        page_size: '每页行数'
+    }
 };

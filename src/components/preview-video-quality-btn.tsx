@@ -35,22 +35,18 @@ export interface PreviewVideoQualityBtnProps {
  * @returns video-control-btn JSX，经 jsxToString 转 HTML 字符串后供 `$(html)` 创建后 `.append()` 消费。
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function PreviewVideoQualityBtn({
-    opt,
-    src,
-    isActive,
-}: PreviewVideoQualityBtnProps) {
+export function PreviewVideoQualityBtn({ opt, src, isActive }: PreviewVideoQualityBtnProps) {
     return (
         <button
-            className={`video-control-btn${isActive ? " active" : ""}`}
+            className={`video-control-btn${isActive ? ' active' : ''}`}
             id={opt.id}
             data-quality={opt.quality}
             data-video-src={src}
             style={{
-                minWidth: "40px",
-                border: "1px solid #ccc",
-                backgroundColor: isActive ? "#007bff" : "#fff",
-                color: isActive ? "white" : "black",
+                minWidth: '40px',
+                border: '1px solid #ccc',
+                backgroundColor: isActive ? '#007bff' : '#fff',
+                color: isActive ? 'white' : 'black'
             }}
         >
             {opt.text}

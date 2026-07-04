@@ -23,10 +23,10 @@ export function ReviewError() {
     return (
         <div
             style={{
-                marginTop: "15px",
-                backgroundColor: "#ffffff",
-                padding: "10px",
-                marginLeft: "-10px",
+                marginTop: '15px',
+                backgroundColor: '#ffffff',
+                padding: '10px',
+                marginLeft: '-10px'
             }}
         >
             获取评论失败
@@ -34,9 +34,9 @@ export function ReviewError() {
                 id="retryFetchReviews"
                 href="javascript:;"
                 style={{
-                    marginLeft: "10px",
-                    color: "#1890ff",
-                    textDecoration: "none",
+                    marginLeft: '10px',
+                    color: '#1890ff',
+                    textDecoration: 'none'
                 }}
             >
                 重试

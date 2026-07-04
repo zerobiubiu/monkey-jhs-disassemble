@@ -58,37 +58,36 @@ interface CdnSelectDialogProps {
  */
 export function CdnSelectDialog({ sources, currentIndex }: CdnSelectDialogProps) {
     return (
-        <div style={{ padding: "20px" }}>
+        <div style={{ padding: '20px' }}>
             <p
                 style={{
-                    marginBottom: "15px",
-                    fontWeight: "bold",
-                    color: "#333",
+                    marginBottom: '15px',
+                    fontWeight: 'bold',
+                    color: '#333'
                 }}
             >
                 请选择头像数据源 (当前: {sources[currentIndex].name}):
             </p>
             {sources.map((source, index) => (
-                <div key={index} style={{ marginBottom: "10px" }}>
+                <div key={index} style={{ marginBottom: '10px' }}>
                     <input
                         type="radio"
                         id={`cdn-${index}`}
                         name="cdn-source"
                         value={index}
                         checked={index === currentIndex}
-                        style={{ marginRight: "10px" }}
+                        style={{ marginRight: '10px' }}
                     />
                     <label {...({ for: `cdn-${index}` } as any)}>
-                        {source.name}{" "}
-                        {source.json.includes("jsdelivr") ? "(推荐)" : ""}
+                        {source.name} {source.json.includes('jsdelivr') ? '(推荐)' : ''}
                     </label>
                 </div>
             ))}
             <p
                 style={{
-                    marginTop: "20px",
-                    color: "#555",
-                    fontSize: "12px",
+                    marginTop: '20px',
+                    color: '#555',
+                    fontSize: '12px'
                 }}
             >
                 切换源会清除本地缓存的数据，并在下次搜索时重新加载。

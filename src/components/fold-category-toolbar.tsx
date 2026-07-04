@@ -22,7 +22,7 @@
  * 经轻量 `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时
  * 依赖，不引入 react-dom/server）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** FoldCategoryToolbar 的属性。 */
 export interface FoldCategoryToolbarProps {
@@ -39,32 +39,25 @@ export interface FoldCategoryToolbarProps {
  * @returns 工具条 React 元素（已选分类 + 折叠按钮），经 jsxToString 转 HTML
  *          字符串后供 jQuery .append() 消费。
  */
-export function FoldCategoryToolbar({
-    selectedTagsText,
-    hotkey,
-}: FoldCategoryToolbarProps) {
+export function FoldCategoryToolbar({ selectedTagsText, hotkey }: FoldCategoryToolbarProps) {
     const containerStyle: CSSProperties = {
-        display: "flex",
-        alignItems: "center",
+        display: 'flex',
+        alignItems: 'center',
         flexGrow: 1,
-        justifyContent: "flex-end",
+        justifyContent: 'flex-end'
     };
     const anchorStyle: CSSProperties = {
-        backgroundColor: "#d23e60 !important",
+        backgroundColor: '#d23e60 !important'
     };
-    const iconStyle: CSSProperties = { marginLeft: "10px" };
+    const iconStyle: CSSProperties = { marginLeft: '10px' };
     return (
         <div style={containerStyle}>
             <div>
                 已选分类: <span id="jhs-check-tag">{selectedTagsText}</span>
             </div>
-            <a
-                className="menu-btn  main-tab-btn"
-                id="foldCategoryBtn"
-                style={anchorStyle}
-            >
+            <a className="menu-btn  main-tab-btn" id="foldCategoryBtn" style={anchorStyle}>
                 <span></span>
-                {hotkey ? ` (${hotkey})` : ""}
+                {hotkey ? ` (${hotkey})` : ''}
                 <i style={iconStyle}></i>
             </a>
         </div>

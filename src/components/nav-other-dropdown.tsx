@@ -27,11 +27,7 @@ export function NavOtherDropdown() {
         <div className="navbar-item has-dropdown is-hoverable">
             <a className="navbar-link">其它</a>
             <div className="navbar-dropdown is-boxed">
-                <a
-                    className="navbar-item"
-                    href="/feedbacks/new"
-                    target="_blank"
-                >
+                <a className="navbar-item" href="/feedbacks/new" target="_blank">
                     反饍
                 </a>
                 <a

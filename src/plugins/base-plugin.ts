@@ -13,8 +13,8 @@ import {
     ACTOR,
     ACTRESS,
     CENSORED,
-    UNCENSORED,
-} from "../constants/site";
+    UNCENSORED
+} from '../constants/site';
 import {
     SETTING_SVG as settingSvg,
     EDIT_SVG as editSvg,
@@ -23,8 +23,8 @@ import {
     ACTRESS_SVG as actressSvg,
     NEW_SVG as newSvg,
     REFRESH_SVG as refreshSvg,
-    BLACKLIST_SVG as blacklistSvg,
-} from "../resources/icons";
+    BLACKLIST_SVG as blacklistSvg
+} from '../resources/icons';
 
 /** 番号/影片信息（getPageInfo / getBoxCarInfo 返回结构） */
 export interface CarInfo {
@@ -80,7 +80,7 @@ export class BasePlugin {
 
     /** 子类可覆写以注入 CSS；返回空串表示无样式。对应原 L3079-3081。 */
     async initCss(): Promise<string> {
-        return "";
+        return '';
     }
 
     /** 子类可覆写以实现主逻辑。对应原 L3082。 */
@@ -95,41 +95,41 @@ export class BasePlugin {
         let publishTime: string | null = null;
         const href = window.location.href;
         if (isJavdbSite) {
-            carNum = $('a[title="複製番號"]').attr("data-clipboard-text");
-            url = href.split("?")[0].split("#")[0];
-            actress = $(".female")
+            carNum = $('a[title="複製番號"]').attr('data-clipboard-text');
+            url = href.split('?')[0].split('#')[0];
+            actress = $('.female')
                 .prev()
                 .map((_index: number, el: any) => $(el).text())
                 .get()
-                .join(" ");
-            actors = $(".male")
+                .join(' ');
+            actors = $('.male')
                 .prev()
                 .map((_index: number, el: any) => $(el).text())
                 .get()
-                .join(" ");
+                .join(' ');
             publishTime = $('strong:contains("日期:")')
-                .parent(".panel-block")
-                .find(".value")
+                .parent('.panel-block')
+                .find('.value')
                 .text()
                 .trim();
         }
         if (isJavbusSite) {
-            url = href.split("?")[0];
+            url = href.split('?')[0];
             carNum = url!
-                .split("/")
+                .split('/')
                 .filter(Boolean)
                 .pop()!
-                .replace(/_\d{4}-\d{2}-\d{2}$/, "");
+                .replace(/_\d{4}-\d{2}-\d{2}$/, '');
             actress = $('span[onmouseover*="star_"] a')
                 .map((_index: number, el: any) => $(el).text())
                 .get()
-                .join(" ");
-            actors = "";
+                .join(' ');
+            actors = '';
             publishTime = $('span.header:contains("發行日期:")')
-                .parent("p")
+                .parent('p')
                 .text()
                 .trim()
-                .replace("發行日期:", "")
+                .replace('發行日期:', '')
                 .trim();
         }
         return { carNum, url, actress, actors, publishTime };
@@ -148,18 +148,16 @@ export class BasePlugin {
     /** 提取演员详情页信息（姓名/角色/影片类型/黑名单URL）。对应原 L3144-3208。 */
     getActressPageInfo(): ActressInfo {
         const href = window.location.href;
-        if (!href.includes("/actors/") && !href.includes("/star/")) {
-            throw new Error("接口调用错误, 非演员详情页");
+        if (!href.includes('/actors/') && !href.includes('/star/')) {
+            throw new Error('接口调用错误, 非演员详情页');
         }
         const allName: string[] = [];
-        const nameEl = isJavdbSite
-            ? $(".actor-section-name")
-            : $(".avatar-box .photo-info .pb10");
+        const nameEl = isJavdbSite ? $('.actor-section-name') : $('.avatar-box .photo-info .pb10');
         if (nameEl.length) {
             nameEl
                 .text()
                 .trim()
-                .split(",")
+                .split(',')
                 .forEach((part: string) => {
                     allName.push(part.trim());
                 });
@@ -169,17 +167,17 @@ export class BasePlugin {
             metaEl
                 .text()
                 .trim()
-                .split(",")
+                .split(',')
                 .forEach((part: string) => {
                     allName.push(part.trim());
                 });
         }
         const role = $(".section-meta:contains('男優')").length > 0 ? ACTOR : ACTRESS;
         let movieType: string = CENSORED;
-        if (allName.some((part: string) => part.includes("無碼"))) {
+        if (allName.some((part: string) => part.includes('無碼'))) {
             movieType = UNCENSORED;
         }
-        if (href.includes("uncensored")) {
+        if (href.includes('uncensored')) {
             movieType = UNCENSORED;
         }
         let blacklistUrl: string | null = null;
@@ -188,21 +186,21 @@ export class BasePlugin {
         if (isJavdbSite) {
             starId =
                 urlObj.pathname
-                    .split("/")
-                    .filter((seg: string) => seg.trim() !== "")
+                    .split('/')
+                    .filter((seg: string) => seg.trim() !== '')
                     .pop() ?? null;
             const searchParams = urlObj.searchParams;
-            searchParams.delete("sort_type");
-            searchParams.delete("page");
+            searchParams.delete('sort_type');
+            searchParams.delete('page');
             blacklistUrl = urlObj.toString();
         } else if (isJavbusSite) {
-            const starSeg = "/star/";
+            const starSeg = '/star/';
             const parts = href.split(starSeg);
             if (parts.length < 2) {
-                throw new Error("提取演员url失败");
+                throw new Error('提取演员url失败');
             }
             const base = parts[0];
-            starId = parts[1].split("/")[0];
+            starId = parts[1].split('/')[0];
             blacklistUrl = base + starSeg + starId;
         }
         return {
@@ -211,7 +209,7 @@ export class BasePlugin {
             allName,
             role,
             movieType,
-            blacklistUrl,
+            blacklistUrl
         };
     }
 
@@ -220,22 +218,22 @@ export class BasePlugin {
         const type = siteType || JAVDB;
         const selectors: Record<string, SelectorConfig> = {
             javdb: {
-                boxSelector: ".movie-list",
-                itemSelector: ".movie-list .item",
-                coverImgSelector: ".cover img",
-                requestDomItemSelector: ".movie-list .item",
-                nextPageSelector: ".pagination-next",
-            },
+                boxSelector: '.movie-list',
+                itemSelector: '.movie-list .item',
+                coverImgSelector: '.cover img',
+                requestDomItemSelector: '.movie-list .item',
+                nextPageSelector: '.pagination-next'
+            }
         };
         if (!type || !selectors[type]) {
-            throw new Error("类型错误: 无法确定选择器类型 (JavDb)");
+            throw new Error('类型错误: 无法确定选择器类型 (JavDb)');
         }
         return selectors[type];
     }
 
     /** 从影片 URL 解析影片 ID（取最后一段并去掉 query/hash）。对应原 L3225-3227。 */
     parseMovieId(url: string): string {
-        return url.split("/").pop()!.split(/[?#]/)[0];
+        return url.split('/').pop()!.split(/[?#]/)[0];
     }
 
     /** 从单个影片卡片元素提取番号信息；carNum 为空时抛错。对应原 L3228-3282。 */
@@ -243,43 +241,37 @@ export class BasePlugin {
         let titleAttr: any;
         let imgTitleAttr: any;
         let dataTitleAttr: any;
-        const linkEl = boxEl.find("a");
-        const url = linkEl.attr("href");
+        const linkEl = boxEl.find('a');
+        const url = linkEl.attr('href');
         let carNum: string | null = null;
         let title: string | null | undefined = null;
         let publishTime: string | null | undefined = null;
-        const videoTitleEl = boxEl.find(".video-title");
+        const videoTitleEl = boxEl.find('.video-title');
         if (videoTitleEl.length > 0) {
-            const strongEl = videoTitleEl.find("strong");
+            const strongEl = videoTitleEl.find('strong');
             if (strongEl.length > 0) {
                 carNum = strongEl.text().trim();
             }
-            title =
-                (titleAttr = linkEl.attr("title")) == null
-                    ? undefined
-                    : titleAttr.trim();
+            title = (titleAttr = linkEl.attr('title')) == null ? undefined : titleAttr.trim();
             if (!title) {
                 const text = videoTitleEl.text().trim();
-                title =
-                    carNum && text.includes(carNum)
-                        ? text.replace(carNum, "").trim()
-                        : text;
+                title = carNum && text.includes(carNum) ? text.replace(carNum, '').trim() : text;
             }
-            publishTime = boxEl.find(".meta").text().trim();
+            publishTime = boxEl.find('.meta').text().trim();
         }
         if (!carNum) {
-            const imgEl = boxEl.find("img");
+            const imgEl = boxEl.find('img');
             if (imgEl.length > 0) {
                 title =
-                    ((imgTitleAttr = imgEl.attr("title")) == null
+                    ((imgTitleAttr = imgEl.attr('title')) == null
                         ? undefined
                         : imgTitleAttr.trim()) ||
-                    ((dataTitleAttr = imgEl.attr("data-title")) == null
+                    ((dataTitleAttr = imgEl.attr('data-title')) == null
                         ? undefined
                         : dataTitleAttr.trim());
             }
             const dates: string[] = boxEl
-                .find("date")
+                .find('date')
                 .map((_index: number, el: any) => $(el).text().trim())
                 .get();
             const isDate = (val: string) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(val);
@@ -287,16 +279,16 @@ export class BasePlugin {
             carNum = dates.find((val: string) => !isDate(val)) || null;
         }
         if (!carNum) {
-            const msg = "提取番号信息失败: carNum 为空";
-            console.error("Error in getBoxCarInfo:", msg, "Box Element:", boxEl.get(0));
+            const msg = '提取番号信息失败: carNum 为空';
+            console.error('Error in getBoxCarInfo:', msg, 'Box Element:', boxEl.get(0));
             show.error(msg);
             throw new Error(msg);
         }
         return {
             carNum,
-            url: url || "",
-            title: title || "",
-            publishTime: publishTime || "",
+            url: url || '',
+            title: title || '',
+            publishTime: publishTime || ''
         };
     }
 
@@ -304,7 +296,7 @@ export class BasePlugin {
     getBoxCarInfoList(boxEls: any = null): CarInfo[] {
         boxEls ||= $(this.getSelector().itemSelector);
         if (boxEls.length === 0) {
-            clog.error("获取当前列表页所有item的番号信息失败!");
+            clog.error('获取当前列表页所有item的番号信息失败!');
             return [];
         }
         const list: CarInfo[] = [];
@@ -315,10 +307,10 @@ export class BasePlugin {
                 list.push(info);
             } catch (err: any) {
                 clog.error(
-                    "[getBoxCarInfoList] 提取单个 boxCar 信息失败:",
+                    '[getBoxCarInfoList] 提取单个 boxCar 信息失败:',
                     err.message,
-                    "元素索引:",
-                    index,
+                    '元素索引:',
+                    index
                 );
             }
         });
@@ -330,9 +322,7 @@ export class BasePlugin {
         if (!list || list.length === 0 || !other || other.length === 0) {
             return false;
         }
-        const existing = new Set(
-            list.map((item) => item.carNum).filter(Boolean),
-        );
+        const existing = new Set(list.map((item) => item.carNum).filter(Boolean));
         if (existing.size === 0) {
             return false;
         }
@@ -342,7 +332,7 @@ export class BasePlugin {
             if (car && existing.has(car)) {
                 consecutive++;
                 if (consecutive >= 2) {
-                    clog.warn("警告: 检测到连续番号信息重复, 该类别可能已被限制页码。");
+                    clog.warn('警告: 检测到连续番号信息重复, 该类别可能已被限制页码。');
                     return true;
                 }
             } else {

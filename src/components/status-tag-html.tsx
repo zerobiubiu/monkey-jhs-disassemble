@@ -32,13 +32,13 @@
  * 依赖，不引入 react-dom/server）。属性值不做转义（data-tip/title 等
  * 按本工程约定不转义，与原 jQuery `.append(htmlString)` 行为一致）。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** 状态标签所属站点（决定 JavDb <span> / JavBus <a> 变体）。 */
-export type StatusTagSite = "javdb" | "javbus";
+export type StatusTagSite = 'javdb' | 'javbus';
 
 /** 状态标签模板变体：render=renderItemStatusTag 用，filter=filterMovieList 用。 */
-export type StatusTagVariant = "render" | "filter";
+export type StatusTagVariant = 'render' | 'filter';
 
 /** StatusTagHtml 的属性。 */
 export interface StatusTagHtmlProps {
@@ -68,10 +68,10 @@ export interface StatusTagHtmlProps {
  * @returns CSSProperties 含 right/left + top 字段
  */
 function parsePositionStyle(positionStyle: string): CSSProperties {
-    if (positionStyle.includes("right")) {
-        return { right: 0, top: "5px" };
+    if (positionStyle.includes('right')) {
+        return { right: 0, top: '5px' };
     }
-    return { left: 0, top: "5px" };
+    return { left: 0, top: '5px' };
 }
 
 /**
@@ -89,48 +89,38 @@ export function StatusTagHtml({
     color,
     dataTip,
     positionStyle,
-    site = "javdb",
+    site = 'javdb'
 }: StatusTagHtmlProps) {
     const posStyle = parsePositionStyle(positionStyle);
-    if (site === "javbus") {
+    if (site === 'javbus') {
         const outerStyle: CSSProperties = {
-            marginRight: "5px",
-            padding: "0 5px",
-            color: "#fff !important",
-            borderRadius: "10px",
-            position: "absolute",
+            marginRight: '5px',
+            padding: '0 5px',
+            color: '#fff !important',
+            borderRadius: '10px',
+            position: 'absolute',
             zIndex: 10,
             backgroundColor: `${color} !important`,
-            ...posStyle,
+            ...posStyle
         };
         return (
-            <a
-                className="a-primary status-tag"
-                data-tip={dataTip}
-                title=""
-                style={outerStyle}
-            >
-                <span className="tag" style={{ color: "#fff !important" }}>
+            <a className="a-primary status-tag" data-tip={dataTip} title="" style={outerStyle}>
+                <span className="tag" style={{ color: '#fff !important' }}>
                     {text}
                 </span>
             </a>
         );
     }
     const spanStyle: CSSProperties = {
-        marginRight: "5px",
-        borderRadius: "10px",
-        position: "absolute",
+        marginRight: '5px',
+        borderRadius: '10px',
+        position: 'absolute',
         zIndex: 10,
         backgroundColor: `${color} !important`,
-        ...posStyle,
+        ...posStyle
     };
     return (
-        <span
-            className="tag is-success status-tag"
-            data-tip={dataTip}
-            title=""
-            style={spanStyle}
-        >
+        <span className="tag is-success status-tag" data-tip={dataTip} title="" style={spanStyle}>
             {text}
         </span>
     );

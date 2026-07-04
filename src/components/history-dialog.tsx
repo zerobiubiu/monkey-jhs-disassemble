@@ -70,22 +70,22 @@ export function HistoryDialog({
     favoriteColor,
     favoriteText,
     blockColor,
-    blockText,
+    blockText
 }: HistoryDialogProps) {
     return (
         <div
             style={{
-                padding: "10px 20px",
-                height: "100%",
-                overflow: "hidden",
+                padding: '10px 20px',
+                height: '100%',
+                overflow: 'hidden'
             }}
         >
-            <div id="filterBox" style={{ display: "flex", gap: "5px" }}>
+            <div id="filterBox" style={{ display: 'flex', gap: '5px' }}>
                 <select
                     id="dataType"
                     style={{
-                        textAlign: "center",
-                        minWidth: "150px",
+                        textAlign: 'center',
+                        minWidth: '150px'
                     }}
                 >
                     <option value="all" selected={true}>
@@ -99,26 +99,19 @@ export function HistoryDialog({
                     id="searchCarNum"
                     type="text"
                     placeholder="搜索番号|演员"
-                    style={{ padding: "4px 5px" }}
+                    style={{ padding: '4px 5px' }}
                 />
-                <a
-                    id="clearSearchbtn"
-                    className="a-info"
-                    style={{ marginLeft: "0" }}
-                >
+                <a id="clearSearchbtn" className="a-info" style={{ marginLeft: '0' }}>
                     重置
                 </a>
             </div>
-            <div
-                id="allSelectBox"
-                style={{ marginTop: "8px", display: "none" }}
-            >
+            <div id="allSelectBox" style={{ marginTop: '8px', display: 'none' }}>
                 <a
                     className="menu-btn multiple-history-deleteBtn"
                     style={{
-                        backgroundColor: "#8c8080",
-                        color: "white",
-                        marginBottom: "5px",
+                        backgroundColor: '#8c8080',
+                        color: 'white',
+                        marginBottom: '5px'
                     }}
                 >
                     <span>✂️ 移除</span>
@@ -127,7 +120,7 @@ export function HistoryDialog({
                     className="menu-btn multiple-history-hasWatchBtn"
                     style={{
                         backgroundColor: watchedColor,
-                        marginBottom: "5px",
+                        marginBottom: '5px'
                     }}
                 >
                     {watchedText}
@@ -136,7 +129,7 @@ export function HistoryDialog({
                     className="menu-btn multiple-history-favoriteBtn"
                     style={{
                         backgroundColor: favoriteColor,
-                        marginBottom: "5px",
+                        marginBottom: '5px'
                     }}
                 >
                     {favoriteText}
@@ -145,7 +138,7 @@ export function HistoryDialog({
                     className="menu-btn multiple-history-filterBtn"
                     style={{
                         backgroundColor: blockColor,
-                        marginBottom: "5px",
+                        marginBottom: '5px'
                     }}
                 >
                     {blockText}
@@ -154,8 +147,8 @@ export function HistoryDialog({
             <div
                 id="table-container"
                 style={{
-                    height: "calc(100% - 50px)",
-                    overflowX: "hidden",
+                    height: 'calc(100% - 50px)',
+                    overflowX: 'hidden'
                 }}
             ></div>
         </div>

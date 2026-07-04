@@ -43,22 +43,20 @@ export function CacheItemHtml({ text, cacheKey, title }: CacheItemHtmlProps) {
         <div
             className="cache-item"
             style={{
-                border: "1px solid #eee",
-                borderRadius: "8px",
-                padding: "12px",
+                border: '1px solid #eee',
+                borderRadius: '8px',
+                padding: '12px'
             }}
         >
-            <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
-                {text}
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>{text}</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
                 <a
                     className="menu-btn clean-btn"
                     data-key={cacheKey}
                     style={{
-                        backgroundColor: "#448cc2",
+                        backgroundColor: '#448cc2',
                         flex: 1,
-                        textAlign: "center",
+                        textAlign: 'center'
                     }}
                     title={title}
                 >
@@ -68,9 +66,9 @@ export function CacheItemHtml({ text, cacheKey, title }: CacheItemHtmlProps) {
                     className="menu-btn view-btn"
                     data-key={cacheKey}
                     style={{
-                        backgroundColor: "#b2bec0",
+                        backgroundColor: '#b2bec0',
                         flex: 1,
-                        textAlign: "center",
+                        textAlign: 'center'
                     }}
                 >
                     <span>查看</span>

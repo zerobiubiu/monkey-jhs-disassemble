@@ -1,12 +1,10 @@
-
-            .highlight-red {
+.highlight-red {
     /* 核心要求：高亮红色文本 */
-    color: red !important; 
-    
+    color: red !important;
+
     /* 建议：增加字体加粗，效果更明显 */
     font-weight: bold;
-    
+
     /* 建议：增加背景色，效果更突出 */
-    /* background-color: yellow; */ 
+    /* background-color: yellow; */
 }
-        

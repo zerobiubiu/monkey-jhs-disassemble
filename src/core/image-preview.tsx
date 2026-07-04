@@ -21,11 +21,11 @@
  *   （与原脚本一致：移除的引用与 bindEvents 中箭头包装的监听器不匹配，此处保持原行为）
  */
 
-import imagePreviewCssRaw from "../styles/image-preview.css?raw";
-import { injectCss as H } from "./style-injector";
-import { jsxToString } from "./jsx-to-string";
-import { ImagePreviewError } from "../components/image-preview-error";
-import { ImagePreviewImg } from "../components/image-preview-img";
+import imagePreviewCssRaw from '../styles/image-preview.css?raw';
+import { injectCss as H } from './style-injector';
+import { jsxToString } from './jsx-to-string';
+import { ImagePreviewError } from '../components/image-preview-error';
+import { ImagePreviewImg } from '../components/image-preview-img';
 
 interface ImagePreviewConfig {
     selector: string;
@@ -49,8 +49,8 @@ class ImagePreview {
 
     constructor(options: Partial<ImagePreviewConfig> = {}) {
         this.config = {
-            selector: ".hover-preview",
-            dataAttribute: "data-full",
+            selector: '.hover-preview',
+            dataAttribute: 'data-full',
             maxWidth: 1000,
             maxHeight: 1000,
             offsetX: 20,
@@ -58,7 +58,7 @@ class ImagePreview {
             zIndex: 9999999999,
             transition: 0.2,
             autoAdjustPosition: true,
-            ...options,
+            ...options
         };
         this.init();
     }
@@ -73,79 +73,64 @@ class ImagePreview {
         // imagePreviewCssRaw 为纯 CSS（无 <style> 包裹），占位以「默认值 + 行末注释」
         // 形式存在，经 replace 整串替换注入运行时配置值，由 injectCss 创建 <style> 注入。
         const css = imagePreviewCssRaw
+            .replace('9999999999; /*__Z_INDEX__*/', `${this.config.zIndex}; /*__Z_INDEX__*/`)
             .replace(
-                "9999999999; /*__Z_INDEX__*/",
-                `${this.config.zIndex}; /*__Z_INDEX__*/`,
+                '0.2s ease; /*__TRANSITION__*/',
+                `${this.config.transition}s ease; /*__TRANSITION__*/`
             )
+            .replace('1000px; /*__MAX_WIDTH__*/', `${this.config.maxWidth}px; /*__MAX_WIDTH__*/`)
             .replace(
-                "0.2s ease; /*__TRANSITION__*/",
-                `${this.config.transition}s ease; /*__TRANSITION__*/`,
-            )
-            .replace(
-                "1000px; /*__MAX_WIDTH__*/",
-                `${this.config.maxWidth}px; /*__MAX_WIDTH__*/`,
-            )
-            .replace(
-                "1000px; /*__MAX_HEIGHT__*/",
-                `${this.config.maxHeight}px; /*__MAX_HEIGHT__*/`,
+                '1000px; /*__MAX_HEIGHT__*/',
+                `${this.config.maxHeight}px; /*__MAX_HEIGHT__*/`
             );
         H(css);
     }
 
     createPreviewElement(): void {
-        this.preview = document.createElement("div");
-        this.preview.className = "image-hover-preview";
+        this.preview = document.createElement('div');
+        this.preview.className = 'image-hover-preview';
         document.body.appendChild(this.preview);
     }
 
     bindEvents(): void {
-        document
-            .querySelectorAll<HTMLElement>(this.config.selector)
-            .forEach((element) => {
-                if (!this.boundElements.has(element)) {
-                    element.addEventListener("mouseenter", (event) =>
-                        this.handleMouseEnter(event),
-                    );
-                    element.addEventListener("mouseleave", (event) =>
-                        this.handleMouseLeave(event),
-                    );
-                    element.addEventListener("mousemove", (event) =>
-                        this.handleMouseMove(event),
-                    );
-                    this.boundElements.add(element);
-                }
-            });
+        document.querySelectorAll<HTMLElement>(this.config.selector).forEach((element) => {
+            if (!this.boundElements.has(element)) {
+                element.addEventListener('mouseenter', (event) => this.handleMouseEnter(event));
+                element.addEventListener('mouseleave', (event) => this.handleMouseLeave(event));
+                element.addEventListener('mousemove', (event) => this.handleMouseMove(event));
+                this.boundElements.add(element);
+            }
+        });
     }
 
     handleMouseEnter(event: MouseEvent): void {
         clearTimeout(this.timer!);
         const target = event.currentTarget as HTMLImageElement;
         this.currentTarget = target;
-        const imgSrc =
-            target.getAttribute(this.config.dataAttribute) || target.src;
+        const imgSrc = target.getAttribute(this.config.dataAttribute) || target.src;
         if (!imgSrc) {
             return;
         }
         const preview = this.preview!;
-        preview.innerHTML = "";
-        preview.classList.add("loading");
-        preview.style.display = "block";
-        preview.classList.remove("active");
+        preview.innerHTML = '';
+        preview.classList.add('loading');
+        preview.style.display = 'block';
+        preview.classList.remove('active');
         const img = new Image();
         img.onload = () => {
-            preview.classList.remove("loading");
+            preview.classList.remove('loading');
             preview.innerHTML = jsxToString(<ImagePreviewImg src={imgSrc} />);
-            this.imgElement = preview.querySelector<HTMLImageElement>("img");
+            this.imgElement = preview.querySelector<HTMLImageElement>('img');
             const { width, height } = this.calculateImageSize(img);
             preview.style.width = `${width}px`;
             preview.style.height = `${height}px`;
             // 读取 offsetHeight 强制浏览器回流，确保后续 opacity 过渡生效
             preview.offsetHeight;
-            preview.classList.add("active");
+            preview.classList.add('active');
             this.handleMouseMove(event);
         };
         img.onerror = () => {
-            preview.classList.remove("loading");
+            preview.classList.remove('loading');
             preview.innerHTML = jsxToString(<ImagePreviewError />);
         };
         img.src = imgSrc;
@@ -158,10 +143,7 @@ class ImagePreview {
         let width = img.naturalWidth;
         let height = img.naturalHeight;
         if (width > this.config.maxWidth || height > this.config.maxHeight) {
-            const scale = Math.min(
-                this.config.maxWidth / width,
-                this.config.maxHeight / height,
-            );
+            const scale = Math.min(this.config.maxWidth / width, this.config.maxHeight / height);
             width *= scale;
             height *= scale;
         }
@@ -170,7 +152,7 @@ class ImagePreview {
 
     handleMouseMove(event: MouseEvent): void {
         const preview = this.preview!;
-        if (!this.currentTarget || !preview.classList.contains("active")) {
+        if (!this.currentTarget || !preview.classList.contains('active')) {
             return;
         }
         let { offsetX, offsetY } = this.config;
@@ -194,32 +176,21 @@ class ImagePreview {
 
     handleMouseLeave(_event: MouseEvent): void {
         const preview = this.preview!;
-        preview.classList.remove("active");
-        preview.style.display = "none";
+        preview.classList.remove('active');
+        preview.style.display = 'none';
         this.currentTarget = null;
         this.imgElement = null;
     }
 
     destroy(): void {
-        document
-            .querySelectorAll<HTMLElement>(this.config.selector)
-            .forEach((element) => {
-                if (this.boundElements.has(element)) {
-                    element.removeEventListener(
-                        "mouseenter",
-                        this.handleMouseEnter as EventListener,
-                    );
-                    element.removeEventListener(
-                        "mouseleave",
-                        this.handleMouseLeave as EventListener,
-                    );
-                    element.removeEventListener(
-                        "mousemove",
-                        this.handleMouseMove as EventListener,
-                    );
-                    this.boundElements.delete(element);
-                }
-            });
+        document.querySelectorAll<HTMLElement>(this.config.selector).forEach((element) => {
+            if (this.boundElements.has(element)) {
+                element.removeEventListener('mouseenter', this.handleMouseEnter as EventListener);
+                element.removeEventListener('mouseleave', this.handleMouseLeave as EventListener);
+                element.removeEventListener('mousemove', this.handleMouseMove as EventListener);
+                this.boundElements.delete(element);
+            }
+        });
         const preview = this.preview;
         if (preview && preview.parentNode) {
             preview.parentNode.removeChild(preview);

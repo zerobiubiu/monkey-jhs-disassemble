@@ -24,20 +24,20 @@
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
  * 内联 HTML 已提取为组件（OtherSiteBox / OtherSiteBtn / OtherSiteCheckbox / SiteResultTag）。
  */
-import { isJavdbSite } from "../constants/site";
-import { YES } from "../constants/status";
-import { AsyncTaskQueue } from "../core/async-task-queue";
-import { jsxToString } from "../core/jsx-to-string";
-import { BasePlugin } from "./base-plugin";
-import { OtherSiteBox } from "../components/other-site-box";
-import { OtherSiteBtn } from "../components/other-site-btn";
-import { OtherSiteCheckbox } from "../components/other-site-checkbox";
-import { SiteResultTag } from "../components/site-result-tag";
-import otherSiteCssRaw from "../styles/other-site-plugin.css?raw";
+import { isJavdbSite } from '../constants/site';
+import { YES } from '../constants/status';
+import { AsyncTaskQueue } from '../core/async-task-queue';
+import { jsxToString } from '../core/jsx-to-string';
+import { BasePlugin } from './base-plugin';
+import { OtherSiteBox } from '../components/other-site-box';
+import { OtherSiteBtn } from '../components/other-site-btn';
+import { OtherSiteCheckbox } from '../components/other-site-checkbox';
+import { SiteResultTag } from '../components/site-result-tag';
+import otherSiteCssRaw from '../styles/other-site-plugin.css?raw';
 
 /** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
 interface SiteResult {
-    type: "single" | "multiple";
+    type: 'single' | 'multiple';
     url: string;
 }
 
@@ -58,33 +58,31 @@ interface SiteConfig {
 
 export class OtherSitePlugin extends BasePlugin {
     /** 命中（单/多结果）背景色。对应原 L4849。 */
-    okBackgroundColor = "#7bc73b";
+    okBackgroundColor = '#7bc73b';
     /** 未查询到背景色。对应原 L4850。 */
-    errorBackgroundColor = "#de3333";
+    errorBackgroundColor = '#de3333';
     /** Cloudflare 安全检查等告警背景色。对应原 L4851。 */
-    warnBackgroundColor = "#d7a80c";
+    warnBackgroundColor = '#d7a80c';
     /** 域名失效（重定向）背景色。对应原 L4852。 */
-    domainErrorBackgroundColor = "#d7780c";
+    domainErrorBackgroundColor = '#d7780c';
     /** 第三方站点探测配置表。对应原 L4853-4870。 */
     siteConfigs: SiteConfig[] = [
         {
-            id: "missAvBtn",
+            id: 'missAvBtn',
             getBaseUrl: async () => await this.getMissAvUrl(),
-            itemSelector: ".text-secondary",
-            searchPath: (baseUrl: string, carNum: string) =>
-                `${baseUrl}/search/${carNum}`,
-            getDetailPageHref: (item: any) => item.attr("href"),
-            findCarNumOrTitle: (item: any) => item.text(),
+            itemSelector: '.text-secondary',
+            searchPath: (baseUrl: string, carNum: string) => `${baseUrl}/search/${carNum}`,
+            getDetailPageHref: (item: any) => item.attr('href'),
+            findCarNumOrTitle: (item: any) => item.text()
         },
         {
-            id: "supJavBtn",
+            id: 'supJavBtn',
             getBaseUrl: async () => await this.getSupJavUrl(),
-            itemSelector: ".posts post",
-            searchPath: (baseUrl: string, carNum: string) =>
-                `${baseUrl}/?s=${carNum}`,
-            getDetailPageHref: (item: any) => item.attr("href"),
-            findCarNumOrTitle: (item: any) => item.attr("title"),
-        },
+            itemSelector: '.posts post',
+            searchPath: (baseUrl: string, carNum: string) => `${baseUrl}/?s=${carNum}`,
+            getDetailPageHref: (item: any) => item.attr('href'),
+            findCarNumOrTitle: (item: any) => item.attr('title')
+        }
     ];
     /** storageManager.getSetting() 全量设置缓存，配合 lastFetchTime 做 TTL 复用。对应原 L4871。 */
     settingCache: any = null;
@@ -95,7 +93,7 @@ export class OtherSitePlugin extends BasePlugin {
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4875-4877。 */
     getName(): string {
-        return "OtherSitePlugin";
+        return 'OtherSitePlugin';
     }
 
     /**
@@ -126,13 +124,10 @@ export class OtherSitePlugin extends BasePlugin {
      * 完成后渲染设置区与事件监听。返回 Promise<void>。
      */
     async loadOtherSite(carNum?: string, sourceCarNum?: any): Promise<void> {
-        if (
-            (await storageManager.getSetting("enableLoadOtherSite", YES)) !==
-            YES
-        ) {
+        if ((await storageManager.getSetting('enableLoadOtherSite', YES)) !== YES) {
             return;
         }
-        carNum ||= this.getPageInfo().carNum ?? "";
+        carNum ||= this.getPageInfo().carNum ?? '';
         const enabledSiteIds = this.getEnabledSites();
         const siteButtonsHtml = this.siteConfigs
             .map((siteConfig) => {
@@ -141,24 +136,21 @@ export class OtherSitePlugin extends BasePlugin {
                     siteConfig.condition &&
                     siteConfig.condition(siteConfig.sourceCarNum) === false
                 ) {
-                    return "";
+                    return '';
                 }
                 return jsxToString(
                     <OtherSiteBtn
                         id={siteConfig.id}
                         enabled={enabledSiteIds.includes(siteConfig.id)}
-                    />,
+                    />
                 );
             })
-            .join("");
+            .join('');
         const boxHtml = jsxToString(
-            <OtherSiteBox
-                siteButtonsHtml={siteButtonsHtml}
-                isJavdbSite={isJavdbSite}
-            />,
+            <OtherSiteBox siteButtonsHtml={siteButtonsHtml} isJavdbSite={isJavdbSite} />
         );
-        $(".movie-panel-info").append(boxHtml);
-        $(".container .info").append(boxHtml);
+        $('.movie-panel-info').append(boxHtml);
+        $('.container .info').append(boxHtml);
         await Promise.all(
             this.siteConfigs.map(async (siteConfig) => {
                 if (
@@ -167,7 +159,7 @@ export class OtherSitePlugin extends BasePlugin {
                 ) {
                     await this.handleSite(carNum, siteConfig);
                 }
-            }),
+            })
         );
         this.renderSettingsArea();
         this.setupEventListeners();
@@ -184,118 +176,102 @@ export class OtherSitePlugin extends BasePlugin {
     async handleSite(carNum: string, siteConfig: SiteConfig): Promise<void> {
         const buttonEl = $(`#${siteConfig.id}`);
         if (siteConfig.initUrl) {
-            buttonEl.attr("href", siteConfig.initUrl(carNum));
-            buttonEl.css("backgroundColor", this.warnBackgroundColor);
+            buttonEl.attr('href', siteConfig.initUrl(carNum));
+            buttonEl.css('backgroundColor', this.warnBackgroundColor);
         }
         if (siteConfig.noHandle && siteConfig.noHandle === true) {
-            const dmmStorageKey = "jhs_other_site_dmm";
+            const dmmStorageKey = 'jhs_other_site_dmm';
             const dmmCache: any = localStorage.getItem(dmmStorageKey)
                 ? JSON.parse(localStorage.getItem(dmmStorageKey) as string)
                 : {};
             const dmmCachedResult: any = dmmCache[carNum];
             if (dmmCachedResult) {
-                if (dmmCachedResult.type === "single") {
-                    buttonEl.attr("href", dmmCachedResult.url);
-                    buttonEl.css("backgroundColor", this.okBackgroundColor);
-                } else if (dmmCachedResult.type === "multiple") {
-                    buttonEl.attr("href", dmmCachedResult.url);
+                if (dmmCachedResult.type === 'single') {
+                    buttonEl.attr('href', dmmCachedResult.url);
+                    buttonEl.css('backgroundColor', this.okBackgroundColor);
+                } else if (dmmCachedResult.type === 'multiple') {
+                    buttonEl.attr('href', dmmCachedResult.url);
                     buttonEl.append(jsxToString(<SiteResultTag />));
-                    buttonEl.css("backgroundColor", this.okBackgroundColor);
+                    buttonEl.css('backgroundColor', this.okBackgroundColor);
                 }
             }
         } else {
             try {
-                if (buttonEl.attr("href")) {
+                if (buttonEl.attr('href')) {
                     return;
                 }
                 if (utils.isHidden(buttonEl)) {
                     return;
                 }
-                const storageKey = "jhs_other_site";
+                const storageKey = 'jhs_other_site';
                 const cache: any = localStorage.getItem(storageKey)
                     ? JSON.parse(localStorage.getItem(storageKey) as string)
                     : {};
-                const cacheKey =
-                    carNum + "_" + siteConfig.id.replace("Btn", "");
+                const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
                 const cachedResult: any = cache[cacheKey];
                 if (cachedResult) {
-                    if (cachedResult.type === "single") {
-                        buttonEl.attr("href", cachedResult.url);
-                        buttonEl.css("backgroundColor", this.okBackgroundColor);
-                    } else if (cachedResult.type === "multiple") {
-                        buttonEl.attr("href", cachedResult.url);
+                    if (cachedResult.type === 'single') {
+                        buttonEl.attr('href', cachedResult.url);
+                        buttonEl.css('backgroundColor', this.okBackgroundColor);
+                    } else if (cachedResult.type === 'multiple') {
+                        buttonEl.attr('href', cachedResult.url);
                         buttonEl.append(jsxToString(<SiteResultTag />));
-                        buttonEl.css("backgroundColor", this.okBackgroundColor);
+                        buttonEl.css('backgroundColor', this.okBackgroundColor);
                     }
                     return;
                 }
                 const baseUrl = await siteConfig.getBaseUrl();
                 const searchUrl = siteConfig.searchPath(baseUrl, carNum);
-                buttonEl.attr("href", searchUrl);
-                const htmlContent = await gmHttp.get(
-                    searchUrl,
-                    null,
-                    siteConfig.headers,
-                    true,
-                );
+                buttonEl.attr('href', searchUrl);
+                const htmlContent = await gmHttp.get(searchUrl, null, siteConfig.headers, true);
                 const $dom = utils.htmlTo$dom(htmlContent);
                 const detailHrefs: string[] = [];
-                $dom.find(siteConfig.itemSelector).each(
-                    (_index: number, element: any) => {
-                        const itemEl = $(element);
-                        if (
-                            !siteConfig
-                                .findCarNumOrTitle(itemEl)
-                                .toLowerCase()
-                                .includes(carNum.toLowerCase())
-                        ) {
-                            return;
-                        }
-                        let href = siteConfig.getDetailPageHref(
-                            itemEl,
-                            baseUrl,
-                            carNum,
-                        );
-                        if (!href) {
-                            throw new Error("解析href失败");
-                        }
-                        if (!href.includes("http")) {
-                            href =
-                                baseUrl +
-                                (href.startsWith("/") ? href : "/" + href);
-                        }
-                        detailHrefs.push(href);
-                    },
-                );
-                let tagHtml = "";
+                $dom.find(siteConfig.itemSelector).each((_index: number, element: any) => {
+                    const itemEl = $(element);
+                    if (
+                        !siteConfig
+                            .findCarNumOrTitle(itemEl)
+                            .toLowerCase()
+                            .includes(carNum.toLowerCase())
+                    ) {
+                        return;
+                    }
+                    let href = siteConfig.getDetailPageHref(itemEl, baseUrl, carNum);
+                    if (!href) {
+                        throw new Error('解析href失败');
+                    }
+                    if (!href.includes('http')) {
+                        href = baseUrl + (href.startsWith('/') ? href : '/' + href);
+                    }
+                    detailHrefs.push(href);
+                });
+                let tagHtml = '';
                 let resultData: SiteResult | null = null;
                 if (detailHrefs.length === 1) {
                     const detailHref = detailHrefs[0];
-                    buttonEl.attr("href", detailHref);
-                    buttonEl.css("backgroundColor", this.okBackgroundColor);
+                    buttonEl.attr('href', detailHref);
+                    buttonEl.css('backgroundColor', this.okBackgroundColor);
                     resultData = {
-                        type: "single",
-                        url: detailHref,
+                        type: 'single',
+                        url: detailHref
                     };
                 } else if (detailHrefs.length > 1) {
-                    buttonEl.attr("href", searchUrl);
+                    buttonEl.attr('href', searchUrl);
                     tagHtml += jsxToString(<SiteResultTag />);
-                    buttonEl.css("backgroundColor", this.okBackgroundColor);
+                    buttonEl.css('backgroundColor', this.okBackgroundColor);
                     resultData = {
-                        type: "multiple",
-                        url: searchUrl,
+                        type: 'multiple',
+                        url: searchUrl
                     };
                 } else {
-                    buttonEl.attr("href", searchUrl);
-                    buttonEl.attr("title", "未查询到, 点击前往搜索页");
-                    buttonEl.css("backgroundColor", this.errorBackgroundColor);
+                    buttonEl.attr('href', searchUrl);
+                    buttonEl.attr('title', '未查询到, 点击前往搜索页');
+                    buttonEl.css('backgroundColor', this.errorBackgroundColor);
                 }
                 if (resultData) {
                     new AsyncTaskQueue().addTask(() => {
                         const cache: any = localStorage.getItem(storageKey)
-                            ? JSON.parse(
-                                  localStorage.getItem(storageKey) as string,
-                              )
+                            ? JSON.parse(localStorage.getItem(storageKey) as string)
                             : {};
                         cache[cacheKey] = resultData;
                         localStorage.setItem(storageKey, JSON.stringify(cache));
@@ -306,27 +282,22 @@ export class OtherSitePlugin extends BasePlugin {
                 }
             } catch (error: any) {
                 const errorMsg = String(error);
-                const siteName = siteConfig.id.replace("Btn", "");
-                if (errorMsg.includes("Just a moment")) {
-                    buttonEl.attr("title", "请求失败：Cloudflare 安全检查。");
-                    buttonEl.css("backgroundColor", this.warnBackgroundColor);
-                    clog.warn(
-                        `检测第三方资源失败, ${siteName} 需Cloudflare安全检查`,
-                    );
-                } else if (errorMsg.includes("重定向")) {
-                    buttonEl.attr("title", "域名失效");
-                    buttonEl.css(
-                        "backgroundColor",
-                        this.domainErrorBackgroundColor,
-                    );
+                const siteName = siteConfig.id.replace('Btn', '');
+                if (errorMsg.includes('Just a moment')) {
+                    buttonEl.attr('title', '请求失败：Cloudflare 安全检查。');
+                    buttonEl.css('backgroundColor', this.warnBackgroundColor);
+                    clog.warn(`检测第三方资源失败, ${siteName} 需Cloudflare安全检查`);
+                } else if (errorMsg.includes('重定向')) {
+                    buttonEl.attr('title', '域名失效');
+                    buttonEl.css('backgroundColor', this.domainErrorBackgroundColor);
                     clog.warn(`检测第三方资源失败, ${siteName} 域名被重定向`);
-                } else if (errorMsg.includes("404 Page Not Found")) {
-                    buttonEl.attr("title", "未查询到, 点击前往搜索页");
-                    buttonEl.css("backgroundColor", this.errorBackgroundColor);
+                } else if (errorMsg.includes('404 Page Not Found')) {
+                    buttonEl.attr('title', '未查询到, 点击前往搜索页');
+                    buttonEl.css('backgroundColor', this.errorBackgroundColor);
                 } else {
                     console.error(error);
-                    buttonEl.attr("title", "请求失败。");
-                    buttonEl.css("backgroundColor", this.errorBackgroundColor);
+                    buttonEl.attr('title', '请求失败。');
+                    buttonEl.css('backgroundColor', this.errorBackgroundColor);
                     clog.warn(`检测第三方资源失败, ${siteName}`);
                 }
             }
@@ -340,10 +311,7 @@ export class OtherSitePlugin extends BasePlugin {
      */
     async getSettingCache(): Promise<any> {
         const now = Date.now();
-        if (
-            !this.settingCache ||
-            now - this.lastFetchTime > this.CACHE_DURATION
-        ) {
+        if (!this.settingCache || now - this.lastFetchTime > this.CACHE_DURATION) {
             this.settingCache = await storageManager.getSetting();
             this.lastFetchTime = now;
         }
@@ -355,9 +323,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 对应原 L5063-5067。无参数，返回 Promise<string>。
      */
     async getMissAvUrl(): Promise<string> {
-        return (
-            (await this.getSettingCache()).missAvUrl || "https://missav.live"
-        );
+        return (await this.getSettingCache()).missAvUrl || 'https://missav.live';
     }
 
     /**
@@ -365,7 +331,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 对应原 L5068-5070。无参数，返回 Promise<string>。
      */
     async getJavDbUrl(): Promise<string> {
-        return (await this.getSettingCache()).javDbUrl || "https://javdb.com";
+        return (await this.getSettingCache()).javDbUrl || 'https://javdb.com';
     }
 
     /**
@@ -373,7 +339,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 对应原 L5071-5073。无参数，返回 Promise<string>。
      */
     async getSupJavUrl(): Promise<string> {
-        return (await this.getSettingCache()).supJavUrl || "https://supjav.com";
+        return (await this.getSettingCache()).supJavUrl || 'https://supjav.com';
     }
 
     /**
@@ -382,7 +348,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 无参数，返回 string[]。
      */
     getEnabledSites(): string[] {
-        const stored = localStorage.getItem("jhs_enabled_sites");
+        const stored = localStorage.getItem('jhs_enabled_sites');
         if (stored) {
             return JSON.parse(stored) as string[];
         } else {
@@ -395,7 +361,7 @@ export class OtherSitePlugin extends BasePlugin {
      * @param siteIds 站点 ID 数组。
      */
     saveEnabledSites(siteIds: string[]): void {
-        localStorage.setItem("jhs_enabled_sites", JSON.stringify(siteIds));
+        localStorage.setItem('jhs_enabled_sites', JSON.stringify(siteIds));
     }
 
     /**
@@ -405,7 +371,7 @@ export class OtherSitePlugin extends BasePlugin {
      */
     renderSettingsArea(): void {
         const enabledSiteIds = this.getEnabledSites();
-        const checkboxContainer = document.getElementById("siteCheckboxes");
+        const checkboxContainer = document.getElementById('siteCheckboxes');
         if (checkboxContainer) {
             checkboxContainer.innerHTML = this.siteConfigs
                 .map((siteConfig) => {
@@ -415,10 +381,10 @@ export class OtherSitePlugin extends BasePlugin {
                             id={siteConfig.id}
                             isEnabled={isEnabled}
                             isJavdbSite={isJavdbSite}
-                        />,
+                        />
                     );
                 })
-                .join("");
+                .join('');
         }
     }
 
@@ -428,29 +394,22 @@ export class OtherSitePlugin extends BasePlugin {
      * 无参数，无返回值；#settingsArea 不存在时静默跳过。
      */
     setupEventListeners(): void {
-        const settingsArea = document.getElementById("settingsArea");
-        settingsArea?.addEventListener("change", (event: Event) => {
+        const settingsArea = document.getElementById('settingsArea');
+        settingsArea?.addEventListener('change', (event: Event) => {
             const target = event.target as HTMLInputElement;
-            if (target.type === "checkbox") {
-                const siteId = target.getAttribute("data-site-id");
+            if (target.type === 'checkbox') {
+                const siteId = target.getAttribute('data-site-id');
                 if (target.checked) {
                     $(`#${siteId}`).show();
-                    const carNum = this.getPageInfo().carNum ?? "";
-                    const siteConfig = this.siteConfigs.find(
-                        (config) => config.id === siteId,
-                    )!;
+                    const carNum = this.getPageInfo().carNum ?? '';
+                    const siteConfig = this.siteConfigs.find((config) => config.id === siteId)!;
                     this.handleSite(carNum, siteConfig).then();
                 } else {
                     $(`#${siteId}`).hide();
                 }
                 const checkedSiteIds: string[] = Array.from(
-                    settingsArea!.querySelectorAll(
-                        'input[type="checkbox"]:checked',
-                    ),
-                ).map(
-                    (checkbox: Element) =>
-                        checkbox.getAttribute("data-site-id") as string,
-                );
+                    settingsArea!.querySelectorAll('input[type="checkbox"]:checked')
+                ).map((checkbox: Element) => checkbox.getAttribute('data-site-id') as string);
                 this.saveEnabledSites(checkedSiteIds);
             }
         });

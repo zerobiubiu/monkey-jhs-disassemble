@@ -34,26 +34,26 @@ export interface HitShowToolBarProps {
  */
 export function HitShowToolBar({ period }: HitShowToolBarProps) {
     return (
-        <div className="button-group" style={{ marginTop: "18px" }}>
+        <div className="button-group" style={{ marginTop: '18px' }}>
             <div className="buttons has-addons" id="conditionBox">
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${period === "daily" ? "is-info" : ""}`}
-                    href={"/advanced_search?handlePlayback=1&period=daily"}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${period === 'daily' ? 'is-info' : ''}`}
+                    href={'/advanced_search?handlePlayback=1&period=daily'}
                 >
                     日榜
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${period === "weekly" ? "is-info" : ""}`}
-                    href={"/advanced_search?handlePlayback=1&period=weekly"}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${period === 'weekly' ? 'is-info' : ''}`}
+                    href={'/advanced_search?handlePlayback=1&period=weekly'}
                 >
                     周榜
-                </a>{" "}
+                </a>{' '}
                 <a
-                    style={{ padding: "18px 18px !important" }}
-                    className={`button is-small ${period === "monthly" ? "is-info" : ""}`}
-                    href={"/advanced_search?handlePlayback=1&period=monthly"}
+                    style={{ padding: '18px 18px !important' }}
+                    className={`button is-small ${period === 'monthly' ? 'is-info' : ''}`}
+                    href={'/advanced_search?handlePlayback=1&period=monthly'}
                 >
                     月榜
                 </a>

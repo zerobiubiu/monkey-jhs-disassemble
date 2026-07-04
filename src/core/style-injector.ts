@@ -14,10 +14,10 @@
  */
 export function injectCss(css: string): void {
     if (css) {
-        if (css.includes("<style>")) {
-            document.head.insertAdjacentHTML("beforeend", css);
+        if (css.includes('<style>')) {
+            document.head.insertAdjacentHTML('beforeend', css);
         } else {
-            const el = document.createElement("style");
+            const el = document.createElement('style');
             el.textContent = css;
             document.head.appendChild(el);
         }

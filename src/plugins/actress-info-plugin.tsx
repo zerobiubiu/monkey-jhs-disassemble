@@ -21,26 +21,26 @@
  * jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 标注意图，不做窄化。
  */
-import { YES } from "../constants/status";
-import { BasePlugin } from "./base-plugin";
-import actressInfoCssRaw from "../styles/actress-info-plugin.css?raw";
+import { YES } from '../constants/status';
+import { BasePlugin } from './base-plugin';
+import actressInfoCssRaw from '../styles/actress-info-plugin.css?raw';
 import {
     ActressInfoDetailSegment,
-    type ActressWikiInfo,
-} from "../components/actress-info-detail-segment";
-import { ActressInfoStarPageHtml } from "../components/actress-info-star-page-html";
-import { jsxToString } from "../core/jsx-to-string";
+    type ActressWikiInfo
+} from '../components/actress-info-detail-segment';
+import { ActressInfoStarPageHtml } from '../components/actress-info-star-page-html';
+import { jsxToString } from '../core/jsx-to-string';
 
 /** 演员信息缓存：演员名 → 维基详情（localStorage jhs_actress_info 的解析结构） */
 type ActressInfoCache = Record<string, ActressWikiInfo | undefined>;
 
 export class ActressInfoPlugin extends BasePlugin {
     /** 日文维基百科页面 URL 前缀，拼接演员名得到详情页地址。对应原 L4142。 */
-    apiUrl: string = "https://ja.wikipedia.org/wiki/";
+    apiUrl: string = 'https://ja.wikipedia.org/wiki/';
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4144-4146。 */
     getName(): string {
-        return "ActressInfoPlugin";
+        return 'ActressInfoPlugin';
     }
 
     /**
@@ -49,10 +49,7 @@ export class ActressInfoPlugin extends BasePlugin {
      * 无参数，返回 Promise<void>，不会抛出异常（loadActressInfo 内部为 fire-and-forget）。
      */
     async handle(): Promise<void> {
-        if (
-            (await storageManager.getSetting("enableLoadActressInfo", YES)) ===
-            YES
-        ) {
+        if ((await storageManager.getSetting('enableLoadActressInfo', YES)) === YES) {
             this.loadActressInfo();
         }
     }
@@ -83,21 +80,21 @@ export class ActressInfoPlugin extends BasePlugin {
      * 不向上抛出。已在页面渲染过 `.actress-info` 或无演员名时直接短路返回。
      */
     async handleDetailPage(): Promise<void> {
-        if ($(".actress-info").length > 0) {
+        if ($('.actress-info').length > 0) {
             return;
         }
-        const actressNames: string[] = $(".female")
+        const actressNames: string[] = $('.female')
             .prev()
             .map((_index: number, element: any) => $(element).text().trim())
             .get();
         if (!actressNames.length) {
             return;
         }
-        const storageKey = "jhs_actress_info";
+        const storageKey = 'jhs_actress_info';
         const rawCache: string | null = localStorage.getItem(storageKey);
         const cache: ActressInfoCache = rawCache ? JSON.parse(rawCache) : {};
         let info: ActressWikiInfo | null | undefined = null;
-        let html = "";
+        let html = '';
         for (const actressName of actressNames) {
             info = cache[actressName];
             if (!info) {
@@ -107,7 +104,7 @@ export class ActressInfoPlugin extends BasePlugin {
                         cache[actressName] = info;
                     }
                 } catch {
-                    console.error("该名称查询失败,尝试其它名称");
+                    console.error('该名称查询失败,尝试其它名称');
                 }
             }
             const segment: string = jsxToString(
@@ -115,7 +112,7 @@ export class ActressInfoPlugin extends BasePlugin {
                     actressName={actressName}
                     info={info}
                     wikiApiUrl={this.apiUrl}
-                />,
+                />
             );
             html += segment;
         }
@@ -132,16 +129,16 @@ export class ActressInfoPlugin extends BasePlugin {
      * 不向上抛出。已在页面渲染过 `.actress-info` 或无演员名时直接短路返回。
      */
     async handleStarPage(): Promise<void> {
-        if ($(".actress-info").length > 0) {
+        if ($('.actress-info').length > 0) {
             return;
         }
         let names: string[] = [];
-        const nameSectionEl = $(".actor-section-name");
+        const nameSectionEl = $('.actor-section-name');
         if (nameSectionEl.length) {
             nameSectionEl
                 .text()
                 .trim()
-                .split(",")
+                .split(',')
                 .forEach((name: string) => {
                     names.push(name.trim());
                 });
@@ -151,7 +148,7 @@ export class ActressInfoPlugin extends BasePlugin {
             metaEl
                 .text()
                 .trim()
-                .split(",")
+                .split(',')
                 .forEach((name: string) => {
                     names.push(name.trim());
                 });
@@ -159,7 +156,7 @@ export class ActressInfoPlugin extends BasePlugin {
         if (!names.length) {
             return;
         }
-        const storageKey = "jhs_actress_info";
+        const storageKey = 'jhs_actress_info';
         const rawCache: string | null = localStorage.getItem(storageKey);
         const cache: ActressInfoCache = rawCache ? JSON.parse(rawCache) : {};
         let info: ActressWikiInfo | null | undefined = null;
@@ -171,7 +168,7 @@ export class ActressInfoPlugin extends BasePlugin {
             try {
                 info = await this.searchInfo(actressName);
             } catch {
-                console.error("该名称查询失败,尝试其它名称");
+                console.error('该名称查询失败,尝试其它名称');
             }
             if (info) {
                 break;
@@ -182,9 +179,7 @@ export class ActressInfoPlugin extends BasePlugin {
                 cache[actressName] = info!;
             });
         }
-        const html: string = jsxToString(
-            <ActressInfoStarPageHtml info={info} />,
-        );
+        const html: string = jsxToString(<ActressInfoStarPageHtml info={info} />);
         nameSectionEl.parent().append(html);
         localStorage.setItem(storageKey, JSON.stringify(cache));
     }
@@ -198,49 +193,34 @@ export class ActressInfoPlugin extends BasePlugin {
      *          由调用方 try/catch 兜底。
      */
     async searchInfo(actressName: string): Promise<ActressWikiInfo> {
-        if (actressName === "三上悠亞") {
-            actressName = "三上悠亜";
+        if (actressName === '三上悠亞') {
+            actressName = '三上悠亜';
         }
         const url = this.apiUrl + actressName;
         const responseHtml: string = await gmHttp.get(url);
         const domParser = new DOMParser();
-        const $parsed = $(domParser.parseFromString(responseHtml, "text/html"));
+        const $parsed = $(domParser.parseFromString(responseHtml, 'text/html'));
         const birthday: string = $parsed
             .find('a[title="誕生日"]')
             .parent()
             .parent()
-            .find("td")
+            .find('td')
             .text()
             .trim();
-        const age: string = $parsed
-            .find("th:contains('現年齢')")
-            .parent()
-            .find("td")
-            .text()
-            .trim()
-            ? parseInt(
-                  $parsed
-                      .find("th:contains('現年齢')")
-                      .parent()
-                      .find("td")
-                      .text()
-                      .trim(),
-              ) + "岁"
-            : "";
+        const age: string = $parsed.find("th:contains('現年齢')").parent().find('td').text().trim()
+            ? parseInt($parsed.find("th:contains('現年齢')").parent().find('td').text().trim()) +
+              '岁'
+            : '';
         const height: string =
-            $parsed
-                .find('tr:has(a[title="身長"]) td')
-                .text()
-                .trim()
-                .split(" ")[0] + "cm";
+            $parsed.find('tr:has(a[title="身長"]) td').text().trim().split(' ')[0] + 'cm';
         let weight: string = $parsed
             .find('tr:has(a[title="体重"]) td')
             .text()
             .trim()
-            .split("/")[1]
+            .split('/')[1]
             .trim();
-        if (weight === "― kg") {
-            weight = "";
+        if (weight === '― kg') {
+            weight = '';
         }
         return {
             birthday,
@@ -249,19 +229,19 @@ export class ActressInfoPlugin extends BasePlugin {
             weight,
             threeSizeText: $parsed
                 .find('a[title="スリーサイズ"]')
-                .closest("tr")
-                .find("td")
+                .closest('tr')
+                .find('td')
                 .text()
-                .replace("cm", "")
+                .replace('cm', '')
                 .trim(),
             braSize: $parsed
                 .find('th:contains("ブラサイズ")')
-                .next("td")
+                .next('td')
                 .contents()
                 .first()
                 .text()
                 .trim(),
-            url,
+            url
         };
     }
 }

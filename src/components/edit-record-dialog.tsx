@@ -35,7 +35,7 @@
  * react-dom/server）。本表单含动态值（记录字段/状态选项），故用 props。属性
  * 值（value 等）不做转义，与原 layer.open content 字符串拼接行为一致。
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
 /** EditRecordDialog 的状态下拉选项（屏蔽/收藏/已观看）。 */
 export interface EditRecordStatusOption {
@@ -67,13 +67,13 @@ interface EditRecordDialogProps {
 
 /** 番号/演员/状态/链接/备注各 label 的统一样式（原内联 style 对象化）。 */
 const LABEL_STYLE: CSSProperties = {
-    display: "block",
-    marginBottom: "5px",
-    fontWeight: "bold",
+    display: 'block',
+    marginBottom: '5px',
+    fontWeight: 'bold'
 };
 
 /** 各字段容器 div 的统一样式（原 `margin-bottom: 15px`）。 */
-const FIELD_ROW_STYLE: CSSProperties = { marginBottom: "15px" };
+const FIELD_ROW_STYLE: CSSProperties = { marginBottom: '15px' };
 
 /**
  * 渲染编辑记录弹窗的 JSX。
@@ -96,17 +96,17 @@ export function EditRecordDialog({
     remark,
     inputStyle,
     textareaStyle,
-    statusOptions,
+    statusOptions
 }: EditRecordDialogProps) {
     return (
-        <div style={{ padding: "20px" }}>
+        <div style={{ padding: '20px' }}>
             <div style={FIELD_ROW_STYLE}>
                 <label style={LABEL_STYLE}>番号:</label>
                 <input
                     type="text"
                     id="edit-carNum"
                     value={carNum}
-                    style={{ ...inputStyle, backgroundColor: "#f0f0f0" }}
+                    style={{ ...inputStyle, backgroundColor: '#f0f0f0' }}
                     readOnly
                 />
             </div>
@@ -121,20 +121,16 @@ export function EditRecordDialog({
                 <select
                     id="edit-status"
                     style={{
-                        width: "100%",
-                        padding: "10px",
-                        border: "1px solid #ddd",
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd'
                     }}
                 >
-                    <option value="" selected={status === ""}>
+                    <option value="" selected={status === ''}>
                         -- 请选择 --
                     </option>
                     {statusOptions.map((opt) => (
-                        <option
-                            key={opt.value}
-                            value={opt.value}
-                            selected={status === opt.value}
-                        >
+                        <option key={opt.value} value={opt.value} selected={status === opt.value}>
                             {opt.text}
                         </option>
                     ))}
@@ -142,12 +138,7 @@ export function EditRecordDialog({
             </div>
             <div style={FIELD_ROW_STYLE}>
                 <label style={LABEL_STYLE}>链接:</label>
-                <input
-                    type="text"
-                    id="edit-url"
-                    value={url}
-                    style={inputStyle}
-                />
+                <input type="text" id="edit-url" value={url} style={inputStyle} />
             </div>
             <div style={FIELD_ROW_STYLE}>
                 <label style={LABEL_STYLE}>备注:</label>
