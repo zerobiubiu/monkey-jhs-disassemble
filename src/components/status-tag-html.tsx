@@ -5,7 +5,7 @@
  *   - renderItemStatusTag 的 tagHtml（L376）—— JavDb 站 <span> 变体
  *     （render 变体：data-tip=tagConfig.reasonType，style 内 `position:absolute;\n`
  *     无尾空格，title 与 style 同行）
- *   - filterMovieList 的 tagHtml（L545-547）—— JavDb <span> / JavBus <a> 双变体
+ *   - filterMovieList 的 tagHtml（L545-547）—— JavDb <span> 变体
  *     （filter 变体：data-tip=reasonText，style 内 `position:absolute; \n`
  *     有尾空格，title 后换行+缩进再 style）
  *
@@ -16,9 +16,8 @@
  * 与示范 temporary-image-container.tsx 风格一致）。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供插件中 `.append(html)` 消费：
- *   - renderItemStatusTag：`jsxToString(<StatusTagHtml site="javdb" variant="render" ... />)`
- *   - filterMovieList JavDb：`jsxToString(<StatusTagHtml site="javdb" variant="filter" ... />)`
- *   - filterMovieList JavBus：`jsxToString(<StatusTagHtml site="javbus" variant="filter" ... />)`
+ *   - renderItemStatusTag：`jsxToString(<StatusTagHtml variant="render" ... />)`
+ *   - filterMovieList：`jsxToString(<StatusTagHtml variant="filter" ... />)`
  * text/color/dataTip/positionStyle 由调用方从 STATUS_TAG_CONFIG 与
  * setting.tagPosition 解析后以 props 传入。
  *
@@ -34,9 +33,6 @@
  */
 import type { CSSProperties } from 'react';
 
-/** 状态标签所属站点（决定 JavDb <span> / JavBus <a> 变体）。 */
-export type StatusTagSite = 'javdb' | 'javbus';
-
 /** 状态标签模板变体：render=renderItemStatusTag 用，filter=filterMovieList 用。 */
 export type StatusTagVariant = 'render' | 'filter';
 
@@ -50,8 +46,6 @@ export interface StatusTagHtmlProps {
     dataTip: string;
     /** 定位片段：rightTop → "right: 0; top:5px;"，leftTop → "left: 0; top:5px;"。 */
     positionStyle: string;
-    /** 站点变体，默认 "javdb"。 */
-    site?: StatusTagSite;
     /** 模板变体，默认 "filter"（renderItemStatusTag 调用方须传 "render"）。 */
     variant?: StatusTagVariant;
 }
@@ -80,37 +74,11 @@ function parsePositionStyle(positionStyle: string): CSSProperties {
  * @param props.color 标签背景色
  * @param props.dataTip 悬停提示原因（data-tip）
  * @param props.positionStyle 定位片段（right:0/left:0 + top:5px）
- * @param props.site 站点变体（默认 javdb；javbus 渲染 <a>+<span>）
  * @param props.variant 模板变体（默认 filter；JSX 模式下不影响输出，保留接口）
  * @returns status-tag 的 React 元素，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
-export function StatusTagHtml({
-    text,
-    color,
-    dataTip,
-    positionStyle,
-    site = 'javdb'
-}: StatusTagHtmlProps) {
+export function StatusTagHtml({ text, color, dataTip, positionStyle }: StatusTagHtmlProps) {
     const posStyle = parsePositionStyle(positionStyle);
-    if (site === 'javbus') {
-        const outerStyle: CSSProperties = {
-            marginRight: '5px',
-            padding: '0 5px',
-            color: '#fff !important',
-            borderRadius: '10px',
-            position: 'absolute',
-            zIndex: 10,
-            backgroundColor: `${color} !important`,
-            ...posStyle
-        };
-        return (
-            <a className="a-primary status-tag" data-tip={dataTip} title="" style={outerStyle}>
-                <span className="tag" style={{ color: '#fff !important' }}>
-                    {text}
-                </span>
-            </a>
-        );
-    }
     const spanStyle: CSSProperties = {
         marginRight: '5px',
         borderRadius: '10px',

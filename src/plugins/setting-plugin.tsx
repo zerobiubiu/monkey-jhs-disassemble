@@ -1,7 +1,7 @@
 /**
  * 设置插件 SettingPlugin —— 对应原脚本 archetype/jhs.user.js L9429-10564。
  *
- * 全局设置入口：注入设置按钮（JavDb 顶栏下拉 / JavBus 顶部菜单 / 详情页 h3 前），
+ * 全局设置入口：注入设置按钮（JavDb 顶栏下拉 / 详情页 h3 前），
  * 悬浮显示简化设置面板（显示已鉴定/收藏/已观看、弹窗打开、瀑布流、翻译、悬浮大图、
  * 115 匹配、女优信息、第三方资源、长缩略图、更高画质预览、竖图模式、页面列数/宽度），
  * 点击打开完整设置弹层（数据备份 / 基础配置 / 屏蔽配置 / 外部网站 / 快捷键 / 清理缓存）；
@@ -9,7 +9,7 @@
  *
  * JS→TS 改造要点：
  * - 单字母局部变量（原 e/t/n/a/i/s/o/r/l/c/d/h/g/p 等）已语义化命名。
- * - 站点布尔 r/l 改由 ../constants/site 引入（isJavdbSite/isJavbusSite）；
+ * - 站点布尔 r 改由 ../constants/site 引入（isJavdbSite）；
  *   状态文本 m/v/k 与布尔标识 _/C 改由 ../constants/status 引入
  *   （BLOCK_TEXT/FAVORITE_TEXT/WATCHED_TEXT/YES/NO）；
  *   画质列表 L 改由 ../constants/video-quality 引入（VIDEO_QUALITY_LIST）。
@@ -36,7 +36,7 @@
  * - 控制流（分支、try/catch/finally、fire-and-forget .then()、loopDetector、
  *   requestAnimationFrame 滚动监听、FileReader 异步链）与原脚本一致。
  */
-import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { isJavdbSite } from '../constants/site';
 import { BLOCK_TEXT, FAVORITE_TEXT, WATCHED_TEXT, YES, NO } from '../constants/status';
 import { VIDEO_QUALITY_LIST } from '../constants/video-quality';
 import { BasePlugin } from './base-plugin';
@@ -120,13 +120,10 @@ export class SettingPlugin extends BasePlugin {
                 : ((settings == null ? undefined : settings.containerColumns) ?? 5);
         this.applyImageMode().then();
         let cssText = `\n            section .container{\n                max-width: 1000px !important;\n                min-width: ${containerWidth}%;\n            }\n            .movie-list, .movie-list.v{\n                grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n            }\n        `;
-        if (isJavbusSite) {
-            cssText = `\n                .container-fluid .row{\n                    max-width: 1000px !important;\n                    min-width: ${containerWidth}%;\n                    margin: auto auto;\n                }\n                \n                .container {\n                    max-width: 1000px !important;\n                    min-width: 80%;\n                    margin: auto auto;\n                }\n                \n                .masonry {\n                    grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n                }\n            `;
-        }
         return settingCssRaw
             .replace('__CSS_TEXT__', cssText)
-            .replace('__SIMPLE_SETTING_TOP__', isJavdbSite ? '35px' : '25px')
-            .replace('__SIMPLE_SETTING_RIGHT__', isJavdbSite ? '-300%' : '0');
+            .replace('__SIMPLE_SETTING_TOP__', '35px')
+            .replace('__SIMPLE_SETTING_RIGHT__', '-300%');
     }
 
     /** 挂载设置按钮入口（顶栏/顶栏迷你/详情页 h3 前）并绑定悬浮/点击。对应原 L9483-9558。 */
@@ -155,22 +152,6 @@ export class SettingPlugin extends BasePlugin {
                 }
             );
             $(window).resize(toggleSettingBox);
-        }
-        if (isJavbusSite) {
-            utils.loopDetector(
-                () => $('#waitCheckBtn').length,
-                () => {
-                    $('#waitCheckBtn')
-                        .parent()
-                        .append(jsxToString(<SettingMountBox variant="topright" />));
-                },
-                1,
-                10000,
-                false
-            );
-            if ((window as any).isDetailPage) {
-                $('h3').before(jsxToString(<SettingMountBox variant="containerfluid" />));
-            }
         }
         $('.main-nav, .container-fluid').on('click', '#setting-btn, #mini-setting-btn', () => {
             clog.lowZIndex();
@@ -466,10 +447,6 @@ export class SettingPlugin extends BasePlugin {
                 (document.querySelector('.movie-list') as any).style.gridTemplateColumns =
                     `repeat(${columns}, minmax(0, 1fr))`;
             }
-            if (isJavbusSite) {
-                (document.querySelector('.masonry') as any).style.gridTemplateColumns =
-                    `repeat(${columns}, minmax(0, 1fr))`;
-            }
             await storageManager.saveSettingItem('containerColumns', columns);
             this.applyImageMode();
         });
@@ -479,10 +456,6 @@ export class SettingPlugin extends BasePlugin {
             $('#showContainerWidth').text(widthPercent);
             if (isJavdbSite) {
                 (document.querySelector('section .container') as any).style.minWidth = widthPercent;
-            }
-            if (isJavbusSite) {
-                (document.querySelector('.container-fluid .row') as any).style.minWidth =
-                    widthPercent;
             }
             storageManager.saveSettingItem('containerWidth', rangeValue + 70);
         });

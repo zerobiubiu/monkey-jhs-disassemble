@@ -4,8 +4,6 @@
  * 提取自 src/plugins/list-page-button-plugin.ts 的 createMenuBtn：
  *   - JavDb 站（L135-137 的 containerEl.append）：两行按钮组（打开待鉴定/
  *     已收藏 + 演员页/标签页黑名单按钮 + 新作品检测/演员黑名单/排序切换）
- *   - JavBus 站（L155-157 的 .prepend）：单行按钮组（打开待鉴定/已收藏 +
- *     明星页黑名单+一键屏蔽 或 演员黑名单）
  *
  * 保留原 HTML 结构、CSS 类名（menu-btn main-tab-btn）、id（waitCheckBtn /
  * waitDownBtn / addBlacklistBtn / filterAllVideo / newVideoBtn / blacklistBtn /
@@ -15,12 +13,11 @@
  * 输出丢失（DOM/CSS 渲染等价，与示范风格一致）。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 createMenuBtn 中
- * `.append(html)` / `.prepend(html)` 消费：
- *   `containerEl.append(jsxToString(<MenuButtonBoxHtml site="javdb" ... />))`
- *   `$(".masonry").parent().prepend(jsxToString(<MenuButtonBoxHtml site="javbus" ... />))`
- * 调用方依站点/页面类型传入 actorsPage/tagsPage/advancedSearch/
- * searchOrUserPage/starPage 等布尔与 blacklistLabel/blacklistColor/sortLabel
- * 等动态值，组件内部按 site 分支渲染对应结构。
+ * `.append(html)` 消费：
+ *   `containerEl.append(jsxToString(<MenuButtonBoxHtml ... />))`
+ * 调用方依页面类型传入 actorsPage/tagsPage/advancedSearch/
+ * searchOrUserPage 等布尔与 blacklistLabel/blacklistColor/sortLabel
+ * 等动态值。
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，
  * 经轻量 `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时
@@ -29,13 +26,8 @@
  */
 import type { CSSProperties } from 'react';
 
-/** 站点变体：javdb 两行布局 / javbus 单行布局。 */
-export type MenuButtonSite = 'javdb' | 'javbus';
-
 /** MenuButtonBoxHtml 的属性。 */
 export interface MenuButtonBoxHtmlProps {
-    /** 站点变体：javdb 两行 / javbus 单行。 */
-    site: MenuButtonSite;
     /** 黑名单按钮文案（已加入时切「已加入黑名单」），默认「加入黑名单」。 */
     blacklistLabel?: string;
     /** 黑名单按钮底色（已加入时切 #885d5d），默认 #d22020。 */
@@ -53,9 +45,6 @@ export interface MenuButtonBoxHtmlProps {
     sortLabel?: string;
     /** 新作品数量（#newVideoCount 初始值），默认 0。 */
     newVideoCount?: number | string;
-    // —— JavBus 专用 ——
-    /** JavBus 明星页（/star/）：渲染 addBlacklistBtn + filterAllVideo，否则渲染 blacklistBtn。 */
-    starPage?: boolean;
 }
 
 const BLACKLIST_DEFAULT_LABEL = '加入黑名单';
@@ -75,7 +64,6 @@ function menuBtnStyle(backgroundColor: string): CSSProperties {
 
 /**
  * 渲染列表页菜单按钮组的 JSX。
- * @param props.site 站点变体
  * @param props.blacklistLabel 黑名单按钮文案（默认「加入黑名单」）
  * @param props.blacklistColor 黑名单按钮底色（默认 #d22020）
  * @param props.actorsPage JavDb 演员页（渲染黑名单+一键屏蔽）
@@ -84,12 +72,10 @@ function menuBtnStyle(backgroundColor: string): CSSProperties {
  * @param props.searchOrUserPage JavDb 搜索/用户页（隐 sort-toggle）
  * @param props.sortLabel 排序方式文案
  * @param props.newVideoCount 新作品数量
- * @param props.starPage JavBus 明星页（渲染黑名单+一键屏蔽，否则演员黑名单）
  * @returns 菜单按钮组 React 元素，经 jsxToString 转 HTML 字符串后供
- *          `.append()` / `.prepend()` 消费。
+ *          `.append()` 消费。
  */
 export function MenuButtonBoxHtml({
-    site,
     blacklistLabel = BLACKLIST_DEFAULT_LABEL,
     blacklistColor = BLACKLIST_DEFAULT_COLOR,
     actorsPage = false,
@@ -97,58 +83,8 @@ export function MenuButtonBoxHtml({
     advancedSearch = false,
     searchOrUserPage = false,
     sortLabel = SORT_DEFAULT_LABEL,
-    newVideoCount = 0,
-    starPage = false
+    newVideoCount = 0
 }: MenuButtonBoxHtmlProps) {
-    if (site === 'javbus') {
-        return (
-            <div style={{ margin: '10px', display: 'flex' }}>
-                <a
-                    id="waitCheckBtn"
-                    className="menu-btn main-tab-btn"
-                    style={menuBtnStyle('#56c938')}
-                >
-                    <span>打开待鉴定</span>
-                </a>
-                <a
-                    id="waitDownBtn"
-                    className="menu-btn main-tab-btn"
-                    style={menuBtnStyle('#2caac0')}
-                >
-                    <span>打开已收藏</span>
-                </a>
-                {starPage ? (
-                    <>
-                        <a
-                            id="addBlacklistBtn"
-                            className="menu-btn main-tab-btn"
-                            style={menuBtnStyle(blacklistColor)}
-                            data-tip={BLACKLIST_TIP}
-                        >
-                            <span>{blacklistLabel}</span>
-                        </a>
-                        <a
-                            id="filterAllVideo"
-                            className="menu-btn main-tab-btn"
-                            style={menuBtnStyle('#e8ab39')}
-                            data-tip={FILTER_ALL_TIP}
-                        >
-                            <span>一键屏蔽所有作品</span>
-                        </a>
-                    </>
-                ) : (
-                    <a
-                        id="blacklistBtn"
-                        className="menu-btn main-tab-btn"
-                        style={menuBtnStyle('#34393f')}
-                    >
-                        <span>演员黑名单</span>
-                    </a>
-                )}
-            </div>
-        );
-    }
-
     const showSortToggle = !searchOrUserPage && !advancedSearch;
     return (
         <>

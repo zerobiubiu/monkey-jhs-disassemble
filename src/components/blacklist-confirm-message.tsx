@@ -15,11 +15,8 @@
  * 保留原 HTML 结构、`<span style="color: #f40">` 内联色、`<br/>` 自闭合、
  * 文案与标点（含全角问号/逗号）原样不动。
  *
- * 原代码两个"非第一页"判定为两个独立 if（query 参数判定 + JavBus 分页段
- * 判定），两者皆成立时会追加两次相同 br 注意，属原脚本行为；组件以两个
- * 独立 prop（notFirstPageByQuery / notFirstPageByJavbus）各自决定是否追加，
- * 保持与原脚本零偏差。判定逻辑（currentHref/isJavbusSite 解析）仍由调用方
- * 完成后以布尔 prop 传入，组件保持纯模板（不引用站点常量）。
+ * 当前页非第一页的判定（currentHref query 参数解析）由调用方完成后以
+ * 布尔 prop 传入，组件保持纯模板（不引用站点常量）。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 addBlacklist 中
  * `utils.q(position, ..., callback)` 消费时，需先用 `jsxToString` 转为
@@ -41,10 +38,8 @@ export interface BlacklistConfirmMessageProps {
     isAlreadyBlacklisted: boolean;
     /** 是否演员分支（true=演员用 name，false=分类用 tagName）。 */
     isActress: boolean;
-    /** currentHref 含 page 且非 page=1 时为 true（第一个独立 if 的判定结果）。 */
+    /** currentHref 含 page 且非 page=1 时为 true（独立 if 的判定结果）。 */
     notFirstPageByQuery: boolean;
-    /** JavBus 站且分页段 >1 时为 true（第二个独立 if 的判定结果）。 */
-    notFirstPageByJavbus: boolean;
 }
 
 /**
@@ -54,7 +49,6 @@ export interface BlacklistConfirmMessageProps {
  * @param props.tagName 分类名（分类分支用）
  * @param props.name 演员名（演员分支用）
  * @param props.notFirstPageByQuery query 参数判定当前页非第一页
- * @param props.notFirstPageByJavbus JavBus 分页段判定当前页非第一页
  * @returns 确认提示 JSX（含 `<span>`/`<br/>`），经 jsxToString 转 HTML 字符串后供 utils.q 消费。
  */
 export function BlacklistConfirmMessage({
@@ -62,8 +56,7 @@ export function BlacklistConfirmMessage({
     name,
     isAlreadyBlacklisted,
     isActress,
-    notFirstPageByQuery,
-    notFirstPageByJavbus
+    notFirstPageByQuery
 }: BlacklistConfirmMessageProps) {
     const entityName = isActress ? name : tagName;
     const prefix = isAlreadyBlacklisted
@@ -82,12 +75,6 @@ export function BlacklistConfirmMessage({
             <span style={{ color: '#f40' }}>{entityName}</span>
             {suffix}
             {notFirstPageByQuery && (
-                <>
-                    <br />
-                    {' 注意: 当前页面非第一页, 屏蔽数据将从此页面开始'}
-                </>
-            )}
-            {notFirstPageByJavbus && (
                 <>
                     <br />
                     {' 注意: 当前页面非第一页, 屏蔽数据将从此页面开始'}

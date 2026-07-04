@@ -3,12 +3,11 @@
  *
  * 原构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  * 注入的内联 SVG 图标，改为 class 字段语法（useDefineForClassFields:true，语义一致）。
- * 单字母局部变量已语义化；站点/类别常量 o/r/l/T/B/P/D/A 改由 ../constants/site 引入。
+ * 单字母局部变量已语义化；站点/类别常量 o/r/T/B/P/D/A 改由 ../constants/site 引入。
  */
 import {
     currentHref,
     isJavdbSite,
-    isJavbusSite,
     JAVDB,
     ACTOR,
     ACTRESS,
@@ -113,25 +112,6 @@ export class BasePlugin {
                 .text()
                 .trim();
         }
-        if (isJavbusSite) {
-            url = href.split('?')[0];
-            carNum = url!
-                .split('/')
-                .filter(Boolean)
-                .pop()!
-                .replace(/_\d{4}-\d{2}-\d{2}$/, '');
-            actress = $('span[onmouseover*="star_"] a')
-                .map((_index: number, el: any) => $(el).text())
-                .get()
-                .join(' ');
-            actors = '';
-            publishTime = $('span.header:contains("發行日期:")')
-                .parent('p')
-                .text()
-                .trim()
-                .replace('發行日期:', '')
-                .trim();
-        }
         return { carNum, url, actress, actors, publishTime };
     }
 
@@ -152,7 +132,7 @@ export class BasePlugin {
             throw new Error('接口调用错误, 非演员详情页');
         }
         const allName: string[] = [];
-        const nameEl = isJavdbSite ? $('.actor-section-name') : $('.avatar-box .photo-info .pb10');
+        const nameEl = $('.actor-section-name');
         if (nameEl.length) {
             nameEl
                 .text()
@@ -193,15 +173,6 @@ export class BasePlugin {
             searchParams.delete('sort_type');
             searchParams.delete('page');
             blacklistUrl = urlObj.toString();
-        } else if (isJavbusSite) {
-            const starSeg = '/star/';
-            const parts = href.split(starSeg);
-            if (parts.length < 2) {
-                throw new Error('提取演员url失败');
-            }
-            const base = parts[0];
-            starId = parts[1].split('/')[0];
-            blacklistUrl = base + starSeg + starId;
         }
         return {
             starId,

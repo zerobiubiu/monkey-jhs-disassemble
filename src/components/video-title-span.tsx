@@ -1,5 +1,5 @@
 /**
- * VideoTitleSpan —— JavBus 列表项标题 wrap span（React 函数组件，JSX）。
+ * VideoTitleSpan —— 列表项标题 wrap span（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/list-page-plugin.ts 的 fixBusTitleBox（L309 的 wrap）：
  * 将 `.photo-info span:first` 的首个子节点（文本）包裹进
@@ -26,7 +26,7 @@ export interface VideoTitleSpanProps {
 }
 
 /**
- * 渲染 JavBus 列表项标题 wrap span 的 JSX。
+ * 渲染列表项标题 wrap span 的 JSX。
  * @param props.imgTitle 标题文本
  * @returns `<span class="video-title" title="...">...</span>` 的 React 元素，
  *          经 jsxToString 转 HTML 字符串后供 .wrap() 消费。

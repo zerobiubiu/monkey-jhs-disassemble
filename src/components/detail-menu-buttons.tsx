@@ -20,8 +20,7 @@
  * 经 `$("#magnets-span").text(...)` 切换，组件不做该动态化。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 createMenuBtn 中
- * `$(".tabs").after(menuHtml)` / `$("#mag-submit-show").before(menuHtml)`
- * 消费：
+ * `$(".tabs").after(menuHtml)` 消费：
  *   `const menuHtml = jsxToString(<DetailMenuButtons {...props} />)`
  *
  * 统一规定（doc/20-detail-page-button-components-tsx.md）：HTML→组件转换

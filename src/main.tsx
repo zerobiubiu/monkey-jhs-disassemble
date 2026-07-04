@@ -10,11 +10,10 @@
 // 详见 doc/ 目录下的迁移文档。
 
 import './core/libs';
-import { isJavdbSite, isJavbusSite } from './constants/site';
+import { isJavdbSite } from './constants/site';
 import loadingCssRaw from './styles/loading.css?raw';
 import viewerCssRaw from './styles/viewer.css?raw';
 import loggerCssRaw from './styles/logger.css?raw';
-import javbusMasonryCssRaw from './styles/javbus-masonry.css?raw';
 import javdbSiteCssRaw from './styles/javdb-site.css?raw';
 import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
 import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
@@ -86,12 +85,6 @@ declare global {
 }
 
 // ===== CSS replace（原 M/N/j/E/F/H → 语义化命名） =====
-let javbusHideNavCss: string = '';
-if (window.location.href.includes('hideNav=1')) {
-    javbusHideNavCss =
-        '\n         .navbar-default {\n            display: none !important;\n        }\n        body {\n            padding-top:0px!important;\n        }\n    ';
-}
-const javbusMasonryCss = javbusMasonryCssRaw.replace('/*__HIDENAV__*/', javbusHideNavCss);
 let javdbHideNavCss: string = '';
 if (window.location.href.includes('hideNav=1')) {
     javdbHideNavCss =
@@ -116,9 +109,6 @@ function generateScrollbarCss(): string {
         .replace(/\n/g, '');
 }
 const commonToolbarCss = commonToolbarCssRaw.replace('/*__SCROLLBAR__*/', generateScrollbarCss());
-if (isJavbusSite) {
-    injectCss(javbusMasonryCss);
-}
 if (isJavdbSite) {
     injectCss(javdbSiteCss);
 }
@@ -206,7 +196,7 @@ unsafeWindow.show = window.show = show;
         window.addEventListener('error', function (event) {
             const filename = event.filename;
             const message = event.message;
-            if (!filename.includes('javdb') && !filename.includes('javbus')) {
+            if (!filename.includes('javdb')) {
                 logger.error(`[全局 Error 异常捕获] ${message} 来源: ${filename}`);
             }
         });
@@ -302,19 +292,11 @@ pluginManager.processCss().then();
 (async function () {
     window.isDetailPage = (function () {
         const href = window.location.href;
-        if (isJavdbSite) {
-            return href.split('?')[0].includes('/v/');
-        } else {
-            return !!isJavbusSite && $('#magnet-table').length > 0;
-        }
+        return href.split('?')[0].includes('/v/');
     })();
     window.isListPage = (function () {
         const href = window.location.href;
-        if (isJavdbSite) {
-            return $('.movie-list').length > 0 || href.includes('advanced_search');
-        } else {
-            return !!isJavbusSite && $('.masonry > div .item').length > 0;
-        }
+        return $('.movie-list').length > 0 || href.includes('advanced_search');
     })();
     window.isFc2Page = (function () {
         const href = window.location.href;

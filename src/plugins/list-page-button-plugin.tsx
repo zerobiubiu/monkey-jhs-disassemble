@@ -9,8 +9,8 @@
  * 依 localStorage 的 jhs_sortMethod）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/r/l/d 等）已语义化；顶层站点/状态常量
- * o/r/l/c/_/h/u/b/k 改由 ../constants 引入（currentHref/isJavdbSite/
- * isJavbusSite/isSearchOrUserPage/YES/FAVORITE_ACTION/BLOCKED_TEXT/
+ * o/r/c/_/h/u/b/k 改由 ../constants 引入（currentHref/isJavdbSite/
+ * isSearchOrUserPage/YES/FAVORITE_ACTION/BLOCKED_TEXT/
  * FAVORITED_TEXT/WATCHED_TEXT）。
  *
  * 注意：原顶层常量 y（"📥️ 已下载"）所对应的「已下载」状态 UI 已在原脚本历史中
@@ -22,7 +22,7 @@
  * $ / utils / storageManager / show / clog / loading 已由 ../types/globals.d.ts
  * 声明为 any；内联 CSS/HTML 模板字符串原样保留（仅替换 ${} 插值变量名）。
  */
-import { currentHref, isJavdbSite, isJavbusSite, isSearchOrUserPage } from '../constants/site';
+import { currentHref, isJavdbSite, isSearchOrUserPage } from '../constants/site';
 import {
     BLOCKED_TEXT,
     FAVORITED_TEXT,
@@ -66,9 +66,8 @@ export class ListPageButtonPlugin extends BasePlugin {
     }
 
     /**
-     * 创建列表页按钮组：JavDb 站（isJavdbSite）与 JavBus 站（isJavbusSite）各
-     * 渲染一套模板；演员页/标签页/高级搜索页分别定制按钮与文案，已加入黑名单时
-     * 切换文案与配色。对应原 L7968-8043。
+     * 创建列表页按钮组：JavDb 站（isJavdbSite）渲染模板；演员页/标签页/高级搜索页
+     * 分别定制按钮与文案，已加入黑名单时切换文案与配色。对应原 L7968-8043。
      *
      * @returns Promise<void>；无显式抛出
      */
@@ -123,7 +122,6 @@ export class ListPageButtonPlugin extends BasePlugin {
             containerEl.append(
                 jsxToString(
                     <MenuButtonBoxHtml
-                        site="javdb"
                         blacklistLabel={blacklistLabel}
                         blacklistColor={blacklistColor}
                         actorsPage={isActorsPage}
@@ -134,31 +132,6 @@ export class ListPageButtonPlugin extends BasePlugin {
                     />
                 )
             );
-        }
-        if (isJavbusSite) {
-            const isStarPage = currentHref.includes('/star/');
-            let blacklistLabel = '加入黑名单';
-            let blacklistColor = '#d22020';
-            if (isStarPage) {
-                const blacklist = await storageManager.getBlacklist();
-                const actressInfo = this.getActressPageInfo();
-                if (blacklist.find((entry: any) => entry.starId === actressInfo.starId)) {
-                    blacklistLabel = '已加入黑名单';
-                    blacklistColor = '#885d5d';
-                }
-            }
-            $('.masonry')
-                .parent()
-                .prepend(
-                    jsxToString(
-                        <MenuButtonBoxHtml
-                            site="javbus"
-                            blacklistLabel={blacklistLabel}
-                            blacklistColor={blacklistColor}
-                            starPage={isStarPage}
-                        />
-                    )
-                );
         }
     }
 
@@ -205,9 +178,7 @@ export class ListPageButtonPlugin extends BasePlugin {
                 clientX: event.clientX,
                 clientY: event.clientY + 80
             };
-            const nameEl = isJavdbSite
-                ? $('.actor-section-name')
-                : $('.avatar-box .photo-info .pb10');
+            const nameEl = $('.actor-section-name');
             if (nameEl.length === 0) {
                 show.error('获取演员名称失败');
                 return;

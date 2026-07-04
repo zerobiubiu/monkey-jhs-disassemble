@@ -5,13 +5,13 @@
  * 加入标题屏蔽列表并刷新页面。仅在设置项 enableTitleSelectFilter === YES 时启用。
  *
  * 单字母局部变量（原 e/t/n）已语义化：selector / event / selectedText / position。
- * 站点标志 r/l 改由 ../constants/site 引入（isJavdbSite / isJavbusSite）；
+ * 站点标志 r 改由 ../constants/site 引入（isJavdbSite）；
  * 布尔标识 _ 改由 ../constants/status 引入（YES）。
  * 运行时挂载到 window 的 isDetailPage / isFc2Page / refresh，
  * 此处以 (window as any). 访问，保持原逻辑并满足 strict 类型检查。
  * utils / storageManager 已由 ../types/globals.d.ts 声明为 any。
  */
-import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { isJavdbSite } from '../constants/site';
 import { YES } from '../constants/status';
 import { BasePlugin } from './base-plugin';
 
@@ -39,8 +39,6 @@ export class FilterTitleKeywordPlugin extends BasePlugin {
         let selector: string | undefined;
         if (isJavdbSite) {
             selector = '.title strong, .current-title';
-        } else if (isJavbusSite) {
-            selector = 'h3';
         }
         utils.rightClick(document.body, selector, (event: MouseEvent) => {
             const selectedText: string = window.getSelection()?.toString() ?? '';

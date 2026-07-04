@@ -8,7 +8,7 @@
  *
  * JS→TS 改造要点：
  * - 单字母局部变量（原 e/t/n/a/i/s/r/l/o/c/d/h/p/m/u/f/v/b/w/k/S/_/C 等）已语义化命名。
- * - 站点布尔 r/l 改由 ../constants/site 引入（isJavdbSite/isJavbusSite）；
+ * - 站点布尔 r 改由 ../constants/site 引入（isJavdbSite）；
  *   状态动作 d/h/p 与展示文本/颜色 m/u/f/v/b/w/k/S 与布尔标识 _/C 改由
  *   ../constants/status 引入（FILTER_ACTION/FAVORITE_ACTION/HAS_WATCH_ACTION/
  *   BLOCK_TEXT/BLOCKED_TEXT/BLOCK_COLOR/FAVORITE_TEXT/FAVORITED_TEXT/FAVORITE_COLOR/
@@ -51,7 +51,7 @@ import { SubtitleActionCell } from '../components/subtitle-action-cell';
 import { SubtitleLine } from '../components/subtitle-line';
 import { SubtitlePreviewDialog } from '../components/subtitle-preview-dialog';
 import { SubtitleTableDialog } from '../components/subtitle-table-dialog';
-import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { isJavdbSite } from '../constants/site';
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -156,7 +156,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
 
     /**
      * 创建详情页顶部工具按钮组（屏蔽/收藏/已观看/磁力过滤/字幕搜索）并绑定事件。
-     * 对应原 L5141-5182。JavDb 站注入 .tabs 后方，JavBus 站注入 #mag-submit-show 前方。
+     * 对应原 L5141-5182。注入 .tabs 后方。
      */
     async createMenuBtn(): Promise<void> {
         const pageInfo = this.getPageInfo();
@@ -173,9 +173,6 @@ export class DetailPageButtonPlugin extends BasePlugin {
         );
         if (isJavdbSite) {
             $('.tabs').after(menuHtml);
-        }
-        if (isJavbusSite) {
-            $('#mag-submit-show').before(menuHtml);
         }
         $('#favoriteBtn').on('click', () => this.favoriteOne());
         $('#filterBtn').on('click', (event: any) => this.filterOne(event));

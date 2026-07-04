@@ -1,13 +1,11 @@
 /**
  * SettingMountBox —— 设置按钮挂载容器（React 函数组件，JSX，4 变体）。
  *
- * 提取自 src/plugins/setting-plugin.ts 的 handle（L147-178）四处注入：
+ * 提取自 src/plugins/setting-plugin.ts 的 handle（L147-178）注入：
  *   - navbar：JavDb 顶部导航 setting-box（has-dropdown is-hoverable）
  *   - mini：窄屏 mini-setting-box（miniHistoryBtnBox 之前）
- *   - topright：JavBus waitCheckBtn 父级后的 #top-right-box
- *   - containerfluid：JavBus 详情页 h3 之前的 .container-fluid 包裹
- * 四处均含 `<a id="setting-btn">设置</a>` + `<div class="simple-setting"></div>`，
- * 由 `.prepend()` / `.before()` / `.append()` 消费。
+ * 两处均含 `<a id="setting-btn">设置</a>` + `<div class="simple-setting"></div>`，
+ * 由 `.prepend()` / `.before()` 消费。
  *
  * 保留原 id/类名/内联 style（含 `!important`，以字符串值形式写入
  * CSSProperties，jsxToString 原样输出）/`<a>` 内 `<span>` 文案原样不动；
@@ -26,7 +24,7 @@
  */
 
 /** SettingMountBox 的变体（决定包裹结构与样式）。 */
-export type SettingMountBoxVariant = 'navbar' | 'mini' | 'topright' | 'containerfluid';
+export type SettingMountBoxVariant = 'navbar' | 'mini';
 
 /** SettingMountBox 的属性。 */
 export interface SettingMountBoxProps {
@@ -79,60 +77,6 @@ export function SettingMountBox({ variant }: SettingMountBoxProps) {
                         设置
                     </a>
                     <div className="mini-simple-setting" />
-                </div>
-            );
-        case 'topright':
-            return (
-                <div
-                    id="top-right-box"
-                    style={{
-                        position: 'relative',
-                        display: 'flex',
-                        flexGrow: 1,
-                        justifyContent: 'flex-end',
-                        zIndex: '12345679 !important'
-                    }}
-                >
-                    <div className="setting-box">
-                        <a
-                            id="setting-btn"
-                            className="menu-btn main-tab-btn"
-                            style={{
-                                backgroundColor: '#6e685e !important'
-                            }}
-                        >
-                            <span>设置</span>
-                        </a>
-                        <div className="simple-setting" />
-                    </div>
-                </div>
-            );
-        case 'containerfluid':
-            return (
-                <div className="container-fluid" style={{ marginTop: '20px' }}>
-                    <div
-                        id="top-right-box"
-                        style={{
-                            position: 'relative',
-                            display: 'flex',
-                            flexGrow: 1,
-                            justifyContent: 'flex-end',
-                            zIndex: '12345679 !important'
-                        }}
-                    >
-                        <div className="setting-box">
-                            <a
-                                id="setting-btn"
-                                className="menu-btn main-tab-btn"
-                                style={{
-                                    backgroundColor: '#6e685e !important'
-                                }}
-                            >
-                                <span>设置</span>
-                            </a>
-                            <div className="simple-setting" />
-                        </div>
-                    </div>
                 </div>
             );
     }

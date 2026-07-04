@@ -14,7 +14,7 @@
  *   addBlacklist:          event/position/isAlreadyBlacklisted/blacklistInfo/
  *                          isActress/tagName/confirmMessage/starId/name/allName/
  *                          role/movieType/blacklistUrl/notFirstPageByQuery/
- *                          notFirstPageByJavbus/lock/okShow/error/errorShow
+ *                          lock/okShow/error/errorShow
  *   openBlacklistDialog:   dialogHtml
  *   getTableData:          blacklist/blacklistCars/searchValue/statusType/
  *                          $dataTypeSelect/dataType/urlType/totalCount/
@@ -29,11 +29,11 @@
  *                          publishTime/error/resolve/pageHtml/domParser/$parsed
  *   filterActorVideo:      name/starId/$dom/nextPageLink/nextDom/pageNum/
  *                          beyond60Plugin/html/nextUrl/wrapperHtml/pageHtml
- *   parseAndSaveFilterInfo:$dom/names/starId/items/nextPageHref/isJavbusDom/
+ *   parseAndSaveFilterInfo:$dom/names/starId/items/nextPageHref/
  *                          siteType/itemEl/$item/carNum/url/publishTime/carList/
  *                          lastPublishTime/error
- * - 站点/类别单字母常量 o/r/l/T/I/B/P/D/A 与动作常量 d 改由 ../constants 引入：
- *   currentHref / isJavdbSite / isJavbusSite / JAVDB / JAVBUS / ACTOR / ACTRESS /
+ * - 站点/类别单字母常量 o/r/T/I/B/P/D/A 与动作常量 d 改由 ../constants 引入：
+ *   currentHref / isJavdbSite / JAVDB / ACTOR / ACTRESS /
  *   CENSORED / UNCENSORED / FILTER_ACTION。
  * - $ / layer / utils / storageManager / show / clog / gmHttp / Tabulator / loading
  *   已由 ../types/globals.d.ts 声明；refresh 在该文件声明为全局 const（原脚本
@@ -60,9 +60,7 @@ import { jsxToString } from '../core/jsx-to-string';
 import {
     currentHref,
     isJavdbSite,
-    isJavbusSite,
     JAVDB,
-    JAVBUS,
     ACTOR,
     ACTRESS,
     CENSORED,
@@ -122,15 +120,6 @@ export class BlacklistPlugin extends BasePlugin {
         }
         const { starId, name, allName, role, movieType, blacklistUrl } = blacklistInfo;
         const notFirstPageByQuery = currentHref.includes('page') && !currentHref.includes('page=1');
-        let notFirstPageByJavbus = false;
-        if (isJavbusSite) {
-            const starParts = currentHref.split('/star/')[1].split('/');
-            if (starParts.length > 1) {
-                if (parseInt(starParts[1]) > 1) {
-                    notFirstPageByJavbus = true;
-                }
-            }
-        }
         const confirmMessage = jsxToString(
             <BlacklistConfirmMessage
                 tagName={tagName}
@@ -138,7 +127,6 @@ export class BlacklistPlugin extends BasePlugin {
                 isAlreadyBlacklisted={isAlreadyBlacklisted}
                 isActress={isActress}
                 notFirstPageByQuery={notFirstPageByQuery}
-                notFirstPageByJavbus={notFirstPageByJavbus}
             />
         );
         utils.q(position, confirmMessage, async () => {
@@ -637,9 +625,6 @@ export class BlacklistPlugin extends BasePlugin {
         let items: any[];
         let nextPageHref: any;
         if ($dom) {
-            if (isJavbusSite && $dom.find('.avatar-box').length > 0) {
-                $dom.find('.avatar-box').parent().remove();
-            }
             items = $dom.find(this.getSelector().requestDomItemSelector);
             nextPageHref = $dom.find(this.getSelector().nextPageSelector).attr('href');
         } else {
@@ -737,15 +722,7 @@ export class BlacklistPlugin extends BasePlugin {
         let items: any[];
         let nextPageHref: any;
         if ($dom) {
-            let isJavbusDom = false;
             let siteType = JAVDB;
-            if ($dom.text().includes(JAVBUS)) {
-                isJavbusDom = true;
-                siteType = JAVBUS;
-            }
-            if (isJavbusDom && $dom.find('.avatar-box').length > 0) {
-                $dom.find('.avatar-box').parent().remove();
-            }
             items = $dom.find(this.getSelector(siteType).requestDomItemSelector);
             nextPageHref = $dom.find(this.getSelector(siteType).nextPageSelector).attr('href');
         } else {

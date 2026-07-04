@@ -11,7 +11,7 @@
  * - getDataList 中动态挂载到 this 的 allCount/filterCount/favoriteCount/hasWatchCount
  *   显式声明为 number 类字段，保留原 this.X 读写路径。
  * - 单字母局部变量（原 e/t/n/a/i/s/r/o/c/l/m 等）已语义化命名为 page/size/sort/carList 等。
- * - 站点布尔 r/l 改由 ../constants/site 引入；状态动作 d/h/p 与展示文本/颜色
+ * - 站点布尔 r 改由 ../constants/site 引入；状态动作 d/h/p 与展示文本/颜色
  *   m/u/f/v/b/w/k/S 改由 ../constants/status 引入。
  * - 内联 HTML/CSS（layer 弹窗 content、initCss 返回的 <style>）已提取为组件/CSS：
  *   来源/状态列 formatter → HistorySourceCell / HistoryStatusCell，弹窗 → 既有组件；
@@ -34,7 +34,7 @@ import { HistoryNavButton } from '../components/history-nav-button';
 import { HistorySourceCell } from '../components/history-source-cell';
 import { HistoryStatusCell } from '../components/history-status-cell';
 import { jsxToString } from '../core/jsx-to-string';
-import { isJavdbSite, isJavbusSite } from '../constants/site';
+import { isJavdbSite } from '../constants/site';
 import type { CSSProperties } from 'react';
 import {
     FILTER_ACTION,
@@ -94,10 +94,9 @@ export class HistoryPlugin extends BasePlugin {
     }
 
     /**
-     * 主处理：按站点注入「鉴定记录」入口并绑定点击。对应原 L6461-6496。
+     * 主处理：注入「鉴定记录」入口并绑定点击。对应原 L6461-6496。
      *
-     * - JavDb：导航栏注入桌面入口 + 迷你入口，随窗口尺寸切换；
-     * - JavBus：轮询 #setting-btn 出现后在顶栏注入入口；
+     * JavDb：导航栏注入桌面入口 + 迷你入口，随窗口尺寸切换；
      * 最后统一绑定 .sub-btns 下拉菜单与行内操作按钮的事件委托。
      */
     async handle(): Promise<void> {
@@ -111,18 +110,6 @@ export class HistoryPlugin extends BasePlugin {
                 this.handleResize();
             });
             $('#historyBtn,#miniHistoryBtn').on('click', () => this.openHistory());
-        }
-        if (isJavbusSite) {
-            utils.loopDetector(
-                () => $('#setting-btn').length,
-                () => {
-                    $('#top-right-box').append(jsxToString(<HistoryNavButton variant="javbus" />));
-                    $('#historyBtn,#miniHistoryBtn').on('click', () => this.openHistory());
-                },
-                1,
-                10000,
-                false
-            );
         }
         this.bindClick();
     }
@@ -530,10 +517,6 @@ export class HistoryPlugin extends BasePlugin {
                                 return jsxToString(
                                     <HistorySourceCell text="Javdb" color="#d34f9e" />
                                 );
-                            } else if (url.includes('javbus')) {
-                                return jsxToString(
-                                    <HistorySourceCell text="JavBus" color="#eaa813" />
-                                );
                             } else if (url.includes('123av')) {
                                 return jsxToString(
                                     <HistorySourceCell text="123Av" color="#eaa813" />
@@ -691,19 +674,6 @@ export class HistoryPlugin extends BasePlugin {
                     window.open('/search?q=' + carInfo.carNum, '_blank');
                     return;
                 }
-                utils.openPage(carInfo.url, carInfo.carNum, false, event);
-            }
-        }
-        if (isJavbusSite) {
-            let url = carInfo.url;
-            if (url.includes('javdb')) {
-                if (carInfo.carNum.includes('FC2-')) {
-                    const movieId = this.parseMovieId(url);
-                    await this.getBean('Fc2Plugin')?.openFc2Page(movieId, carInfo.carNum, url);
-                } else {
-                    window.open(url, '_blank');
-                }
-            } else {
                 utils.openPage(carInfo.url, carInfo.carNum, false, event);
             }
         }

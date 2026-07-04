@@ -2,20 +2,20 @@
  * 自动翻页（瀑布流）插件 AutoPagePlugin —— 对应原脚本 archetype/jhs.user.js L9070-9296。
  *
  * 在列表页（window.isListPage）滚动接近底部时自动抓取下一页并追加到列表容器，
- * 同步当前页码到 URL（replaceState）与标题（JavBus 站替换「第N頁」）；JavDb 站
- * 超过 60 页（c11 类目 30 页）或月度页时改走 Beyond60Plugin；翻页结果出现连续
- * 重复番号时判定被 JavDB 限制页码并停止瀑布流。
+ * 同步当前页码到 URL（replaceState）；JavDb 站超过 60 页（c11 类目 30 页）或月度
+ * 页时改走 Beyond60Plugin；翻页结果出现连续重复番号时判定被 JavDB 限制页码并
+ * 停止瀑布流。
  *
  * 原构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  * 改为 class 字段语法（useDefineForClassFields:true，语义一致）；单字母局部变量
- * （原 e/t/n/a/i/s/c/d/h/g/p/m/u）已语义化；顶层站点/状态常量 o/r/l/_/C 改由
- * ../constants 引入（currentHref/isJavdbSite/isJavbusSite/YES/NO）。
+ * （原 e/t/n/a/i/s/c/d/h/g/p/m/u）已语义化；顶层站点/状态常量 o/r/_/C 改由
+ * ../constants 引入（currentHref/isJavdbSite/YES/NO）。
  *
  * $ / utils / storageManager / clog / gmHttp 已由 ../types/globals.d.ts 声明为
  * any；运行时挂载到 window 的 isListPage 以 (window as any).isListPage 访问；
  * 内联 CSS/HTML 模板字符串原样保留。
  */
-import { currentHref, isJavdbSite, isJavbusSite } from '../constants/site';
+import { currentHref, isJavdbSite } from '../constants/site';
 import { NO, YES } from '../constants/status';
 import { BasePlugin } from './base-plugin';
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
@@ -76,20 +76,12 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 依当前 URL 解析初始页码：JavBus 站匹配 `/page/N` 或 `/star/xxx/N`，
-     * JavDb 站匹配 `?page=N`；未匹配返回 1。对应原 L9086-9104。
+     * 依当前 URL 解析初始页码：JavDb 站匹配 `?page=N`；未匹配返回 1。对应原
+     * L9086-9104。
      *
      * @returns 页码（≥1）
      */
     getInitialPageNumber(): number {
-        if (isJavbusSite) {
-            const match = currentHref.match(/\/(page|star\/[^/]+)\/(\d+)/);
-            if (match) {
-                return parseInt(match[2], 10);
-            } else {
-                return 1;
-            }
-        }
         if (isJavdbSite) {
             const match = currentHref.match(/[?&]page=(\d+)/);
             if (match) {
@@ -204,9 +196,6 @@ export class AutoPagePlugin extends BasePlugin {
             const responseHtml = await gmHttp.get(this.nextUrl);
             clog.log('请求下一页内容:', this.nextUrl);
             const $dom = utils.htmlTo$dom(responseHtml);
-            if (isJavbusSite && $dom.find('.avatar-box').length > 0) {
-                $dom.find('.avatar-box').parent().remove();
-            }
             const items = $dom.find(this.getSelector().requestDomItemSelector);
             const existingList = this.getBoxCarInfoList();
             const newList = this.getBoxCarInfoList(items);
@@ -298,31 +287,22 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 旧版 URL 同步（pushState + 标题正则替换）；已被 updatePageUrl 取代，
-     * 保留以维持原逻辑。对应原 L9275-9282。
+     * 旧版 URL 同步（pushState）；已被 updatePageUrl 取代，保留以维持原逻辑。
+     * 对应原 L9275-9282。
      *
      * @param url 目标页 URL
      */
     updatePageUrl_old(url: string): void {
         window.history.pushState({}, '', url);
-        if (isJavbusSite) {
-            const match = url.match(/\/(page|star\/.*?)\/(\d+)/);
-            const pageNum = match ? parseInt(match[2], 10) : null;
-            document.title = document.title.replace(/第\d+頁/, '第' + pageNum + '頁');
-        }
     }
 
     /**
-     * 同步当前页到地址栏（replaceState）与标题（JavBus 站替换「第N頁」）。
-     * 对应原 L9283-9291。
+     * 同步当前页到地址栏（replaceState）。对应原 L9283-9291。
      *
      * @param url 目标页 URL
      */
     updatePageUrl(url: string): void {
         window.history.replaceState({}, '', url);
-        if (isJavbusSite) {
-            document.title = document.title.replace(/第\d+頁/, `第${this.currentPage}頁`);
-        }
     }
 
     /**

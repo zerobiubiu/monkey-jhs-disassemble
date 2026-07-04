@@ -2,15 +2,14 @@
  * 影片评论插件 ReviewPlugin —— 对应原脚本 archetype/jhs.user.js L7081-7285。
  *
  * 在影片详情页加载并展示 jdforrepam.com 的评论数据：JavDb 站点直接以 URL 末段
- * 作为影片 ID 拉取；JavBus 站点先用页面番号经 /v2/search 反查影片 ID 再拉取。
- * 支持折叠/展开状态持久化、分页加载更多、评论正文内 ed2k/磁力/HTTP 链接渲染、
- * 右键将选中文字加入评论过滤关键词。
+ * 作为影片 ID 拉取。支持折叠/展开状态持久化、分页加载更多、评论正文内
+ * ed2k/磁力/HTTP 链接渲染、右键将选中文字加入评论过滤关键词。
  *
  * JS→TS 改造要点：
  * - 构造函数中 i(this,"field",val)（babel 类字段 defineProperty 助手）改为 class 字段，
  *   配合 tsconfig useDefineForClassFields:true，[[Define]] 语义一致。
  * - 单字母局部变量（原 e/t/n/a/i/s/r 等）已语义化命名为 movieId/container/reviews 等。
- * - 站点布尔 r/l、API 基址 U、签名 O、评论请求 R、布尔标识 _/C 改由 ../constants 引入。
+ * - 站点布尔 r、评论请求 R、布尔标识 _/C 改由 ../constants 引入。
  * - window.isDetailPage 为运行时挂载到 window 的全局，以 (window as any).isDetailPage 访问。
  * - 内联 HTML 已提取为组件（ReviewHeader / ReviewContainers / ReviewLoading /
  *   ReviewError / ReviewEmpty / ReviewLoadMore / ReviewEnd / ReviewItem / ReviewLinkContent），
@@ -18,8 +17,8 @@
  * - 控制流（分支、for 循环、IIFE、try/catch/finally、fire-and-forget .then()）与原脚本一致。
  */
 import { BasePlugin } from './base-plugin';
-import { isJavdbSite, isJavbusSite } from '../constants/site';
-import { API_BASE, reBuildSignature, fetchMovieReviews } from '../constants/api';
+import { isJavdbSite } from '../constants/site';
+import { fetchMovieReviews } from '../constants/api';
 import { YES, NO } from '../constants/status';
 import { ReviewContainers } from '../components/review-containers';
 import { ReviewEmpty } from '../components/review-empty';
@@ -49,11 +48,9 @@ export class ReviewPlugin extends BasePlugin {
     }
 
     /**
-     * 详情页主处理：按当前站点分别拉取并展示评论。对应原 L7090-7132。
+     * 详情页主处理：拉取并展示评论。对应原 L7090-7132。
      *
-     * 仅当运行时 window.isDetailPage 为真时执行：
-     * - JavDb 站点：用 URL 末段作影片 ID 直接展示评论；
-     * - JavBus 站点：先取页面番号，经 /v2/search 反查影片 ID，命中后展示评论。
+     * 仅当运行时 window.isDetailPage 为真时执行：用 URL 末段作影片 ID 直接展示评论。
      *
      * @returns 无返回值；内部异步拉取失败由各子方法自行 catch 处理。
      */
@@ -64,41 +61,6 @@ export class ReviewPlugin extends BasePlugin {
                 await this.showReview(movieId);
                 await this.getBean('RelatedPlugin').showRelated($('#magnets-content'), movieId);
             }
-            if (isJavbusSite) {
-                const carNum = this.getPageInfo().carNum!;
-                const searchResults = await (async (query: string) => {
-                    const url = `${API_BASE}/v2/search`;
-                    const headers = {
-                        'user-agent': 'Dart/3.5 (dart:io)',
-                        'accept-language': 'zh-TW',
-                        host: 'jdforrepam.com',
-                        jdsignature: await reBuildSignature()
-                    };
-                    const params = {
-                        q: query,
-                        page: 1,
-                        type: 'movie',
-                        limit: 1,
-                        movie_type: 'all',
-                        from_recent: 'false',
-                        movie_filter_by: 'all',
-                        movie_sort_by: 'relevance'
-                    };
-                    return (await gmHttp.get(url, params, headers)).data.movies;
-                })(carNum);
-                let movieId: any = null;
-                for (let idx = 0; idx < searchResults.length; idx++) {
-                    const movie = searchResults[idx];
-                    if (movie.number.toLowerCase() === carNum.toLowerCase()) {
-                        movieId = movie.id;
-                        break;
-                    }
-                }
-                if (!movieId) {
-                    return;
-                }
-                this.showReview(movieId, $('#sample-waterfall')).then();
-            }
         }
     }
 
@@ -106,7 +68,7 @@ export class ReviewPlugin extends BasePlugin {
      * 在指定容器内渲染评论区骨架（分隔线 + 折叠开关 + 评论/页脚容器），并按设置决定是否立即拉取。
      * 对应原 L7133-7166。
      *
-     * @param movieId 影片 ID（JavDb 为 URL 末段字符串，JavBus 为搜索反查得到的数值 ID）
+     * @param movieId 影片 ID（JavDb 为 URL 末段字符串）
      * @param container 评论区块挂载点；不传则取 #magnets-content
      * @returns 无返回值；首次展开或设置已展开时会异步触发 fetchAndDisplayReviews
      */

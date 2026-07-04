@@ -2,15 +2,15 @@
  * 列表页插件 ListPagePlugin —— 对应原脚本 archetype/jhs.user.js L8279-9069。
  *
  * 列表页（window.isListPage）主插件：监听跨标签页 BroadcastChannel 刷新/清缓存
- * 消息；清理重复 ID、替换高清封面图、挂载分页跳页控件、修正 JavBus 标题盒子；
+ * 消息；替换高清封面图、挂载分页跳页控件；
  * 依 IndexedDB 的收藏/屏蔽/已观看/关键词/演员黑名单数据对 .item 卡片做显隐
  * 过滤并注入 status-tag；绑定卡片点击/右键屏蔽/快捷键（屏蔽·收藏·已观看·
  * 折叠分类·clog 展开）；记忆演员页标签展开态；DOM 变更后自动重过滤；并对
  * JavDb 标题做 Google 翻译（带 localStorage 缓存）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/o 等）已语义化；顶层站点/状态常量
- * o/r/l/c/d/h/p/B/C/_ 改由 ../constants 引入（currentHref/isJavdbSite/
- * isJavbusSite/isSearchOrUserPage/FILTER_ACTION/FAVORITE_ACTION/
+ * o/r/c/d/h/p/B/C/_ 改由 ../constants 引入（currentHref/isJavdbSite/
+ * isSearchOrUserPage/FILTER_ACTION/FAVORITE_ACTION/
  * HAS_WATCH_ACTION/ACTOR/NO/YES）。原顶层 Te（状态标签配置）改写为模块级
  * STATUS_TAG_CONFIG；原 _e（Google 翻译）改写为模块级 translateText；
  * 原 se（快捷键单例 ie）改用 ../core/hotkey 的 Hotkey 静态类；原
@@ -27,13 +27,7 @@
  * $ / utils / storageManager / show / clog / gmHttp 已由 ../types/globals.d.ts
  * 声明为 any；内联 CSS/HTML 模板字符串原样保留（仅替换 ${} 插值变量名）。
  */
-import {
-    currentHref,
-    isJavdbSite,
-    isJavbusSite,
-    isSearchOrUserPage,
-    ACTOR
-} from '../constants/site';
+import { currentHref, isJavdbSite, isSearchOrUserPage, ACTOR } from '../constants/site';
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -50,7 +44,6 @@ import {
 import { BasePlugin } from './base-plugin';
 import { Hotkey } from '../core/hotkey';
 import { ImagePreview } from '../core/image-preview';
-import { VideoTitleSpan } from '../components/video-title-span';
 import { StatusTagHtml } from '../components/status-tag-html';
 import { JumpPageControl } from '../components/jump-page-control';
 import { PageCountTable } from '../components/page-count-table';
@@ -211,10 +204,8 @@ export class ListPagePlugin extends BasePlugin {
                 }
             }
         );
-        this.cleanRepeatId();
         this.replaceHdImg();
         this.addJumpPageControl();
-        this.fixBusTitleBox();
         await this.doFilter();
         this.bindClick().then();
         this.bindListPageHotKey().then();
@@ -267,7 +258,6 @@ export class ListPagePlugin extends BasePlugin {
             try {
                 this.replaceHdImg();
                 this.addJumpPageControl();
-                this.fixBusTitleBox();
                 await this.doFilter();
                 await this.getBean('ListPageButtonPlugin').sortItems();
                 $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
@@ -277,46 +267,6 @@ export class ListPagePlugin extends BasePlugin {
             }
         });
         observer.observe(containerEl, observerOptions);
-    }
-
-    /** 修正 JavBus 列表项标题盒子（补 video-title 包裹）。对应原 L8393-8415。 */
-    fixBusTitleBox(): void {
-        if (!isJavbusSite) {
-            return;
-        }
-        $(this.getSelector().itemSelector)
-            .toArray()
-            .forEach((itemEl: any) => {
-                const $item = $(itemEl);
-                if ($item.find('.avatar-box').length > 0) {
-                    return;
-                }
-                const imgTitle = $item.find('img').attr('title')?.trim() || '';
-                $item
-                    .find('.photo-info span:first')
-                    .contents()
-                    .first()
-                    .wrap(jsxToString(<VideoTitleSpan imgTitle={imgTitle} />));
-                $item.find('br').remove();
-            });
-    }
-
-    /** 清理 JavBus 重复的 waterfall 容器 ID。对应原 L8416-8431。 */
-    cleanRepeatId(): void {
-        if (!isJavbusSite) {
-            return;
-        }
-        $('#waterfall_h').removeAttr('id').attr('id', 'no-page');
-        const waterfallEls = $('[id="waterfall"]');
-        if (waterfallEls.length !== 0) {
-            waterfallEls.each((_index: number, element: any) => {
-                const $el = $(element);
-                if (!$el.hasClass('masonry')) {
-                    $el.children().insertAfter($el);
-                    $el.remove();
-                }
-            });
-        }
     }
 
     /** 触发列表过滤。对应原 L8432-8440。 */
@@ -362,7 +312,6 @@ export class ListPagePlugin extends BasePlugin {
                 tagPosition === 'rightTop' ? 'right: 0; top:5px;' : 'left: 0; top:5px;';
             const tagHtml = jsxToString(
                 <StatusTagHtml
-                    site="javdb"
                     variant="render"
                     text={tagConfig.text}
                     color={tagConfig.color}
@@ -465,9 +414,6 @@ export class ListPagePlugin extends BasePlugin {
         await Promise.all(
             itemEls.map(async (itemEl: any) => {
                 const $item = $(itemEl);
-                if (isJavbusSite && $item.find('.avatar-box').length > 0) {
-                    return;
-                }
                 const { carNum, title } = this.findCarNumAndHref($item);
                 const {
                     filter: filterSet,
@@ -530,7 +476,6 @@ export class ListPagePlugin extends BasePlugin {
                 if (tagConfig.text) {
                     const tagHtml = jsxToString(
                         <StatusTagHtml
-                            site={isJavdbSite ? 'javdb' : 'javbus'}
                             variant="filter"
                             text={tagConfig.text}
                             color={tagConfig.color}
@@ -540,14 +485,6 @@ export class ListPagePlugin extends BasePlugin {
                     );
                     if (isJavdbSite) {
                         $item.find('.tags').append(tagHtml);
-                    }
-                    if (isJavbusSite) {
-                        const itemTagEl = $item.find('.item-tag');
-                        if (itemTagEl.length) {
-                            itemTagEl.append(tagHtml);
-                        } else {
-                            $item.find('.photo-info > span > div').append(tagHtml);
-                        }
                     }
                 }
                 await this.translate($item);
@@ -626,9 +563,7 @@ export class ListPagePlugin extends BasePlugin {
                 event.preventDefault();
                 const $item = $(event.target).closest('.item');
                 const { carNum, url, publishTime } = this.findCarNumAndHref($item);
-                const nameEl = isJavdbSite
-                    ? $('.actor-section-name')
-                    : $('.avatar-box .photo-info .pb10');
+                const nameEl = $('.actor-section-name');
                 let actressName: string | null = '';
                 if (nameEl.length) {
                     actressName = nameEl.text().trim().split(',')[0].replace('(無碼)', '');
@@ -663,12 +598,6 @@ export class ListPagePlugin extends BasePlugin {
                 actressName = $dom
                     .find('.female')
                     .prev()
-                    .map((_index: number, el: any) => $(el).text())
-                    .get()
-                    .join(' ');
-            } else if (isJavbusSite) {
-                actressName = $dom
-                    .find('span[onmouseover*="star_"] a')
                     .map((_index: number, el: any) => $(el).text())
                     .get()
                     .join(' ');
@@ -852,31 +781,6 @@ export class ListPagePlugin extends BasePlugin {
                 img.title = '';
             });
         }
-        if (isJavbusSite) {
-            const thumbRegex = /\/(imgs|pics)\/(thumb|thumbs)\//;
-            const extRegex = /(\.jpg|\.jpeg|\.png)$/i;
-            const replaceImgsCover = (img: any) => {
-                if (img.src && thumbRegex.test(img.src) && img.dataset.hdReplaced !== 'true') {
-                    img.src = img.src.replace(thumbRegex, '/$1/cover/').replace(extRegex, '_b$1');
-                    img.dataset.hdReplaced = 'true';
-                    img.dataset.title = img.title;
-                    img.title = '';
-                }
-            };
-            const psRegex = /ps(\.jpg|\.jpeg|\.png)$/i;
-            const replacePsCover = (img: any) => {
-                if (img.src && psRegex.test(img.src) && img.dataset.hdReplaced !== 'true') {
-                    img.src = img.src.replace(psRegex, 'pl$1');
-                    img.dataset.hdReplaced = 'true';
-                    img.dataset.title = img.title;
-                    img.title = '';
-                }
-            };
-            imgEls.forEach((img: any) => {
-                replaceImgsCover(img);
-                replacePsCover(img);
-            });
-        }
         storageManager.getSetting('hoverBigImg', NO).then((setting: any) => {
             if (setting === YES) {
                 const win = window as any;
@@ -909,9 +813,6 @@ export class ListPagePlugin extends BasePlugin {
                 .text()
                 .trim();
             carNum = $item.find('.video-title strong').text().trim();
-        } else {
-            sourceText = $item.find('img').attr('data-title').trim();
-            carNum = $item.find('a').attr('href').split('/').filter(Boolean).pop().trim();
         }
         if (this.cache[carNum]) {
             videoTitleEl.contents().each((_index: number, node: any) => {
@@ -935,8 +836,6 @@ export class ListPagePlugin extends BasePlugin {
                         }
                     });
                     videoTitleEl.attr('title', translation);
-                } else {
-                    videoTitleEl.text(translation);
                 }
                 this.writeQueue = this.writeQueue.then(() => {
                     this.cache[carNum] = translation;
@@ -958,9 +857,7 @@ export class ListPagePlugin extends BasePlugin {
                     $item.find('.box').attr('title') ||
                     $item.find('.video-title').attr('title') ||
                     $item.find('img').attr('data-title');
-                const carNum = isJavdbSite
-                    ? $item.find('.video-title strong').text().trim()
-                    : undefined;
+                const carNum = $item.find('.video-title strong').text().trim();
                 const videoTitleEl = $item.find('.video-title');
                 videoTitleEl.contents().each((_index: number, node: any) => {
                     if (
