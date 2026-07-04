@@ -264,11 +264,13 @@ bunx vite build
 
 本 skill 目录下的辅助文件：
 
-- `templates/plugin-template.tsx` —— 插件类骨架模板（单文件版）
-- `templates/plugin-subdir-template/` —— 子目录拆分模板（复杂脚本用）
+- `templates/plugin-template.md` —— 插件类骨架模板（单文件版，````tsx` 代码块包裹，用 `.md` 避免占位符 `<pluginName>` 被 TS 语言服务解析为 JSX 报错）
+- `templates/plugin-subdir-template.md` —— 子目录拆分模板（复杂脚本用）
 - `templates/doc-template.md` —— 集成文档模板
 - `references/decision-matrix.md` —— 常见决策点的快速查表
 - `references/checklist.md` —— 集成完成检查清单
+
+**注意**：模板文件统一用 `.md` + 代码块包裹，**不要**用 `.tsx`/`.ts` 扩展名——占位符 `<pluginName>`/`<PluginName>` 会被 TS 语言服务当成 JSX 元素解析导致语法错误（`tsc -b` 不报错因为 `.agents/` 不在 `include: ["src"]` 内，但 Zed 的 TS 语言服务会扫描项目所有 `.tsx` 文件做诊断）。
 
 **最佳参考样本**：
 - 复杂独立脚本集成：`src/plugins/rating-display/` + `doc/25-rating-display-integration.md`（6 模块子目录，最贴近本 skill 场景）

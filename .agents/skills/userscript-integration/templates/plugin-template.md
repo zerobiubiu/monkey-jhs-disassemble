@@ -1,3 +1,10 @@
+# 插件类骨架模板（单文件版）
+
+> 用法：复制下方代码块内容到 `src/plugins/<plugin-name>-plugin.tsx`，替换所有 `<占位符>` 为实际值。
+>
+> 本文件为 markdown 模板，不参与 TypeScript 类型检查（避免占位符 `<pluginName>` 被解析为 JSX）。
+
+```tsx
 /**
  * <插件名> 插件 <PluginName>Plugin —— 集成自 archetype/<name>.user.js
  * （原脚本整体 L1-XXX，独立油猴脚本 `<脚本名>` vX.Y）。
@@ -53,3 +60,4 @@ export class <PluginName>Plugin extends BasePlugin {
         // 原脚本 IIFE 顶层的代码迁到此处
     }
 }
+```
