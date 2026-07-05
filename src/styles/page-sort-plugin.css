@@ -1,0 +1,22 @@
+/**
+ * page-sort 插件样式 —— 排序按钮选中态。
+ *
+ * 原脚本 injectSortStyles() 用 document.createElement('style') 注入：
+ *   style.textContent = `
+ *       .button.is-small.selected-method,
+ *       .button.is-small.selected-method:hover {
+ *           background-color: rgb(25, 135, 84) !important;
+ *           border-color: transparent !important;
+ *           color: #fff !important;
+ *       }
+ *   `;
+ *
+ * 此处提取为独立 .css，由 initCss() 返回 → PluginManager utils.insertStyle 注入。
+ * CSS 规则内容与原脚本一致（缩进标准化为 4 空格，CSS 解析忽略空白，渲染等价）。
+ */
+.button.is-small.selected-method,
+.button.is-small.selected-method:hover {
+    background-color: rgb(25, 135, 84) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+}
