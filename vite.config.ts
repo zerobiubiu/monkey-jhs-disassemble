@@ -32,12 +32,10 @@ export default defineConfig({
                 include: ['https://javdb*.com/*'],
                 'run-at': 'document-idle',
                 connect: ['xunlei.com', 'missav.live', 'javdb.com', 'supjav.com', '127.0.0.1', '*'],
-                // 仅保留非 npm 的 GreasyFork 脚本；其余 7 库（jquery/tabulator/layer/
+                // @require 已全部移除：原 9 个 CDN 库中 7 库（jquery/tabulator/layer/
                 // md5/toastify/localforage/viewer）已 ESM import 打包进产物（src/core/libs.ts），
-                // qrcodejs 全项目未使用，直接移除。
-                require: [
-                    'https://update.greasyfork.org/scripts/540597/1613170/parallel_GM_xmlhttpRequest.js'
-                ],
+                // qrcodejs 全项目未使用，parallel_GM_xmlhttpRequest 的 GreasyFork URL
+                // 已失效（410 Gone），原生 GM_xmlhttpRequest 已足够（rating-net 有自带限流器）。
                 grant: [
                     'GM_xmlhttpRequest',
                     'GM_openInTab',
