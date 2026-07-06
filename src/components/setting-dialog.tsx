@@ -131,6 +131,12 @@ export function SettingDialog({
                 >
                     🧹 清理缓存
                 </div>
+                <div
+                    className={`side-menu-item ${panelName === 'vlt-panel' ? 'active' : ''}`}
+                    data-panel="vlt-panel"
+                >
+                    📋 收藏清单关系
+                </div>
             </div>
 
             <div
@@ -580,6 +586,59 @@ export function SettingDialog({
                                 }}
                             />
                         </div>
+                    </div>
+                    {/* 收藏清单关系面板 */}
+                    <div
+                        id="vlt-panel"
+                        className="content-panel"
+                        style={{
+                            display: panelName === 'vlt-panel' ? 'block' : 'none',
+                            padding: '15px'
+                        }}
+                    >
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333' }}>
+                            收藏清单关系
+                        </h3>
+                        <p
+                            style={{
+                                margin: '0 0 16px 0',
+                                color: '#6c757d',
+                                fontSize: '13px',
+                                lineHeight: '1.6'
+                            }}
+                        >
+                            管理影片与清单的关联数据（本地 IndexedDB，随 WebDav 备份）。
+                            <br />
+                            <strong>导入</strong>：从 JSON 文件导入数据（如 PostgreSQL 迁移数据）。
+                            <br />
+                            <strong>导出</strong>：将当前数据导出为 JSON 文件（备份/迁移）。
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                            <a
+                                id="vlt-import-btn"
+                                className="menu-btn"
+                                style={{ backgroundColor: '#0d6efd', cursor: 'pointer' }}
+                            >
+                                <span>导入数据</span>
+                            </a>{' '}
+                            <a
+                                id="vlt-export-btn"
+                                className="menu-btn"
+                                style={{ backgroundColor: '#198754', cursor: 'pointer' }}
+                            >
+                                <span>导出数据</span>
+                            </a>
+                        </div>
+                        <div
+                            id="vlt-status"
+                            style={{ fontSize: '13px', color: '#6c757d', marginTop: '8px' }}
+                        />
+                        <input
+                            type="file"
+                            id="vlt-file-input"
+                            accept=".json,application/json"
+                            style={{ display: 'none' }}
+                        />
                     </div>
                 </div>
                 <div

@@ -56,6 +56,8 @@ import { KeywordLabel } from '../components/keyword-label';
 import { SettingMountBox } from '../components/setting-mount-box';
 import { SimpleSettingPanel } from '../components/simple-setting-panel';
 import { VideoQualityOption } from '../components/video-quality-option';
+import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
+import { showToast } from './video-lists-tag/vlt-toast';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -665,6 +667,9 @@ export class SettingPlugin extends BasePlugin {
             if (panelName === 'cache-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').show();
+            } else if (panelName === 'vlt-panel') {
+                $('#saveBtn').hide();
+                $('#clean-all').hide();
             } else {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
@@ -718,6 +723,62 @@ export class SettingPlugin extends BasePlugin {
         }
         $tagNumber.on('input', updateBorder);
         $tagColor.on('input', updateBorder);
+
+        // 收藏清单关系面板：导入/导出按钮
+        $('#vlt-import-btn').on('click', () => {
+            $('#vlt-file-input').trigger('click');
+        });
+        $('#vlt-file-input').on('change', async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const $status = $('#vlt-status');
+            $status.text('⏳ 导入中...').css('color', '#0d6efd');
+            try {
+                const text = await file.text();
+                const data: MigrationData = JSON.parse(text);
+                const stats = await VltDb.importData(data);
+                $status
+                    .html(
+                        `✓ 导入完成：${stats.movies} 部影片, ${stats.inventory} 个清单, ${stats.movieInventory} 条关联`
+                    )
+                    .css('color', '#198754');
+                showToast(
+                    `✓ 导入完成：${stats.movies} 部影片, ${stats.inventory} 个清单, ${stats.movieInventory} 条关联`,
+                    'success'
+                );
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (err: any) {
+                $status.text(`✗ 导入失败：${err.message}`).css('color', '#dc3545');
+                showToast(`✗ 导入失败：${err.message}`, 'error');
+            }
+            e.target.value = '';
+        });
+        $('#vlt-export-btn').on('click', async () => {
+            const $status = $('#vlt-status');
+            $status.text('⏳ 导出中...').css('color', '#0d6efd');
+            try {
+                const data = await VltDb.exportData();
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vlt-export-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                $status
+                    .html(
+                        `✓ 导出完成：${Object.keys(data.movies).length} 部影片, ${Object.keys(data.inventory).length} 个清单, ${Object.keys(data.movieInventory).length} 条关联`
+                    )
+                    .css('color', '#198754');
+                showToast('✓ 导出完成', 'success');
+            } catch (err: any) {
+                $status.text(`✗ 导出失败：${err.message}`).css('color', '#dc3545');
+                showToast(`✗ 导出失败：${err.message}`, 'error');
+            }
+        });
     }
 
     /** 保存设置表单到 storageManager 并刷新页面/相关插件。对应原 L10132-10207。 */

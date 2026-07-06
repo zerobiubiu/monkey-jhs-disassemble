@@ -66,6 +66,7 @@ import { ListWaterfallPlugin } from './plugins/list-waterfall-plugin';
 import { ListReadingStatusPlugin } from './plugins/list-reading-status-plugin';
 import { ModalListDisablerPlugin } from './plugins/modal-list-disabler-plugin';
 import { ListParserPlugin } from './plugins/list-parser-plugin';
+import { VideoListsTagPlugin } from './plugins/video-lists-tag/vlt-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -264,7 +265,7 @@ setupLayerWrapper();
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 32 插件 =====
+// ===== 启动序列：PluginManager + 注册 33 插件 =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
     unsafeWindow.pluginManager = manager;
@@ -301,6 +302,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(ListReadingStatusPlugin);
         manager.register(ModalListDisablerPlugin);
         manager.register(ListParserPlugin);
+        manager.register(VideoListsTagPlugin);
     }
     return manager;
 })();
