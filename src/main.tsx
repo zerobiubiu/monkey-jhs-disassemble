@@ -10,7 +10,7 @@
 // 详见 doc/ 目录下的迁移文档。
 
 import './core/libs';
-import { isJavdbSite } from './constants/site';
+import { isJavdbSite, isMissavSite } from './constants/site';
 import loadingCssRaw from './styles/loading.css?raw';
 import viewerCssRaw from './styles/viewer.css?raw';
 import loggerCssRaw from './styles/logger.css?raw';
@@ -67,6 +67,8 @@ import { ListReadingStatusPlugin } from './plugins/list-reading-status-plugin';
 import { ModalListDisablerPlugin } from './plugins/modal-list-disabler-plugin';
 import { ListParserPlugin } from './plugins/list-parser-plugin';
 import { VideoListsTagPlugin } from './plugins/video-lists-tag/vlt-plugin';
+import { CarListReaderPlugin } from './plugins/car-status-sync/car-list-reader-plugin';
+import { MissavStatusTagPlugin } from './plugins/car-status-sync/missav-status-tag-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -303,6 +305,11 @@ const pluginManager: PluginManager = (function () {
         manager.register(ModalListDisablerPlugin);
         manager.register(ListParserPlugin);
         manager.register(VideoListsTagPlugin);
+        manager.register(CarListReaderPlugin);
+    }
+    // MissAV 站点单独注册状态标签插件（不注册 javdb 的 33 个插件）
+    if (isMissavSite) {
+        manager.register(MissavStatusTagPlugin);
     }
     return manager;
 })();
@@ -322,12 +329,15 @@ pluginManager.processCss().then();
         const href = window.location.href;
         return href.includes('advanced_search?type=3') || href.includes('advanced_search?type=100');
     })();
-    await storageManager.merge_table_name();
-    await storageManager.clean_no_url_blacklist();
-    await storageManager.async_merge_other();
-    await storageManager.merge_blacklist();
-    await storageManager.merge_favoriteActress();
-    await storageManager.merge_tow_car_list_table();
+    // storageManager 合并操作仅在 javdb 站点执行（missav 站点无 jhs 数据，跳过避免创建空库）
+    if (isJavdbSite) {
+        await storageManager.merge_table_name();
+        await storageManager.clean_no_url_blacklist();
+        await storageManager.async_merge_other();
+        await storageManager.merge_blacklist();
+        await storageManager.merge_favoriteActress();
+        await storageManager.merge_tow_car_list_table();
+    }
     if (isJavdbSite && /(^|;)\s*locale\s*=\s*en\s*($|;)/i.test(document.cookie)) {
         show.error('请切换到中文语言下才可正常使用本脚本', {
             duration: -1

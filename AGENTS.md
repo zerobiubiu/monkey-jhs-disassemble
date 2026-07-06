@@ -21,7 +21,7 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册 33 插件
+│   ├── main.tsx            # 入口：启动序列 + 注册 34 插件（javdb 33 + missav 1）
 │   ├── core/               # 核心模块（15 个）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 31 插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
@@ -56,7 +56,7 @@ monkey-jhs-disassemble/
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip + 快捷键监听
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册 33 插件**（`if (isJavdbSite)` 块内）
+9. **PluginManager 实例化 + 注册插件**（javdb 站点 33 插件在 `if (isJavdbSite)` 块内；missav 站点 1 插件在 `if (isMissavSite)` 块内）
 10. `processCss()` — 并发执行所有插件 initCss
 11. 页面判定（isDetailPage/isListPage/isFc2Page）
 12. storageManager 合并/清理
@@ -82,7 +82,7 @@ monkey-jhs-disassemble/
 - `processCss()` — 并发执行所有插件 initCss（Promise.allSettled）
 - `processPlugins()` — 并发执行所有插件 handle（Promise.allSettled）
 
-### 3.3 插件清单（33 个）
+### 3.3 插件清单（35 个）
 
 **主脚本拆分插件（22 个）**：来自 `archetype/jhs.user.js`
 
@@ -112,7 +112,7 @@ monkey-jhs-disassemble/
 | NewVideoPlugin | new-video-plugin.tsx | 新作品检测 |
 | Fc2Plugin | fc2-plugin.ts | FC2 |
 
-**独立脚本集成插件（10 个）**：来自 `archetype/*.user.js`
+**独立脚本集成插件（12 个）**：来自 `archetype/*.user.js`
 
 | 插件 | 文件 | 来源脚本 | doc |
 |------|------|----------|-----|
@@ -126,6 +126,8 @@ monkey-jhs-disassemble/
 | ModalListDisablerPlugin | modal-list-disabler-plugin.ts | modalListDisabler.user.js | doc/42 |
 | ListParserPlugin | list-parser-plugin.ts | listParser.user.js | doc/43 |
 | VideoListsTagPlugin | video-lists-tag/ 子目录（5 模块） | listsOptionSync + videoListsTag | doc/45 |
+| CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
+| MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 
 ### 3.4 核心模块 `src/core/`（15 个）
 

@@ -28,8 +28,8 @@ export default defineConfig({
                     'Jav-鉴黄师 收藏、屏蔽; 屏蔽标签、屏蔽演员、同步收藏演员、新作品检测; 免VIP查看热播、Top250排行榜、Fc2ppv、可查看所有评论信息、相关清单; 支持云盘备份; 以图识图; 字幕搜索; JavDb',
                 homepageURL: 'https://github.com/zerobiubiu/javdb-tools',
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
-                match: ['https://javdb.com/*'],
-                include: ['https://javdb*.com/*'],
+                match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*'],
+                include: ['https://javdb*.com/*', 'https://missav*.ws/*', 'https://missav*.live/*'],
                 'run-at': 'document-idle',
                 connect: ['xunlei.com', 'missav.live', 'javdb.com', 'supjav.com', '127.0.0.1', '*'],
                 // @require 已全部移除：原 9 个 CDN 库中 7 库（jquery/tabulator/layer/

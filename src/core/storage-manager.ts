@@ -42,6 +42,17 @@ export interface CarRecord {
     [key: string]: any;
 }
 
+/**
+ * car_list 变更事件（由 carListChangeCallback 触发，供 CarListReaderPlugin 增量推送）。
+ * - upsert：记录被新增或更新，upserts 为受影响的完整 CarRecord 数组
+ * - delete：记录被删除，deletes 为被删除的番号数组
+ */
+export interface CarListChangeEvent {
+    action: 'upsert' | 'delete';
+    upserts?: CarRecord[];
+    deletes?: string[];
+}
+
 /** 番号保存入参（_saveSingleCar / saveCar / saveCarList / updateCarInfo） */
 export interface CarSaveInput {
     carNum: string;
@@ -123,6 +134,20 @@ export class StorageManager {
     private cache_filter_actor_actress_car_list: CarRecord[] | null = null;
     /** 设置对象缓存 */
     private cacheSettingObj: Setting | null = null;
+
+    /**
+     * car_list 变更回调（由 CarListReaderPlugin 注入，用于增量推送到 missav 端）。
+     * storageManager 不关心回调内部做什么，只负责在 car_list 写入后触发。
+     */
+    private carListChangeCallback?: (event: CarListChangeEvent) => void;
+
+    /**
+     * 注入 car_list 变更回调。
+     * @param cb 回调函数，接收变更事件（upsert/delete + 受影响的记录/番号）
+     */
+    setCarListChangeCallback(cb: (event: CarListChangeEvent) => void): void {
+        this.carListChangeCallback = cb;
+    }
 
     constructor() {
         if (StorageManager.instance) {
@@ -240,6 +265,9 @@ export class StorageManager {
         this._saveSingleCar(input, list);
         await this.forage.setItem(this.car_list_key, list);
         await this.removeNewVideoList([input.carNum]);
+        // 增量通知：推送被修改的单条记录
+        const car = list.find((c) => c.carNum === input.carNum);
+        if (car) this.carListChangeCallback?.({ action: 'upsert', upserts: [car] });
     }
 
     /**
@@ -285,6 +313,8 @@ export class StorageManager {
             }
         }
         await this.forage.setItem(this.car_list_key, list);
+        // 增量通知：推送被更新的单条记录
+        this.carListChangeCallback?.({ action: 'upsert', upserts: [car] });
     }
 
     /**
@@ -306,6 +336,10 @@ export class StorageManager {
             }
         }
         await this.forage.setItem(this.car_list_key, list);
+        // 增量通知：推送所有被修改的记录
+        const numSet = new Set(inputs.map((i) => i.carNum));
+        const upserts = list.filter((c) => numSet.has(c.carNum));
+        if (upserts.length > 0) this.carListChangeCallback?.({ action: 'upsert', upserts });
     }
 
     /** 从收藏演员的新作品列表中移除指定番号。 @param carNums 待移除番号列表 */
@@ -345,6 +379,8 @@ export class StorageManager {
             return false;
         } else {
             await this.forage.setItem(this.car_list_key, filtered);
+            // 增量通知：推送被删除的番号
+            this.carListChangeCallback?.({ action: 'delete', deletes: [carNum] });
             return true;
         }
     }
@@ -360,7 +396,11 @@ export class StorageManager {
         const numSet = new Set(carNums);
         const filtered = list.filter((item) => !numSet.has(item.carNum));
         const removed = beforeLen - filtered.length;
-        return removed !== 0 && (await this.forage.setItem(this.car_list_key, filtered), removed);
+        if (removed === 0) return false;
+        await this.forage.setItem(this.car_list_key, filtered);
+        // 增量通知：推送被删除的番号
+        this.carListChangeCallback?.({ action: 'delete', deletes: carNums });
+        return removed;
     }
 
     // ===== 黑名单演员 =====

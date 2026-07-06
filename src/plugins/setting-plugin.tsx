@@ -58,6 +58,15 @@ import { SimpleSettingPanel } from '../components/simple-setting-panel';
 import { VideoQualityOption } from '../components/video-quality-option';
 import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
 import { showToast } from './video-lists-tag/vlt-toast';
+import { GM_KEY_CAR_STATUS_DATA } from './car-status-sync/car-status-config';
+import {
+    toColumnar,
+    gzipToBase64,
+    countColumnar,
+    columnarToFlat,
+    buildJavdbUrl
+} from './car-status-sync/car-status-columnar';
+import { importLocalDB, exportLocalDB } from './car-status-sync/car-status-db';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -670,6 +679,9 @@ export class SettingPlugin extends BasePlugin {
             } else if (panelName === 'vlt-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').hide();
+            } else if (panelName === 'missav-panel') {
+                $('#saveBtn').hide();
+                $('#clean-all').hide();
             } else {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
@@ -773,6 +785,96 @@ export class SettingPlugin extends BasePlugin {
                         `✓ 导出完成：${Object.keys(data.movies).length} 部影片, ${Object.keys(data.inventory).length} 个清单, ${Object.keys(data.movieInventory).length} 条关联`
                     )
                     .css('color', '#198754');
+                showToast('✓ 导出完成', 'success');
+            } catch (err: any) {
+                $status.text(`✗ 导出失败：${err.message}`).css('color', '#dc3545');
+                showToast(`✗ 导出失败：${err.message}`, 'error');
+            }
+        });
+
+        // MissAV 同步面板：立即同步 / 导入 / 导出按钮
+        $('#missav-sync-btn').on('click', async () => {
+            const $status = $('#missav-status');
+            $status.text('⏳ 同步中...').css('color', '#0d6efd');
+            try {
+                const carList = await storageManager.getCarList();
+                if (carList.length === 0) {
+                    $status.text('✗ car_list 为空').css('color', '#dc3545');
+                    return;
+                }
+                const colRes = toColumnar(carList);
+                const count = countColumnar(colRes.byStatus);
+                const base64 = await gzipToBase64(colRes.byStatus);
+                if (!base64) {
+                    $status.text('✗ 压缩失败').css('color', '#dc3545');
+                    return;
+                }
+                const payload = {
+                    data: base64,
+                    hwm: new Date().toISOString(),
+                    count,
+                    ts: Date.now()
+                };
+                GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
+                $status.html(`✓ 同步完成：${count} 条记录已推送到 GM 存储`).css('color', '#198754');
+                showToast(`✓ 同步完成：${count} 条`, 'success');
+            } catch (err: any) {
+                $status.text(`✗ 同步失败：${err.message}`).css('color', '#dc3545');
+                showToast(`✗ 同步失败：${err.message}`, 'error');
+            }
+        });
+        $('#missav-import-btn').on('click', () => {
+            $('#missav-file-input').trigger('click');
+        });
+        $('#missav-file-input').on('change', async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const $status = $('#missav-status');
+            $status.text('⏳ 导入中...').css('color', '#0d6efd');
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                // 兼容后端服务器导出格式（列存 groups）和 missav 本地导出格式（行式 records）
+                let records: Array<{ carNum: string; status: string; url: string }>;
+                if (Array.isArray(data)) {
+                    // 行式格式 [{carNum, status, url}]
+                    records = data;
+                } else if (data.records && Array.isArray(data.records)) {
+                    records = data.records;
+                } else {
+                    // 列存格式（后端导出）：转为行式，并将 url_path 转换为完整 url
+                    const flat = columnarToFlat(data);
+                    records = flat.map((r) => ({
+                        carNum: r.carNum,
+                        status: r.status,
+                        url: buildJavdbUrl(r.url_path)
+                    }));
+                }
+                const written = await importLocalDB(records);
+                $status.html(`✓ 导入完成：${written} 条记录`).css('color', '#198754');
+                showToast(`✓ 导入完成：${written} 条`, 'success');
+            } catch (err: any) {
+                $status.text(`✗ 导入失败：${err.message}`).css('color', '#dc3545');
+                showToast(`✗ 导入失败：${err.message}`, 'error');
+            }
+            e.target.value = '';
+        });
+        $('#missav-export-btn').on('click', async () => {
+            const $status = $('#missav-status');
+            $status.text('⏳ 导出中...').css('color', '#0d6efd');
+            try {
+                const records = await exportLocalDB();
+                const json = JSON.stringify(records, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `missav-status-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                $status.html(`✓ 导出完成：${records.length} 条记录`).css('color', '#198754');
                 showToast('✓ 导出完成', 'success');
             } catch (err: any) {
                 $status.text(`✗ 导出失败：${err.message}`).css('color', '#dc3545');

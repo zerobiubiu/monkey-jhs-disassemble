@@ -137,6 +137,12 @@ export function SettingDialog({
                 >
                     📋 收藏清单关系
                 </div>
+                <div
+                    className={`side-menu-item ${panelName === 'missav-panel' ? 'active' : ''}`}
+                    data-panel="missav-panel"
+                >
+                    🎬 MissAV 同步
+                </div>
             </div>
 
             <div
@@ -636,6 +642,71 @@ export function SettingDialog({
                         <input
                             type="file"
                             id="vlt-file-input"
+                            accept=".json,application/json"
+                            style={{ display: 'none' }}
+                        />
+                    </div>
+                    {/* MissAV 同步面板 */}
+                    <div
+                        id="missav-panel"
+                        className="content-panel"
+                        style={{
+                            display: panelName === 'missav-panel' ? 'block' : 'none',
+                            padding: '15px'
+                        }}
+                    >
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#333' }}>
+                            MissAV 状态标签同步
+                        </h3>
+                        <p
+                            style={{
+                                margin: '0 0 16px 0',
+                                color: '#6c757d',
+                                fontSize: '13px',
+                                lineHeight: '1.6'
+                            }}
+                        >
+                            在 MissAV 站点显示 JHS 鉴定状态标签（已收藏/已观看/已屏蔽/已下载）。
+                            <br />
+                            数据通过油猴 GM 存储跨域同步，无需后端服务器。
+                            <br />
+                            <strong>立即同步</strong>：读取当前 car_list 并推送到 GM 存储。
+                            <br />
+                            <strong>导入</strong>：从后端服务器导出的 JSON 导入历史数据。
+                            <br />
+                            <strong>导出</strong>：将 MissAV 本地 IndexedDB 数据导出为 JSON（可走
+                            WebDav 备份）。
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                            <a
+                                id="missav-sync-btn"
+                                className="menu-btn"
+                                style={{ backgroundColor: '#25b1dc', cursor: 'pointer' }}
+                            >
+                                <span>立即同步</span>
+                            </a>{' '}
+                            <a
+                                id="missav-import-btn"
+                                className="menu-btn"
+                                style={{ backgroundColor: '#0d6efd', cursor: 'pointer' }}
+                            >
+                                <span>导入数据</span>
+                            </a>{' '}
+                            <a
+                                id="missav-export-btn"
+                                className="menu-btn"
+                                style={{ backgroundColor: '#198754', cursor: 'pointer' }}
+                            >
+                                <span>导出数据</span>
+                            </a>
+                        </div>
+                        <div
+                            id="missav-status"
+                            style={{ fontSize: '13px', color: '#6c757d', marginTop: '8px' }}
+                        />
+                        <input
+                            type="file"
+                            id="missav-file-input"
                             accept=".json,application/json"
                             style={{ display: 'none' }}
                         />
