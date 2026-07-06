@@ -42,6 +42,7 @@ export default defineConfig({
                     'GM_xmlhttpRequest',
                     'GM_openInTab',
                     'GM_setValue',
+                    'GM_getValue',
                     'GM_addValueChangeListener',
                     'GM_registerMenuCommand',
                     'unsafeWindow'

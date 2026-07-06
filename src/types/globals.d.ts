@@ -29,6 +29,7 @@ declare module 'jquery';
 declare const GM_xmlhttpRequest: any;
 declare const GM_openInTab: any;
 declare const GM_setValue: any;
+declare const GM_getValue: any;
 declare const GM_addValueChangeListener: any;
 declare const GM_registerMenuCommand: any;
 declare const unsafeWindow: any;
