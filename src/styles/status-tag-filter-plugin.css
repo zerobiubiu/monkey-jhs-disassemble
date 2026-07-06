@@ -1,0 +1,60 @@
+/**
+ * status-tag-filter 插件样式 —— 状态标签筛选栏 + 芯片。
+ *
+ * 原脚本 GM_addStyle(`...`) 注入，此处提取为独立 .css，由 initCss() 返回 →
+ * PluginManager utils.insertStyle 注入。CSS 规则内容与原脚本一致（缩进标准化，
+ * CSS 解析忽略空白，渲染等价）。
+ */
+.status-tag-filter-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0 12px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+.status-tag-filter-label {
+    flex-shrink: 0;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #6c757d;
+    line-height: 1.8;
+    margin-right: 4px;
+}
+.status-tag-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.status-tag-filter-chip {
+    display: inline-block;
+    padding: 0.25em 0.7em;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.5;
+    border-radius: 50rem;
+    cursor: pointer;
+    user-select: none;
+    border: 1.5px solid #dee2e6;
+    background: #fff;
+    color: #495057;
+    transition: all 0.15s ease;
+}
+.status-tag-filter-chip:hover {
+    border-color: #adb5bd;
+    background: #f8f9fa;
+}
+.status-tag-filter-chip.active {
+    background: #198754;
+    border-color: #198754;
+    color: #fff;
+}
+.status-tag-filter-chip.no-status {
+    border-style: dashed;
+    color: #6c757d;
+}
+.status-tag-filter-chip.no-status.active {
+    background: #6c757d;
+    border-color: #6c757d;
+    border-style: solid;
+    color: #fff;
+}

@@ -57,3 +57,13 @@
 - [ ] 已预测执行效果与修改后果，确认可行后才执行
 - [ ] 修改完已自行测试，验证程序稳定性与可靠性、功能完整性
 - [ ] 偏离原脚本的行为已在文档 §2.2 明确标注为"用户要求的行为改进"
+
+## 主项目冲突排查（第 1.5 步，不可跳过）
+
+- [ ] 已提取原脚本的关键操作符（选择器/data 属性/DOM 容器/MutationObserver 目标/localStorage 键名）
+- [ ] 已 grep 这些关键操作符到 `src/` 全项目搜索
+- [ ] 已判定冲突类型（双重功能/MutationObserver 互相触发/DOM 容器共享/data 属性/事件监听）
+- [ ] 文档 §1.4 列出每个冲突及协调策略（无冲突则标注“无冲突，独立运行”）
+- [ ] 协调策略已在 §3.5 落实编码（如 autoPage 守卫/复用 data 属性/排序互斥/sortGuard disconnect-reconnect）
+- [ ] 零侵入主项目已定稿插件（未修改 `list-page-button-plugin`/`list-page-plugin`/`auto-page-plugin` 等）
+- [ ] 复杂冲突已拆为两份文档（集成 doc/NN + 协调优化 doc/NN+1，如 doc/36+37）

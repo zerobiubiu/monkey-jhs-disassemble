@@ -63,3 +63,35 @@
 | < 200 行，单一职责 | 单文件 `src/plugins/<name>-plugin.ts` |
 | ≥ 200 行，多职责 | 子目录 `src/plugins/<name>/`，按 config/utils/cache/net/renderer/plugin 拆 |
 | 含可复用工具函数 | utils 模块独立，供其他插件 import |
+
+## 冲突协调决策（第 1.5 步排查结果）
+
+**排查方法**：grep 原脚本的选择器/data 属性/DOM 容器/MutationObserver 目标到 `src/` 全项目搜索，找出操作同一目标的插件。
+
+### 冲突类型与协调策略
+
+| 冲突类型 | 表现 | 典型案例 | 协调策略 |
+|----------|------|----------|----------|
+| 双重功能重叠 | 两个插件做同一件事（排序/过滤/显隐） | PageSort vs `ListPageButtonPlugin.sortItems` | 排序互斥：本插件激活时清除对方状态（`localStorage.removeItem('jhs_sortMethod')`），监听对方按钮 click 清除本插件状态 |
+| MutationObserver 互相触发 | 两个 observer 监听同一 DOM childList，互相 append 触发对方，可能死循环 | PageSort sortGuard vs `ListPagePlugin.checkDom` observer | applySort 内 `disconnect()` 自身 observer → 排序 → `takeRecords()` 清空 → `observe()` 重建；或对方操作时本插件 observer 通过状态守卫不反应（`if (!activeSort) return`） |
+| DOM 容器共享 | 多个插件操作同一容器子项 | PageSort/`AutoPagePlugin`/`ListPagePlugin` 都操作 `.movie-list .item` | 加 autoPage/isListPage 守卫，与主项目插件一致地跳过（`if (autoPage===YES) return` / `if (!isListPage) return`） |
+| data 属性冲突 | 两套 data 属性标记原始位置 | `data-original-index` vs `data-sort-original-index` | 复用主项目已有的 data 属性，仅当未标记时才打标（`if (!el.hasAttribute('data-x')) el.setAttribute(...)`） |
+| 事件监听冲突 | 同一元素同一事件多个监听器 | keydown 方向键 vs `Hotkey.handleKeydown` | 加 `isTyping()` 焦点守卫，或检查 `Hotkey` 是否已处理 |
+
+### 协调原则
+
+1. **本插件单方面适配，零侵入主项目已定稿插件**——不修改 `list-page-button-plugin`/`list-page-plugin`/`auto-page-plugin` 等已定稿逻辑，避免引入新风险
+2. **同一时刻仅一个功能系统生效**——通过状态互斥（清除对方 localStorage/activeSort）实现
+3. **复杂冲突可能需两份文档**——集成 doc/NN + 协调优化 doc/NN+1（参考 doc/36+37 模式）
+
+### 常见需排查的关键操作符
+
+| 关键操作符 | grep 到 `src/` 的搜索目标 | 可能冲突的插件 |
+|------------|--------------------------|----------------|
+| `.movie-list` | `.movie-list` | `ListPagePlugin`/`AutoPagePlugin`/`ListPageButtonPlugin`/`HitShowPlugin`/`Top250Plugin` |
+| `.toolbar` | `.toolbar` | `ListPageButtonPlugin`（按钮注入） |
+| `data-*-index` | `data-original-index` 等 | `ListPageButtonPlugin.sortItems` |
+| `MutationObserver` | `MutationObserver` | `ListPagePlugin.checkDom`/`RatingDisplayPlugin` |
+| 排序/sort | `sortItems`/`sort(` | `ListPageButtonPlugin.sortItems` |
+| `pagination-` | `pagination-next`/`pagination-previous` | `AutoPagePlugin`/`BasePlugin.getSelector` |
+| `localStorage` 键名 | `jhs_sortMethod`/`jhs_translate` 等 | 对应功能插件 |
