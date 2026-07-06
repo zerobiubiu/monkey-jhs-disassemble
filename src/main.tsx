@@ -313,10 +313,10 @@ const pluginManager: PluginManager = (function () {
     }
     return manager;
 })();
-pluginManager.processCss().then();
 
 // ===== 启动序列：页面判定 + storage 合并 + 插件执行 =====
 (async function () {
+    await pluginManager.processCss();
     window.isDetailPage = (function () {
         const href = window.location.href;
         return href.split('?')[0].includes('/v/');
@@ -343,5 +343,5 @@ pluginManager.processCss().then();
             duration: -1
         });
     }
-    pluginManager.processPlugins().then();
+    await pluginManager.processPlugins();
 })();

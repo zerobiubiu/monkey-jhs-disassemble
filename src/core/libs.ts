@@ -42,8 +42,7 @@ import md5 from 'blueimp-md5';
 
 // 4. 库 CSS（随 JS 打包进产物，运行时注入 <style>，替代原 main.tsx 的
 //    utils.importResource CDN 动态 <link> 加载；layer.css 由 layer.js 的
-//    require 自动带入，此处显式 import 仅作保险/清晰）
-import 'layui-layer/layer.css';
+//    require 自动带入，避免显式重复导入）
 import 'toastify-js/src/toastify.css';
 import 'viewerjs/dist/viewer.min.css';
 import 'tabulator-tables/dist/css/tabulator_semanticui.min.css';

@@ -198,9 +198,9 @@ export class ListPagePlugin extends BasePlugin {
                         newVideoPlugin.loadData();
                     }
                 } else if (msgType === 'cleanCache_filter_actor_actress_car_list') {
-                    storageManager.cache_filter_actor_actress_car_list &&= null;
-                } else if (msgType === 'clean_cacheSettingObj' && storageManager.cacheSettingObj) {
-                    storageManager.cacheSettingObj = null;
+                    storageManager.clearFilterActorActressCarListCache();
+                } else if (msgType === 'clean_cacheSettingObj') {
+                    storageManager.clearSettingCache();
                 }
             }
         );

@@ -149,6 +149,16 @@ export class StorageManager {
         this.carListChangeCallback = cb;
     }
 
+    /** 清空黑名单番号清单缓存，供跨标签页消息和数据迁移后刷新运行时数据。 */
+    clearFilterActorActressCarListCache(): void {
+        this.cache_filter_actor_actress_car_list = null;
+    }
+
+    /** 清空设置缓存，供跨标签页消息和设置保存后刷新运行时数据。 */
+    clearSettingCache(): void {
+        this.cacheSettingObj = null;
+    }
+
     constructor() {
         if (StorageManager.instance) {
             throw new Error('StorageManager已被实例化过了!');
@@ -1031,12 +1041,16 @@ export class StorageManager {
                 item.movieType = CENSORED;
                 itemChanged = true;
             }
-            // 保留原脚本分支（条件恒为 false，仅对 url 为 undefined 时抛错）
-            if (!item.url && (item.url as any).includes('sort_type')) {
-                const urlObj = new URL(item.url as any);
-                urlObj.searchParams.delete('sort_type');
-                item.url = urlObj.toString();
-                clog.debug('去除黑名单地址sort_type参数');
+            if (item.url && item.url.includes('sort_type')) {
+                try {
+                    const urlObj = new URL(item.url);
+                    urlObj.searchParams.delete('sort_type');
+                    item.url = urlObj.toString();
+                    itemChanged = true;
+                    clog.debug('去除黑名单地址sort_type参数');
+                } catch (err) {
+                    clog.error('去除黑名单地址sort_type参数失败', item.url, err);
+                }
             }
             if (itemChanged) {
                 changed = true;

@@ -11,7 +11,7 @@
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
-- **UI 框架**：React 19（仅用 jsxToString 渲染 HTML 字符串，不用 react-dom/server）
+- **UI 框架**：React 19（仅用 jsxToString 渲染 HTML 字符串，不依赖 react-dom）
 - **CSS 处理**：lightningcss（errorRecovery 容错 IE hack）
 - **包管理**：Bun
 - **构建命令**：`bun run build` = `tsc -b && vite build`
@@ -57,14 +57,14 @@ monkey-jhs-disassemble/
 7. tooltip + 快捷键监听
 8. encryptCredential/decryptCredential + setupLayerWrapper
 9. **PluginManager 实例化 + 注册插件**（javdb 站点 33 插件在 `if (isJavdbSite)` 块内；missav 站点 1 插件在 `if (isMissavSite)` 块内）
-10. `processCss()` — 并发执行所有插件 initCss
+10. `await processCss()` — 并发执行所有插件 initCss，完成后再进入页面逻辑
 11. 页面判定（isDetailPage/isListPage/isFc2Page）
 12. storageManager 合并/清理
-13. `processPlugins()` — 并发执行所有插件 handle
+13. `await processPlugins()` — 并发执行所有插件 handle
 
 **关键点**：
 - 所有插件在 `if (isJavdbSite)` 块内注册（非 javdb 站点不注册）
-- `processCss()` 在 `processPlugins()` 之前执行（CSS 先于逻辑注入）
+- `processCss()` 在 `processPlugins()` 之前 await 完成（CSS 先于逻辑注入）
 - `isDetailPage`/`isListPage`/`isFc2Page` 在 `window` 上全局挂载，插件以 `(window as any).isDetailPage` 访问
 
 ### 3.2 插件系统
@@ -79,8 +79,8 @@ monkey-jhs-disassemble/
 **`src/plugins/plugin-manager.ts`** — PluginManager：
 - `register(pluginClass)` — 实例化 + 注入 pluginManager + 按 getName() 去重
 - `getBean(name)` — 按名获取插件实例
-- `processCss()` — 并发执行所有插件 initCss（Promise.allSettled）
-- `processPlugins()` — 并发执行所有插件 handle（Promise.allSettled）
+- `processCss()` — 并发执行所有插件 initCss，返回结构化结果并汇总失败项
+- `processPlugins()` — 并发执行所有插件 handle，返回结构化结果并汇总失败项
 
 ### 3.3 插件清单（35 个）
 
@@ -135,7 +135,7 @@ monkey-jhs-disassemble/
 |------|------|
 | libs.ts | 第三方库 ESM import + 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5） |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
-| storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例） |
+| storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；提供运行时缓存清理方法） |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
 | common-util.ts | 通用工具（retry/htmlTo$dom/getUrlParam/isMobile/loopDetector） |
 | toast.ts | Toastify-js 封装（show.ok/error/success） |
@@ -157,7 +157,7 @@ monkey-jhs-disassemble/
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。
-不使用 react-dom/server，零运行时依赖（仅类型依赖 react）。
+不使用 react-dom/server，不依赖 react-dom。
 
 ### 3.6 样式 `src/styles/`
 
