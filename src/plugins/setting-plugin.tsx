@@ -75,41 +75,71 @@ interface CacheItem {
     title: string;
 }
 
+/**
+ * 计算指定 localStorage key 的缓存统计信息。
+ * @param key localStorage 键名
+ * @returns size 字节数；count 条目数（JSON 对象的 key 数或数组长度）
+ */
+function getCacheStats(key: string): { size: number; count: number } {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { size: 0, count: 0 };
+    const size = new Blob([raw]).size;
+    let count = 0;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            count = Object.keys(parsed).length;
+        } else if (Array.isArray(parsed)) {
+            count = parsed.length;
+        }
+    } catch {
+        // 非 JSON，仅显示大小
+    }
+    return { size, count };
+}
+
+/**
+ * 格式化字节数为人类可读字符串。
+ * @param bytes 字节数
+ * @returns 如 "0 B" / "1.2 KB" / "3.4 MB"
+ */
+function formatSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export class SettingPlugin extends BasePlugin {
     /** WebDav 备份目录名。对应原 L9432。 */
     folderName = 'JHS-数据备份';
 
-    /** 可清理的缓存项清单。对应原 L9433-9464。 */
+    /** 可管理的缓存项清单。对应原 L9433-9464（已删除 jhs_screenShot 死 key）。 */
     cacheItems: CacheItem[] = [
         {
             key: 'jhs_dmm_video',
             text: '🎥 预览视频缓存',
-            title: '预览视频缓存'
+            title: 'DMM 预告片画质→URL 映射（联动清理 jhs_other_site_dmm）'
         },
         {
             key: 'jhs_other_site',
             text: '🌍 第三方站点缓存',
-            title: '第三方站点资源检测结果, 如missav,supjav等'
-        },
-        {
-            key: 'jhs_screenShot',
-            text: '🖼️ 缩略图缓存',
-            title: '缩略图缓存'
+            title: 'missav/supjav 等站点搜索结果'
         },
         {
             key: 'jhs_translate',
             text: '🆎 标题翻译',
-            title: '标题翻译'
+            title: '番号→中文标题翻译（Google Translate）'
         },
         {
             key: 'jhs_actress_info',
             text: '👩 演员信息',
-            title: '演员的年龄三围等数据信息'
+            title: '演员身高/体重/三围/罩杯/生日（日文维基百科）'
         },
         {
             key: 'jhs_score_info',
             text: '⭐ Top250|热播 评分数据',
-            title: 'Top250及热播的评分数据'
+            title: '影片评分 HTML 快照（javdb 详情页）'
         }
     ];
 
@@ -221,11 +251,18 @@ export class SettingPlugin extends BasePlugin {
         callback?: () => void
     ): Promise<void> {
         const cacheItemsHtml = this.cacheItems
-            .map((item) =>
-                jsxToString(
-                    <CacheItemHtml text={item.text} cacheKey={item.key} title={item.title} />
-                )
-            )
+            .map((item) => {
+                const stats = getCacheStats(item.key);
+                return jsxToString(
+                    <CacheItemHtml
+                        text={item.text}
+                        cacheKey={item.key}
+                        title={item.title}
+                        size={formatSize(stats.size)}
+                        count={stats.count > 0 ? `${stats.count} 条` : '空'}
+                    />
+                );
+            })
             .join('');
         let qualityOptionsHtml = '';
         VIDEO_QUALITY_LIST.forEach((option) => {
@@ -676,6 +713,7 @@ export class SettingPlugin extends BasePlugin {
             if (panelName === 'cache-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').show();
+                this.refreshAllCacheStats();
             } else if (panelName === 'vlt-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').hide();
@@ -692,22 +730,32 @@ export class SettingPlugin extends BasePlugin {
         $('#webdavBackupBtn').on('click', () => this.backupDataByWebDav());
         $('#webdavBackupListBtn').on('click', () => this.backupListBtnByWebDav());
         $('#saveBtn').on('click', () => this.saveForm());
+        // ===== 缓存管理面板事件绑定 =====
+        // 初始化总量显示
+        this.refreshAllCacheStats();
+        // 清理单个缓存
         $('.clean-btn').on('click', (event: any) => {
             const cacheKey = $(event.currentTarget).data('key');
             const cacheItem = this.cacheItems.find((item) => item.key === cacheKey)!;
             localStorage.removeItem(cacheKey);
-            show.ok(`${cacheItem.text} 清理成功`);
-            $('#cache-data-display').hide();
+            // 联动清理 jhs_other_site_dmm（DMM 预览视频的伴生缓存）
             if (cacheKey === 'jhs_dmm_video') {
                 localStorage.removeItem('jhs_other_site_dmm');
             }
+            show.ok(`${cacheItem.text} 清理成功`);
+            $('#cache-data-display').hide();
+            this.refreshCacheStats(cacheKey);
+            this.refreshAllCacheStats();
         });
+        // 全部清理
         $('#clean-all').on('click', () => {
             this.cacheItems.forEach((item) => localStorage.removeItem(item.key));
+            localStorage.removeItem('jhs_other_site_dmm');
             show.ok('全部缓存已清理');
             $('#cache-data-display').hide();
-            localStorage.removeItem('jhs_other_site_dmm');
+            this.refreshAllCacheStats();
         });
+        // 查看缓存内容
         $('.view-btn').on('click', (event: any) => {
             const cacheKey = $(event.currentTarget).data('key');
             const cachedData = localStorage.getItem(cacheKey);
@@ -724,6 +772,26 @@ export class SettingPlugin extends BasePlugin {
             } else {
                 $pre.text('无数据');
             }
+        });
+        // 导出缓存为 JSON 文件
+        $('.export-btn').on('click', (event: any) => {
+            const cacheKey = $(event.currentTarget).data('key');
+            const cachedData = localStorage.getItem(cacheKey);
+            if (!cachedData) {
+                show.error('缓存为空，无可导出数据');
+                return;
+            }
+            const cacheItem = this.cacheItems.find((item) => item.key === cacheKey)!;
+            const blob = new Blob([cachedData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${cacheKey}-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            show.ok(`${cacheItem.text} 已导出`);
         });
         const $tagNumber = $('#highlightedTagNumber');
         const $tagColor = $('#highlightedTagColor');
@@ -881,6 +949,34 @@ export class SettingPlugin extends BasePlugin {
                 showToast(`✗ 导出失败：${err.message}`, 'error');
             }
         });
+    }
+
+    /**
+     * 刷新单个缓存项的统计信息（大小 + 条目数）。
+     * @param cacheKey localStorage 键名
+     */
+    refreshCacheStats(cacheKey: string): void {
+        const stats = getCacheStats(cacheKey);
+        const $item = $(`.cache-item[data-cache-key="${cacheKey}"]`);
+        $item.find('.cache-size').text(formatSize(stats.size));
+        $item.find('.cache-count').text(stats.count > 0 ? `${stats.count} 条` : '空');
+    }
+
+    /**
+     * 刷新所有缓存项的统计信息 + 总占用大小。
+     */
+    refreshAllCacheStats(): void {
+        let totalSize = 0;
+        for (const item of this.cacheItems) {
+            const stats = getCacheStats(item.key);
+            totalSize += stats.size;
+            const $item = $(`.cache-item[data-cache-key="${item.key}"]`);
+            $item.find('.cache-size').text(formatSize(stats.size));
+            $item.find('.cache-count').text(stats.count > 0 ? `${stats.count} 条` : '空');
+        }
+        // 联动缓存 jhs_other_site_dmm 的体积也计入总量
+        totalSize += getCacheStats('jhs_other_site_dmm').size;
+        $('#cache-total-size').text(`总占用 ${formatSize(totalSize)}`);
     }
 
     /** 保存设置表单到 storageManager 并刷新页面/相关插件。对应原 L10132-10207。 */

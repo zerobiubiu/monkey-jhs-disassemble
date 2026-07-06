@@ -554,16 +554,40 @@ export function SettingDialog({
                             display: panelName === 'cache-panel' ? 'block' : 'none'
                         }}
                     >
-                        <h1
+                        <div
                             style={{
-                                textAlign: 'center',
-                                fontSize: '20px',
-                                fontWeight: 'bold'
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '4px'
                             }}
                         >
-                            以下操作, 不会对核心数据造成影响
-                        </h1>
-                        <br />
+                            <h1
+                                style={{
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    margin: '0'
+                                }}
+                            >
+                                缓存管理
+                            </h1>
+                            <span
+                                id="cache-total-size"
+                                style={{
+                                    fontSize: '13px',
+                                    color: '#999'
+                                }}
+                            />
+                        </div>
+                        <p
+                            style={{
+                                color: '#999',
+                                fontSize: '12px',
+                                margin: '0 0 16px 0'
+                            }}
+                        >
+                            以下操作不会对核心数据造成影响，可安全清理
+                        </p>
                         <div
                             style={{
                                 display: 'grid',
