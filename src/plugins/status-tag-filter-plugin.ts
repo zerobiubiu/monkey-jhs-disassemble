@@ -18,10 +18,20 @@
  *
  * 显隐协同：jhs 用 `$item.hide().attr('data-hide', YES)` 控制显隐（设 display:none
  * + data-hide 属性），本脚本用 `item.style.display` + `data-status-tag-hidden`
- * 属性。原脚本已有"协同安全"设计：
- *   `hiddenByOther = item.style.display === 'none' && !item.hasAttribute(HIDDEN_ATTR)`
- * 被其他脚本隐藏的卡片（有 data-hide 无 data-status-tag-hidden）会被识别为
- * "被其他脚本隐藏"并跳过，不纳入本脚本管理——天然兼容 jhs。
+ * 属性。
+ *
+ * === 深度协同安全（doc/48 增强）===
+ * 原脚本协同安全依赖 `style.display === 'none'` 判断"被其他脚本隐藏"，但
+ * style.display 在排序/筛选时序竞争中可能被临时清除/覆盖，导致判断失效、
+ * 被屏蔽卡片被错误恢复显示。
+ *
+ * doc/48 把协同安全判断从"依赖易变的 style.display"升级为"依赖稳定的语义
+ * 属性 data-hide"：直接检查卡片是否带 jhs 的 `data-hide` 属性（两种值：
+ * "yes"=filterMovieList 屏蔽 / "<carNum>-hide"=showCarNumBox 临时隐藏），
+ * 只要属性在就跳过——排序移动节点（同一引用）不会丢失属性，彻底消除时序竞争。
+ *
+ * 同时 collectStatusTagCounts / countNoStatusItems 也排除被 jhs 屏蔽的卡片，
+ * 芯片计数只反映实际可见的卡片，避免计数失真。
  *
  * MutationObserver：jhs filterMovieList 的 hide/show 改 display 会触发本脚本
  * observer → updateFilterBar → applyFilter，但 applyFilter 的协同安全设计会
@@ -51,6 +61,14 @@ const LOG = '[状态标签筛选]';
 /** 标记本脚本隐藏的卡片（与 jhs 的 data-hide 区分，协同安全设计）。 */
 const HIDDEN_ATTR = 'data-status-tag-hidden';
 
+/**
+ * jhs 主项目的隐藏标记属性名。
+ * jhs ListPagePlugin.filterMovieList 用 `$item.hide().attr('data-hide', YES)`
+ * （值为 "yes"），showCarNumBox 用 `data-hide="<carNum>-hide"`（临时隐藏）。
+ * 两种值都表示卡片被 jhs 隐藏，本脚本统一检查属性是否存在（不关心值）。
+ */
+const JHS_HIDE_ATTR = 'data-hide';
+
 /** status-tag 选择器（与 jhs StatusTagHtml 生成的 class 一致）。 */
 const STATUS_TAG_SELECTOR = '.item .tags.has-addons .tag.is-success.status-tag';
 
@@ -61,11 +79,17 @@ const NO_TAG_VALUE = 'no-tag';
  * 收集每个 status-tag 文本的出现次数。
  * 对应原 L40-52。
  *
+ * doc/48 增强：排除被 jhs 屏蔽的卡片（带 data-hide 属性），
+ * 芯片计数只反映实际可见的卡片，避免计数失真。
+ *
  * @returns 标签文本→计数映射
  */
 function collectStatusTagCounts(): Record<string, number> {
     const counts: Record<string, number> = {};
     document.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
+        // 向上查找最近的 .item 容器，跳过被 jhs 屏蔽的卡片
+        const itemEl = el.closest('.item');
+        if (itemEl && itemEl.hasAttribute(JHS_HIDE_ATTR)) return;
         const text = el.textContent?.trim() || '';
         if (text) {
             counts[text] = (counts[text] || 0) + 1;
@@ -78,11 +102,16 @@ function collectStatusTagCounts(): Record<string, number> {
  * 计算无状态标签的卡片数。
  * 对应原 L57-66。
  *
+ * doc/48 增强：排除被 jhs 屏蔽的卡片（带 data-hide 属性），
+ * 计数只反映实际可见的卡片。
+ *
  * @returns 无状态标签的卡片数
  */
 function countNoStatusItems(): number {
     let count = 0;
     document.querySelectorAll('.item').forEach((item: Element) => {
+        // 跳过被 jhs 屏蔽的卡片
+        if (item.hasAttribute(JHS_HIDE_ATTR)) return;
         if (!item.querySelector(STATUS_TAG_SELECTOR)) {
             count++;
         }
@@ -214,25 +243,17 @@ export class StatusTagFilterPlugin extends BasePlugin {
         // 2) 挂在页面默认 tabs 容器之后
         const isActorPage = /^\/actors\//.test(window.location.pathname);
         if (isActorPage) {
-            const actorTags = document.querySelector(
-                'body > section > div > div.actor-tags.tags'
-            );
+            const actorTags = document.querySelector('body > section > div > div.actor-tags.tags');
             if (actorTags) return actorTags;
         } else {
-            const tabsBoxed = document.querySelector(
-                'body > section > div > div.tabs.is-boxed'
-            );
+            const tabsBoxed = document.querySelector('body > section > div > div.tabs.is-boxed');
             if (tabsBoxed) return tabsBoxed;
         }
 
         // 3) 回退：挂在 section 容器的第一个子元素之前
         const section = document.querySelector('body > section > div > div');
         if (section && section.firstElementChild) {
-            if (
-                !section.firstElementChild.matches(
-                    '.tag-filter-bar, .status-tag-filter-bar'
-                )
-            ) {
+            if (!section.firstElementChild.matches('.tag-filter-bar, .status-tag-filter-bar')) {
                 return section.firstElementChild;
             }
         }
@@ -240,11 +261,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         // 4) 最终回退：挂在 body > section > div 的第一个子元素之前
         const container = document.querySelector('body > section > div');
         if (container && container.firstElementChild) {
-            if (
-                !container.firstElementChild.matches(
-                    '.tag-filter-bar, .status-tag-filter-bar'
-                )
-            ) {
+            if (!container.firstElementChild.matches('.tag-filter-bar, .status-tag-filter-bar')) {
                 return container.firstElementChild;
             }
         }
@@ -279,9 +296,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
         const refreshChips = (): void => {
             // 保存当前选中状态
             const activeValues = new Set(
-                Array.from(
-                    chipsContainer.querySelectorAll('.status-tag-filter-chip.active')
-                ).map((c: Element) => (c as HTMLElement).dataset.value || '')
+                Array.from(chipsContainer.querySelectorAll('.status-tag-filter-chip.active')).map(
+                    (c: Element) => (c as HTMLElement).dataset.value || ''
+                )
             );
 
             chipsContainer.innerHTML = '';
@@ -311,9 +328,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         refreshChips();
 
         // 插入到 DOM
-        if (
-            mountTarget.matches('.tag-filter-bar, .actor-tags.tags, .tabs.is-boxed')
-        ) {
+        if (mountTarget.matches('.tag-filter-bar, .actor-tags.tags, .tabs.is-boxed')) {
             mountTarget.insertAdjacentElement('afterend', filterBar);
         } else {
             mountTarget.insertAdjacentElement('beforebegin', filterBar);
@@ -343,8 +358,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         chip.className = 'status-tag-filter-chip';
         if (isNoTag) chip.classList.add('no-status');
         // 芯片文本：标签名 + 计数（如 "⭐ 已收藏 12"）
-        chip.textContent =
-            count !== undefined ? `${labelText} ${count}` : labelText;
+        chip.textContent = count !== undefined ? `${labelText} ${count}` : labelText;
         chip.dataset.value = value;
 
         chip.addEventListener('click', () => {
@@ -368,36 +382,40 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * - 激活其他芯片：OR 逻辑，命中任一选中标签即显示
      */
     private applyFilter(): void {
-        const activeChips = document.querySelectorAll(
-            '.status-tag-filter-chip.active'
-        );
+        const activeChips = document.querySelectorAll('.status-tag-filter-chip.active');
         const selectedValues = new Set(
             Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
         );
 
         // 无筛选时：仅恢复本脚本隐藏的卡片，不清除其他脚本的隐藏
+        // doc/48 增强：恢复时检查 data-hide，避免恢复被 jhs 屏蔽的卡片
         if (selectedValues.size === 0) {
-            document
-                .querySelectorAll(`.item[${HIDDEN_ATTR}]`)
-                .forEach((item: Element) => {
-                    (item as HTMLElement).removeAttribute(HIDDEN_ATTR);
-                    (item as HTMLElement).style.display = '';
-                });
+            document.querySelectorAll(`.item[${HIDDEN_ATTR}]`).forEach((item: Element) => {
+                const htmlItem = item as HTMLElement;
+                // 被jhs 屏蔽的卡片不恢复显示（保持隐藏）
+                if (htmlItem.hasAttribute(JHS_HIDE_ATTR)) return;
+                htmlItem.removeAttribute(HIDDEN_ATTR);
+                htmlItem.style.display = '';
+            });
             return;
         }
 
         const showNoTag = selectedValues.has(NO_TAG_VALUE);
-        const selectedTags = new Set(
-            [...selectedValues].filter((v) => v !== NO_TAG_VALUE)
-        );
+        const selectedTags = new Set([...selectedValues].filter((v) => v !== NO_TAG_VALUE));
 
         document.querySelectorAll('.item').forEach((item: Element) => {
             const htmlItem = item as HTMLElement;
-            // 协同安全：已被其他脚本隐藏的卡片不纳入管理
+            // 协同安全（doc/48 增强）：被 jhs 屏蔽的卡片不纳入管理。
+            // 优先检查稳定的语义属性 data-hide（jhs 两种隐藏标记：
+            // "yes"=filterMovieList 屏蔽 / "<carNum>-hide"=showCarNumBox 临时隐藏），
+            // 而非易变的 style.display——排序/筛选时序竞争中 style.display 可能
+            // 被临时清除/覆盖，但 data-hide 属性在同一节点引用上不会丢失
+            // （jQuery empty+append 移动节点不丢属性）。同时保留 style.display
+            // 检查作为兼底（兼容未知脚本的隐藏）。
+            const hiddenByJhs = htmlItem.hasAttribute(JHS_HIDE_ATTR);
             const hiddenByOther =
-                htmlItem.style.display === 'none' &&
-                !htmlItem.hasAttribute(HIDDEN_ATTR);
-            if (hiddenByOther) return;
+                htmlItem.style.display === 'none' && !htmlItem.hasAttribute(HIDDEN_ATTR);
+            if (hiddenByJhs || hiddenByOther) return;
 
             // 收集当前卡片内所有 status-tag 的文本
             const itemStatusTags = new Set<string>();
