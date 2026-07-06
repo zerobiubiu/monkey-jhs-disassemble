@@ -183,13 +183,18 @@ __CSS_TEXT__ .nav-btn::after {
 }
 
 .side-menu-item {
-    padding: 12px 12px;
+    padding: 10px 14px;
     cursor: pointer;
     color: #333;
     border-left: 3px solid transparent;
     transition: all 0.2s;
     display: flex;
+    align-items: center;
     gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
 }
 
 .side-menu-item .icon {

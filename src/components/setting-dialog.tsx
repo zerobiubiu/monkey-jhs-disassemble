@@ -87,11 +87,12 @@ export function SettingDialog({
         <div style={{ display: 'flex', height: '100%' }}>
             <div
                 style={{
-                    width: '140px',
+                    width: '170px',
                     flexShrink: 0,
                     padding: '15px 0',
                     background: '#f5f5f5',
-                    borderRight: '1px solid #ddd'
+                    borderRight: '1px solid #ddd',
+                    overflowY: 'auto'
                 }}
             >
                 <div
@@ -129,7 +130,7 @@ export function SettingDialog({
                     className={`side-menu-item ${panelName === 'cache-panel' ? 'active' : ''}`}
                     data-panel="cache-panel"
                 >
-                    🧹 清理缓存
+                    🧹 缓存管理
                 </div>
                 <div
                     className={`side-menu-item ${panelName === 'vlt-panel' ? 'active' : ''}`}
