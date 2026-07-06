@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: '鉴黄师（test）',
                 namespace: 'zerobiubiu.top',
-                version: '1.0.0',
+                version: '1.0.1',
                 author: 'zerobiubiu',
                 license: 'MIT',
                 description:

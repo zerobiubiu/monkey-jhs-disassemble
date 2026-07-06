@@ -244,6 +244,19 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 - `css.lightningcss.errorRecovery: true`（layer.css IE hack 容错）
 - `build.minify`：默认 esbuild（terser 可选但已回退）
 
+### 6.1.1 版本号自动递增规则（强制）
+
+**每次修改 `src/` 下的源码内容（功能逻辑、CSS、类型、插件等）时，必须同步递增 `vite.config.ts` 中 `userscript.version` 的 patch 位。**
+
+- 版本号格式：`major.minor.patch`（语义化版本）
+- **patch 递增**：修 bug、小改动、优化、协同修复等 → `1.0.0` → `1.0.1` → `1.0.2`...
+- **minor 递增**：新增插件、新增功能模块、较大功能变更 → patch 归零，minor+1 → `1.0.5` → `1.1.0`
+- **major 递增**：架构级重构、不兼容变更 → minor/patch 归零，major+1 → `1.5.3` → `2.0.0`
+- 纯文档修改（`doc/` 下的 `.md`）、纯 `AGENTS.md` 修改不递增版本号
+- 修改 `vite.config.ts` 自身的构建配置（不改源码逻辑）不递增版本号
+- **执行时机**：代码修改完成、`tsc -b && vite build` 验证通过后，在最终回复前递增版本号
+- **验证**：构建产物 userscript 头部的 `@version` 应与 `vite.config.ts` 的 `version` 一致
+
 ### 6.2 tsconfig.app.json
 
 - `strict: true` + `noUnusedLocals/Parameters` + `noFallthroughCasesInSwitch`
