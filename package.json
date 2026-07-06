@@ -10,10 +10,6 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@types/blueimp-md5": "^2.18.2",
-        "@types/localforage": "^0.0.34",
-        "@types/toastify-js": "^1.12.4",
-        "@types/viewerjs": "^1.0.2",
         "blueimp-md5": "2.19.0",
         "localforage": "1.10.0",
         "toastify-js": "1.12.0",
@@ -25,8 +21,12 @@
         "react-dom": "^19.2.6"
     },
     "devDependencies": {
+        "@types/blueimp-md5": "^2.18.2",
+        "@types/localforage": "^0.0.34",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "@types/toastify-js": "^1.12.4",
+        "@types/viewerjs": "^1.0.2",
         "@vitejs/plugin-react": "^6.0.3",
         "typescript": "^6.0.3",
         "vite": "^8.0.11",
