@@ -21,11 +21,11 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.3.3',
+                version: '1.4.0',
                 author: 'zerobiubiu',
                 license: 'MIT',
                 description:
-                    'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、快捷键等 36 个功能插件',
+                    'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、快捷键等 35 个功能插件',
                 homepageURL: 'https://github.com/zerobiubiu/javdb-tools',
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
                 match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*'],

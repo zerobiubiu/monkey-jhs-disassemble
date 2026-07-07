@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 36 个功能插件（JavDB 34 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 35 个功能插件（JavDB 33 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -23,9 +23,9 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册 36 插件（javdb 34 + missav 2）
+│   ├── main.tsx            # 入口：启动序列 + 注册 35 插件（javdb 33 + missav 2）
 │   ├── core/               # 核心模块（15 个）
-│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 36 插件）
+│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 35 插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）
@@ -85,7 +85,7 @@ monkey-jhs-disassemble/
 - `processCss()` — 并发执行所有插件 initCss，返回结构化结果并汇总失败项
 - `processPlugins()` — 并发执行所有插件 handle，返回结构化结果并汇总失败项
 
-### 3.3 插件清单（35 个）
+### 3.3 插件清单（34 个）
 
 **主脚本拆分插件（22 个）**：来自 `archetype/jhs.user.js`
 
@@ -127,7 +127,6 @@ monkey-jhs-disassemble/
 | ListWaterfallPlugin | list-waterfall-plugin.ts | listWaterfall.user.js | doc/39 |
 | ListReadingStatusPlugin | list-reading-status-plugin.ts | listReadingStatus.user.js | doc/40 |
 | ModalListDisablerPlugin | modal-list-disabler-plugin.ts | modalListDisabler.user.js | doc/42 |
-| ListParserPlugin | list-parser-plugin.ts | listParser.user.js | doc/43 |
 | VideoListsTagPlugin | video-lists-tag/ 子目录（5 模块） | listsOptionSync + videoListsTag | doc/45 |
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
@@ -275,6 +274,20 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 - 已执行（✅）的文档永不可改（migration 原则）
 - 后续变更新建递增编号文档
 - `doc/README.md` 维护文档清单 + 阅读顺序 + 当前进度概览
+
+### 7.1 代码变更必须同步写 doc 文档（强制）
+
+**每次修改 `src/` 下的源码（功能逻辑、bug 修复、优化、插件增删等）时，
+必须在回答用户前同步编写 `doc/NN-描述.md` 文档，不等用户提醒。**
+
+- 小变更（几行代码的 bug 修复/优化）可合并到同一份 doc 中，但必须在背景
+  部分说明合并了哪些变更
+- 大变更（新增/删除插件、架构调整）必须独立一份 doc
+- 文档必须包含：背景、方案、实施（修改文件清单）、执行验证记录（tsc +
+  vite build 输出）、后续验证建议
+- 同时更新 `doc/README.md` 文档清单 + `changelog/CHANGELOG.md` +
+  `vite.config.ts` version（按 §6.1.1 规则）
+- **禁止**只改代码不写文档就回复用户
 
 ## 8. 更新本文档的时机
 
