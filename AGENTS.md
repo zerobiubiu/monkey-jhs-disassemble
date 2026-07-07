@@ -34,6 +34,7 @@ monkey-jhs-disassemble/
 ├── archetype/              # 原始脚本 + 独立油猴脚本（只读参考）
 ├── doc/                    # 文档（NN-描述.md，编号递增，不可回头改）
 ├── dist/                   # 构建产物（vite build 清空重建）
+├── changelog/              # 更新日志（CHANGELOG.md）
 ├── .agents/skills/         # Agent skills（userscript-integration）
 ├── vite.config.ts          # Vite + vite-plugin-monkey 配置
 ├── tsconfig.json           # TS 根配置（references app + node）

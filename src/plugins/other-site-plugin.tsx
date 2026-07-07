@@ -90,6 +90,20 @@ export class OtherSitePlugin extends BasePlugin {
     lastFetchTime = 0;
     /** 设置缓存有效期（毫秒）。对应原 L4873。 */
     CACHE_DURATION = 10000;
+    /** 列表页预加载限流队列（串行执行，避免洪水请求触发 Cloudflare 封禁）。 */
+    private preloadQueue: AsyncTaskQueue = new AsyncTaskQueue();
+    /** 列表页新 item 监听（autoPage 瀑布流 append 新页时触发预加载）。 */
+    private preloadObserver: MutationObserver | null = null;
+    /** 新 item 预加载防抖计时器。 */
+    private preloadDebounce: ReturnType<typeof setTimeout> | null = null;
+    /** 预加载日志前缀。 */
+    private static readonly PRELOAD_LOG = '[OtherSite 预加载]';
+    /**
+     * 预加载中被 Cloudflare 拦截的站点 ID 集合。
+     * 一旦某站点返回 "Just a moment..."（403），本轮预加载跳过该站点剩余任务，
+     * 避免逐个失败刷屏 + 浪费请求。下次页面加载时重试（集合在 handle() 入口重置）。
+     */
+    private blockedSiteIds: Set<string> = new Set();
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4875-4877。 */
     getName(): string {
@@ -105,13 +119,23 @@ export class OtherSitePlugin extends BasePlugin {
     }
 
     /**
-     * 详情页入口：触发的第三方站点跳转按钮渲染。对应原 L4881-4885。
-     * 仅当 window.isDetailPage 为真时执行；无参数，返回 Promise<void>，
-     * loadOtherSite 为 fire-and-forget 不向上抛出。
+     * 入口：详情页渲染跳转按钮，列表页预加载缓存。
+     * 对应原 L4881-4885（详情页分支），列表页预加载为新增功能。
+     *
+     * - 详情页（isDetailPage）：调用 loadOtherSite 渲染按钮 + 探测链接
+     * - 列表页（isListPage）：调用 preloadListPage 遍历 item 预加载缓存，
+     *   并监听 autoPage 瀑布流新 item
+     *
+     * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
+        // 每次页面加载重置 Cloudflare 拦截标记，重新尝试
+        this.blockedSiteIds.clear();
         if ((window as any).isDetailPage) {
             this.loadOtherSite().then();
+        } else if ((window as any).isListPage) {
+            this.preloadListPage().then();
+            this.startPreloadObserver();
         }
     }
 
@@ -302,6 +326,168 @@ export class OtherSitePlugin extends BasePlugin {
                 }
             }
         }
+    }
+
+    /**
+     * 列表页预加载：遍历 .movie-list .item 提取番号，对无缓存的番号
+     * 串行限流请求 missav/supjav 搜索页并写入 jhs_other_site 缓存。
+     *
+     * 纯缓存预热，不渲染任何按钮。详情页打开时 handleSite 查缓存命中，
+     * 直接回填按钮，不发请求。
+     *
+     * 优化策略：
+     * - 跳过已缓存的番号（避免重复请求）
+     * - 跳过被 jhs 屏蔽的 item（data-hide，减少不必要请求）
+     * - AsyncTaskQueue 串行限流（一个接一个，避免洪水请求触发 Cloudflare）
+     *
+     * @returns Promise<void>；无显式抛出
+     */
+    async preloadListPage(): Promise<void> {
+        if ((await storageManager.getSetting('enableLoadOtherSite', YES)) !== YES) {
+            return;
+        }
+        const listPagePlugin = this.getBean('ListPagePlugin');
+        if (!listPagePlugin) return;
+
+        const enabledSiteIds = this.getEnabledSites();
+        const $items = $('.movie-list .item');
+        let preloadCount = 0;
+
+        $items.each((_index: number, itemEl: any) => {
+            const $item = $(itemEl);
+            // 跳过被 jhs 屏蔽的卡片
+            if ($item.attr('data-hide') === YES) return;
+
+            let carNum: string;
+            try {
+                carNum = listPagePlugin.findCarNumAndHref($item).carNum;
+            } catch {
+                return; // 提取番号失败，跳过
+            }
+            if (!carNum) return;
+
+            // 遍历启用的站点，无缓存的入队预加载
+            for (const siteConfig of this.siteConfigs) {
+                if (!enabledSiteIds.includes(siteConfig.id)) continue;
+                if (siteConfig.condition && siteConfig.condition(siteConfig.sourceCarNum) === false)
+                    continue;
+                // 本轮已被 Cloudflare 拦截的站点跳过
+                if (this.blockedSiteIds.has(siteConfig.id)) continue;
+
+                const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
+                const storageKey = 'jhs_other_site';
+                const cache: any = localStorage.getItem(storageKey)
+                    ? JSON.parse(localStorage.getItem(storageKey) as string)
+                    : {};
+                // 已缓存则跳过
+                if (cache[cacheKey]) continue;
+
+                // 入队串行限流预加载
+                this.preloadQueue.addTask(async () => {
+                    // 二次检查：队列执行期间可能已被标记拦截
+                    if (this.blockedSiteIds.has(siteConfig.id)) return;
+                    await this.preloadSite(carNum, siteConfig);
+                });
+                preloadCount++;
+            }
+        });
+
+        if (preloadCount > 0) {
+            console.log(
+                `${OtherSitePlugin.PRELOAD_LOG} 列表页 ${$items.length} 个 item，入队 ${preloadCount} 个预加载任务`
+            );
+        }
+    }
+
+    /**
+     * 单站点缓存预热：请求搜索页 → 解析详情链接 → 写缓存。
+     *
+     * 与 handleSite 的区别：不操作按钮 DOM，只写缓存。
+     * 复用 handleSite 的搜索-解析-缓存流程，但全部在 try-catch 中静默执行。
+     *
+     * @param carNum 番号
+     * @param siteConfig 站点配置
+     * @returns Promise<void>；无显式抛出
+     */
+    private async preloadSite(carNum: string, siteConfig: SiteConfig): Promise<void> {
+        try {
+            const baseUrl = await siteConfig.getBaseUrl();
+            const searchUrl = siteConfig.searchPath(baseUrl, carNum);
+            const htmlContent = await gmHttp.get(searchUrl, null, siteConfig.headers, true);
+            const $dom = utils.htmlTo$dom(htmlContent);
+            const detailHrefs: string[] = [];
+            $dom.find(siteConfig.itemSelector).each((_index: number, element: any) => {
+                const itemEl = $(element);
+                if (
+                    !siteConfig
+                        .findCarNumOrTitle(itemEl)
+                        .toLowerCase()
+                        .includes(carNum.toLowerCase())
+                ) {
+                    return;
+                }
+                let href = siteConfig.getDetailPageHref(itemEl, baseUrl, carNum);
+                if (!href) return;
+                if (!href.includes('http')) {
+                    href = baseUrl + (href.startsWith('/') ? href : '/' + href);
+                }
+                detailHrefs.push(href);
+            });
+
+            let resultData: SiteResult | null = null;
+            if (detailHrefs.length === 1) {
+                resultData = { type: 'single', url: detailHrefs[0] };
+            } else if (detailHrefs.length > 1) {
+                resultData = { type: 'multiple', url: searchUrl };
+            }
+            // 未命中（detailHrefs.length === 0）不缓存，与 handleSite 一致
+
+            if (resultData) {
+                const storageKey = 'jhs_other_site';
+                const cache: any = localStorage.getItem(storageKey)
+                    ? JSON.parse(localStorage.getItem(storageKey) as string)
+                    : {};
+                const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
+                cache[cacheKey] = resultData;
+                localStorage.setItem(storageKey, JSON.stringify(cache));
+            }
+        } catch (error: any) {
+            const siteName = siteConfig.id.replace('Btn', '');
+            const errorMsg = String(error);
+            // Cloudflare 拦截（403 + "Just a moment..."）：标记该站点，跳过本轮剩余任务
+            if (errorMsg.includes('Just a moment') || errorMsg.includes('403')) {
+                this.blockedSiteIds.add(siteConfig.id);
+                console.warn(
+                    `${OtherSitePlugin.PRELOAD_LOG} ${siteName} 被 Cloudflare 拦截，跳过本轮剩余预加载任务`
+                );
+                return;
+            }
+            // 其他错误静默处理（不影用户，下次打开详情页会重试）
+            console.warn(
+                `${OtherSitePlugin.PRELOAD_LOG} ${carNum} ${siteName} 预加载失败:`,
+                errorMsg.slice(0, 80)
+            );
+        }
+    }
+
+    /**
+     * 监听 .movie-list 子元素变化（autoPage 瀑布流 append 新页），
+     * 防抖后对新 item 预加载缓存。
+     *
+     * 只读不写 DOM，不会与 ListPagePlugin.checkDom 的 MutationObserver 互相触发。
+     * preloadListPage 内部会跳过已缓存的番号，所以重复调用安全。
+     */
+    private startPreloadObserver(): void {
+        const containerEl = document.querySelector('.movie-list');
+        if (!containerEl) return;
+
+        this.preloadObserver = new MutationObserver(() => {
+            if (this.preloadDebounce) clearTimeout(this.preloadDebounce);
+            this.preloadDebounce = setTimeout(() => {
+                this.preloadListPage().then();
+            }, 500); // 500ms 防抖，等 autoPage append + ListPagePlugin doFilter 完成
+        });
+        this.preloadObserver.observe(containerEl, { childList: true });
     }
 
     /**

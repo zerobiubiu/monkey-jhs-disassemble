@@ -173,6 +173,10 @@ src/
 
 详细开发文档见 [`doc/`](./doc/) 目录，按编号递增，每份文档记录一次技术变更。
 
+## 📝 更新日志
+
+详见 [`changelog/CHANGELOG.md`](./changelog/CHANGELOG.md)。
+
 ## 📄 License
 
 MIT
