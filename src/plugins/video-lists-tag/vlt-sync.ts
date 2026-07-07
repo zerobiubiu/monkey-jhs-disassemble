@@ -13,12 +13,16 @@
 
 import { VltDb, type SyncResult } from './vlt-db';
 import { showToast } from './vlt-toast';
+import { FAVORITE_ACTION } from '../../constants/status';
 
 /** 日志前缀。 */
 const LOG_PREFIX = '[JavDB]';
 
 /** 同步事件广播键。 */
 const LAST_SYNC_KEY = 'jdb:last-sync';
+
+/** 触发自动收藏的清单名称关键词（清单名称包含此词时，添加视频自动收藏）。 */
+const AUTO_FAVORITE_KEYWORD = '等待更新';
 
 /** association → toast 映射。 */
 const ASSOC_TOAST: Record<
@@ -221,6 +225,156 @@ async function syncMoviesLists(
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
+ * 从详情页 DOM 提取演员名（与 BasePlugin.getPageInfo 的 actress 提取逻辑一致）。
+ * 用于自动收藏时填充 CarRecord.names 字段。
+ *
+ * @returns 女演员名拼接字符串（空时返回空字符串）
+ */
+function getActressNames(): string {
+    try {
+        return $('.female')
+            .prev()
+            .map((_index: number, el: any) => $(el).text())
+            .get()
+            .join(' ')
+            .trim();
+    } catch {
+        return '';
+    }
+}
+
+/** 「想看/观看」状态变更广播键（与 DetailPageButtonPlugin.broadcastWantWatchedSync 一致）。 */
+const WANT_WATCHED_SYNC_KEY = 'jdb:want-watched-sync';
+
+/**
+ * 广播「想看/观看」状态变更，与 DetailPageButtonPlugin.broadcastWantWatchedSync 等价。
+ *
+ * 三重通道：GM_setValue（跨标签页）/ localStorage（跨脚本同源）/ CustomEvent（同页面即时）。
+ * 接收方为 DetailPageButtonPlugin.setupWantWatchedSyncListener，会：
+ *   1. 详情页：showStatus 刷新菜单按钮文案（屏蔽/收藏/已观看）
+ *   2. 列表页：refreshItemStatusTag 刷新匹配卡片 status-tag
+ *
+ * 自动收藏必须广播，才能让其他标签页/列表页/当前详情页同步刷新状态，
+ * 与手动点击收藏（onWantAdded/quickConvertToFav）效果一致。
+ *
+ * @param carNum 番号
+ * @param status 状态动作（FAVORITE_ACTION 等）
+ * @param op 操作类型（'add' / 'remove'）
+ */
+function broadcastWantWatchedSync(carNum: string, status: string, op: 'add' | 'remove'): void {
+    try {
+        const payload = { carNum, status, op, time: Date.now() };
+        const json = JSON.stringify(payload);
+        // 1) GM 原生通道（跨标签页）
+        try {
+            GM_setValue(WANT_WATCHED_SYNC_KEY, json);
+        } catch {}
+        // 2) localStorage（跨脚本同源）
+        try {
+            localStorage.setItem(WANT_WATCHED_SYNC_KEY, json);
+        } catch {}
+        // 3) CustomEvent（同页面即时，DetailPageButtonPlugin.setupWantWatchedSyncListener 接收）
+        try {
+            document.dispatchEvent(new CustomEvent(WANT_WATCHED_SYNC_KEY, { detail: payload }));
+        } catch {}
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 自动收藏广播失败`, err);
+    }
+}
+
+/**
+ * 当向名称包含「等待更新」的清单添加视频时，自动将未收藏视频收藏。
+ *
+ * 策略（保守，不覆盖用户已设置的其它状态）：
+ * - 记录不存在或 status 为空 → 自动收藏
+ * - status 已是 FAVORITE_ACTION → 跳过（不重复收藏）
+ * - status 为其它状态（屏蔽/已观看等）→ 跳过并提示
+ *
+ * 收藏成功后：
+ * 1. 广播三重事件（与 onWantAdded/quickConvertToFav 一致），让当前详情页菜单按钮
+ *    文案、其他标签页列表页 status-tag 同步刷新
+ * 2. 通过 DetailPageButtonPlugin 调用 JavDB API 设为「想看」+ _syncRatingBar 刷新
+ *    星标评分组件收藏状态（quickConvertToFav 同款事件链）
+ *
+ * @param movieInfo 影片信息（getMovieInfo 返回）
+ * @param lname 清单名称
+ */
+async function autoFavoriteIfPendingUpdate(
+    movieInfo: NonNullable<ReturnType<typeof getMovieInfo>>,
+    lname: string
+): Promise<void> {
+    if (!lname.includes(AUTO_FAVORITE_KEYWORD)) return;
+
+    const des = movieInfo.designation;
+    try {
+        const carRecord = await storageManager.getCar(des);
+        if (carRecord && carRecord.status === FAVORITE_ACTION) {
+            // 已收藏，跳过
+            return;
+        }
+        if (carRecord && carRecord.status) {
+            // 已有其它状态（屏蔽/已观看等），不覆盖
+            showToast(`ℹ️ [${des}] 已标记为「${carRecord.status}」，跳过自动收藏`, 'info');
+            return;
+        }
+        // 未收藏 → 自动收藏（写入 IndexedDB）
+        await storageManager.saveCar({
+            carNum: des,
+            url: movieInfo.info.href,
+            names: getActressNames(),
+            actionType: FAVORITE_ACTION,
+            publishTime: movieInfo.info.release_date
+        });
+        // 广播三重事件：让当前详情页 showStatus + 其他标签页 refreshItemStatusTag 同步刷新
+        broadcastWantWatchedSync(des, FAVORITE_ACTION, 'add');
+        showToast(`⭐ [${des}] 已自动收藏（添加至「${lname}」）`, 'success');
+        console.log(`${LOG_PREFIX} 自动收藏: ${des}（触发清单：${lname}）`);
+        // 联动星标评分组件：调 JavDB API 设为「想看」+ 刷新评分条收藏高亮
+        // 与 quickConvertToFav 同款事件链（_reviewChain 串行化 + _wantWatchedSyncing 守卫）
+        triggerJavdbWantAndSyncRatingBar(des);
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 自动收藏失败: ${des}`, err);
+        showToast(`✗ [${des}] 自动收藏失败：${err.message || '未知错误'}`, 'error');
+    }
+}
+
+/**
+ * 通过 DetailPageButtonPlugin 调用 JavDB API 设为「想看」并刷新星标评分组件。
+ *
+ * 复用 DetailPageButtonPlugin 的 _triggerJavdbWant（发 JavDB API 请求 + 执行 Rails JS
+ * 同步更新 DOM）和 _syncRatingBar（从 .review-buttons DOM 检测 want 状态，刷新
+ * 评分条收藏按钮高亮），与 quickConvertToFav 的事件链完全一致。
+ *
+ * 通过 _reviewChain 串行化（防止与 MutationObserver 竞争）+ _wantWatchedSyncing
+ * 守卫（防止 onWantAdded 重复写入），均复用 DetailPageButtonPlugin 实例字段。
+ *
+ * @param carNum 番号（仅用于日志）
+ */
+function triggerJavdbWantAndSyncRatingBar(carNum: string): void {
+    try {
+        const detailPlugin: any = pluginManager?.getBean?.('DetailPageButtonPlugin');
+        if (!detailPlugin) {
+            console.warn(`${LOG_PREFIX} DetailPageButtonPlugin 未注册，跳过星标评分联动`);
+            return;
+        }
+        // 复用 _reviewChain 串行化（与 quickConvertToFav 完全一致的结构）
+        detailPlugin._reviewChain = (detailPlugin._reviewChain || Promise.resolve())
+            .then(async () => {
+                detailPlugin._wantWatchedSyncing = true;
+                try {
+                    await detailPlugin._triggerJavdbWant();
+                    detailPlugin._syncRatingBar();
+                } finally {
+                    detailPlugin._wantWatchedSyncing = false;
+                }
+            })
+            .catch(() => {});
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 星标评分联动失败: ${carNum}`, err);
+    }
+}
+
+/**
  * 处理 checkbox 勾选/取消。
  * 对应原 L515-571 的 handleCheckboxChange。
  *
@@ -259,6 +413,11 @@ export async function handleCheckboxChange(
         showToast(msg, type);
     } else {
         showToast(`✗ [${des}] 未知响应：${result.association}`, 'error');
+    }
+
+    // 勾选（添加到清单）且清单名称包含「等待更新」时，自动收藏未收藏视频
+    if (checked) {
+        autoFavoriteIfPendingUpdate(movieInfo, lname).then();
     }
 
     console.log(`${LOG_PREFIX} ═══ 完成 ═══`);

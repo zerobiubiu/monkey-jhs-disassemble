@@ -9,6 +9,49 @@
 
 ---
 
+## v1.5.2
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **自动收藏联动星标评分组件**（doc/55）：doc/54 广播后详情页星标评分处
+  收藏仍未高亮。根因是 `_syncRatingBar` 从 JavDB 原生 DOM 检测「想看」
+  状态而非 JHS IDB。补充 `triggerJavdbWantAndSyncRatingBar`：通过
+  `pluginManager.getBean` 获取 `DetailPageButtonPlugin` 实例，复用
+  `_reviewChain` 串行调用 `_triggerJavdbWant`（JavDB API 设为想看 +
+  Rails JS 同步更新 DOM）+ `_syncRatingBar`（刷新评分条收藏高亮），
+  与 `quickConvertToFav` 完全一致。零侵入已定稿插件。
+
+---
+
+## v1.5.1
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **自动收藏补充三重广播事件**（doc/54）：doc/53 的自动收藏仅写了
+  IndexedDB，未触发后续事件链。补充 `broadcastWantWatchedSync` 三重广播
+  （GM_setValue/localStorage/CustomEvent），与手动收藏
+  （`onWantAdded`/`quickConvertToFav`）效果一致——详情页菜单按钮文案
+  刷新 + 列表页 status-tag 同步刷新。
+
+---
+
+## v1.5.0
+
+**发布日期**：2026-07-07
+
+### 新增
+
+- **向「等待更新」清单添加视频时自动收藏**（doc/53）：在详情页勾选名称
+  包含「等待更新」的清单时，自动将未收藏的视频写入 JHS 收藏
+  （`FAVORITE_ACTION`）。保守策略不覆盖已有其它状态（屏蔽/已观看），
+  已收藏的视频跳过。fire-and-forget 不阻塞清单同步广播。
+
+---
+
 ## v1.4.0
 
 **发布日期**：2026-07-07
