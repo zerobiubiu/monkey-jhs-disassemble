@@ -81,7 +81,11 @@ export class OtherSitePlugin extends BasePlugin {
             itemSelector: '.posts post',
             searchPath: (baseUrl: string, carNum: string) => `${baseUrl}/?s=${carNum}`,
             getDetailPageHref: (item: any) => item.attr('href'),
-            findCarNumOrTitle: (item: any) => item.attr('title')
+            findCarNumOrTitle: (item: any) => item.attr('title'),
+            // SupJav 全站 Cloudflare 拦截严重，解析不可靠。
+            // 设 initUrl 后 handleSite 直接显示黄色（warn 状态）+ 搜索页链接，
+            // 跳过所有请求（预加载 + 详情页加载均不发请求）。
+            initUrl: (carNum: string) => `https://supjav.com/?s=${carNum}`
         }
     ];
     /** storageManager.getSetting() 全量设置缓存，配合 lastFetchTime 做 TTL 复用。对应原 L4871。 */
@@ -123,8 +127,12 @@ export class OtherSitePlugin extends BasePlugin {
      * 对应原 L4881-4885（详情页分支），列表页预加载为新增功能。
      *
      * - 详情页（isDetailPage）：调用 loadOtherSite 渲染按钮 + 探测链接
-     * - 列表页（isListPage）：调用 preloadListPage 遍历 item 预加载缓存，
-     *   并监听 autoPage 瀑布流新 item
+     * - 有 .movie-list 的页面（排除 /users/* 清单列表页）：调用 preloadListPage
+     *   遍历 item 预加载缓存，并监听瀑布流新 item
+     *
+     * 不依赖 window.isListPage 判断，而是直接检测 .movie-list 是否存在，
+     * 这样 /lists/xxx 清单详情页（有 .movie-list）也能预加载，
+     * 而 /users/* 清单列表页（容器是 #lists > ul，无 .movie-list）自动排除。
      *
      * @returns Promise<void>；无显式抛出
      */
@@ -133,7 +141,9 @@ export class OtherSitePlugin extends BasePlugin {
         this.blockedSiteIds.clear();
         if ((window as any).isDetailPage) {
             this.loadOtherSite().then();
-        } else if ((window as any).isListPage) {
+        } else if (document.querySelector('.movie-list')) {
+            // 有 .movie-list 的页面（列表页/清单详情页/搜索页等）才预加载
+            // /users/* 清单列表页无 .movie-list（容器是 #lists > ul），自动排除
             this.preloadListPage().then();
             this.startPreloadObserver();
         }
@@ -344,19 +354,38 @@ export class OtherSitePlugin extends BasePlugin {
      */
     async preloadListPage(): Promise<void> {
         if ((await storageManager.getSetting('enableLoadOtherSite', YES)) !== YES) {
+            console.log(`${OtherSitePlugin.PRELOAD_LOG} 已禁用，跳过预加载`);
             return;
         }
         const listPagePlugin = this.getBean('ListPagePlugin');
-        if (!listPagePlugin) return;
+        if (!listPagePlugin) {
+            console.log(`${OtherSitePlugin.PRELOAD_LOG} ListPagePlugin 未就绪，跳过`);
+            return;
+        }
 
         const enabledSiteIds = this.getEnabledSites();
         const $items = $('.movie-list .item');
+        if ($items.length === 0) {
+            console.log(`${OtherSitePlugin.PRELOAD_LOG} 无 .item，跳过`);
+            return;
+        }
+
+        // 统计缓存情况
+        const storageKey = 'jhs_other_site';
+        const cache: any = localStorage.getItem(storageKey)
+            ? JSON.parse(localStorage.getItem(storageKey) as string)
+            : {};
+        let cachedCount = 0;
+        let skippedHiddenCount = 0;
         let preloadCount = 0;
 
         $items.each((_index: number, itemEl: any) => {
             const $item = $(itemEl);
             // 跳过被 jhs 屏蔽的卡片
-            if ($item.attr('data-hide') === YES) return;
+            if ($item.attr('data-hide') === YES) {
+                skippedHiddenCount++;
+                return;
+            }
 
             let carNum: string;
             try {
@@ -373,14 +402,15 @@ export class OtherSitePlugin extends BasePlugin {
                     continue;
                 // 本轮已被 Cloudflare 拦截的站点跳过
                 if (this.blockedSiteIds.has(siteConfig.id)) continue;
+                // 有 initUrl 的站点（如 SupJav）直接显示黄色，不需要预加载
+                if (siteConfig.initUrl) continue;
 
                 const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
-                const storageKey = 'jhs_other_site';
-                const cache: any = localStorage.getItem(storageKey)
-                    ? JSON.parse(localStorage.getItem(storageKey) as string)
-                    : {};
                 // 已缓存则跳过
-                if (cache[cacheKey]) continue;
+                if (cache[cacheKey]) {
+                    cachedCount++;
+                    continue;
+                }
 
                 // 入队串行限流预加载
                 this.preloadQueue.addTask(async () => {
@@ -392,11 +422,13 @@ export class OtherSitePlugin extends BasePlugin {
             }
         });
 
-        if (preloadCount > 0) {
-            console.log(
-                `${OtherSitePlugin.PRELOAD_LOG} 列表页 ${$items.length} 个 item，入队 ${preloadCount} 个预加载任务`
-            );
-        }
+        console.log(
+            `${OtherSitePlugin.PRELOAD_LOG} ${$items.length} 个 item（屏蔽 ${skippedHiddenCount}）| ` +
+                `已缓存 ${cachedCount} | 入队 ${preloadCount} 个任务` +
+                (this.blockedSiteIds.size > 0
+                    ? ` | 被拦截站点: ${[...this.blockedSiteIds].map((id) => id.replace('Btn', '')).join(', ')}`
+                    : '')
+        );
     }
 
     /**
@@ -450,6 +482,13 @@ export class OtherSitePlugin extends BasePlugin {
                 const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
                 cache[cacheKey] = resultData;
                 localStorage.setItem(storageKey, JSON.stringify(cache));
+                console.log(
+                    `${OtherSitePlugin.PRELOAD_LOG} ✓ ${carNum} ${siteConfig.id.replace('Btn', '')} ${resultData.type === 'single' ? '命中' : '多结果'}`
+                );
+            } else {
+                console.log(
+                    `${OtherSitePlugin.PRELOAD_LOG} ✗ ${carNum} ${siteConfig.id.replace('Btn', '')} 未命中`
+                );
             }
         } catch (error: any) {
             const siteName = siteConfig.id.replace('Btn', '');
@@ -458,24 +497,28 @@ export class OtherSitePlugin extends BasePlugin {
             if (errorMsg.includes('Just a moment') || errorMsg.includes('403')) {
                 this.blockedSiteIds.add(siteConfig.id);
                 console.warn(
-                    `${OtherSitePlugin.PRELOAD_LOG} ${siteName} 被 Cloudflare 拦截，跳过本轮剩余预加载任务`
+                    `${OtherSitePlugin.PRELOAD_LOG} ⚠ ${siteName} 被 Cloudflare 拦截，跳过本轮剩余任务`
                 );
                 return;
             }
             // 其他错误静默处理（不影用户，下次打开详情页会重试）
             console.warn(
-                `${OtherSitePlugin.PRELOAD_LOG} ${carNum} ${siteName} 预加载失败:`,
-                errorMsg.slice(0, 80)
+                `${OtherSitePlugin.PRELOAD_LOG} ✗ ${carNum} ${siteName} 失败: ${errorMsg.slice(0, 60)}`
             );
         }
     }
 
     /**
-     * 监听 .movie-list 子元素变化（autoPage 瀑布流 append 新页），
+     * 监听 .movie-list 子元素变化（AutoPage 瀑布流 append 新页），
      * 防抖后对新 item 预加载缓存。
      *
+     * 与瀑布流的联动：
+     * - AutoPagePlugin（.movie-list 瀑布流）：loadNextPage 往 .movie-list append
+     *   新 item → 触发本 observer → 500ms 防抖 → preloadListPage（跳过已缓存）
+     * - ListWaterfallPlugin（#lists > ul 瀑布流）：操作的是 #lists > ul 不是
+     *   .movie-list，不触发本 observer（且 /users/* 清单列表页无 .movie-list）
+     *
      * 只读不写 DOM，不会与 ListPagePlugin.checkDom 的 MutationObserver 互相触发。
-     * preloadListPage 内部会跳过已缓存的番号，所以重复调用安全。
      */
     private startPreloadObserver(): void {
         const containerEl = document.querySelector('.movie-list');
