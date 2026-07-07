@@ -1,8 +1,9 @@
-# monkey-jhs-disassemble 文档
+# JavDB Power Tools 文档
 
-本项目将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
+本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
-要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。
+要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
+形成 JavDB / MissAV 双站增强工具箱，共 36 个功能插件（JavDB 34 + MissAV 2）。
 
 ## 文档清单
 
@@ -58,6 +59,8 @@
 | `46-car-status-sync-integration.md` | 🔧开发指导 | ✅已执行 | jhsCarListReader + missavStatusTag 合并集成 + 去后端化：远程 API → 油猟 GM 存储跨域传递（GM_setValue + GM_addValueChangeListener，零网络请求实时同步）；6 模块子目录（car-status-config/columnar/db/renderer/car-list-reader-plugin/missav-status-tag-plugin）；增量推送（storageManager 写方法内部触发回调）+ 全量兜底（页面加载延迟2s）；missav 端独立 IndexedDB MissAV-CarStatus/cars；设置面板新增“🎬 MissAV 同步”面板（立即同步/导入/导出）；支持后端列存格式+行式格式两种导入；tsc -b + vite build 通过，产物 1850.01 kB（gzip 441.06 kB），+33.94 kB |
 | `47-runtime-cleanup-optimization.md` | 🔧开发指导 | ✅已执行 | 运行时调度与依赖清理优化：PluginManager 失败汇总改按结构化结果判定；main.tsx await processCss 后再执行页面判定/插件 handle；StorageManager 增加缓存清理公开方法并修复 merge_blacklist sort_type 迁移分支；ListPagePlugin 不再直接改 private 缓存字段；去除重复 layer.css 显式导入；移除 react-dom/@types/react-dom；tsc -b + vite build 通过，产物 1809.45 kB（gzip 413.37 kB） |
 | `48-status-tag-filter-deep-coordination.md` | 🔧开发指导 | ✅已执行 | StatusTagFilter 与 jhs 屏蔽深度协同修复：协同安全从依赖易变的 style.display 升级为依赖稳定的语义属性 data-hide（jhs 两种隐藏标记："yes"=filterMovieList 屏蔽 / "<carNum>-hide"=showCarNumBox 临时隐藏）；collectStatusTagCounts/countNoStatusItems 排除被 jhs 屏蔽的卡片避免计数失真；applyFilter 无筛选恢复分支增加 data-hide 保护；零侵入 jhs（仅 StatusTagFilter 单方面增强）；tsc -b + vite build 通过，产物 1809.85 kB（gzip 413.45 kB） |
+| `49-missav-quick-copy-integration.md` | 🔧开发指导 | ✅已执行 | MissAV Quick Copy & Javdb Search 独立脚本集成：~190 行单文件不拆子目录，作为 MissavQuickCopyPlugin 注册到 PluginManager（missav only）；无 CSS（按钮复用页面 tailwind class）；保留原生 createElement/createElementNS 创建按钮+SVG（非 innerHTML 模板）；保留原 <a>.click() 打开新标签页（原脚本注释掉了 GM_openInTab/window.open）；MutationObserver 等待目标工具栏出现即 disconnect；无冲突（操作播放页工具栏，与 MissavStatusTagPlugin 的缩略图容器无交集）；tsc -b + vite build 通过，产物 1815.46 kB（gzip 415.22 kB），+5.61 kB |
+| `50-rename-and-release-prep.md` | 🔧开发指导 | ✅已执行 | 项目重命名为 JavDB Power Tools + 公开发布准备：userscript name 去“（test）” + description 重写 + README 全新重写（6 大类 36 功能清单 + 安装/配置/支持站点/技术架构/隐私说明/开发）；AGENTS.md/doc-README/main.tsx 插件计数同步 36（javdb 34 + missav 2）；tsc -b + vite build 通过，产物 1815.46 kB（gzip 415.25 kB），version 1.1.0→1.2.0 |
 
 ## 类型图例
 

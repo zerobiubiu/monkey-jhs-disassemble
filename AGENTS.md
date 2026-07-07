@@ -1,13 +1,15 @@
 # 项目架构地图
 
-> 本文档描述 `monkey-jhs-disassemble` 项目的完整架构，供 AI agent 快速理解项目结构。
+> 本文档描述 `monkey-jhs-disassemble` 项目（对外名称 **JavDB Power Tools**）的完整架构，
+> 供 AI agent 快速理解项目结构。
 > 每次代码变更（新增/删除/重命名文件、修改核心架构）时必须同步更新本文档。
 
 ## 1. 项目概述
 
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
-要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。
+要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
+形成 JavDB / MissAV 双站增强工具箱，共 36 个功能插件（JavDB 34 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -21,9 +23,9 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册 34 插件（javdb 33 + missav 1）
+│   ├── main.tsx            # 入口：启动序列 + 注册 36 插件（javdb 34 + missav 2）
 │   ├── core/               # 核心模块（15 个）
-│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 31 插件）
+│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 36 插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）

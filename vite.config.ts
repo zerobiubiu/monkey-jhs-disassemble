@@ -19,13 +19,13 @@ export default defineConfig({
         monkey({
             entry: 'src/main.tsx',
             userscript: {
-                name: '鉴黄师（test）',
+                name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.0.1',
+                version: '1.2.0',
                 author: 'zerobiubiu',
                 license: 'MIT',
                 description:
-                    'Jav-鉴黄师 收藏、屏蔽; 屏蔽标签、屏蔽演员、同步收藏演员、新作品检测; 免VIP查看热播、Top250排行榜、Fc2ppv、可查看所有评论信息、相关清单; 支持云盘备份; 以图识图; 字幕搜索; JavDb',
+                    'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、快捷键等 36 个功能插件',
                 homepageURL: 'https://github.com/zerobiubiu/javdb-tools',
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
                 match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*'],
