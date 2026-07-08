@@ -77,6 +77,8 @@
 | `64-delete-perf-optimization.md` | 🔧开发指导 | ✅已执行 | 删除清单性能优化：乐观 UI + 并行执行。原方案串行等待服务器响应才移除 DOM，用户感知延迟大。改为 confirm 后立即移除 DOM（乐观更新），GM_xmlhttpRequest DELETE 与 VltDb.deleteList 并行执行（Promise.all）。瓶颈分析：网络请求等待 JavDB 服务器是最大延迟源（数百ms~数秒），IDB 操作（83KB/3563条）仅~50ms。服务器失败时 warning toast 而非恢复 DOM；tsc -b + vite build 通过，version 1.7.2→1.7.3 |
 | `65-fix-preset-list-filter.md` | 🔧开发指导 | ✅已执行 | 修复详情页清单面板「预设清单」过滤失效：doc/59 全局繁→简替换将代码中 預設清單 改为 预设清单，但 JavDB DOM 返回仍为繁体 預設清單，includes 不匹配导致过滤失效。改为正则 /预[设設]清[单單]/ 同时匹配简繁体。修改 detail-page-button-plugin.tsx _initListPanel sync + vlt-sync.ts refreshListPanel 两处；tsc -b + vite build 通过，version 1.7.3→1.7.4 |
 | `66-fix-traditional-simplified-regression.md` | 🔧开发指导 | ✅已执行 | 修复繁→简替换破坏 DOM 选择器导致番号丢失等问题：doc/59（commit bcf046c）全局繁→简替换将 jQuery 选择器/字符串匹配中的繁体改为简体，但 JavDB DOM/API 仍为繁体导致全失配。还原 8 处功能性 bug（base-plugin a[title=複製番號] 番号丢失 + 無碼检测 + actress-info 演員/現年齢选择器 + list-page/storage-manager 无码标签 + related/review 簽名已過期 + 7 个组件显示文本繁体还原）；tsc -b + vite build 通过，version 1.7.4→1.7.5 |
+| `67-rating-cache-sync-on-mark.md` | 🔧开发指导 | ✅已执行 | 评分缓存同步优化：详情页标记已读/评分时已知星级，扩展 broadcastWantWatchedSync payload 携带 score，列表页 RatingDisplayPlugin._invalidateCards 收到 hasWatch+add+score≥1 时直接 RatingCache.set 写缓存，免去悬停远程抓取详情页解析评分；score=0/想看/收藏/取消保持原清缓存逻辑；tsc -b + vite build 通过，version 1.7.5→1.7.6 |
+| `68-rating-cache-zero-star-display.md` | 🔧开发指导 | ✅已执行 | 评分缓存同步补充：0 星（已读未评分）显示 ★0 而非占位「已看」。doc/67 的 _invalidateCards 写入条件 `score && score>=1`（0 是 falsy 被排除）+ showRating 渲染分支同样排除 0 致 0 星仍显示占位。修正：写入条件改 `typeof score===number`（0-5 均写入）+ showRating 增加 rating===0 分支显示金色★0；tsc -b + vite build 通过，version 1.7.6→1.7.7 |
 
 ## 类型图例
 

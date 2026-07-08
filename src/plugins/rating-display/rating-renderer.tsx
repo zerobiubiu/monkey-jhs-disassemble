@@ -50,11 +50,11 @@ export const RatingRenderer = {
 
     /**
      * 替换为评分标签（金色 ★ N）；若元素不存在则自行创建。对应原 L429-455。
-     * rating 为 1-5 时显示评分，否则降级为占位「已看」。
+     * rating 为 0 时显示 ★0（已读未评分），1-5 显示 ★N，falsy/越界降级为占位「已看」。
      *
      * innerHTML 改用 jsxToString 生成等价 HTML 片段（原脚本为字符串拼接）。
      * @param item   列表页卡片元素
-     * @param rating 评分值（1-5）；falsy 或越界时降级为占位
+     * @param rating 评分值（0=已读未评分，1-5=星级）；null/undefined/越界降级为占位
      */
     showRating(item: HTMLElement, rating: number | null | undefined): void {
         const cover = item.querySelector('.cover');
@@ -73,7 +73,17 @@ export const RatingRenderer = {
         el.className = 'jhs-user-rating';
         el.innerHTML = '';
 
-        if (rating && rating >= 1 && rating <= 5) {
+        if (rating === 0) {
+            // 0 星：已读未评分，显示 ★0（金色 is-rated 样式，与 1-5 一致）
+            el.classList.add('is-rated');
+            el.innerHTML = jsxToString(
+                <>
+                    <span className="jhs-rd-icon">★</span>
+                    <span className="jhs-rd-num">0</span>
+                </>
+            );
+            el.title = '已看 · 0/5 星（未评分）';
+        } else if (rating && rating >= 1 && rating <= 5) {
             el.classList.add('is-rated');
             // 原脚本: `<span class="jhs-rd-icon">★</span><span class="jhs-rd-num">${rating}</span>`
             el.innerHTML = jsxToString(

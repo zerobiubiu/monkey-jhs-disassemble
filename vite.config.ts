@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.7.5',
+                version: '1.7.7',
                 author: 'zerobiubiu',
                 license: 'MIT',
                 description:

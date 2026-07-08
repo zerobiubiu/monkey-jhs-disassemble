@@ -9,6 +9,38 @@
 
 ---
 
+## v1.7.7
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **0 星（已读未评分）显示 ★0 而非占位「已看」**（doc/68）：
+  doc/67 的评分缓存同步优化有两处将 0 星排除：`_invalidateCards` 写入条件
+  `score && score >= 1`（0 是 falsy 短路为 false）+ `showRating` 渲染分支
+  `rating && rating >= 1`（同样排除 0），导致详情页点「已读」后列表页仍显示
+  占位「已看」。修正写入条件为 `typeof score === 'number'`（0-5 均写入），
+  `showRating` 增加 `rating === 0` 分支显示金色「★0」。
+
+---
+
+## v1.7.6
+
+**发布日期**：2026-07-08
+
+### 优化
+
+- **评分缓存同步优化：详情页标记已读时直接写入评分缓存**（doc/67）：
+  详情页点击「已读」或星级按钮时 `quickSetHasWatch(score)` 已知评分，
+  但列表页 `RatingDisplayPlugin` 使用独立的 `RatingCache`，两套缓存互不相通，
+  导致列表页悬停已看卡片仍需 `GM_xmlhttpRequest` 远程抓取详情页解析评分。
+  扩展 `broadcastWantWatchedSync` 广播 payload 携带 `score`，列表页
+  `_invalidateCards` 收到 `hasWatch+add+score≥1` 时直接 `RatingCache.set`
+  写缓存，`processItem` 命中缓存显示评分，免去远程抓取。`score=0`（已读未评分）、
+  想看/收藏/取消等保持原清缓存逻辑不变。
+
+---
+
 ## v1.7.5
 
 **发布日期**：2026-07-08

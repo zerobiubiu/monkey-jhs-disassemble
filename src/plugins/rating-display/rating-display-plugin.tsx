@@ -26,11 +26,14 @@ import ratingDisplayCssRaw from '../../styles/rating-display.css?raw';
 import { RATING_CONFIG } from './rating-config';
 import { RatingUtils } from './rating-utils';
 
-/** jhs 同步事件 payload 形状（detail-page-button-plugin 广播）。 */
+/** jhs 同步事件 payload 形状（detail-page-button-plugin 广播）。
+ *  score 仅在 hasWatch+add 时携带（详情页标记已读/评分时已知星级）。 */
 interface SyncPayload {
     carNum: string;
     status: string;
     op: string;
+    /** 评分 1-5（仅 hasWatch+add 携带；0/未评分/想看/收藏不带） */
+    score?: number;
 }
 
 /** 评分显示插件主类（承载原脚本 Core 主流程）。 */
@@ -185,8 +188,10 @@ export class RatingDisplayPlugin extends BasePlugin {
      * @param code   规范化番号
      * @param status 同步事件 status（hasWatch / favorite）
      * @param op     同步事件 op（add / remove）
+     * @param score  评分 1-5（仅 hasWatch+add 时可能携带；详情页标记已读/评分时已知星级，
+     *               直接写入评分缓存，免去列表页悬停远程抓取详情页解析评分）
      */
-    _invalidateCards(code: string, status: string, op: string): void {
+    _invalidateCards(code: string, status: string, op: string, score?: number): void {
         // 直接用广播信息更新 watchedMap 快照
         if (status === 'hasWatch' && op === 'add') {
             if (!this.watchedMap.has(code)) {
@@ -198,9 +203,16 @@ export class RatingDisplayPlugin extends BasePlugin {
         } else {
             this.watchedMap.delete(code);
         }
-        // 清评分缓存 + 重处理卡片
-        delete RatingCache._data[code];
-        RatingCache.save();
+        // 评分同步优化：hasWatch+add 且 score 为数字（0-5）时，直接写入评分缓存
+        // （RatingCache.set 内部判断 rating 变化才写），列表页 processItem 会命中缓存
+        // 直接显示评分（0 星显示 ★0，1-5 星显示 ★N），不再悬停远程抓取详情页；
+        // 其他变更（取消观看/转想看/收藏等）清评分缓存
+        if (status === 'hasWatch' && op === 'add' && typeof score === 'number') {
+            RatingCache.set(code, score);
+        } else {
+            delete RatingCache._data[code];
+            RatingCache.save();
+        }
         document.querySelectorAll(RATING_CONFIG.ITEM_SELECTOR).forEach((item) => {
             const el = item as HTMLElement;
             if (RatingUtils.getCode(el) === code) {
@@ -362,11 +374,11 @@ export class RatingDisplayPlugin extends BasePlugin {
         document.addEventListener(
             'jdb:want-watched-sync',
             (e: Event) => {
-                const { carNum, status, op } = (e as CustomEvent<SyncPayload>).detail || {};
+                const { carNum, status, op, score } = (e as CustomEvent<SyncPayload>).detail || {};
                 if (!carNum || !status || !op) return;
                 const code = RatingUtils.normalizeCode(carNum);
-                RatingUtils.log('SYNC_EVENT', code, status, op);
-                this._invalidateCards(code, status, op);
+                RatingUtils.log('SYNC_EVENT', code, status, op, score);
+                this._invalidateCards(code, status, op, score);
             },
             { passive: true }
         );
@@ -385,7 +397,7 @@ export class RatingDisplayPlugin extends BasePlugin {
                             payload.status,
                             payload.op
                         );
-                        this._invalidateCards(code, payload.status, payload.op);
+                        this._invalidateCards(code, payload.status, payload.op, payload.score);
                     }
                 } catch {
                     this._dirty = true;
