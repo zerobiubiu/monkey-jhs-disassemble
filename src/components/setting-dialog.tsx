@@ -89,9 +89,9 @@ export function SettingDialog({
                 style={{
                     width: '170px',
                     flexShrink: 0,
-                    padding: '15px 0',
-                    background: '#f5f5f5',
-                    borderRight: '1px solid #ddd',
+                    padding: '12px 0',
+                    background: '#fbfcfd',
+                    borderRight: '1px solid #e2e8f0',
                     overflowY: 'auto'
                 }}
             >
@@ -170,33 +170,33 @@ export function SettingDialog({
                             display: panelName === 'backup-panel' ? 'block' : 'none'
                         }}
                     >
-                        <div style={{ marginBottom: '20px' }}>
+                        <div style={{ marginBottom: '16px', display: 'flex', gap: '10px' }}>
                             <a
                                 id="importBtn"
                                 className="menu-btn"
                                 style={{ backgroundColor: '#d25a88' }}
                             >
-                                <span>导入数据</span>
-                            </a>{' '}
+                                <span>📥 导入数据</span>
+                            </a>
                             <a
                                 id="exportBtn"
                                 className="menu-btn"
                                 style={{ backgroundColor: '#85d0a3' }}
                             >
-                                <span>导出数据</span>
+                                <span>📤 导出数据</span>
                             </a>
                         </div>
 
                         <div className="setting-item">
                             <span className="setting-label">WebDav备份</span>
-                            <div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
                                 <a
                                     id="webdavBackupListBtn"
                                     className="menu-btn"
                                     style={{ backgroundColor: '#5d87c2' }}
                                 >
                                     <span>查看备份</span>
-                                </a>{' '}
+                                </a>
                                 <a
                                     id="webdavBackupBtn"
                                     className="menu-btn"
@@ -222,6 +222,66 @@ export function SettingDialog({
                             <span className="setting-label">密码:</span>
                             <div className="form-content">
                                 <input id="webDavPassword" />
+                            </div>
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                color: '#5d87c2',
+                                margin: '16px 0 8px 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                        >
+                            ⏰ 自动备份
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">启用自动备份</span>
+                            <div className="form-content">
+                                <label
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <input
+                                        id="enableAutoBackup"
+                                        type="checkbox"
+                                        style={{ margin: 0 }}
+                                    />
+                                    <span style={{ fontSize: '13px', color: '#64748b' }}>
+                                        开启后按频率自动备份到 WebDav
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">备份频率:</span>
+                            <div className="form-content">
+                                <select id="autoBackupFrequency">
+                                    <option value="daily">每天第一次打开（推荐）</option>
+                                    <option value="everyOpen">每次打开</option>
+                                    <option value="disabled">不自动备份</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">本机凭证:</span>
+                            <div className="form-content">
+                                <input
+                                    id="credentialIdDisplay"
+                                    readOnly
+                                    style={{
+                                        width: '100%',
+                                        color: '#94a3b8',
+                                        fontSize: '11px',
+                                        fontFamily: 'monospace'
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -740,13 +800,17 @@ export function SettingDialog({
                 <div
                     style={{
                         flexShrink: 0,
-                        padding: '15px 20px',
+                        padding: '14px 20px',
                         textAlign: 'right',
-                        borderTop: '1px solid #eee',
-                        background: 'white'
+                        borderTop: '1px solid #e2e8f0',
+                        background: '#fbfcfd',
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '10px',
+                        alignItems: 'center'
                     }}
                 >
-                    <button id="saveBtn">保存设置</button>
+                    <button id="saveBtn">💾 保存设置</button>
                     <button id="clean-all" style={{ display: 'none' }}>
                         ♾️ 清理全部缓存
                     </button>

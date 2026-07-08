@@ -24,7 +24,7 @@
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
 │   ├── main.tsx            # 入口：启动序列 + 注册 35 插件（javdb 33 + missav 2）
-│   ├── core/               # 核心模块（15 个）
+│   ├── core/               # 核心模块（16 个）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 35 插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
 │   ├── constants/          # 常量（site/status/video-quality/api）
@@ -64,6 +64,7 @@ monkey-jhs-disassemble/
 11. 页面判定（isDetailPage/isListPage/isFc2Page）
 12. storageManager 合并/清理
 13. `await processPlugins()` — 并发执行所有插件 handle
+14. `SettingPlugin.autoBackup()` — 自动备份（每天第一次打开/每次打开，javdb only）
 
 **关键点**：
 - 所有插件在 `if (isJavdbSite)` 块内注册（非 javdb 站点不注册）
@@ -131,7 +132,7 @@ monkey-jhs-disassemble/
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 
-### 3.4 核心模块 `src/core/`（15 个）
+### 3.4 核心模块 `src/core/`（16 个）
 
 | 文件 | 职责 |
 |------|------|
@@ -154,6 +155,7 @@ monkey-jhs-disassemble/
 | style-injector.ts | CSS 注入（injectCss） |
 | jsx-to-string.ts | 轻量 JSX→HTML 字符串渲染器（替代 react-dom/server） |
 | async-task-queue.ts | 异步任务队列 |
+| auto-backup.ts | 自动备份（凭证 ID 管理 + 触发判断 + 增量滚动文件名） |
 
 ### 3.5 组件 `src/components/`
 

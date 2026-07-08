@@ -344,4 +344,11 @@ const pluginManager: PluginManager = (function () {
         });
     }
     await pluginManager.processPlugins();
+    // 自动备份：插件执行后触发（每天第一次打开 / 每次打开，由设置控制）
+    if (isJavdbSite) {
+        const settingPlugin = pluginManager.getBean('SettingPlugin') as SettingPlugin;
+        if (settingPlugin) {
+            settingPlugin.autoBackup().then();
+        }
+    }
 })();

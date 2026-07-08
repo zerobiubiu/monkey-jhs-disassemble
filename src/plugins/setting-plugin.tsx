@@ -67,6 +67,15 @@ import {
     buildJavdbUrl
 } from './car-status-sync/car-status-columnar';
 import { importLocalDB, exportLocalDB } from './car-status-sync/car-status-db';
+import {
+    getCredentialId,
+    DEFAULT_AUTO_BACKUP_CONFIG,
+    shouldAutoBackup,
+    getAutoBackupFileName,
+    markAutoBackupDone,
+    type AutoBackupConfig,
+    type AutoBackupFrequency
+} from '../core/auto-backup';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -325,6 +334,13 @@ export class SettingPlugin extends BasePlugin {
         $('#webDavUrl').val(settings.webDavUrl || '');
         $('#webDavUsername').val(settings.webDavUsername || '');
         $('#webDavPassword').val(settings.webDavPassword || '');
+        // 自动备份配置
+        const autoBackupConfig: AutoBackupConfig =
+            settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
+        $('#enableAutoBackup').prop('checked', autoBackupConfig.enabled);
+        $('#autoBackupFrequency').val(autoBackupConfig.frequency);
+        // 本机凭证 ID（只读显示，不进入备份系统）
+        $('#credentialIdDisplay').val(getCredentialId());
         $('#enableTitleSelectFilter').prop(
             'checked',
             !settings.enableTitleSelectFilter || settings.enableTitleSelectFilter === YES
@@ -1000,6 +1016,11 @@ export class SettingPlugin extends BasePlugin {
         settings.webDavUrl = $('#webDavUrl').val();
         settings.webDavUsername = $('#webDavUsername').val();
         settings.webDavPassword = $('#webDavPassword').val();
+        // 自动备份配置（随备份文件保存）
+        settings.autoBackupConfig = {
+            enabled: $('#enableAutoBackup').is(':checked'),
+            frequency: $('#autoBackupFrequency').val() as AutoBackupFrequency
+        };
         settings.missAvUrl = $('#missAvUrl').val().replace(/\/$/, '');
         settings.supJavUrl = $('#supJavUrl').val().replace(/\/$/, '');
         settings.enableTitleSelectFilter = $('#enableTitleSelectFilter').is(':checked') ? YES : NO;
@@ -1175,7 +1196,7 @@ export class SettingPlugin extends BasePlugin {
             return;
         }
         const fileName = utils.getNowStr('_', '_') + '.json';
-        let exportText = JSON.stringify(await storageManager.exportData());
+        let exportText = JSON.stringify(await this.buildBackupPayload(settings));
         exportText = (window as any).encryptCredential(exportText);
         const loadingHandle = loading();
         try {
@@ -1191,6 +1212,62 @@ export class SettingPlugin extends BasePlugin {
             show.error(err.toString());
         } finally {
             loadingHandle.close();
+        }
+    }
+
+    /**
+     * 构造备份 payload：在导出数据基础上注入本机凭证 ID 与自动备份配置。
+     *
+     * 备份格式：`{ ...exportData, credentialId, autoBackupConfig }`，
+     * credentialId 标识备份来源浏览器，autoBackupConfig 随备份文件保存
+     * 自动备份策略。这两个字段不在 exportData（IndexedDB）内，注入到备份
+     * payload 顶层，导入时会被 importData 写入 IndexedDB（无副作用，
+     * 因为导入后凭证 ID 仍以 GM 存储的本地值为准）。
+     *
+     * @param settings 当前设置对象（复用调用方已读取的，避免重复 IO）
+     * @returns 备份 payload 对象
+     */
+    async buildBackupPayload(settings: any): Promise<Record<string, any>> {
+        const exportData = await storageManager.exportData();
+        exportData.__meta = {
+            credentialId: getCredentialId(),
+            autoBackupConfig: settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG,
+            backupTime: utils.getNowStr('_', '_', '_')
+        };
+        return exportData;
+    }
+
+    /**
+     * 自动备份（增量滚动覆盖）。
+     *
+     * 文件名固定为 `auto_<credentialId>.json`，一个浏览器只保留一份，
+     * 每次自动备份覆盖该文件（不堆叠历史）。备份内容含 credentialId
+     * 与 autoBackupConfig。静默执行，失败仅 console.warn 不打扰用户。
+     *
+     * 由 main.tsx 启动序列在插件执行后调用。
+     */
+    async autoBackup(): Promise<void> {
+        const settings = await storageManager.getSetting();
+        const config: AutoBackupConfig = settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
+        if (!shouldAutoBackup(config)) return;
+        const webDavUrl = settings.webDavUrl;
+        if (!webDavUrl) return; // 未配置 WebDav，静默跳过
+        const webDavUsername = settings.webDavUsername;
+        const webDavPassword = settings.webDavPassword;
+        if (!webDavUsername || !webDavPassword) return;
+        try {
+            let exportText = JSON.stringify(await this.buildBackupPayload(settings));
+            exportText = (window as any).encryptCredential(exportText);
+            const webdavClient = new (window as any).WebDavClient(
+                webDavUrl,
+                webDavUsername,
+                webDavPassword
+            );
+            await webdavClient.backup(this.folderName, getAutoBackupFileName(), exportText);
+            markAutoBackupDone();
+            console.log('[JHS 自动备份] 完成');
+        } catch (err: any) {
+            console.warn('[JHS 自动备份] 失败:', err.message || err);
         }
     }
 

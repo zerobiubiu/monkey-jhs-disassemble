@@ -79,6 +79,8 @@
 | `66-fix-traditional-simplified-regression.md` | 🔧开发指导 | ✅已执行 | 修复繁→简替换破坏 DOM 选择器导致番号丢失等问题：doc/59（commit bcf046c）全局繁→简替换将 jQuery 选择器/字符串匹配中的繁体改为简体，但 JavDB DOM/API 仍为繁体导致全失配。还原 8 处功能性 bug（base-plugin a[title=複製番號] 番号丢失 + 無碼检测 + actress-info 演員/現年齢选择器 + list-page/storage-manager 无码标签 + related/review 簽名已過期 + 7 个组件显示文本繁体还原）；tsc -b + vite build 通过，version 1.7.4→1.7.5 |
 | `67-rating-cache-sync-on-mark.md` | 🔧开发指导 | ✅已执行 | 评分缓存同步优化：详情页标记已读/评分时已知星级，扩展 broadcastWantWatchedSync payload 携带 score，列表页 RatingDisplayPlugin._invalidateCards 收到 hasWatch+add+score≥1 时直接 RatingCache.set 写缓存，免去悬停远程抓取详情页解析评分；score=0/想看/收藏/取消保持原清缓存逻辑；tsc -b + vite build 通过，version 1.7.5→1.7.6 |
 | `68-rating-cache-zero-star-display.md` | 🔧开发指导 | ✅已执行 | 评分缓存同步补充：0 星（已读未评分）显示 ★0 而非占位「已看」。doc/67 的 _invalidateCards 写入条件 `score && score>=1`（0 是 falsy 被排除）+ showRating 渲染分支同样排除 0 致 0 星仍显示占位。修正：写入条件改 `typeof score===number`（0-5 均写入）+ showRating 增加 rating===0 分支显示金色★0；tsc -b + vite build 通过，version 1.7.6→1.7.7 |
+| `69-auto-backup.md` | 🔧开发指导 | ✅已执行 | 自动备份功能：新增 src/core/auto-backup.ts（凭证 ID 管理 + 触发判断 + 增量滚动文件名 + 默认配置）；设置「数据备份」面板新增启用自动备份/备份频率/本机凭证显示；备份格式注入 __meta（credentialId + autoBackupConfig + backupTime）；SettingPlugin 新增 buildBackupPayload + autoBackup 方法；main.tsx 启动序列末尾触发；默认每天第一次打开自动备份；凭证 ID 用 UUID v4 存 GM 不进备份系统；一个浏览器一份 auto_<id>.json 增量覆盖；tsc -b + vite build 通过，version 1.7.7→1.8.0 |
+| `70-setting-ui-beautify.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 美化：重写 setting-plugin.css（侧栏柔和背景+主色高亮、menu-btn 统一圆角+hover上浮、表单输入框左对齐+focus光晕、复选框 accent-color、设置项 hover 背景、底部按钮区 flex）；setting-dialog 侧栏 #f5f5f5→#fbfcfd、按钮加 emoji+flex gap、自动备份 hr 改分区标题、底部按钮区 flex+gap；统一主色 #5d87c2 贯穿；tsc -b + vite build 通过，version 1.8.0→1.8.1 |
 
 ## 类型图例
 
@@ -157,9 +159,9 @@
 
 ## 当前进度概览
 
-- core：15 个模块全部提取（`common-util`/`storage-manager`/`gm-http`/`toast`/
+- core：16 个模块全部提取（`common-util`/`storage-manager`/`gm-http`/`toast`/
   `loading`/`logger`/`hotkey`/`image-preview`/`viewer`/`webdav`/`gfriends`/
-  `async-task-queue`/`layer-wrapper`/`tooltip`/`webdav-crypto`）
+  `async-task-queue`/`layer-wrapper`/`tooltip`/`webdav-crypto`/`auto-backup`）
 - plugins：`base-plugin` + `plugin-manager` + 34 个插件模块全部外置（含 doc/25 集成的 RatingDisplayPlugin + doc/29 集成的 Fc2Plugin + doc/34 集成的 KeyPageTurningPlugin + doc/35 集成的 ModMyListOpenWayPlugin + doc/36 集成的 PageSortPlugin + doc/38 集成的 StatusTagFilterPlugin + doc/39 集成的 ListWaterfallPlugin + doc/40 集成的 ListReadingStatusPlugin + doc/42 集成的 ModalListDisablerPlugin + doc/43 集成的 ListParserPlugin + doc/45 集成的 VideoListsTagPlugin + doc/46 集成的 CarListReaderPlugin/MissavStatusTagPlugin）
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`
