@@ -601,6 +601,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const stars: any = bar.querySelectorAll('.jhs-star');
         const readBtn: any = bar.querySelector('.jhs-read-btn');
         const favBtn: any = bar.querySelector('.jhs-fav-btn');
+        const blockBtn: any = bar.querySelector('.jhs-block-btn');
         // hover 预览
         starsEl.addEventListener('pointerover', (e: any) => {
             const star = e.target.closest('.jhs-star');
@@ -652,6 +653,13 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 self._setRatingBusy(false);
                 self.showStatus(self.getPageInfo().carNum).then();
             }
+        });
+        // 拉黑 → 屏蔽 + 设为已读0星 + 关闭页面（需确认）
+        blockBtn.addEventListener('click', async (e: any) => {
+            e.preventDefault();
+            blockBtn.classList.add('is-popping');
+            setTimeout(() => blockBtn.classList.remove('is-popping'), 300);
+            await self.quickBlock();
         });
         column.insertBefore(bar, column.firstChild);
     }
@@ -762,7 +770,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
 
     /**
      * 从 javdb 原生 DOM 检测当前评价状态，同步星星组件显示。
-     * 状态：want（想看）/ watched+N（已观看 N 星）/ none（未评价）。
+     * 状态：want（想看）/ watched+N（已观看 N 星）/ filter（已拉黑）/ none（未评价）。
+     * filter 状态是 JHS 独有（javdb 原生无屏蔽概念），需额外查 JHS 记录。
      * 对应原 L5784-5832。
      */
     _syncRatingBar(): void {
@@ -789,25 +798,34 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const starsEl: any = bar.querySelector('.jhs-stars');
         const readBtn: any = bar.querySelector('.jhs-read-btn');
         const favBtn: any = bar.querySelector('.jhs-fav-btn');
+        const blockBtn: any = bar.querySelector('.jhs-block-btn');
+
+        // 先清除所有状态类
+        stars.forEach((s: any) => s.classList.remove('is-active'));
+        starsEl.classList.remove('is-disabled');
+        readBtn.classList.remove('is-active');
+        favBtn.classList.remove('is-active');
+        blockBtn.classList.remove('is-active');
 
         if (want) {
             // 想看：收藏高亮，星星保持可用（可随时点击切换为已观看+N星）
-            stars.forEach((s: any) => s.classList.remove('is-active'));
-            starsEl.classList.remove('is-disabled');
-            readBtn.classList.remove('is-active');
             favBtn.classList.add('is-active');
         } else if (watched) {
             // 已观看：前 N 星高亮，已读看 N 是否 0
             stars.forEach((s: any, i: number) => s.classList.toggle('is-active', i < score));
-            starsEl.classList.remove('is-disabled');
             readBtn.classList.toggle('is-active', score === 0);
-            favBtn.classList.remove('is-active');
         } else {
             // 未评价
-            stars.forEach((s: any) => s.classList.remove('is-active'));
-            starsEl.classList.remove('is-disabled');
-            readBtn.classList.remove('is-active');
-            favBtn.classList.remove('is-active');
+        }
+
+        // 额外检查 JHS 是否已拉黑（filter 状态是 JHS 独有，javdb 原生无屏蔽概念）
+        const carNum = this.getPageInfo().carNum;
+        if (carNum) {
+            storageManager.getCar(carNum).then((carRecord: any) => {
+                if (carRecord && carRecord.status === FILTER_ACTION) {
+                    blockBtn.classList.add('is-active');
+                }
+            });
         }
     }
 
@@ -874,6 +892,69 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 }
             })
             .catch(() => {});
+    }
+
+    /**
+     * 快捷拉黑：弹确认框警告严重性 → 确认后写 FILTER_ACTION + 设为已读0星 + 关闭页面。
+     *
+     * 与 filterOne 的区别：
+     * - filterOne 仅写 JHS FILTER_ACTION，不调 javdb 原生端
+     * - quickBlock 额外调 _triggerJavdbReview(0) 设为已读0星（让影片不在想看列表，
+     *   不出现在推荐），并用 _wantWatchedSyncing 阻断 MutationObserver 防止
+     *   onWatchedAdded 覆盖 JHS 的 FILTER_ACTION 状态
+     * - 广播 filter+add 让列表页实时隐藏该卡片
+     */
+    async quickBlock(): Promise<void> {
+        const pageInfo = this.getPageInfo();
+        if (!pageInfo.carNum) return;
+        utils.q(
+            null,
+            `是否拉黑 ${pageInfo.carNum}？<br/><span style='color:#f40'>拉黑后该影片将被屏蔽，列表页自动隐藏，且设为已读0星。此操作不可在详情页撤销。</span>`,
+            async () => {
+                this._setRatingBusy(true);
+                try {
+                    // 1) JHS 端：先移除已有记录（避免 saveCar 抛“已在屏蔽列表中”），再写 FILTER_ACTION
+                    const carRecord = await storageManager.getCar(pageInfo.carNum);
+                    if (carRecord) {
+                        await storageManager.removeCar(pageInfo.carNum);
+                    }
+                    await storageManager.saveCar({
+                        carNum: pageInfo.carNum,
+                        url: pageInfo.url,
+                        names: pageInfo.actress,
+                        actionType: FILTER_ACTION,
+                        publishTime: pageInfo.publishTime
+                    });
+                    // 2) 广播 filter+add（列表页实时隐藏该卡片）
+                    this.broadcastWantWatchedSync({
+                        carNum: pageInfo.carNum,
+                        status: FILTER_ACTION,
+                        op: 'add'
+                    });
+                    show.ok(`${pageInfo.carNum} 已拉黑`);
+                } catch (err: any) {
+                    console.error('[JHS-快键] 拉黑失败', err);
+                    show.error('操作失败: ' + err.message);
+                    return;
+                }
+                // 3) javdb 原生端：设为已读0星（串行 + 阻断 observer）
+                this._reviewChain = (this._reviewChain || Promise.resolve())
+                    .then(async () => {
+                        this._wantWatchedSyncing = true;
+                        try {
+                            await this._triggerJavdbReview(0);
+                            this._syncRatingBar();
+                        } finally {
+                            this._wantWatchedSyncing = false;
+                        }
+                    })
+                    .catch(() => {});
+                // 4) 关闭页面 + 刷新
+                this.showStatus(pageInfo.carNum).then();
+                refresh();
+                utils.closePage();
+            }
+        );
     }
 
     /**

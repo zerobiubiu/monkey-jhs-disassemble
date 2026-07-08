@@ -83,6 +83,7 @@
 | `70-setting-ui-beautify.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 美化：重写 setting-plugin.css（侧栏柔和背景+主色高亮、menu-btn 统一圆角+hover上浮、表单输入框左对齐+focus光晕、复选框 accent-color、设置项 hover 背景、底部按钮区 flex）；setting-dialog 侧栏 #f5f5f5→#fbfcfd、按钮加 emoji+flex gap、自动备份 hr 改分区标题、底部按钮区 flex+gap；统一主色 #5d87c2 贯穿；tsc -b + vite build 通过，version 1.8.0→1.8.1 |
 | `71-hide-native-review-panel.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页原生评价操作面板（第一步）：rating-bar.css 新增隐藏原生星级 radio/表单 + 隐藏用户选择器对应的操作面板 div:nth-child(1)（nav 兄弟）；display:none 保留 DOM（_syncRatingBar 读 input[checked]+hookWantAndWatchedButtons MutationObserver+_getReviewId 提取删除链接均不受影响）；快捷评分条在 nav 内不受影响；tsc -b + vite build 通过，version 1.8.1→1.8.2 |
 | `72-hide-menu-status-row.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页菜单按钮组状态行（修正 doc/71 误判）：通过 MCP 访问 javdb 确认用户选择器对应的是脚本创建的 DetailMenuButtons 左行（#filterBtn/#favoriteBtn/#hasWatchBtn），非原生评价面板（原生已隐藏）。撤回 doc/71 多余 CSS，给 DetailMenuButtons 左行加 className=jhs-menu-status-row，rating-bar.css 隐藏左行，保留右行（磁力/字幕）；DOM 保留事件绑定+showStatus+快捷键；tsc -b + vite build 通过，version 1.8.2→1.8.3 |
+| `73-quick-block-button.md` | 🔧开发指导 | ✅已执行 | 快捷评分面板新增拉黑按钮（第二步）：RatingBarHtml 新增 .jhs-block-btn；_buildRatingBar 绑定 click→quickBlock；quickBlock 弹确认框+写 FILTER_ACTION+广播+设为已读0星（_triggerJavdbReview(0) 串行+_wantWatchedSyncing 阻断 observer）+关闭页面；_syncRatingBar 异步查 JHS 记录高亮 filter 状态（红色#de3333）；rating-bar.css 加拉黑按钮样式；tsc -b + vite build 通过，version 1.8.3→1.8.4 |
 
 ## 类型图例
 

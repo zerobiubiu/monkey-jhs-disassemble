@@ -4,7 +4,8 @@
  * 提取自 src/plugins/detail-page-button-plugin.ts 的 _buildRatingBar
  * （L601-615 的 bar.innerHTML，原 archetype/jhs.user.js L5784 附近）：
  *   - .jhs-stars 容器（data-score=0）内含 5 个 .jhs-star（data-score 1-5，★）
- *   - .jhs-rating-actions 容器内含「♥ 收藏」(.jhs-fav-btn) 与「已读」(.jhs-read-btn)
+ *   - .jhs-rating-actions 容器内含「♥ 收藏」(.jhs-fav-btn)、「已读」(.jhs-read-btn)、
+ *     「🚫 拉黑」(.jhs-block-btn)
  *
  * 保留原 HTML 结构、CSS 类名（jhs-stars / jhs-star / jhs-rating-actions /
  * jhs-fav-btn / jhs-read-btn）、data-score 属性、button type/title 与文案。
@@ -33,7 +34,7 @@
 /**
  * 渲染星星评分组件初始结构的 JSX（无状态）。
  * @returns Fragment：.jhs-stars（data-score=0 + 5 个 .jhs-star）+
- *          .jhs-rating-actions（♥ 收藏 / 已读 按钮），经 jsxToString 转 HTML
+ *          .jhs-rating-actions（♥ 收藏 / 已读 / 🚫 拉黑 按钮），经 jsxToString 转 HTML
  *          字符串后供 `bar.innerHTML =` 消费。
  */
 export function RatingBarHtml() {
@@ -52,6 +53,13 @@ export function RatingBarHtml() {
                 </button>
                 <button className="jhs-read-btn" type="button" title="设为已观看（0星）">
                     已读
+                </button>
+                <button
+                    className="jhs-block-btn"
+                    type="button"
+                    title="拉黑该影片（屏蔽，设为已读0星后关闭页面）"
+                >
+                    🚫 拉黑
                 </button>
             </div>
         </>

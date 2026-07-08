@@ -9,6 +9,21 @@
 
 ---
 
+## v1.8.4
+
+**发布日期**：2026-07-08
+
+### 新增
+
+- **快捷评分面板新增拉黑按钮**（doc/73）：
+  在详情页快捷评分条新增「🚫 拉黑」按钮，替代被隐藏的 #filterBtn。点击后弹
+  确认框警告严重性，确认后写 FILTER_ACTION + 广播 filter+add + 调
+  _triggerJavdbReview(0) 设为已读0星（用 _wantWatchedSyncing 阻断
+  MutationObserver 防止 onWatchedAdded 覆盖 FILTER_ACTION 状态）+ 关闭页面。
+  _syncRatingBar 新增异步查 JHS 记录高亮 filter 状态（红色 #de3333）。
+
+---
+
 ## v1.8.3
 
 **发布日期**：2026-07-08
