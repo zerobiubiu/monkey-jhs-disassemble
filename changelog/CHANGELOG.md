@@ -9,6 +9,91 @@
 
 ---
 
+## v1.7.4
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复详情页清单面板「预设清单」过滤失效**（doc/65）：doc/59
+  全局繁→简替换将代码中的 `預設清單` 改为 `预设清单`，但 JavDB
+  DOM 返回仍为繁体 `預設清單`，`includes('预设清单')` 不匹配导致
+  过滤失效、預設清單显示在面板中。改用正则 `/预[设設]清[单單]/`
+  同时匹配简繁体。修改 `detail-page-button-plugin.tsx` 的
+  `_initListPanel` sync 和 `vlt-sync.ts` 的 `refreshListPanel` 两处。
+
+---
+
+## v1.7.3
+
+**发布日期**：2026-07-08
+
+### 优化
+
+- **删除清单性能优化：乐观 UI + 并行执行**（doc/64）：原方案串行
+  等待服务器响应才移除 DOM，用户感知延迟大。改为 confirm 后立即
+  移除 DOM（乐观更新），`GM_xmlhttpRequest DELETE` 与
+  `VltDb.deleteList` 并行执行（`Promise.all`）。瓶颈分析：网络请求
+  等待 JavDB 服务器响应是最大延迟源（数百ms~数秒），IDB 操作
+  （83KB / 3563 条关联）仅 ~50ms 非瓶颈。服务器失败时 warning toast
+  而非恢复 DOM。
+
+---
+
+## v1.7.2
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复 toast 通知被导航栏遮挡**（doc/63）：`#jdb-toast-container`
+  的 `top` 从 `20px` 改为 `72px`（导航栏高 56px + 16px 间距），
+  z-index 99999 本身高于导航栏无需调整。
+
+---
+
+## v1.7.1
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **重写清单删除/改名监听：拦截原生操作 + 自行发请求 + 实时广播**
+  （doc/62）：doc/61 的 MutationObserver 方案失效——JavDB 删除 AJAX
+  返回的 JS 不移除 `<li>`，需刷新才消失，observer 永远不触发，导致
+  IDB 关联未清除、DOM 不实时消失、广播未发送。改为全权接管：
+  - **删除**：捕获阶段拦截删除链接 click + preventDefault + 自行 confirm
+    + GM_xmlhttpRequest DELETE → 成功后 deleteList + 广播 + 移除 DOM
+  - **改名**：拦截保存按钮 click + GM_xmlhttpRequest POST
+    /users/update_list → 成功后 renameList + 广播 + 更新 DOM
+  - **独立广播通道** `jdb:list-mgmt`（不混用 jdb:last-sync）
+  - **详情页**新增广播接收器：删除→移除 checkbox，改名→更新标签文本
+  - **列表页**新增广播接收器：删除/改名→refreshAllTags 全量刷新
+  - 从 app.js 逆向确认服务端 API（DELETE /users/remove_list +
+    POST /users/update_list {id, name}）
+
+---
+
+## v1.7.0
+
+**发布日期**：2026-07-08
+
+### 新增
+
+- **/users/lists 清单删除/改名监听→同步本地 IDB**（doc/61）：用户在
+  清单管理页删除或改名清单后，服务端数据已变更但本地 IndexedDB 仍
+  保留旧数据，导致列表页标签显示不一致。现以 DOM 变化作为成功信号
+  自动同步：
+  - **删除**：MutationObserver 检测 `#list-<listId>` `<li>` 从 DOM
+    移除 → `VltDb.deleteList()`（删 inventory + 所有 `::listId` 关联）
+  - **改名**：捕获阶段 click 快照旧名+listId → 保存时读新名 →
+    MutationObserver 等 `.list-name` 文本变化 → `VltDb.renameList()`
+  - 三重广播 `designation='*'` 触发列表页 `refreshAllTags` 全量刷新
+  - VltDb 新增 `deleteList` / `renameList` 方法
+  - 零侵入已定稿插件，不拦截/阻止 JavDB 原生删除/改名请求
+
+---
+
 ## v1.6.5
 
 **发布日期**：2026-07-08

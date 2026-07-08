@@ -1032,8 +1032,475 @@ function refreshListPanel(): void {
     if (!lc) return;
     panel.innerHTML = '';
     Array.from(lc.children).forEach((child: any) => {
-        // 跳过「预设清单」
-        if (child.textContent.includes('预设清单')) return;
+        // 跳过「预设清单」/「預設清單」（简/繁体均匹配）
+        if (/[预預][设設]清[单單]/.test(child.textContent)) return;
         panel.appendChild(child.cloneNode(true));
     });
+}
+
+/* ============================================================
+ * /users/lists 页面：删除/改名清单监听 → 同步本地 IDB（doc/61）
+ * ============================================================
+ *
+ * 背景：
+ * 用户在 /users/lists 管理页面删除或改名清单后，JavDB 服务端数据已变更，
+ * 但本地 IndexedDB（VltDb 的 vlt_inventory / vlt_movie_inventory）仍保留
+ * 旧数据，导致标签显示与筛选不再与服务端一致。
+ *
+ * 方案（拦截原生操作 + 自行发请求 + 实时广播）：
+ * 1. 删除：捕获阶段拦截删除链接 click → preventDefault → 自行 confirm →
+ *    GM_xmlhttpRequest DELETE /users/remove_list?id=<listId> →
+ *    成功后 VltDb.deleteList() + 广播 + 移除 DOM <li> + toast
+ *    （不用 MutationObserver 等 DOM 移除——JavDB 删除后不实时移除 <li>，
+ *     需刷新才消失，observer 永远不触发）
+ * 2. 改名：捕获阶段拦截保存按钮 click → preventDefault →
+ *    GM_xmlhttpRequest POST /users/update_list {id, name} →
+ *    成功后 VltDb.renameList() + 广播 + 更新 DOM .list-name + 关闭弹窗 + toast
+ *    （Stimulus list#updateList 的 ajax 虽能更新 DOM，但无法实时广播，
+ *     且拦截后自行控制全链路更可靠）
+ * 3. 三重广播 jdb:list-mgmt → 详情页移除/更新 checkbox + 列表页 refreshAllTags
+ */
+
+/** 清单管理广播键（独立通道，不与 jdb:last-sync 混用）。 */
+const LIST_MGMT_KEY = 'jdb:list-mgmt';
+
+/** 从删除链接 href 提取 listId（/users/remove_list?id=<listId>）。 */
+function extractListIdFromHref(href: string): string | null {
+    const m = href.match(/[?&]id=([^&]+)/);
+    return m ? m[1] : null;
+}
+
+/** 获取 CSRF token（与 createList 同源，从 meta[name=csrf-token] 读取）。 */
+function getCsrfToken(): string {
+    const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    return meta?.content || '';
+}
+
+/**
+ * 三重广播清单管理事件（删除/改名），独立通道 jdb:list-mgmt。
+ * 接收方：详情页 setupListMgmtBroadcastListener（移除/更新 checkbox）+
+ * 列表页 setupListMgmtBroadcastListener（refreshAllTags）。
+ *
+ * @param type 'delete' | 'rename'
+ * @param listId 清单 ID
+ * @param extra 额外字段（rename 时带 newName）
+ */
+function broadcastListMgmt(
+    type: 'delete' | 'rename',
+    listId: string,
+    extra?: { newName?: string }
+): void {
+    const payload = { type, listId, newName: extra?.newName, time: Date.now() };
+    const json = JSON.stringify(payload);
+    try {
+        GM_setValue(LIST_MGMT_KEY, json);
+    } catch {}
+    try {
+        localStorage.setItem(LIST_MGMT_KEY, json);
+    } catch {}
+    try {
+        document.dispatchEvent(new CustomEvent(LIST_MGMT_KEY, { detail: payload }));
+    } catch {}
+}
+
+/**
+ * 在 /users/lists 页面监听清单删除与改名，同步本地 IndexedDB。
+ *
+ * DOM 结构（每个清单条目）：
+ * <li class="list-item columns" id="list-<listId>">
+ *   <div class="column is-10">
+ *     <a href="/lists/<listId>"><strong class="list-name">清单名</strong></a>
+ *   </div>
+ *   <div class="column is-2">
+ *     <div class="operation field has-addons">
+ *       <p class="control"><button ...>分享</button></p>
+ *       <p class="control"><button data-list-id="<listId>" class="modal-edit-list-button">修改</button></p>
+ *       <p class="control"><a href="/users/remove_list?id=<listId>" data-method="delete" data-remote="true" data-confirm="...">刪除</a></p>
+ *     </div>
+ *   </div>
+ * </li>
+ *
+ * 编辑弹窗（Stimulus list 控制器管理）：
+ * #modal-edit-list > .modal-card
+ *   input[data-list-target="inputName"]  ← 清单名称输入框
+ *   input[type=hidden][data-list-target="inputId"]  ← 清单 ID 隐藏域
+ *   button[data-action="list#updateList"] ← 保存按钮
+ *
+ * 服务端 API（从 app.js 逆向确认）：
+ * - 删除：DELETE /users/remove_list?id=<listId>，Rails UJS dataType=script
+ * - 改名：POST /users/update_list {id, name}，返回 JSON {success, name, message}
+ */
+export function setupListManagementListener(): void {
+    console.log(`${LOG_PREFIX} /users/lists 清单管理监听已启动`);
+
+    // ===== 删除：拦截删除链接 click → 自行发 GM_xmlhttpRequest DELETE =====
+    document.addEventListener(
+        'click',
+        (e: Event) => {
+            const target = e.target as HTMLElement;
+            const deleteLink = target.closest?.(
+                'a[href*="remove_list"][data-method="delete"]'
+            ) as HTMLAnchorElement | null;
+            if (!deleteLink) return;
+
+            // 阻止 Rails UJS / Turbo 处理（我们全权接管）
+            e.preventDefault();
+            e.stopPropagation();
+
+            const href = deleteLink.getAttribute('href') || '';
+            const listId = extractListIdFromHref(href);
+            if (!listId) {
+                console.warn(`${LOG_PREFIX} 删除链接无法提取 listId: ${href}`);
+                return;
+            }
+
+            // 显示确认对话框（与原生 data-confirm 等价）
+            const confirmMsg = deleteLink.dataset.confirm || '確認移除嗎?';
+            if (!confirm(confirmMsg)) return;
+
+            handleListDeletion(listId, href).then();
+        },
+        true // 捕获阶段，抢在 Rails UJS 之前
+    );
+
+    // ===== 改名：拦截保存按钮 click → 自行发 GM_xmlhttpRequest POST =====
+    // 捕获阶段监听「修改」按钮 click，快照 listId + oldName（用于判断是否变化）
+    const editing: { listId: string; oldName: string } = { listId: '', oldName: '' };
+
+    document.addEventListener(
+        'click',
+        (e: Event) => {
+            const target = e.target as HTMLElement;
+            const editBtn = target.closest?.('.modal-edit-list-button') as HTMLElement | null;
+            if (!editBtn) return;
+            const listId = editBtn.dataset.listId || '';
+            if (!listId) return;
+            const li = editBtn.closest('[id^="list-"]');
+            const nameEl = li?.querySelector('.list-name');
+            editing.listId = listId;
+            editing.oldName = nameEl?.textContent?.trim() || '';
+            console.log(`${LOG_PREFIX} 编辑清单快照: listId=${listId} oldName=${editing.oldName}`);
+        },
+        true
+    );
+
+    // 捕获阶段监听弹窗「保存」按钮 click，自行发请求
+    document.addEventListener(
+        'click',
+        (e: Event) => {
+            const target = e.target as HTMLElement;
+            const saveBtn = target.closest?.(
+                '[data-action="list#updateList"]'
+            ) as HTMLElement | null;
+            if (!saveBtn) return;
+
+            // 阻止 Stimulus list#updateList 执行（我们全权接管）
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!editing.listId) {
+                console.warn(`${LOG_PREFIX} 保存清单改名但无快照，跳过`);
+                return;
+            }
+            const modal = document.querySelector('#modal-edit-list');
+            const nameInput = modal?.querySelector(
+                '[data-list-target="inputName"]'
+            ) as HTMLInputElement | null;
+            const newName = nameInput?.value?.trim() || '';
+            if (!newName) {
+                showToast('請輸入清單名稱', 'warning');
+                return;
+            }
+            if (newName === editing.oldName) {
+                console.log(`${LOG_PREFIX} 清单改名前后名称相同（${newName}），跳过`);
+                // 关闭弹窗（名称未变，直接关闭）
+                closeEditModal();
+                return;
+            }
+
+            handleListRename(editing.listId, newName).then();
+        },
+        true
+    );
+}
+
+/**
+ * 关闭编辑弹窗（模拟 Stimulus 关闭：移除 is-active 类 + 重置 body）。
+ */
+function closeEditModal(): void {
+    const modal = document.querySelector('#modal-edit-list');
+    if (!modal) return;
+    modal.classList.remove('is-active');
+    document.documentElement.classList.remove('is-clipped');
+}
+
+/**
+ * 处理清单删除：乐观 UI 移除 DOM → 并行发 DELETE 请求 + 删 IDB → 广播 + toast。
+ *
+ * 优化（doc/64）：原方案串行等待服务器响应后才移除 DOM，用户感知延迟大。
+ * 现改为 confirm 后立即移除 DOM（乐观更新），网络请求与 IDB 删除并行执行。
+ * 瓶颈分析：GM_xmlhttpRequest DELETE 等待 JavDB 服务器响应是最大延迟源
+ * （服务器需删除清单 + 关联表 + 更新计数），IDB 操作（83KB / 3563 条）仅几十 ms。
+ *
+ * @param listId 清单 ID
+ * @param href 删除链接的 href（/users/remove_list?id=<listId>）
+ */
+async function handleListDeletion(listId: string, href: string): Promise<void> {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        showToast('✗ 无法获取 CSRF token，删除失败', 'error');
+        return;
+    }
+
+    console.log(`${LOG_PREFIX} ═══ 删除清单 listId=${listId} ═══`);
+
+    // 1. 乐观 UI：立即移除 DOM（用户即时看到清单消失，不等服务器）
+    const li = document.querySelector(`#list-${listId}`);
+    if (li) {
+        li.remove();
+    }
+    showToast('正在同步删除…', 'info');
+
+    // 2. 并行：发 DELETE 请求 + 删 IDB（两者互不依赖）
+    const [serverOk, idbResult] = await Promise.all([
+        sendDeleteRequest(href, csrfToken),
+        VltDb.deleteList(listId)
+    ]);
+
+    console.log(
+        `${LOG_PREFIX} 删除完成: listId=${listId} server=${serverOk} inventory=${idbResult.inventory} associations=${idbResult.associations}`
+    );
+
+    // 3. 广播（无论服务器是否成功，本地数据已清除，需通知其他页面同步）
+    broadcastListMgmt('delete', listId);
+
+    // 4. toast
+    if (serverOk) {
+        showToast(`✓ 清单已删除（${idbResult.associations} 条关联已清除）`, 'success');
+    } else {
+        showToast(
+            `⚠ 本地数据已清除（${idbResult.associations} 条关联），服务器响应异常，刷新后确认`,
+            'warning'
+        );
+    }
+    console.log(`${LOG_PREFIX} ═══ 删除完成 ═══`);
+}
+
+/**
+ * 发送 DELETE 请求到 JavDB 服务器删除清单。
+ * @param href 删除链接 href（/users/remove_list?id=<listId>）
+ * @param csrfToken CSRF token
+ * @returns 服务器是否返回成功（HTTP 2xx/3xx）
+ */
+function sendDeleteRequest(href: string, csrfToken: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        GM_xmlhttpRequest({
+            method: 'DELETE',
+            url: 'https://javdb.com' + href,
+            headers: {
+                'X-CSRF-Token': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                Accept: 'text/javascript, application/javascript, application/xhtml+xml, */*'
+            },
+            timeout: 15000,
+            onload: (r: any) => resolve(r.status >= 200 && r.status < 400),
+            onerror: () => resolve(false),
+            ontimeout: () => resolve(false)
+        });
+    });
+}
+
+/**
+ * 处理清单改名：发 POST /users/update_list → 成功后同步 IDB + 广播 + 更新 DOM + toast。
+ *
+ * @param listId 清单 ID
+ * @param newName 新清单名称
+ */
+async function handleListRename(listId: string, newName: string): Promise<void> {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        showToast('✗ 无法获取 CSRF token，改名失败', 'error');
+        return;
+    }
+
+    showToast('正在改名…', 'info');
+    console.log(`${LOG_PREFIX} ═══ 改名清单 listId=${listId} newName=${newName} ═══`);
+
+    try {
+        const response = await new Promise<{ success: boolean; name: string; message: string }>(
+            (resolve) => {
+                GM_xmlhttpRequest({
+                    method: 'POST',
+                    url: 'https://javdb.com/users/update_list',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-CSRF-Token': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        Accept: 'application/json, text/javascript, */*;q=0.01'
+                    },
+                    data: `id=${encodeURIComponent(listId)}&name=${encodeURIComponent(newName)}`,
+                    timeout: 15000,
+                    onload: (r: any) => {
+                        if (r.status >= 200 && r.status < 300) {
+                            try {
+                                resolve(JSON.parse(r.responseText));
+                            } catch {
+                                resolve({
+                                    success: false,
+                                    name: '',
+                                    message: '响应解析失败'
+                                });
+                            }
+                        } else {
+                            resolve({
+                                success: false,
+                                name: '',
+                                message: `HTTP ${r.status}`
+                            });
+                        }
+                    },
+                    onerror: () => resolve({ success: false, name: '', message: '网络错误' }),
+                    ontimeout: () => resolve({ success: false, name: '', message: '请求超时' })
+                });
+            }
+        );
+
+        if (!response.success) {
+            showToast(`✗ 改名失败：${response.message || '未知错误'}`, 'error');
+            return;
+        }
+
+        const finalName = response.name || newName;
+        console.log(`${LOG_PREFIX} 服务端改名成功: listId=${listId} name=${finalName}`);
+
+        // 1. 同步 IDB
+        const ok = await VltDb.renameList(listId, finalName);
+        if (ok) {
+            console.log(`${LOG_PREFIX} IDB 清单改名完成: listId=${listId} name=${finalName}`);
+        } else {
+            console.warn(`${LOG_PREFIX} IDB 清单改名跳过: listId=${listId} 不在本地 inventory 中`);
+        }
+
+        // 2. 广播：通知所有页面（详情页更新 checkbox 标签 + 列表页刷新标签）
+        broadcastListMgmt('rename', listId, { newName: finalName });
+
+        // 3. 更新 DOM .list-name（与 Stimulus updateList 的 DOM 更新等价）
+        const nameEl = document.querySelector(`#list-${listId} .list-name`);
+        if (nameEl) {
+            nameEl.textContent = finalName;
+        }
+
+        // 4. 关闭弹窗
+        closeEditModal();
+
+        // 5. toast
+        showToast(`✓ 清单已改名为「${finalName}」`, 'success');
+        console.log(`${LOG_PREFIX} ═══ 改名完成 ═══`);
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 清单改名失败: listId=${listId}`, err);
+        showToast(`✗ 清单改名失败：${err.message || '未知错误'}`, 'error');
+    }
+}
+
+/* ============================================================
+ * 广播接收：详情页 + 列表页监听 jdb:list-mgmt 事件
+ * ============================================================ */
+
+/**
+ * 注册清单管理广播监听器（三重通道：GM / localStorage / CustomEvent）。
+ *
+ * 在详情页调用时，onDelete 移除对应清单 checkbox，onRename 更新标签文本；
+ * 在列表页调用时，onDelete/onRename 均触发 refreshAllTags。
+ *
+ * @param onDelete 删除回调
+ * @param onRename 改名回调
+ */
+export function setupListMgmtBroadcastListener(
+    onDelete: (listId: string) => void,
+    onRename: (listId: string, newName: string) => void
+): void {
+    /** 处理收到的广播 payload */
+    const handlePayload = (payload: any): void => {
+        if (!payload || !payload.type || !payload.listId) return;
+        console.log(`${LOG_PREFIX} 收到清单管理广播:`, payload);
+        if (payload.type === 'delete') {
+            onDelete(payload.listId);
+        } else if (payload.type === 'rename' && payload.newName) {
+            onRename(payload.listId, payload.newName);
+        }
+    };
+
+    // 1) 同脚本同页面（CustomEvent 即时）
+    document.addEventListener(LIST_MGMT_KEY, (e: Event) => {
+        handlePayload((e as CustomEvent).detail);
+    });
+
+    // 2) 跨脚本跨标签页（localStorage storage 事件，只在其他标签页触发）
+    window.addEventListener('storage', (e: StorageEvent) => {
+        if (e.key !== LIST_MGMT_KEY || !e.newValue) return;
+        try {
+            handlePayload(JSON.parse(e.newValue));
+        } catch {}
+    });
+
+    // 3) 同脚本跨标签页（GM 原生通道）
+    try {
+        GM_addValueChangeListener(
+            LIST_MGMT_KEY,
+            (_name: string, _oldValue: any, newValue: any, _remote: boolean) => {
+                if (!newValue) return;
+                try {
+                    handlePayload(JSON.parse(newValue));
+                } catch {}
+            }
+        );
+    } catch {}
+}
+
+/**
+ * 详情页：移除指定清单的 checkbox（从 .jhs-list-panel 和 #modal-save-list 两处）。
+ * @param listId 清单 ID
+ */
+export function removeDetailPageCheckbox(listId: string): void {
+    // .jhs-list-panel（展开面板）
+    const panelCb = document.querySelector(`.jhs-list-panel input[data-list-id="${listId}"]`);
+    if (panelCb) {
+        panelCb.closest('p.control')?.remove() || panelCb.closest('label')?.remove();
+    }
+    // #modal-save-list listContainer（隐藏原生弹窗）
+    const modalCb = document.querySelector(`#modal-save-list input[data-list-id="${listId}"]`);
+    if (modalCb) {
+        modalCb.closest('p.control')?.remove() || modalCb.closest('label')?.remove();
+    }
+    console.log(`${LOG_PREFIX} 详情页已移除清单 ${listId} 的 checkbox`);
+}
+
+/**
+ * 详情页：更新指定清单 checkbox 的标签文本。
+ * @param listId 清单 ID
+ * @param newName 新清单名称
+ */
+export function updateDetailPageCheckboxLabel(listId: string, newName: string): void {
+    // 更新 .jhs-list-panel 和 #modal-save-list 两处
+    const checkboxes = document.querySelectorAll(`input[data-list-id="${listId}"]`);
+    checkboxes.forEach((cb: Element) => {
+        const label = cb.closest('label');
+        if (!label) return;
+        // label 结构：<input> 清单名&nbsp; <span>(count)</span>
+        // 保留 <span>(count)</span>，替换名称文本
+        // 清空 label 内除 input 和 span 外的文本节点，再插入新名称
+        Array.from(label.childNodes).forEach((node: Node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                node.textContent = '';
+            }
+        });
+        // 在 input 后插入新名称文本
+        const inputEl = label.querySelector('input');
+        if (inputEl && inputEl.nextSibling) {
+            inputEl.nextSibling.textContent = `\u00A0\n    ${newName}\u00A0\n    `;
+        } else if (inputEl) {
+            inputEl.insertAdjacentText('afterend', `\u00A0${newName}\u00A0`);
+        }
+    });
+    console.log(`${LOG_PREFIX} 详情页已更新清单 ${listId} 的标签为「${newName}」`);
 }

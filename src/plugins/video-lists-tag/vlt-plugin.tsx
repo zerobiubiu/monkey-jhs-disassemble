@@ -31,7 +31,14 @@
 import { BasePlugin } from '../base-plugin';
 import videoListsTagCssRaw from '../../styles/video-lists-tag.css?raw';
 import { VltTags } from './vlt-tags';
-import { setupCheckboxListener, setupCreateListButton } from './vlt-sync';
+import {
+    setupCheckboxListener,
+    setupCreateListButton,
+    setupListManagementListener,
+    setupListMgmtBroadcastListener,
+    removeDetailPageCheckbox,
+    updateDetailPageCheckboxLabel
+} from './vlt-sync';
 
 /**
  * 视频清单标签插件主类。
@@ -69,10 +76,21 @@ export class VideoListsTagPlugin extends BasePlugin {
      * @returns Promise<void>
      */
     async handle(): Promise<void> {
-        // 详情页：checkbox 同步 + 新增清单 UI
+        // 详情页：checkbox 同步 + 新增清单 UI + 清单管理广播接收
         if ((window as any).isDetailPage) {
             setupCheckboxListener();
             setupCreateListButton();
+            // 接收清单删除/改名广播：实时移除/更新 checkbox
+            setupListMgmtBroadcastListener(
+                (listId: string) => removeDetailPageCheckbox(listId),
+                (listId: string, newName: string) => updateDetailPageCheckboxLabel(listId, newName)
+            );
+            return;
+        }
+
+        // /users/lists 清单管理页：监听删除/改名 → 同步 IDB
+        if (window.location.href.includes('/users/lists')) {
+            setupListManagementListener();
             return;
         }
 
@@ -86,6 +104,12 @@ export class VideoListsTagPlugin extends BasePlugin {
 
         // MutationObserver：监听新 .item 加入（AutoPagePlugin 瀑布流 / listWaterfall）
         this.setupItemObserver();
+
+        // 接收清单删除/改名广播：实时全量刷新标签
+        setupListMgmtBroadcastListener(
+            () => this.vltTags?.refreshAllTags().then(),
+            () => this.vltTags?.refreshAllTags().then()
+        );
 
         // 自动刷新监听（跨标签页同步事件）
         this.vltTags.setupAutoRefreshListener((payload: any) => {

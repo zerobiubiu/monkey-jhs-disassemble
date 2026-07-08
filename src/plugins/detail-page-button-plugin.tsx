@@ -726,8 +726,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     if (!panel) return;
                     panel.innerHTML = '';
                     Array.from(listContainer.children).forEach((child: any) => {
-                        // 跳过「预设清单」
-                        if (child.textContent.includes('预设清单')) return;
+                        // 跳过「预设清单」/「預設清單」（简/繁体均匹配）
+                        if (/[预預][设設]清[单單]/.test(child.textContent)) return;
                         const clone = child.cloneNode(true);
                         panel.appendChild(clone);
                     });

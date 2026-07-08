@@ -282,9 +282,7 @@ export class VltDb {
      * @param designations 番号数组
      * @returns { [designation]: [{ name, url, style }] }
      */
-    static async queryMoviesLists(
-        designations: string[]
-    ): Promise<
+    static async queryMoviesLists(designations: string[]): Promise<
         Record<
             string,
             {
@@ -412,6 +410,68 @@ export class VltDb {
         const db = await openDb();
         try {
             return (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * 删除清单：移除 inventory 记录 + 所有 movie_inventory 关联。
+     *
+     * 对应 /users/lists 页面点击「刪除」后 JavDB 服务端删除清单的客户端镜像。
+     * 不删除 movies 记录（影片可能还关联其他清单，留着等自然过期）。
+     *
+     * @param listId 清单 ID
+     * @returns 删除统计 { inventory: 是否删除了清单, associations: 删除的关联数 }
+     */
+    static async deleteList(listId: string): Promise<{ inventory: boolean; associations: number }> {
+        const db = await openDb();
+        try {
+            const inventory =
+                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
+            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
+
+            const inventoryDeleted = !!inventory[listId];
+            delete inventory[listId];
+
+            // 删除所有以 ::{listId} 结尾的关联
+            const suffix = `::${listId}`;
+            let associationsDeleted = 0;
+            for (const key of Object.keys(mi)) {
+                if (key.endsWith(suffix)) {
+                    delete mi[key];
+                    associationsDeleted++;
+                }
+            }
+
+            await dbPut(db, KEYS.INVENTORY, inventory);
+            await dbPut(db, KEYS.MOVIE_INVENTORY, mi);
+
+            return { inventory: inventoryDeleted, associations: associationsDeleted };
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * 重命名清单：仅更新 inventory 记录的 name 字段。
+     *
+     * 对应 /users/lists 页面点击「修改」→ 编辑弹窗改名保存后的客户端镜像。
+     * 不影响 movie_inventory 关联（关联按 listId 索引，与名称无关）。
+     *
+     * @param listId 清单 ID
+     * @param newName 新清单名称
+     * @returns 是否成功更新（清单不存在时返回 false）
+     */
+    static async renameList(listId: string, newName: string): Promise<boolean> {
+        const db = await openDb();
+        try {
+            const inventory =
+                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
+            if (!inventory[listId]) return false;
+            inventory[listId].name = newName;
+            await dbPut(db, KEYS.INVENTORY, inventory);
+            return true;
         } finally {
             db.close();
         }

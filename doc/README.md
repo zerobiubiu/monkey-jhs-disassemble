@@ -71,6 +71,11 @@
 | `58-fix-create-list-gm-http.md` | 🔧开发指导 | ⚠️已过期 | 终极修复新增清单：doc/57 的 observer+轮询方案无效（根因是 data-remote 失效致常规表单 POST 页面导航，非 listContainer 替换）。改为完全绕过原生表单提交，用 GM_xmlhttpRequest 直接发 ajax POST /lists/remote_create：从 #new_list 表单收集字段（list[name]/video_id/authenticity_token）+ meta csrf-token + X-Requested-With + Accept: text/javascript 模拟 Rails UJS ajax；响应 JS 注入 <script> 页面上下文执行 + 3s 轮询检测新增 checkbox + 兜底从响应正则提取 data-list-id 克隆已有 checkbox 手动构建。**实测响应仅为 Toastr.success 无 list-id**，doc/59 增加 GET /users/lists 兜底 |
 | `59-fix-create-list-fetch-listid.md` | 🔧开发指导 | ⚠️已过期 | 修复新增清单响应无 list-id + 全局繁简转换：doc/58 的正则提取兜底无法匹配（响应仅 Toastr.success）。新增 fetchListIdByName GET /users/lists 解析 a[href*=/lists/] 链接匹配清单名。**实测失败**——/users/lists 页面通过 JS（Turbo/Stimulus）动态加载清单数据，服务端返回 HTML 不含 /lists/{id} 链接，永远找不到。doc/60 用 #save-list-button 双击重载取代。全局繁→简字符替换 21 个文件（toast/按钮/注释）保留有效 |
 | `60-fix-create-list-reload-modal.md` | 🔧开发指导 | ✅已执行 | 修复新增清单：改用 #save-list-button 切换重载 + 延迟优化。doc/59 的 GET /users/lists 解析方案失效（页面 JS 动态加载清单 HTML 不含 /lists/{id}）。改用核心兜底：创建成功后点击 #save-list-button 关闭模态框→200ms→再点击重新打开，触发 JavDB 原生 Stimulus list 控制器 ajax 重新加载清单列表，轮询 5s 检测新 checkbox。多级兜底：注入 JS→200ms 快速轮询→正则提取→#save-list-button 双击重载→/users/lists 最后保险。用户实测控制台显示「重载后侦测到 1 个新 checkbox」+「association=created」成功。延迟优化：首次轮询 2000→200ms、关闭延迟 400→200ms，整体从 ~2.7s 降至 ~0.7s。澄清用户报错均与功能无关（JavDB 广告/Stimulus controller bug/MissAV 404/modalListDisabler 正常日志）。零侵入 DetailPageButtonPlugin；tsc -b + vite build 通过，产物 1832.52 kB（gzip 419.41 kB），version 1.6.3→1.6.4→1.6.5 |
+| `61-list-management-sync.md` | 🔧开发指导 | ✅已执行 | /users/lists 清单删除/改名监听→同步本地 IDB：用户在管理页删除/改名清单后服务端已变更但本地 IDB 仍保留旧数据。方案以 DOM 变化为成功信号（不猜测 AJAX 时序）：删除监听 MutationObserver 检测 #list-<listId> <li> 移除→VltDb.deleteList（删 inventory + 所有 ::listId 关联）；改名用捕获阶段 click 快照旧名+listId→保存时读新名→MutationObserver 等 .list-name 文本变化→VltDb.renameList。VltDb 新增 deleteList/renameList 方法。三重广播 designation='*' 触发列表页 refreshAllTags 全量刷新。零侵入已定稿插件；tsc -b + vite build 通过，产物 1839.05 kB（gzip 420.78 kB），version 1.6.5→1.7.0 |
+| `62-list-management-sync-rewrite.md` | 🔧开发指导 | ✅已执行 | 清单删除/改名监听重写：拦截原生操作 + 自行发 GM_xmlhttpRequest + 实时广播。doc/61 的 MutationObserver 方案失效——JavDB 删除 AJAX 返回的 JS 不移除 <li>，需刷新才消失，observer 永远不触发。改为捕获阶段拦截删除链接 click + preventDefault + 自行 confirm + GM_xmlhttpRequest DELETE /users/remove_list→成功后 deleteList + 广播 + 移除 DOM；改名拦截保存按钮 click + GM_xmlhttpRequest POST /users/update_list→成功后 renameList + 广播 + 更新 DOM。独立广播通道 jdb:list-mgmt（不混用 jdb:last-sync）。新增 setupListMgmtBroadcastListener 在详情页（移除/更新 checkbox）和列表页（refreshAllTags）都注册。从 app.js 逆向确认服务端 API。撤回 doc/61 的 vlt-tags designation='*' 分支；tsc -b + vite build 通过，产物 1842.98 kB（gzip 421.58 kB），version 1.7.0→1.7.1 |
+| `63-toast-position-fix.md` | 🔧开发指导 | ✅已执行 | 修复 toast 通知被导航栏遮挡：#jdb-toast-container 的 top 从 20px 改为 72px（导航栏高 56px + 16px 间距），z-index 99999 本身高于导航栏无需调；tsc -b + vite build 通过，version 1.7.1→1.7.2 |
+| `64-delete-perf-optimization.md` | 🔧开发指导 | ✅已执行 | 删除清单性能优化：乐观 UI + 并行执行。原方案串行等待服务器响应才移除 DOM，用户感知延迟大。改为 confirm 后立即移除 DOM（乐观更新），GM_xmlhttpRequest DELETE 与 VltDb.deleteList 并行执行（Promise.all）。瓶颈分析：网络请求等待 JavDB 服务器是最大延迟源（数百ms~数秒），IDB 操作（83KB/3563条）仅~50ms。服务器失败时 warning toast 而非恢复 DOM；tsc -b + vite build 通过，version 1.7.2→1.7.3 |
+| `65-fix-preset-list-filter.md` | 🔧开发指导 | ✅已执行 | 修复详情页清单面板「预设清单」过滤失效：doc/59 全局繁→简替换将代码中 預設清單 改为 预设清单，但 JavDB DOM 返回仍为繁体 預設清單，includes 不匹配导致过滤失效。改为正则 /预[设設]清[单單]/ 同时匹配简繁体。修改 detail-page-button-plugin.tsx _initListPanel sync + vlt-sync.ts refreshListPanel 两处；tsc -b + vite build 通过，version 1.7.3→1.7.4 |
 
 ## 类型图例
 
@@ -140,6 +145,11 @@
 58. `58-fix-create-list-gm-http.md` — 终极修复新增清单：改用 GM_xmlhttpRequest 直接发 ajax 绕过原生表单提交（data-remote 失效致常规 POST 页面导航）+ JS 响应注入执行 + 轮询 + 兜底手动构建 checkbox【⚠️已过期：响应无 list-id，doc/59 取代】
 59. `59-fix-create-list-fetch-listid.md` — 修复新增清单响应无 list-id（GET /users/lists 匹配清单名提取 list-id）+ 全局繁→简字符替换 21 文件【⚠️已过期：/users/lists 取不到，doc/60 取代】
 60. `60-fix-create-list-reload-modal.md` — 修复新增清单：#save-list-button 双击重载触发 JavDB Stimulus 原生 ajax 重新加载清单 + 延迟优化（2.7s→0.7s）+ 澄清预存报错
+61. `61-list-management-sync.md` — /users/lists 清单删除/改名监听→同步本地 IDB（MutationObserver 检测 <li> 移除→deleteList + 捕获阶段快照旧名→等 .list-name 变化→renameList + designation='*' 全量广播）【⚠️方案失效：JavDB 不移除 DOM，doc/62 重写】
+62. `62-list-management-sync-rewrite.md` — 清单删除/改名监听重写：拦截原生操作 + 自行发 GM_xmlhttpRequest + 独立广播通道 jdb:list-mgmt + 详情页移除/更新 checkbox + 列表页 refreshAllTags
+63. `63-toast-position-fix.md` — 修复 toast 通知被导航栏遮挡（top 20px→72px，导航栏高 56px）
+64. `64-delete-perf-optimization.md` — 删除清单性能优化：乐观 UI（confirm 后立即移除 DOM）+ Promise.all 并行（DELETE 请求 + IDB 删除），瓶颈是 JavDB 服务器响应而非 IDB
+65. `65-fix-preset-list-filter.md` — 修复详情页清单面板「预设清单」过滤失效（doc/59 繁→简替换致代码 预设清单 与 DOM 預設清單 不匹配，改用正则 /预[设設]清[单單]/ 匹配简繁体）
 
 ## 当前进度概览
 
