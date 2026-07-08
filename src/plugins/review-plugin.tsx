@@ -126,7 +126,7 @@ export class ReviewPlugin extends BasePlugin {
         try {
             reviews = await fetchMovieReviews(movieId, 1, limit);
         } catch (err: any) {
-            if (err.toString().includes('簽名已過期')) {
+            if (err.toString().includes('簽名已过期')) {
                 show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
             clog.error('获取评论失败:', err);

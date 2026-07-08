@@ -1,5 +1,5 @@
 /**
- * WantWatchedImportButton —— 想看/看過页面"导入至 JHS"按钮（React 函数组件，JSX）。
+ * WantWatchedImportButton —— 想看/看过页面"导入至 JHS"按钮（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/want-and-watched-videos-plugin.ts 的 handle（L42/L57）：
  * 两处 `$("h3").append('<a class="..." id="wantWatchBtn" style="padding:10px;">导入至 JHS</a>')`，

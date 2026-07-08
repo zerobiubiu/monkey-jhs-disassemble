@@ -31,7 +31,7 @@
 import { BasePlugin } from '../base-plugin';
 import videoListsTagCssRaw from '../../styles/video-lists-tag.css?raw';
 import { VltTags } from './vlt-tags';
-import { setupCheckboxListener } from './vlt-sync';
+import { setupCheckboxListener, setupCreateListButton } from './vlt-sync';
 
 /**
  * 视频清单标签插件主类。
@@ -69,9 +69,10 @@ export class VideoListsTagPlugin extends BasePlugin {
      * @returns Promise<void>
      */
     async handle(): Promise<void> {
-        // 详情页：checkbox 同步
+        // 详情页：checkbox 同步 + 新增清单 UI
         if ((window as any).isDetailPage) {
             setupCheckboxListener();
+            setupCreateListButton();
             return;
         }
 

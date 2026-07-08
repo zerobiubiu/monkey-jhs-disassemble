@@ -74,7 +74,7 @@ export class ActressInfoPlugin extends BasePlugin {
 
     /**
      * 详情页处理：从 `.female` 前置节点提取演员名列表，逐名查询维基并渲染信息标签到
-     * "演員" 标题之后；查询结果缓存到 localStorage（jhs_actress_info）。
+     * "演员" 标题之后；查询结果缓存到 localStorage（jhs_actress_info）。
      * 对应原 L4164-4202。
      * 无参数，返回 Promise<void>；遇查询异常仅 console.error 并跳过当前演员，
      * 不向上抛出。已在页面渲染过 `.actress-info` 或无演员名时直接短路返回。
@@ -116,7 +116,7 @@ export class ActressInfoPlugin extends BasePlugin {
             );
             html += segment;
         }
-        $('strong:contains("演員")').parent().after(html);
+        $('strong:contains("演员")').parent().after(html);
         localStorage.setItem(storageKey, JSON.stringify(cache));
     }
 
@@ -207,8 +207,8 @@ export class ActressInfoPlugin extends BasePlugin {
             .find('td')
             .text()
             .trim();
-        const age: string = $parsed.find("th:contains('現年齢')").parent().find('td').text().trim()
-            ? parseInt($parsed.find("th:contains('現年齢')").parent().find('td').text().trim()) +
+        const age: string = $parsed.find("th:contains('现年齢')").parent().find('td').text().trim()
+            ? parseInt($parsed.find("th:contains('现年齢')").parent().find('td').text().trim()) +
               '岁'
             : '';
         const height: string =

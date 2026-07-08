@@ -3,7 +3,7 @@
  *
  * 提取自 src/plugins/top250-plugin.ts 的 toolBar（L241-246）：原模板拼接
  * `<div class="button-group">` 内含两组 conditionBox：分类按钮（全部/有码/无码/
- * 欧美/Fc2 + 含中字磁鏈/无字幕/重置）与年份按钮（当前年→2008），由
+ * 欧美/Fc2 + 含中字磁链/无字幕/重置）与年份按钮（当前年→2008），由
  * `this.contentBox.append(html)` 消费。年份按钮由调用方循环调用
  * Top250YearButton 拼接后以 yearButtonsHtml prop 注入。
  *
@@ -97,7 +97,7 @@ export function Top250ToolBar({
                     className={`button is-small ${hasCnsub === '1' ? 'is-info' : ''}`}
                     data-cnsub-value="1"
                 >
-                    含中字磁鏈
+                    含中字磁链
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}

@@ -2,7 +2,7 @@
  * Top250Pagination —— Top250 分页栏（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/top250-plugin.ts 的 renderPagination（L107-116）：固定 5 页，
- * 当前页高亮 is-current，首页隐藏上一頁（do-hide），第 5 页隐藏下一頁（do-hide）。
+ * 当前页高亮 is-current，首页隐藏上一页（do-hide），第 5 页隐藏下一页（do-hide）。
  * 由 `this.contentBox.append(html)` 消费。
  *
  * 保留原 `<nav class="pagination">` 结构、pagination-previous/next/list 类、
@@ -36,10 +36,10 @@ export function Top250Pagination({ page }: Top250PaginationProps) {
     return (
         <nav className="pagination">
             <a className={`pagination-previous ${page <= 1 ? 'do-hide' : ''}`} data-page={page - 1}>
-                上一頁
+                上一页
             </a>
             <a className={`pagination-next ${hasMore ? 'do-hide' : ''}`} data-page={page + 1}>
-                下一頁
+                下一页
             </a>
             <ul className="pagination-list">
                 {Array.from({ length: 5 }, (_, i) => i + 1).map((i) => (

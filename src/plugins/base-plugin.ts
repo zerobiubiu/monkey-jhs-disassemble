@@ -94,7 +94,7 @@ export class BasePlugin {
         let publishTime: string | null = null;
         const href = window.location.href;
         if (isJavdbSite) {
-            carNum = $('a[title="複製番號"]').attr('data-clipboard-text');
+            carNum = $('a[title="複制番号"]').attr('data-clipboard-text');
             url = href.split('?')[0].split('#')[0];
             actress = $('.female')
                 .prev()
@@ -154,7 +154,7 @@ export class BasePlugin {
         }
         const role = $(".section-meta:contains('男優')").length > 0 ? ACTOR : ACTRESS;
         let movieType: string = CENSORED;
-        if (allName.some((part: string) => part.includes('無碼'))) {
+        if (allName.some((part: string) => part.includes('无码'))) {
             movieType = UNCENSORED;
         }
         if (href.includes('uncensored')) {

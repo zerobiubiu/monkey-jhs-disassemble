@@ -2,7 +2,7 @@
  * 详情页按钮插件 DetailPageButtonPlugin —— 对应原脚本 archetype/jhs.user.js L5118-6440。
  *
  * 在影片详情页注入顶部工具按钮组（屏蔽/收藏/已观看/磁力过滤/字幕搜索）、
- * 自动同步 JavDB 原生「想看/看過」状态到 JHS IndexedDB（MutationObserver 监听
+ * 自动同步 JavDB 原生「想看/看过」状态到 JHS IndexedDB（MutationObserver 监听
  * .review-buttons 变化，三重通道广播）、注入星星评分组件与清单平铺面板、
  * 绑定快捷键（屏蔽/收藏/已观看/快进预览视频）、迅雷/SubTitleCat 字幕搜索与预览。
  *
@@ -135,7 +135,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
 
     /**
      * 详情页主处理：加载快捷键设置 → 绑定快捷键 → 隐藏视频控件；
-     * 仅详情页时创建菜单按钮、挂钩想看/看過同步、注入快捷评分组件、安装同步监听器。
+     * 仅详情页时创建菜单按钮、挂钩想看/看过同步、注入快捷评分组件、安装同步监听器。
      * 对应原 L5126-5140。
      */
     async handle(): Promise<void> {
@@ -236,7 +236,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
     }
 
     /**
-     * 监听 JavDB 原生「想看/看過」按钮变化，自动同步到 JHS。
+     * 监听 JavDB 原生「想看/看过」按钮变化，自动同步到 JHS。
      * 用 MutationObserver 监听 .review-buttons 子树变化，比对前后状态差异。
      * 对应原 L5217-5264。
      */
@@ -297,7 +297,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
      */
     detectWantWatchedState(container: any): WantWatchedState {
         // is-info is-light tag = 我想看
-        // is-success is-light tag = 我看過
+        // is-success is-light tag = 我看过
         // 它们的 parent a[href] 指向 /users/want_watch_videos 或 /users/watched_videos
         const wantTag = container.querySelector(
             "a[href='/users/want_watch_videos'] .tag.is-info.is-light"
@@ -726,8 +726,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     if (!panel) return;
                     panel.innerHTML = '';
                     Array.from(listContainer.children).forEach((child: any) => {
-                        // 跳过「預設清單」
-                        if (child.textContent.includes('預設清單')) return;
+                        // 跳过「预设清单」
+                        if (child.textContent.includes('预设清单')) return;
                         const clone = child.cloneNode(true);
                         panel.appendChild(clone);
                     });

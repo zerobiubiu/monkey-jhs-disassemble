@@ -96,7 +96,7 @@ export class Top250Plugin extends BasePlugin {
     }
 
     /**
-     * 渲染分页栏（固定 5 页，当前页高亮 is-current，首/末页隐藏上一頁/下一頁），
+     * 渲染分页栏（固定 5 页，当前页高亮 is-current，首/末页隐藏上一页/下一页），
      * 并绑定分页点击：更新 URL page 参数后 pushState 并刷新。对应原 L4505-4533。
      * 无参数，无返回值；page 解析失败或缺省时落到第 1 页。
      */
@@ -199,7 +199,7 @@ export class Top250Plugin extends BasePlugin {
      * 切换高亮、按新中字值重新过滤已缓存影片并重渲染列表与评分。对应原 L4601-4640。
      * @param handleType 当前分类类型（"all"/"video_type"/"year"）。
      * @param typeValue 当前分类值（"0".."3" 或年份字符串）。
-     * @param page 当前页码（5 时移除下一頁按钮）。
+     * @param page 当前页码（5 时移除下一页按钮）。
      */
     toolBar(handleType: string, typeValue: string, page: number): void {
         if (page.toString() === '5') {

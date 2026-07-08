@@ -14,7 +14,7 @@
  * 实现已对照 archetype/jhs.user.js L10585-10708（RelatedPlugin 完整类，commit 66b2fdf）
  * 精确校准：DOM ID、文案、条目字段、HTML 结构/类名/内联 style、折叠头均与 archetype
  * 一致；enableLoadRelated 默认 NO（折叠，与 archetype 默认 C 一致），首次展开才拉取。
- * 保留对 ReviewPlugin 的对称增强（簽名已過期 提示 + clog.error，见 review-plugin.ts）：
+ * 保留对 ReviewPlugin 的对称增强（簽名已过期 提示 + clog.error，见 review-plugin.ts）：
  * - DOM ID 沿用原版单数 related 命名：relatedFold / relatedContainer / relatedFooter /
  *   relatedLoading / relatedEnd；重试/加载更多按钮 ID 为 retryFetchRelateds /
  *   loadMoreRelateds（原版命名，relateds 为名词复数）。
@@ -114,7 +114,7 @@ export class RelatedPlugin extends BasePlugin {
         try {
             list = await K(movieId, 1, limit);
         } catch (err: any) {
-            if (err.toString().includes('簽名已過期')) {
+            if (err.toString().includes('簽名已过期')) {
                 show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
             clog.error('获取清单失败:', err);

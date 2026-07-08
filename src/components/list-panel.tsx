@@ -5,7 +5,7 @@
  * （L693-695 的 insertAdjacentHTML，原 archetype/jhs.user.js L5637-5681）：
  * 一个空的 .jhs-list-panel 容器 div，插入到 #otherSiteBox 之后；其内容由
  * _initListPanel 的 MutationObserver 从 #modal-save-list 的 listContainer
- * 克隆同步而来（跳过「預設清單」）。
+ * 克隆同步而来（跳过「预设清单」）。
  *
  * 保留原 class（jhs-list-panel）。原实现用 insertAdjacentHTML 注入空 div
  * 容器，行为等价（同样产出空 div，由后续 sync 填充）。

@@ -362,11 +362,11 @@ export class Fc2Plugin extends BasePlugin {
                         magnetsHtml += `
                         <div class="item columns is-desktop ${rowClass}">
                             <div class="magnet-name column is-four-fifths">
-                                <a href="magnet:?xt=urn:btih:${magnet.hash}" title="右鍵點擊並選擇「複製鏈接地址」">
+                                <a href="magnet:?xt=urn:btih:${magnet.hash}" title="右键點擊並选擇「複制链接地址」">
                                     <span class="name">${magnet.name}</span>
                                     <br>
                                     <span class="meta">
-                                        ${(magnet.size / 1024).toFixed(2)}GB, ${magnet.files_count}個文件
+                                        ${(magnet.size / 1024).toFixed(2)}GB, ${magnet.files_count}个文件
                                      </span>
                                     <br>
                                     <div class="tags">
@@ -376,7 +376,7 @@ export class Fc2Plugin extends BasePlugin {
                                 </a>
                             </div>
                             <div class="buttons column">
-                                <button class="button is-info is-small copy-to-clipboard" data-clipboard-text="magnet:?xt=urn:btih:${magnet.hash}" type="button">&nbsp;複製&nbsp;</button>
+                                <button class="button is-info is-small copy-to-clipboard" data-clipboard-text="magnet:?xt=urn:btih:${magnet.hash}" type="button">&nbsp;複制&nbsp;</button>
                             </div>
                             <div class="date column"><span class="time">${magnet.created_at}</span></div>
                         </div>

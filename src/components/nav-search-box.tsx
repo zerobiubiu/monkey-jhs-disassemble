@@ -2,7 +2,7 @@
  * NavSearchBox —— 导航栏自定义检索框（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/nav-bar-plugin.ts 的 hookSearch（L91-93）：原字符串注入
- * `#navbar-menu-hero` 之后，含搜索类型下拉（影片/演員/系列/片商/導演/番號/清單）、
+ * `#navbar-menu-hero` 之后，含搜索类型下拉（影片/演员/系列/片商/導演/番号/清单）、
  * 关键词输入、进阶检索链接、检索按钮。由 `$("#navbar-menu-hero").after(html)` 消费。
  *
  * 保留原 `<div class="navbar-menu" id="search-box">` 结构、所有 id/类名/内联 style、
@@ -42,17 +42,17 @@ export function NavSearchBox() {
                     }}
                 >
                     <option value="all">影片</option>
-                    <option value="actor">演員</option>
+                    <option value="actor">演员</option>
                     <option value="series">系列</option>
                     <option value="maker">片商</option>
                     <option value="director">導演</option>
-                    <option value="code">番號</option>
-                    <option value="list">清單</option>
+                    <option value="code">番号</option>
+                    <option value="list">清单</option>
                 </select>
                 <input
                     id="search-keyword"
                     type="text"
-                    placeholder="輸入影片番號，演員名等關鍵字進行檢索"
+                    placeholder="输入影片番号，演员名等关键字进行檢索"
                     style={{
                         padding: '8px 12px',
                         border: '1px solid #555',
@@ -66,7 +66,7 @@ export function NavSearchBox() {
                 />
                 <a
                     href="/advanced_search?noFold=1"
-                    title="進階檢索"
+                    title="进阶檢索"
                     style={{
                         padding: '6px 12px',
                         backgroundColor: '#444',

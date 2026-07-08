@@ -483,3 +483,557 @@ export function setupCheckboxListener(): void {
         );
     });
 }
+
+/* ============================================================
+ * 新增清单功能（修复展开面板下原生弹窗不可达 + 自动同步关联）
+ * ============================================================
+ *
+ * 背景：
+ * 原生「存入清单」模态框被 CSS 永久隐藏（rating-bar.css
+ * `#modal-save-list{display:none}`），其 footer 的「創建新清单」按钮
+ * 对用户不可达，导致展开布局下新增清单功能失效。
+ *
+ * 方案（零侵入已定稿插件，与网站原始功能相符）：
+ * 1. 在 .jhs-list-panel 后方插入一份同款 Bulma 风格的「➕ 新增清单」
+ *    UI（按钮 + 行内表单）。
+ * 2. 提交时改用 GM_xmlhttpRequest 直接发 ajax POST /lists/remote_create
+ *    （doc/58 终极修复：原方案驱动原生 #new_list 表单 submit，依赖
+ *    Rails UJS data-remote 拦截，但 JavDB 已迁移到 Turbo，data-remote
+ *    不再被拦截 → submitBtn.click() 触发常规表单 POST → 页面导航 →
+ *    脚本环境卸载 → 所有后续效果丢失。改用 GM_xmlhttpRequest 完全
+ *    绕过原生表单链路，自控请求与响应）。从 #new_list 表单收集字段
+ *    （list[name]/video_id/authenticity_token）+ meta csrf-token，
+ *    服务端创建清单后自动关联当前视频。
+ * 3. 响应处理（doc/59 修复）：服务端响应仅为 `Toastr.success("...")` JS，
+ *    不含 list-id、不更新 DOM。故多级兜底：轮询 2s 检测 listContainer 更新 →
+ *    从响应正则提取 data-list-id → GET /users/lists 匹配清单名称提取 list-id →
+ *    手动克隆 checkbox 构建。检测到后直接调用
+ *    handleCheckboxChange(movieInfo, listInfo, true) 完成本地 IDB 同步，
+ *    彻底消除手动「取消关联→再关联」步骤（用户核心诉求）。
+ *
+ * doc/57 修复（已失效）：挂 modal + 200ms 轮询。无效（原生表单 POST 导致
+ * 页面导航，无新 checkbox 出现在 DOM 中）。
+ * doc/58 修复：改用 GM_xmlhttpRequest 绕过原生表单。但响应无 list-id。
+ * doc/59 修复：增加 GET /users/lists 查找新清单 list-id 兜底（失效：
+ *   页面通过 JS 动态加载清单数据，原始 HTML 不含清单列表）。
+ * doc/60 修复：增加 #save-list-button 切换重载兜底：点击两次（关闭→
+ *   重新打开模态框），触发 JavDB 原生 Stimulus list 控制器重新 ajax
+ *   加载清单列表，获取含新 checkbox 的完整 DOM。
+ */
+
+/** 新增清单 UI 是否已注入（幂等标记）。 */
+let _createListUiInjected = false;
+
+/**
+ * 在 .jhs-list-panel 后插入「新增清单」UI。
+ * 由于 .jhs-list-panel 由 DetailPageButtonPlugin 异步创建，此处轮询等待。
+ */
+export function setupCreateListButton(): void {
+    if (_createListUiInjected) return;
+    const panel = document.querySelector('.jhs-list-panel');
+    if (!panel) {
+        setTimeout(setupCreateListButton, 400);
+        return;
+    }
+    if (document.querySelector('.jhs-list-create-wrap')) {
+        _createListUiInjected = true;
+        return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'jhs-list-create-wrap';
+    wrap.innerHTML =
+        '<button type="button" class="button is-info is-small jhs-list-create-btn">➕ 新增清单</button>' +
+        '<span class="jhs-list-create-form" style="display:none;">' +
+        '<input type="text" class="input is-small jhs-list-create-input" placeholder="输入新清单名稱" maxlength="50" />' +
+        '<button type="button" class="button is-info is-small jhs-list-create-save">保存</button>' +
+        '<button type="button" class="button is-light is-small jhs-list-create-cancel">取消</button>' +
+        '</span>';
+    panel.insertAdjacentElement('afterend', wrap);
+    bindCreateListEvents(wrap);
+    _createListUiInjected = true;
+}
+
+/**
+ * 绑定新增清单 UI 的事件。
+ */
+function bindCreateListEvents(wrap: HTMLElement): void {
+    const btn = wrap.querySelector('.jhs-list-create-btn') as HTMLButtonElement;
+    const form = wrap.querySelector('.jhs-list-create-form') as HTMLElement;
+    const input = wrap.querySelector('.jhs-list-create-input') as HTMLInputElement;
+    const saveBtn = wrap.querySelector('.jhs-list-create-save') as HTMLButtonElement;
+    const cancelBtn = wrap.querySelector('.jhs-list-create-cancel') as HTMLButtonElement;
+
+    btn.addEventListener('click', () => {
+        btn.style.display = 'none';
+        form.style.display = 'inline-flex';
+        input.value = '';
+        input.focus();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        form.style.display = 'none';
+        btn.style.display = 'inline-flex';
+        input.value = '';
+    });
+
+    saveBtn.addEventListener('click', () => {
+        const name = input.value.trim();
+        if (!name) {
+            showToast('请输入清单名稱', 'warning');
+            input.focus();
+            return;
+        }
+        createList(name).then();
+    });
+
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveBtn.click();
+        } else if (e.key === 'Escape') {
+            cancelBtn.click();
+        }
+    });
+}
+
+/**
+ * 创建新清单并自动关联当前影片。
+ *
+ * doc/56 原方案驱动原生 #new_list 表单 submit（`submitBtn.click()`），依赖
+ * Rails UJS `data-remote` 拦截为 ajax。但实测：JavDB 已迁移到 Turbo，
+ * `data-remote="true"` 不再被拦截 → `submitBtn.click()` 触发的是**常规表单
+ * POST**（非 ajax），页面导航到 `/lists/remote_create`，脚本环境被卸载，
+ * 所有 setTimeout/MutationObserver/setInterval 全部销毁。服务端虽创建了
+ * 清单（刷新后可见），但客户端无任何后续效果（无 toast、无 IDB 同步、
+ * 无自动收藏），且 listContainer 未被更新。doc/57 的「挂 modal + 轮询」
+ * 修复也无效，因为根本没有新 checkbox 出现在 DOM 中。
+ *
+ * doc/58-59 修复：改用 `GM_xmlhttpRequest` 直接发 ajax POST，自控请求
+ * 与响应。服务端响应仅为 `Toastr.success("...")` JS，不含 list-id、
+ * 不含 HTML 片段、不更新 listContainer。
+ *
+ * doc/60 修复（增加多级兜底，按优先级依次尝试）：
+ * 1. 从 #new_list 表单收集字段 + meta csrf-token，GM_xmlhttpRequest POST
+ * 2. 注入 `<script>` 执行 JS 响应（显示 JavDB 原生 Toastr 通知）
+ * 3. 轮询 2s 检测 listContainer 是否被更新（若响应含 DOM 更新）
+ * 4. 从响应正则提取 data-list-id 并手动构建 checkbox
+ * 5. **核心兜底**：点击 #save-list-button 两次（关闭→重新打开模态框），
+ *    触发 JavDB 原生 Stimulus list 控制器重新 ajax 加载清单列表（含新清单
+ *    的 checkbox），轮询 5s 检测新 checkbox
+ * 6. **最后兜底**：GET /users/lists 页面解析 /lists/{id} 链接匹配清单名
+ *    （可能因页面 JS 动态加载而失效）
+ * 7. 完成：refreshListPanel() 刷新平铺面板 + handleCheckboxChange(add)
+ *    同步本地 IDB + 三重广播 + 自动收藏
+ *
+ * @param listName 新清单名称
+ */
+async function createList(listName: string): Promise<void> {
+    const modal = document.querySelector('#modal-save-list');
+    if (!modal) {
+        showToast('✗ 未找到存入清单弹窗，请重新进入详情页', 'error');
+        return;
+    }
+    const nameInput = modal.querySelector(
+        'input[data-list-target="listNewNameInput"]'
+    ) as HTMLInputElement | null;
+    const form = modal.querySelector('#new_list') as HTMLFormElement | null;
+    const listContainer = modal.querySelector(
+        '[data-list-target="listContainer"]'
+    ) as HTMLElement | null;
+    if (!nameInput || !form || !listContainer) {
+        showToast('✗ 清单建立表单未就绪，请重新进入详情页', 'error');
+        return;
+    }
+
+    // ── 收集表单字段 ──
+    const formData: Record<string, string> = {};
+    Array.from(form.querySelectorAll('input, textarea, select')).forEach((el: any) => {
+        if (el.name && el.type !== 'submit' && el.type !== 'button' && el.type !== 'reset') {
+            formData[el.name] = el.value;
+        }
+    });
+    // 用新清单名覆盖名称字段（nameInput.name 通常是 list[name]）
+    if (nameInput.name) {
+        formData[nameInput.name] = listName;
+    }
+
+    // ── CSRF token ──
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+    const csrfToken = csrfMeta?.content || formData['authenticity_token'] || '';
+
+    // ── 提交前快照 ──
+    const beforeIds = new Set(
+        Array.from(listContainer.querySelectorAll('input[type="checkbox"][data-list-id]')).map(
+            (el: any) => el.dataset.listId
+        )
+    );
+    const videoId =
+        formData['video_id'] ||
+        (form.querySelector('input[name="video_id"]') as HTMLInputElement | null)?.value ||
+        '';
+
+    // ── 还原我们的展开 UI（立即恢复，不等待请求完成） ──
+    restoreCreateListUi();
+
+    showToast('正在建立清单…', 'info');
+    console.log(`${LOG_PREFIX} ═══ 新增清单「${listName}」(video_id=${videoId}) ═══`);
+
+    // ── 发送 ajax 请求 ──
+    let responseText = '';
+    try {
+        responseText = await new Promise<string>((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: 'https://javdb.com/lists/remote_create',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    Accept: 'text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*;q=0.01',
+                    'X-CSRF-Token': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                data: Object.entries(formData)
+                    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                    .join('&'),
+                timeout: 15000,
+                onload: (r: any) => {
+                    if (r.status >= 200 && r.status < 300) {
+                        resolve(r.responseText || '');
+                    } else {
+                        reject(
+                            new Error(`HTTP ${r.status}: ${r.responseText?.slice(0, 200) || ''}`)
+                        );
+                    }
+                },
+                onerror: () => reject(new Error('网络错误')),
+                ontimeout: () => reject(new Error('请求超时'))
+            });
+        });
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 新增清单失败`, err);
+        showToast(`✗ 新增清单失败：${err.message || '请稍后重試'}`, 'error');
+        return;
+    }
+
+    console.log(`${LOG_PREFIX} 服务端响应（前 500 字）: ${responseText.slice(0, 500)}`);
+
+    // ── 在页面上下文执行 JS 响应 ──
+    // 服务端返回的是 JS（如 Toastr.success("...")），注入 <script> 执行，
+    // 让 JavDB 原生 Toastr 通知正常显示。
+    if (responseText.trim()) {
+        try {
+            const script = document.createElement('script');
+            script.textContent = responseText;
+            (document.body || document.documentElement).appendChild(script);
+            script.remove();
+            console.log(`${LOG_PREFIX} JS 响应已注入执行`);
+        } catch (e) {
+            console.warn(`${LOG_PREFIX} JS 响应注入失败`, e);
+        }
+    }
+
+    // ── 快速检测列表是否被 JS 响应直接更新（最多 200ms） ──
+    // JavDB 的响应通常是 Toastr.success，不会更新 DOM，所以很短的轮询
+    // 即可。保留这段是为了应对响应格式可能变化（保险）。
+    let newCheckboxes = await pollForNewCheckboxes(modal, beforeIds, 200);
+    if (newCheckboxes.length > 0) {
+        console.log(`${LOG_PREFIX} 侦测到 ${newCheckboxes.length} 个新 checkbox，走正常完成流程`);
+        finishCreateList(newCheckboxes, listName);
+        return;
+    }
+
+    // ── 从响应提取 list-id（若响应含 HTML 片段） ──
+    const listIdMatch = responseText.match(/data-list-id=["']([^"']+)["']/);
+    if (listIdMatch) {
+        const listId = listIdMatch[1];
+        const manualCb = manuallyBuildCheckbox(listContainer, listId, listName, videoId);
+        if (manualCb) {
+            console.log(`${LOG_PREFIX} 从响应提取 list-id 成功 (list_id=${listId})`);
+            finishCreateList([manualCb], listName);
+            return;
+        }
+    }
+
+    // ── 核心兜底：通过切换 #save-list-button 重新加载模态框的清单列表 ──
+    // 服务端响应只有 Toastr.success，不含 list-id、不更新 DOM。
+    // 但 JavDB 的 Stimulus list 控制器在模态框打开时会 ajax 加载清单列表，
+    // 新建清单后关闭再打开即可拉取到含新清单的完整列表（包含新 checkbox）。
+    console.log(`${LOG_PREFIX} 响应无 list-id，通过切换 #save-list-button 重载清单列表`);
+    const saveListBtn = document.querySelector('#save-list-button') as HTMLElement | null;
+    if (saveListBtn) {
+        // 第一次点击：关闭模态框（Stimulus 切换状态）
+        saveListBtn.click();
+        // 等待 Stimulus 处理关闭（短延迟可避免下次开关合并）
+        await new Promise((r) => setTimeout(r, 200));
+        // 第二次点击：重新打开模态框（触发 ajax 加载新清单列表）
+        saveListBtn.click();
+        // 轮询检测新增 checkbox（最多 5s）
+        newCheckboxes = await pollForNewCheckboxes(modal, beforeIds, 5000);
+        if (newCheckboxes.length > 0) {
+            console.log(
+                `${LOG_PREFIX} 重载后侦测到 ${newCheckboxes.length} 个新 checkbox，走正常完成流程`
+            );
+            finishCreateList(newCheckboxes, listName);
+            return;
+        }
+    }
+
+    // ── 最后兜底：尝试 GET /users/lists 查找 list-id（可能因 JS 动态加载而失败） ──
+    console.log(`${LOG_PREFIX} 按钮重载未找到新 checkbox，尝试 /users/lists 作为最后手段`);
+    const listId = await fetchListIdByName(listName);
+    if (listId) {
+        const manualCb = manuallyBuildCheckbox(listContainer, listId, listName, videoId);
+        if (manualCb) {
+            console.log(`${LOG_PREFIX} 从 /users/lists 查得 list_id=${listId}，手动构建 checkbox`);
+            finishCreateList([manualCb], listName);
+            return;
+        }
+    }
+
+    // ── 全部失败 ──
+    // 服务端可能已创建清单（HTTP 200），但无法定位新 checkbox。
+    // 仍尝试刷新平铺面板，并提示用户。
+    console.error(
+        `${LOG_PREFIX} 新增清单后无法定位新 checkbox。响应前 300 字: ${responseText.slice(0, 300)}`
+    );
+    refreshListPanel();
+    showToast(`⚠ 清单「${listName}」可能已建立，请刷新页面确认`, 'warning');
+}
+
+/**
+ * 轮询检测 modal 内 listContainer 是否出现新增 checkbox。
+ *
+ * @param modal     #modal-save-list 元素
+ * @param beforeIds 提交前快照的 data-list-id 集合
+ * @param timeoutMs 超时毫秒
+ * @returns 新增的 checkbox 数组（超时则为空数组）
+ */
+function pollForNewCheckboxes(
+    modal: Element,
+    beforeIds: Set<string | undefined>,
+    timeoutMs: number
+): Promise<HTMLInputElement[]> {
+    return new Promise((resolve) => {
+        const start = Date.now();
+        const check = () => {
+            const lc = modal.querySelector('[data-list-target="listContainer"]');
+            if (lc) {
+                const after = Array.from(
+                    lc.querySelectorAll('input[type="checkbox"][data-list-id]')
+                ) as HTMLInputElement[];
+                const newOnes = after.filter((cb) => !beforeIds.has(cb.dataset.listId));
+                if (newOnes.length > 0) {
+                    resolve(newOnes);
+                    return;
+                }
+            }
+            if (Date.now() - start < timeoutMs) {
+                setTimeout(check, 100);
+            } else {
+                resolve([]);
+            }
+        };
+        check();
+    });
+}
+
+/**
+ * 通过 GET /users/lists 查找指定名称的清单 ID。
+ *
+ * JavDB 的 /lists/remote_create 响应仅返回 Toastr.success("...") JS，
+ * 不含新清单的 list-id。为完成本地 IDB 同步，需额外请求 /users/lists
+ * 页面，解析其中指向 /lists/{id} 的链接，匹配清单名称后提取 id。
+ *
+ * @param listName 新清单名称
+ * @returns list-id 字符串，找不到返回 null
+ */
+async function fetchListIdByName(listName: string): Promise<string | null> {
+    try {
+        const html: string = await new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: 'https://javdb.com/users/lists',
+                timeout: 10000,
+                onload: (r: any) => {
+                    if (r.status >= 200 && r.status < 300) {
+                        resolve(r.responseText || '');
+                    } else {
+                        reject(new Error(`HTTP ${r.status}`));
+                    }
+                },
+                onerror: () => reject(new Error('网络错误')),
+                ontimeout: () => reject(new Error('请求超时'))
+            });
+        });
+
+        // 解析 HTML，查找指向 /lists/{id} 的链接中匹配清单名称的项。
+        // 注意：/users/lists 页面可能通过 JS（Turbo/Stimulus）动态加载
+        // 清单数据，服务端返回的原始 HTML 中可能不包含清单列表。此时此
+        // 兜底方案会失败，依赖前面的 #save-list-button 重载方案。
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // 先尝试直接匹配 a[href*="/lists/"]
+        let links = doc.querySelectorAll('a[href*="/lists/"]');
+        if (links.length === 0) {
+            // 可能页面结构不同，尝试更宽泛的查找
+            links = doc.querySelectorAll('[href*="/lists/"]');
+        }
+
+        console.log(`${LOG_PREFIX} /users/lists 页面解析到 ${links.length} 条 /lists/ 链接`);
+
+        for (const link of Array.from(links)) {
+            const href = (link as Element).getAttribute('href') || '';
+            // 提取 /lists/{id} 中的 id（排除 /users/lists 自身）
+            const m = href.match(/\/lists\/([^/?#]+)/);
+            if (!m) continue;
+            const id = m[1];
+            if (id === 'users' || id === '' || id === 'new') continue;
+            // 匹配清单名称
+            const text = (link as Element).textContent || '';
+            if (text.trim().includes(listName)) {
+                console.log(`${LOG_PREFIX} /users/lists 匹配到清单「${listName}」→ list_id=${id}`);
+                return id;
+            }
+        }
+
+        // 未匹配到：打印部分 HTML 以便排查
+        const bodyText = doc.body?.textContent?.slice(0, 1000) || '';
+        console.warn(
+            `${LOG_PREFIX} /users/lists 未找到名称含「${listName}」的清单（共 ${links.length} 条链接）。` +
+                `页面文本前 500 字: ${bodyText.slice(0, 500)}`
+        );
+        return null;
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 获取 /users/lists 失败`, err);
+        return null;
+    }
+}
+
+/**
+ * 手动构建新清单的 checkbox 并插入 listContainer（兜底方案）。
+ *
+ * 克隆 listContainer 内已有的一个 checkbox <label>，修改 data-list-id /
+ * value / 文案 / checked，插入 listContainer 末尾。这样即使 JS 响应未成功
+ * 更新 DOM，也能让平铺面板和后续同步流程拿到合法的 checkbox 元素。
+ *
+ * @param listContainer 原生清单容器
+ * @param listId        从响应提取的新清单 ID
+ * @param listName      新清单名称
+ * @param videoId       当前影片 ID
+ * @returns 构建的新 checkbox input 元素，失败返回 null
+ */
+function manuallyBuildCheckbox(
+    listContainer: HTMLElement,
+    listId: string,
+    listName: string,
+    videoId: string
+): HTMLInputElement | null {
+    // 找一个已有的 checkbox label 作为模板克隆
+    const existingCb = listContainer.querySelector(
+        'input[type="checkbox"][data-list-id]'
+    ) as HTMLInputElement | null;
+    if (!existingCb) return null;
+    const existingLabel = existingCb.closest('label');
+    if (!existingLabel) return null;
+
+    const clone = existingLabel.cloneNode(true) as HTMLElement;
+    const cb = clone.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    if (!cb) return null;
+    cb.dataset.listId = listId;
+    cb.value = videoId;
+    cb.checked = true;
+    // Stimulus action 属性保留（克隆已带）
+
+    // 更新 label 文案为「清单名 (1)」——尝试替换最后一个 (N) 计数
+    // label 文本结构通常是「清单名 (count)」，克隆后改成新名 + (1)
+    const textNodes = Array.from(clone.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE);
+    if (textNodes.length > 0) {
+        // 替换最后一个文本节点的计数部分
+        const lastText = textNodes[textNodes.length - 1] as Text;
+        lastText.nodeValue = ` ${listName} (1)`;
+    } else {
+        // 无独立文本节点，追加
+        clone.append(` ${listName} (1)`);
+    }
+
+    listContainer.appendChild(clone);
+    return cb;
+}
+
+/**
+ * 新建清单完成态：toast + 刷新平铺面板 + 触发本地 IDB 同步 + 还原 UI。
+ *
+ * @param newCheckboxes 检测/构建出的新增 checkbox 数组
+ * @param listName      新清单名称（用于 toast 文案）
+ */
+function finishCreateList(newCheckboxes: HTMLInputElement[], listName: string): void {
+    // 还原 newListArea 状态（点击 list#cancelNewList，避免下次打开仍在新增态）
+    const modal = document.querySelector('#modal-save-list');
+    if (modal) {
+        try {
+            const cancelLink = modal.querySelector(
+                'a[data-action="list#cancelNewList"]'
+            ) as HTMLAnchorElement | null;
+            cancelLink?.click();
+        } catch {}
+    }
+
+    restoreCreateListUi();
+    showToast(`✓ 清单「${listName}」已建立，已自动关联當前影片`, 'success');
+
+    // 立即刷新 .jhs-list-panel 平铺面板
+    refreshListPanel();
+
+    // 对每个新增 checkbox，触发本地 IDB 同步（核心优化：消除手动取消/关联步骤）
+    for (const cb of newCheckboxes) {
+        const movieInfo = getMovieInfo(cb.value);
+        if (!movieInfo) {
+            console.warn(`${LOG_PREFIX} 新建清单后无法取得影片资讯，跳过同步`, cb);
+            continue;
+        }
+        const listInfo = getListInfo(cb.dataset.listId || '');
+        if (!listInfo.info.name) {
+            // 手动构建的 checkbox 文案可能读不到名称，用 listName 兜底
+            console.warn(
+                `${LOG_PREFIX} 新建清单后无法从 DOM 取得清单名稱，使用传入名稱「${listName}」`
+            );
+        }
+        // JavDB 已自动勾选（关联视频），故传入 true
+        handleCheckboxChange(movieInfo, listInfo, true).then();
+    }
+}
+
+/**
+ * 还原「新增清单」展开 UI 到初始按钮态。幂等。
+ */
+function restoreCreateListUi(): void {
+    const w = document.querySelector('.jhs-list-create-wrap') as HTMLElement | null;
+    if (!w) return;
+    const btn = w.querySelector('.jhs-list-create-btn') as HTMLElement | null;
+    const f = w.querySelector('.jhs-list-create-form') as HTMLElement | null;
+    const inp = w.querySelector('.jhs-list-create-input') as HTMLInputElement | null;
+    if (btn) btn.style.display = 'inline-flex';
+    if (f) f.style.display = 'none';
+    if (inp) inp.value = '';
+}
+
+/**
+ * 刷新 `.jhs-list-panel` 平铺面板：从 modal 内最新 listContainer 克隆全部
+ * 条目（跳过「预设清单」），与 DetailPageButtonPlugin._initListPanel 的 sync
+ * 逻辑等价、幂等。
+ *
+ * 用途：新建清单后，若 _initListPanel 的 MutationObserver 因 listContainer
+ * 被替换而失效，不会自动 clone 新条目到平铺面板，用户需刷新页面才能看到
+ * 新清单。此处主动重建，消除该等待。
+ */
+function refreshListPanel(): void {
+    const panel = document.querySelector('.jhs-list-panel');
+    if (!panel) return;
+    const lc = document.querySelector('#modal-save-list [data-list-target="listContainer"]');
+    if (!lc) return;
+    panel.innerHTML = '';
+    Array.from(lc.children).forEach((child: any) => {
+        // 跳过「预设清单」
+        if (child.textContent.includes('预设清单')) return;
+        panel.appendChild(child.cloneNode(true));
+    });
+}

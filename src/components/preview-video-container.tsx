@@ -2,7 +2,7 @@
  * PreviewVideoContainer —— 详情页预览视频封面入口（React 函数组件，JSX）。
  *
  * 提取自 src/plugins/preview-video-plugin.ts 的 initDmm（L572-574）：原
- * `$(".preview-images").prepend(\`<a class="preview-video-container" data-fancybox="gallery" href="#preview-video"><span>預告片</span><img src="${coverSrc}" ...></a>\`)`，
+ * `$(".preview-images").prepend(\`<a class="preview-video-container" data-fancybox="gallery" href="#preview-video"><span>预告片</span><img src="${coverSrc}" ...></a>\`)`，
  * 在预览图区首位插入预告片封面入口。coverSrc 通过 prop 注入。
  *
  * 保留原 class/data-fancybox/href/内联 style/alt 原样不动。`<img>` 自闭合（void element）。
@@ -30,7 +30,7 @@ export interface PreviewVideoContainerProps {
 export function PreviewVideoContainer({ coverSrc }: PreviewVideoContainerProps) {
     return (
         <a className="preview-video-container" data-fancybox="gallery" href="#preview-video">
-            <span>預告片</span>
+            <span>预告片</span>
             <img
                 src={coverSrc}
                 className="video-cover"

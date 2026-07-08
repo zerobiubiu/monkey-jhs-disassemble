@@ -9,6 +9,120 @@
 
 ---
 
+## v1.6.5
+
+**发布日期**：2026-07-08
+
+### 优化
+
+- **降低新增清单操作延迟**（doc/60）：首次轮询从 2000ms 降到 200ms
+  （JavDB 响应实测永远是 `Toastr.success("...")` 不更新 DOM，长时间
+  空轮询纯属浪费）。关闭模态框延迟从 400ms 降到 200ms。整体流程从
+  ~2.7s 降至 ~0.7s。
+
+---
+
+## v1.6.4
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复新增清单：改用 #save-list-button 切换重载替代 /users/lists 解析**
+  （doc/60）：doc/59 的 GET /users/lists 解析方案实测失效——页面通过
+  JS（Turbo/Stimulus）动态加载清单数据，原始 HTML 不含清单列表，
+  `fetchListIdByName` 永远找不到新清单。改为在创建成功后点击
+  `#save-list-button` 两次（关闭→重新打开模态框），触发 JavDB 原生
+  Stimulus `list` 控制器重新 ajax 加载清单列表（含新清单 checkbox），
+  轮询 5s 检测后完成 IDB 同步。多级兜底链路：轮询 2s → 正则提取 →
+  #save-list-button 重载 → /users/lists 解析。
+
+---
+
+## v1.6.3
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复新增清单响应无 list-id**（doc/59）：doc/58 的 GM_xmlhttpRequest
+  方案成功发请求、服务端创建清单，但控制台日志显示响应仅为
+  `Toastr.success("...")` JS——不含 `data-list-id`、不含 HTML、
+  不更新 `listContainer`。doc/58 的「从响应正则提取 data-list-id」兜底
+  无法匹配。新增 `fetchListIdByName`：`GET /users/lists` 页面 HTML →
+  `DOMParser` 解析 `a[href*="/lists/"]` 链接 → 匹配清单名称 → 提取
+  `/lists/{id}` 中的 list-id。`createList` 多级兜底链路：注入 JS 执行
+  → 轮询 2s → 正则提取 → **GET /users/lists 匹配** → 手动克隆 checkbox
+  构建 → refreshListPanel + handleCheckboxChange。
+
+### 变更
+
+- **全局繁→简字符替换**：用户要求插件 UI 文本统一简体中文，不沿用
+  JavDB 网站繁体中文。Python 脚本遍历 `src/` 全部 21 个 `.ts/.tsx`
+  文件批量替换繁体字（toast 文案、按钮文本、注释）。
+
+---
+
+## v1.6.2
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **终极修复新增清单：改用 GM_xmlhttpRequest 直接发 ajax**（doc/58）：
+  doc/57 的「observer 挂 modal + 轮询」修复实测无效，根因诊断错误。
+  实际根因：JavDB 已从 Rails UJS 迁移到 Turbo，`form#new_list` 的
+  `data-remote="true"` 不再被拦截，`submitBtn.click()` 触发**常规表单
+  POST**（非 ajax），页面导航、脚本卸载，所有后续效果丢失。
+  改为完全绕过原生表单提交，用 `GM_xmlhttpRequest` 直接发 ajax
+  POST `/lists/remote_create`：从表单收集字段 + meta csrf-token +
+  `X-Requested-With` + `Accept: text/javascript` 模拟 Rails UJS ajax；
+  响应 JS 注入 `<script>` 页面上下文执行 + 3s 轮询检测新增 checkbox +
+  兜底从响应正则提取 `data-list-id` 克隆已有 checkbox 手动构建；
+  完成时 `refreshListPanel` + `handleCheckboxChange(add)` 同步 IDB。
+
+---
+
+## v1.6.1
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复新增清单后无即时反馈、必须刷新页面才能看到**（doc/57）：
+  doc/56 的 `MutationObserver` 挂在提交前的 `listContainer` 引用上，
+  但 Rails/Stimulus 的 `onCreateSuccess` 响应会整个替换 `listContainer`
+  元素，旧引用变孤立节点、observer 永不触发，导致「清单已创建但无任何
+  后续效果（无 toast/无 IDB 同步/无自动收藏）、必须刷新页面才能看到」。
+  重构 `createListViaNativeForm`：observer 改挂不可替换的
+  `#modal-save-list` + 200ms 轮询兜底（共享 `settled` 幂等守护）+
+  `detectNew` 每次重新查询最新 `listContainer`；完成时主动
+  `refreshListPanel()` 从最新 `listContainer` 克隆到 `.jhs-list-panel`
+  （与 `_initListPanel` sync 等价、幂等），即使该插件 observer 失效
+  也能立即看到新清单；超时 5s→8s 兼顾慢网络。零侵入
+  `DetailPageButtonPlugin`。
+
+---
+
+## v1.6.0
+
+**发布日期**：2026-07-08
+
+### 新增
+
+- **展开清单面板新增「新增清單」入口 + 自动同步关联**（doc/56）：
+  原生「存入清單」弹窗被 CSS 永久隐藏，footer 的「創建新清單」按钮
+  不可达，展开布局下新增清单功能失效。在 `.jhs-list-panel` 旁插入
+  Bulma 风格「➕ 新增清單」UI；提交时驱动原生表单 `#new_list`
+  （Rails UJS ajax POST `/lists/remote_create`，服务端创建即自动关联
+  视频，与网站原始流程完全等价）。同时由于 Stimulus 切换新 checkbox
+  的 `checked` 不派发 `change` 事件，本地 IDB 关联同步原本失效——
+  此前用户需手动「取消关联→再关联」才能同步，现通过 MutationObserver
+  快照对比识别新增 checkbox 后显式 `handleCheckboxChange(add)`，
+  彻底消除该手动步骤。零侵入已定稿插件。
+
+---
+
 ## v1.5.2
 
 **发布日期**：2026-07-08
