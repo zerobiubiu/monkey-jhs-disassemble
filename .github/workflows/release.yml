@@ -1,0 +1,83 @@
+# 自动打包并发布用户脚本到 GitHub Releases
+#
+# 触发条件：每次推送到仓库任意分支
+# 流程：检出 → 安装 Bun → 安装依赖 → 构建 → 提取版本号与最新更新日志
+#       → 重命名产物 → 创建/更新对应版本号的 Release（并上传 .user.js）
+# 产物：javdb-power-tools.user.js（稳定文件名，便于 latest 永久安装链接）
+# 发布说明：自动提取 changelog/CHANGELOG.md 中最新版本条目
+
+name: 构建并发布
+
+on:
+    push:
+        branches: ['main', 'master']
+
+# 创建 Release 需要写权限（写 tag、写 release 资产）
+permissions:
+    contents: write
+
+jobs:
+    build-and-release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: 检出代码
+              uses: actions/checkout@v4
+
+            - name: 安装 Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: 安装依赖
+              run: bun install --frozen-lockfile
+
+            - name: 构建用户脚本
+              run: bun run build
+
+            - name: 提取版本号与最新更新日志
+              id: meta
+              run: |
+                  # 从 vite.config.ts 提取 userscript.version（形如 version: '1.7.5'）
+                  VERSION=$(grep -E "^[[:space:]]*version:[[:space:]]*'" vite.config.ts \
+                           | head -1 \
+                           | sed -E "s/.*'([^']+)'.*/\1/")
+                  if [ -z "$VERSION" ]; then
+                    echo "::error::无法从 vite.config.ts 提取版本号"
+                    exit 1
+                  fi
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
+                  echo "提取到版本号：$VERSION（tag: v$VERSION）"
+
+                  # 从 CHANGELOG.md 提取最新版本条目：
+                  #   从第一个 `## v` 行开始打印，直到遇到下一个 `---`（不含分隔线本身）
+                  awk '/^## v/{f=1} f&&/^---$/{exit} f{print}' changelog/CHANGELOG.md \
+                    > release_notes.md
+
+                  echo "::group::最新更新日志"
+                  cat release_notes.md
+                  echo "::endgroup::"
+
+            - name: 重命名产物为友好文件名
+              run: |
+                  # 构建默认产物名为 monkey-jhs-disassemble.user.js（取自 package.name）
+                  # 改名 javdb-power-tools.user.js，配合 make_latest 可形成永久安装链接：
+                  #   https://github.com/<owner>/<repo>/releases/latest/download/javdb-power-tools.user.js
+                  cp dist/monkey-jhs-disassemble.user.js dist/javdb-power-tools.user.js
+                  echo "::group::产物文件"
+                  ls -la dist/
+                  echo "::endgroup::"
+
+            - name: 创建/更新 Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  # 以版本号作为 tag/名称：v1.7.5
+                  tag_name: ${{ steps.meta.outputs.tag }}
+                  name: JavDB Power Tools ${{ steps.meta.outputs.version }}
+                  # 发布说明取自最新更新日志
+                  body_path: release_notes.md
+                  # 上传用户脚本（稳定文件名）
+                  files: dist/javdb-power-tools.user.js
+                  # 每次发布都置为 latest，保证 latest 链接指向最新构建
+                  make_latest: true
+                  prerelease: false
+                  # 产物缺失则失败，避免发布空 Release
+                  fail_on_unmatched_files: true
