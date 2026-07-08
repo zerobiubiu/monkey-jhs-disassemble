@@ -9,6 +9,25 @@
 
 ---
 
+## v1.7.5
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修复繁→简替换破坏 DOM 选择器导致番号丢失等问题**（doc/66）：
+  doc/59（commit `bcf046c`）全局繁→简替换将代码中 jQuery 选择器、
+  字符串匹配中的繁体改为简体，但 JavDB DOM/API 返回仍为繁体，
+  导致全部失配。还原 8 处功能性 bug：
+  - `base-plugin.ts`：`a[title="複製番號"]`（**番号丢失根因**）+
+    `無碼` 检测
+  - `actress-info-plugin.tsx`：`演員` / `現年齢` 选择器
+  - `list-page-plugin.tsx` + `storage-manager.ts`：`（無碼）` 标签
+  - `related-plugin.tsx` + `review-plugin.tsx`：`簽名已過期` 错误检测
+  - 7 个组件显示文本还原为繁体（磁鏈/演員/番號/清單/預告片/上一頁/看過等）
+
+---
+
 ## v1.7.4
 
 **发布日期**：2026-07-08

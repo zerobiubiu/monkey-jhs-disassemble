@@ -21,7 +21,7 @@ import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../constants/s
 /** 「已下载」状态兼容常量（原 g，已下载功能删除后保留以兼容历史数据） */
 const HAS_DOWN_STATUS = 'hasDown';
 /** 无码标签（原 addFavoriteActressList 内局部 d） */
-const UNCENSORED_TAG = '(无码)';
+const UNCENSORED_TAG = '(無碼)';
 
 /** 番号记录（carList / blacklistCarList 通用） */
 export interface CarRecord {

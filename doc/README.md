@@ -76,6 +76,7 @@
 | `63-toast-position-fix.md` | 🔧开发指导 | ✅已执行 | 修复 toast 通知被导航栏遮挡：#jdb-toast-container 的 top 从 20px 改为 72px（导航栏高 56px + 16px 间距），z-index 99999 本身高于导航栏无需调；tsc -b + vite build 通过，version 1.7.1→1.7.2 |
 | `64-delete-perf-optimization.md` | 🔧开发指导 | ✅已执行 | 删除清单性能优化：乐观 UI + 并行执行。原方案串行等待服务器响应才移除 DOM，用户感知延迟大。改为 confirm 后立即移除 DOM（乐观更新），GM_xmlhttpRequest DELETE 与 VltDb.deleteList 并行执行（Promise.all）。瓶颈分析：网络请求等待 JavDB 服务器是最大延迟源（数百ms~数秒），IDB 操作（83KB/3563条）仅~50ms。服务器失败时 warning toast 而非恢复 DOM；tsc -b + vite build 通过，version 1.7.2→1.7.3 |
 | `65-fix-preset-list-filter.md` | 🔧开发指导 | ✅已执行 | 修复详情页清单面板「预设清单」过滤失效：doc/59 全局繁→简替换将代码中 預設清單 改为 预设清单，但 JavDB DOM 返回仍为繁体 預設清單，includes 不匹配导致过滤失效。改为正则 /预[设設]清[单單]/ 同时匹配简繁体。修改 detail-page-button-plugin.tsx _initListPanel sync + vlt-sync.ts refreshListPanel 两处；tsc -b + vite build 通过，version 1.7.3→1.7.4 |
+| `66-fix-traditional-simplified-regression.md` | 🔧开发指导 | ✅已执行 | 修复繁→简替换破坏 DOM 选择器导致番号丢失等问题：doc/59（commit bcf046c）全局繁→简替换将 jQuery 选择器/字符串匹配中的繁体改为简体，但 JavDB DOM/API 仍为繁体导致全失配。还原 8 处功能性 bug（base-plugin a[title=複製番號] 番号丢失 + 無碼检测 + actress-info 演員/現年齢选择器 + list-page/storage-manager 无码标签 + related/review 簽名已過期 + 7 个组件显示文本繁体还原）；tsc -b + vite build 通过，version 1.7.4→1.7.5 |
 
 ## 类型图例
 
@@ -150,6 +151,7 @@
 63. `63-toast-position-fix.md` — 修复 toast 通知被导航栏遮挡（top 20px→72px，导航栏高 56px）
 64. `64-delete-perf-optimization.md` — 删除清单性能优化：乐观 UI（confirm 后立即移除 DOM）+ Promise.all 并行（DELETE 请求 + IDB 删除），瓶颈是 JavDB 服务器响应而非 IDB
 65. `65-fix-preset-list-filter.md` — 修复详情页清单面板「预设清单」过滤失效（doc/59 繁→简替换致代码 预设清单 与 DOM 預設清單 不匹配，改用正则 /预[设設]清[单單]/ 匹配简繁体）
+66. `66-fix-traditional-simplified-regression.md` — 修复繁→简替换破坏 DOM 选择器导致番号丢失（base-plugin a[title=複製番號] + 無碼检测 + actress-info 演員/現年齢 + 簽名已過期 等 8 处功能性 bug + 7 个组件显示文本还原）
 
 ## 当前进度概览
 

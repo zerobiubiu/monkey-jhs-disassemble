@@ -42,17 +42,17 @@ export function NavSearchBox() {
                     }}
                 >
                     <option value="all">影片</option>
-                    <option value="actor">演员</option>
+                    <option value="actor">演員</option>
                     <option value="series">系列</option>
                     <option value="maker">片商</option>
                     <option value="director">導演</option>
-                    <option value="code">番号</option>
-                    <option value="list">清单</option>
+                    <option value="code">番號</option>
+                    <option value="list">清單</option>
                 </select>
                 <input
                     id="search-keyword"
                     type="text"
-                    placeholder="输入影片番号，演员名等关键字进行檢索"
+                    placeholder="輸入影片番號，演員名等關鍵字進行檢索"
                     style={{
                         padding: '8px 12px',
                         border: '1px solid #555',
@@ -66,7 +66,7 @@ export function NavSearchBox() {
                 />
                 <a
                     href="/advanced_search?noFold=1"
-                    title="进阶檢索"
+                    title="進階檢索"
                     style={{
                         padding: '6px 12px',
                         backgroundColor: '#444',

@@ -29,7 +29,7 @@ export interface WantWatchedHintSpanProps {
  * @returns 提示 span JSX，经 jsxToString 转 HTML 字符串后供 `.append()` 消费。
  */
 export function WantWatchedHintSpan({ variant }: WantWatchedHintSpanProps) {
-    const label = variant === 'want' ? '想看' : '看过';
+    const label = variant === 'want' ? '想看' : '看過';
     return (
         <span
             style={{

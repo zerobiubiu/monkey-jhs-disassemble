@@ -116,7 +116,7 @@ export class ActressInfoPlugin extends BasePlugin {
             );
             html += segment;
         }
-        $('strong:contains("演员")').parent().after(html);
+        $('strong:contains("演員")').parent().after(html);
         localStorage.setItem(storageKey, JSON.stringify(cache));
     }
 
@@ -207,8 +207,8 @@ export class ActressInfoPlugin extends BasePlugin {
             .find('td')
             .text()
             .trim();
-        const age: string = $parsed.find("th:contains('现年齢')").parent().find('td').text().trim()
-            ? parseInt($parsed.find("th:contains('现年齢')").parent().find('td').text().trim()) +
+        const age: string = $parsed.find("th:contains('現年齢')").parent().find('td').text().trim()
+            ? parseInt($parsed.find("th:contains('現年齢')").parent().find('td').text().trim()) +
               '岁'
             : '';
         const height: string =

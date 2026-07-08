@@ -30,7 +30,7 @@ export interface PreviewVideoContainerProps {
 export function PreviewVideoContainer({ coverSrc }: PreviewVideoContainerProps) {
     return (
         <a className="preview-video-container" data-fancybox="gallery" href="#preview-video">
-            <span>预告片</span>
+            <span>預告片</span>
             <img
                 src={coverSrc}
                 className="video-cover"

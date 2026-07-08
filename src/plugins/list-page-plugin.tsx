@@ -566,7 +566,7 @@ export class ListPagePlugin extends BasePlugin {
                 const nameEl = $('.actor-section-name');
                 let actressName: string | null = '';
                 if (nameEl.length) {
-                    actressName = nameEl.text().trim().split(',')[0].replace('(无码)', '');
+                    actressName = nameEl.text().trim().split(',')[0].replace('(無碼)', '');
                 }
                 utils.q(event, `是否屏蔽番号 ${carNum}?`, async () => {
                     setTimeout(async () => {

@@ -97,7 +97,7 @@ export function Top250ToolBar({
                     className={`button is-small ${hasCnsub === '1' ? 'is-info' : ''}`}
                     data-cnsub-value="1"
                 >
-                    含中字磁链
+                    含中字磁鏈
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}

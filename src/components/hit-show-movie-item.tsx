@@ -59,11 +59,11 @@ export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
                 <div className="meta">{movie.release_date}</div>
                 <div className="tags has-addons">
                     {movie.has_cnsub ? (
-                        <span className="tag is-warning">含中字磁链</span>
+                        <span className="tag is-warning">含中字磁鏈</span>
                     ) : movie.magnets_count > 0 ? (
-                        <span className="tag is-success">含磁链</span>
+                        <span className="tag is-success">含磁鏈</span>
                     ) : (
-                        <span className="tag is-info">无磁链</span>
+                        <span className="tag is-info">无磁鏈</span>
                     )}{' '}
                     {movie.new_magnets ? <span className="tag is-info">今日新種</span> : null}
                 </div>
