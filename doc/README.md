@@ -81,6 +81,8 @@
 | `68-rating-cache-zero-star-display.md` | 🔧开发指导 | ✅已执行 | 评分缓存同步补充：0 星（已读未评分）显示 ★0 而非占位「已看」。doc/67 的 _invalidateCards 写入条件 `score && score>=1`（0 是 falsy 被排除）+ showRating 渲染分支同样排除 0 致 0 星仍显示占位。修正：写入条件改 `typeof score===number`（0-5 均写入）+ showRating 增加 rating===0 分支显示金色★0；tsc -b + vite build 通过，version 1.7.6→1.7.7 |
 | `69-auto-backup.md` | 🔧开发指导 | ✅已执行 | 自动备份功能：新增 src/core/auto-backup.ts（凭证 ID 管理 + 触发判断 + 增量滚动文件名 + 默认配置）；设置「数据备份」面板新增启用自动备份/备份频率/本机凭证显示；备份格式注入 __meta（credentialId + autoBackupConfig + backupTime）；SettingPlugin 新增 buildBackupPayload + autoBackup 方法；main.tsx 启动序列末尾触发；默认每天第一次打开自动备份；凭证 ID 用 UUID v4 存 GM 不进备份系统；一个浏览器一份 auto_<id>.json 增量覆盖；tsc -b + vite build 通过，version 1.7.7→1.8.0 |
 | `70-setting-ui-beautify.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 美化：重写 setting-plugin.css（侧栏柔和背景+主色高亮、menu-btn 统一圆角+hover上浮、表单输入框左对齐+focus光晕、复选框 accent-color、设置项 hover 背景、底部按钮区 flex）；setting-dialog 侧栏 #f5f5f5→#fbfcfd、按钮加 emoji+flex gap、自动备份 hr 改分区标题、底部按钮区 flex+gap；统一主色 #5d87c2 贯穿；tsc -b + vite build 通过，version 1.8.0→1.8.1 |
+| `71-hide-native-review-panel.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页原生评价操作面板（第一步）：rating-bar.css 新增隐藏原生星级 radio/表单 + 隐藏用户选择器对应的操作面板 div:nth-child(1)（nav 兄弟）；display:none 保留 DOM（_syncRatingBar 读 input[checked]+hookWantAndWatchedButtons MutationObserver+_getReviewId 提取删除链接均不受影响）；快捷评分条在 nav 内不受影响；tsc -b + vite build 通过，version 1.8.1→1.8.2 |
+| `72-hide-menu-status-row.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页菜单按钮组状态行（修正 doc/71 误判）：通过 MCP 访问 javdb 确认用户选择器对应的是脚本创建的 DetailMenuButtons 左行（#filterBtn/#favoriteBtn/#hasWatchBtn），非原生评价面板（原生已隐藏）。撤回 doc/71 多余 CSS，给 DetailMenuButtons 左行加 className=jhs-menu-status-row，rating-bar.css 隐藏左行，保留右行（磁力/字幕）；DOM 保留事件绑定+showStatus+快捷键；tsc -b + vite build 通过，version 1.8.2→1.8.3 |
 
 ## 类型图例
 

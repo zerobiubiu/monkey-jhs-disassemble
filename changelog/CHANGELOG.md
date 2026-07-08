@@ -9,6 +9,38 @@
 
 ---
 
+## v1.8.3
+
+**发布日期**：2026-07-08
+
+### 修复
+
+- **修正隐藏目标 + 隐藏菜单按钮组状态行**（doc/72）：
+  doc/71 误判了用户选择器对应的元素。通过 MCP 访问 javdb 详情页确认，
+  该选择器对应的是脚本创建的 DetailMenuButtons 左行（屏蔽/收藏/已观看），
+  非原生评价面板（原生已被 rating-bar.css 原有规则隐藏）。撤回 doc/71 多余
+  CSS，给 DetailMenuButtons 左行加 className jhs-menu-status-row，
+  在 rating-bar.css 中 display none 隐藏左行，保留右行（磁力/字幕按钮）。
+  DOM 保留，快捷键事件绑定和 showStatus 文案更新正常运行。
+
+---
+
+## v1.8.2
+
+**发布日期**：2026-07-08
+
+### 优化
+
+- **隐藏详情页原生评价操作面板**（doc/71）：
+  快捷评分模块已完全覆盖原生评价功能（想看/看過/星级），原生面板造成 UI 冗余。
+  在 `rating-bar.css` 新增 CSS 规则：隐藏原生星级 radio + 评价表单（`.rating-star` /
+  `form` / `.field`），以及隐藏用户指定选择器对应的操作面板（`div:nth-child(1)`，
+  nav 的兄弟元素）。使用 `display:none` 保留 DOM，不影响 `_syncRatingBar` 状态
+  读取、`hookWantAndWatchedButtons` MutationObserver 监听、`_getReviewId` 提取
+  reviewId。快捷评分条在 nav 内不受影响。
+
+---
+
 ## v1.8.1
 
 **发布日期**：2026-07-08

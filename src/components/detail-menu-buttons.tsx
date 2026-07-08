@@ -100,7 +100,7 @@ export function DetailMenuButtons({
 }: DetailMenuButtonsProps) {
     return (
         <div style={wrapperStyle}>
-            <div style={rowStyle}>
+            <div className="jhs-menu-status-row" style={rowStyle}>
                 <a id="filterBtn" className="menu-btn" style={statusBtnStyle('120px', filterColor)}>
                     <span>{filterText}</span>
                 </a>
@@ -120,7 +120,7 @@ export function DetailMenuButtons({
                 </a>
             </div>
 
-            <div style={rowStyle}>
+            <div className="jhs-menu-tools-row" style={rowStyle}>
                 <a
                     id="enable-magnets-filter"
                     className="menu-btn"

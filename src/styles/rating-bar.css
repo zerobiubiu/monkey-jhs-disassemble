@@ -137,3 +137,9 @@
 .jhs-list-panel .checkbox input {
     margin: 0;
 }
+/* 隐藏详情页菜单按钮组的状态行（屏蔽/收藏/已观看）
+   快捷评分条（星星+已读+收藏）已覆盖这三个功能，拉黑待第二步移入评分条
+   DOM 保留：createMenuBtn 的事件绑定 + showStatus 文案更新仍可运行 */
+.jhs-menu-status-row {
+    display: none !important;
+}
