@@ -23,6 +23,7 @@ export default defineConfig({
                 namespace: 'zerobiubiu.top',
                 version: '1.8.5',
                 author: 'zerobiubiu',
+                copyright: '2024-2026 zerobiubiu (https://github.com/zerobiubiu) — 基于 JAV-JHS 3.3.6 (MIT) 二次开发',
                 license: 'MIT',
                 description:
                     'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、快捷键等 35 个功能插件',

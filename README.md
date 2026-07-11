@@ -176,9 +176,40 @@ src/
 
 详见 [`changelog/CHANGELOG.md`](./changelog/CHANGELOG.md)。
 
-## 📄 License
+## 📄 License & Attribution
 
-MIT
+本项目基于 **MIT 协议** 发布，详见 [`LICENSE`](./LICENSE)。
+
+### 衍生关系声明
+
+本项目（JavDB Power Tools）是基于 GreasyFork 脚本 [**JAV-JHS**](https://greasyfork.org/zh-CN/scripts/558525-jav-jhs)（脚本 ID: 558525）**3.3.6 版本**的二次开发。
+
+- 原始脚本由 **zerobiubiu** 以 MIT 协议发布
+- 3.3.6 之后的后续版本转为私密付费，不再公开
+- 本项目基于 MIT 协议下发布的 3.3.6 版本进行拆分重构与功能扩展，行使 MIT 协议授予的修改与再发布权利
+- MIT 协议为永久授权，不因后续版本改协议而失效
+
+### 集成脚本致谢
+
+本项目集成了以下独立油猴脚本（均来自 zerobiubiu，原始 MIT 协议）：
+
+| 脚本 | 功能 |
+|------|------|
+| `jhsRatingDisplay.user.js` | 评分显示 |
+| `keyPageTurning.user.js` | 快捷键翻页 |
+| `modMyListOpenWay.user.js` | 清单链接改写 |
+| `pageSort.user.js` | 列表页排序 |
+| `statusTagFilter.user.js` | 状态标签筛选 |
+| `listWaterfall.user.js` | 清单瀑布流 |
+| `listReadingStatus.user.js` | 清单阅读进度 |
+| `modalListDisabler.user.js` | 模态框禁用 |
+| `videoListsTag.user.js` | 清单标签 |
+| `listsOptionSync.user.js` | 清单选项同步 |
+| `jhsCarListReader.user.js` | 状态同步器 |
+| `missavStatusTag.user.js` | MissAV 状态标签 |
+| `MissAV Quick Copy & Javdb Search.user.js` | MissAV 快速复制 |
+
+原始脚本存档于 [`archetype/`](./archetype/) 目录。
 
 ## 👤 Author
 

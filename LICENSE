@@ -1,0 +1,47 @@
+MIT License
+
+Copyright (c) 2024-2026 zerobiubiu (https://github.com/zerobiubiu)
+
+本项目（JavDB Power Tools）是基于 GreasyFork 脚本 "JAV-JHS"（脚本 ID: 558525，
+https://greasyfork.org/zh-CN/scripts/558525-jav-jhs）3.3.6 版本的二次开发。
+
+原始脚本以 MIT 协议发布，后续版本转为私密付费。本项目基于 MIT 协议下发布的
+3.3.6 版本进行拆分重构与功能扩展，行使 MIT 协议授予的修改与再发布权利。
+
+原始项目版权声明（来自 archetype/jhs.user.js）：
+  @author  zerobiubiu
+  @license MIT
+  @namespace zerobiubiu.top
+
+本项目集成的独立油猴脚本（均来自同一作者 zerobiubiu，原始 MIT 协议）：
+  - jhsRatingDisplay.user.js      JHS 评分显示
+  - keyPageTurning.user.js         快捷键翻页
+  - modMyListOpenWay.user.js       清单链接改写
+  - pageSort.user.js              列表页排序
+  - statusTagFilter.user.js       状态标签筛选
+  - listWaterfall.user.js         清单瀑布流
+  - listReadingStatus.user.js     清单阅读进度
+  - modalListDisabler.user.js     模态框禁用
+  - videoListsTag.user.js         清单标签
+  - listsOptionSync.user.js       清单选项同步
+  - jhsCarListReader.user.js      状态同步器
+  - missavStatusTag.user.js       MissAV 状态标签
+  - MissAV Quick Copy & Javdb Search.user.js  MissAV 快速复制
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

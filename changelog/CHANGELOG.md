@@ -9,6 +9,20 @@
 
 ---
 
+## v1.8.5（法律条款更新）
+
+**发布日期**：2026-07-11
+
+### 文档/元数据
+
+- **补全 MIT 协议合规声明**（doc/75）：新建 `LICENSE` 文件（MIT 全文+版权声明
+  `2024-2026 zerobiubiu`+衍生关系说明+13 集成脚本清单）；README License 节重写
+  为 License & Attribution（基于 JAV-JHS 3.3.6 MIT 二次开发，后续版本转私密
+  付费，MIT 永久授权）；vite.config.ts 增加 `@copyright` 元数据；
+  package.json 增加 `"license": "MIT"` 字段。纯元数据/文档变更，不递增版本号
+
+---
+
 ## v1.8.5
 
 **发布日期**：2026-07-11
