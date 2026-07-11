@@ -94,6 +94,10 @@
 | `81-revert-cover-button-visibility-hacks.md` | 🔧开发指导 | ✅已执行 | 撤销 CoverButton 可见性加固，恢复设置五开关控制；version 1.9.3→1.9.4 |
 | `82-remove-cover-button-plugin.md` | 🔧开发指导 | ✅已执行 | 删除封面工具栏全套（CoverButtonPlugin + 设置五开关 + flag + SVG）；version 1.9.4→1.10.0 |
 | `83-fix-mini-switch-css.md` | 🔧开发指导 | ✅已执行 | 修复设置面板开关 CSS：doc/70 的 form-content 通配 + content-panel checkbox 规则压过 mini-switch；排除冲突并强化开关选择器；version 1.10.0→1.10.1 |
+| `84-layer-close-button-fix.md` | 🔧开发指导 | ✅已执行 | 弹窗右上角关闭钮：lightningcss 误删 setwin 定位致 × 不可见；layer-fix.css 覆盖 + 默认 closeBtn/shadeClose + ESC 栈同步只关最上层；version 1.10.1→1.10.2 |
+| `85-esc-close-top-layer-only.md` | 🔧开发指导 | ✅已执行 | ESC 逐级关闭：DOM z-index 只关顶层 + event.repeat/_escClosing 防连发 + 捕获阶段单路径；version 1.10.2→1.10.3 |
+| `86-esc-close-hard-gate.md` | 🔧开发指导 | ✅已执行 | ESC 硬门：模块级 gate（keydown 锁/keyup 解锁）+ 关闭前立即 display:none 摘顶层，防动画期连关；version 1.10.3→1.10.4 |
+| `87-esc-close-cross-frame-gate.md` | 🔧开发指导 | ✅已执行 | ESC 逐级关闭 iframe 内层优先修复（doc/84-87 共六次未成功的真根因，最终版）：诊断发现 ESC 只触发外层 handler 并关掉外层 type=iframe 弹层，iframe 销毁连带内层弹层消失。修复外层 handler 检测 iframe contentDocument 内有无弹层，有则释放 gate 并向 iframe contentDocument dispatch ESC keydown 让 iframe 关内层弹层；保留 doc/86 立即 display:none、doc/87 二版 window.top.__jhsEscGate 共享、doc/85 event.repeat 忽略；version 1.10.7→1.10.8 |
 
 ## 类型图例
 

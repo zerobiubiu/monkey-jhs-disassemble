@@ -9,6 +9,105 @@
 
 ---
 
+## v1.10.8
+
+**发布日期**：2026-07-12
+
+### 修复
+
+- **ESC 一次关掉所有弹层**（doc/87 最终修复，前六次未成功的真根因）：
+  - 诊断版（1.10.7）在 handler 内嵌 console.log 实测，输出显示 ESC 只触发
+    了 TOP frame handler 一次（eventTarget=BODY），关掉了外层 type=iframe
+    弹层→iframe 销毁→iframe 内磁力搜索二级弹层跟着消失。
+  - 真根因：ESC 不在 iframe 内触发（焦点在 body），事件不传递到 iframe
+    document，外层 handler 找不到 iframe 内弹层，直接关外层 iframe 弹层。
+  - 修复：外层 handler 检测顶层是 type=iframe 弹层时，检查 iframe
+    contentDocument 内有无可见 .layui-layer；有则释放 gate 并向
+    iframe contentDocument dispatchEvent ESC keydown（composed:true），
+    让 iframe 内 handler getTopLayerEl 找到并关闭内层弹层；无则正常关
+    外层弹层。ESC 逐级关闭成立。
+
+---
+
+## v1.10.6
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **ESC 一次关掉所有弹层**（doc/87 最终修复，doc/85/86 及 doc/87 初版三次
+  未成功的真根因）：
+  - doc/87 初版（1.10.5）把 `escLayerGate` 从模块级 `const` 改为
+    `unsafeWindow.__jhsEscGate`——思路对但仍失败：实测诊断
+    `gateIsTopGate=false`，证明 Tampermonkey 中每个 frame 的 `unsafeWindow`
+    指向**当前 frame 自己的 window**，并非跨 frame 共享的 top，锁仍按
+    frame 隔离。
+  - 最终改挂 `window.top.__jhsEscGate`：同源前提下 parent 与同源 iframe
+    访问同一顶层 window 对象，gate 真正共享；跨域 iframe 访问
+    `window.top` 招致 SecurityError，try/catch 回退当前 frame
+    `unsafeWindow/window`（本脚本不在跨域 iframe 内运行，无需共享）。
+  - 根因本质：layer.open type=2 同源 iframe 弹层 + iframe 内 javdb 子
+    页脚本同时绑了父子两份 keydown 捕获 handler，模块级/unsafeWindow
+    gate 每 frame 一份不互斥，一次物理 ESC 两个 handler 都 tryEnter 成功
+    → 一次关多层。`window.top` 共享后任一 handler 先 tryEnter 锁住，另
+    一失败 return；iframe 无自身弹层则 release，父 handler 接力关父 弹层。一次物理按键严格只关一层，逐级关闭成立。
+
+---
+
+## v1.10.5
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **ESC 一次关掉所有弹层**（doc/87，doc/85/86 两次未成功的真根因）：
+  `escLayerGate` 从模块级 `const`（每个 frame 各执一份独立实例）改为
+  `unsafeWindow.__jhsEscGate` 跨所有 frame 共享单例。根因是 layer.open
+  type=2 iframe 弹层 + iframe 内同源 javdb 子页脚本同时绑了父子两份
+  keydown 捕获 handler，两把锁不互斥，一次物理 ESC 触发两个 handler
+  各关一层。共享后任一 handler `tryEnter` 成功即锁住，另一失败 return；
+  iframe 内无自身弹层则 `release()`，父 handler 接力关父弹层。一次物理
+  按键严格只关一层，逐级关闭成立。
+
+---
+
+## v1.10.4
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **ESC 仍一次关全部**（doc/86）：模块级 `escLayerGate`（按下锁定、抬起解锁）；
+  关闭前立即 `display:none` 摘掉顶层（规避 layer 200ms 关闭动画期 DOM 仍在）；
+  一次物理按键只关最顶一层。
+
+---
+
+## v1.10.3
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **ESC 一次关闭全部弹层**（doc/85）：改为按 DOM z-index 只关最顶层；忽略
+  `event.repeat`；`_escClosing` 同按键周期锁 + keyup 解锁；document 仅捕获
+  阶段单路径监听，避免连发/双绑定导致逐级失效。
+
+---
+
+## v1.10.2
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **弹窗缺少关闭按钮 / ESC 误关多层**（doc/84）：lightningcss 解析 layer.css
+  IE hack 时丢掉 `.layui-layer-setwin` 的 `position/right`，右上角 × 不可见；
+  新增 layer-fix.css 覆盖；默认 `closeBtn:1`、type1/2 默认可点遮罩关闭；
+  `layer.close` 同步 ESC 栈，ESC 只关最上层。
+
+---
+
 ## v1.10.1
 
 **发布日期**：2026-07-11

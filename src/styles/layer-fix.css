@@ -1,0 +1,54 @@
+/**
+ * 修复 layui-layer 关闭按钮不可见 + IE hack 被 lightningcss 误删的属性。
+ *
+ * 背景：layer.css 含 `*right` / `_display` 等 IE 前缀 hack，vite lightningcss
+ * （errorRecovery）解析时连带丢掉相邻标准属性，导致：
+ * - `.layui-layer-setwin` 丢失 `position:absolute; right:15px` → 关闭钮不在右上角
+ * - `.layui-layer-close2` 几乎只剩无效 `_display:none` → 无标题层关闭钮失效
+ *
+ * 本文件用无 hack 的标准 CSS 覆盖还原。
+ */
+
+.layui-layer-setwin {
+    position: absolute !important;
+    right: 15px !important;
+    top: 15px !important;
+    font-size: 0;
+    line-height: initial;
+    z-index: 10;
+}
+
+.layui-layer-setwin a {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 10px;
+    font-size: 12px;
+    vertical-align: top;
+}
+
+.layui-layer-setwin .layui-layer-close1 {
+    cursor: pointer;
+    background-position: 0 -40px;
+}
+
+.layui-layer-setwin .layui-layer-close1:hover {
+    opacity: 0.7;
+}
+
+.layui-layer-setwin .layui-layer-close2 {
+    position: absolute !important;
+    right: -28px !important;
+    top: -28px !important;
+    width: 30px !important;
+    height: 30px !important;
+    margin-left: 0 !important;
+    background-position: -149px -31px !important;
+    display: inline-block !important;
+    cursor: pointer;
+}
+
+.layui-layer-setwin .layui-layer-close2:hover {
+    background-position: -180px -31px !important;
+}

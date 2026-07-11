@@ -161,7 +161,7 @@ monkey-jhs-disassemble/
 | webdav.ts | WebDav 客户端 |
 | webdav-crypto.ts | WebDav 加密/解密 |
 | gfriends.ts | GFriends 数据 |
-| layer-wrapper.ts | layer.js 包装 |
+| layer-wrapper.ts | layer.js 包装（默认 closeBtn/shadeClose + ESC 栈；注入 layer-fix.css） |
 | tooltip.ts | tooltip |
 | style-injector.ts | CSS 注入（injectCss） |
 | jsx-to-string.ts | 轻量 JSX→HTML 字符串渲染器（替代 react-dom/server） |
