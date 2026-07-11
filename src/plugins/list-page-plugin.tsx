@@ -512,10 +512,20 @@ export class ListPagePlugin extends BasePlugin {
         );
     }
 
-    /** 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。 */
+    /**
+     * 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。
+     *
+     * 点击委托选择器使用 `.item .cover` 而非原始脚本的 `.item img`：
+     * JavDB 封面图使用 `loading="lazy"` 原生懒加载，图片未加载时
+     * `<img>` 无尺寸（object-fit:cover 无效），用户实际点中 `.cover`
+     * div 而非 `<img>`，导致 `.item img` 不匹配、走 JavDB 原生 `<a>`
+     * 跳转。`.cover` 有 CSS min-height/padding-top 撑开面积，始终可点击；
+     * 且 `<img>` 在 `.cover` 内，点击 `<img>` 时事件冒泡也能匹配
+     * `.item .cover`。contextmenu 同理改为 `.item .cover, .item video`。
+     */
     async bindClick(): Promise<void> {
         const selectorConfig = this.getSelector();
-        $(selectorConfig.boxSelector).on('click', '.item img', async (event: any) => {
+        $(selectorConfig.boxSelector).on('click', '.item .cover', async (event: any) => {
             event.preventDefault();
             event.stopPropagation();
             if ($(event.target).closest('div.meta-buttons').length) {
@@ -558,7 +568,7 @@ export class ListPagePlugin extends BasePlugin {
         });
         $(selectorConfig.boxSelector).on(
             'contextmenu',
-            '.item img, .item video',
+            '.item .cover, .item video',
             async (event: any) => {
                 event.preventDefault();
                 const $item = $(event.target).closest('.item');

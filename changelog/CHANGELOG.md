@@ -9,6 +9,22 @@
 
 ---
 
+## v1.8.5
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **修复列表页封面图未加载时点击走原生跳转**（doc/74）：
+  `ListPagePlugin.bindClick()` 的 click 事件委托选择器从 `.item img` 改为
+  `.item .cover`，contextmenu 从 `.item img, .item video` 改为
+  `.item .cover, .item video`。根因：JavDB 封面图使用 `loading="lazy"`
+  原生懒加载，图片未加载时 `<img>` 无尺寸，用户实际点中 `.cover` div 而非
+  `<img>`，导致 `.item img` 选择器不匹配、走 JavDB 原生 `<a>` 跳转。
+  `.cover` 有 CSS `min-height`/`padding-top` 撑开面积，始终可点击。
+
+---
+
 ## v1.8.4
 
 **发布日期**：2026-07-08

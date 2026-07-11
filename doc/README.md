@@ -84,6 +84,7 @@
 | `71-hide-native-review-panel.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页原生评价操作面板（第一步）：rating-bar.css 新增隐藏原生星级 radio/表单 + 隐藏用户选择器对应的操作面板 div:nth-child(1)（nav 兄弟）；display:none 保留 DOM（_syncRatingBar 读 input[checked]+hookWantAndWatchedButtons MutationObserver+_getReviewId 提取删除链接均不受影响）；快捷评分条在 nav 内不受影响；tsc -b + vite build 通过，version 1.8.1→1.8.2 |
 | `72-hide-menu-status-row.md` | 🔧开发指导 | ✅已执行 | 隐藏详情页菜单按钮组状态行（修正 doc/71 误判）：通过 MCP 访问 javdb 确认用户选择器对应的是脚本创建的 DetailMenuButtons 左行（#filterBtn/#favoriteBtn/#hasWatchBtn），非原生评价面板（原生已隐藏）。撤回 doc/71 多余 CSS，给 DetailMenuButtons 左行加 className=jhs-menu-status-row，rating-bar.css 隐藏左行，保留右行（磁力/字幕）；DOM 保留事件绑定+showStatus+快捷键；tsc -b + vite build 通过，version 1.8.2→1.8.3 |
 | `73-quick-block-button.md` | 🔧开发指导 | ✅已执行 | 快捷评分面板新增拉黑按钮（第二步）：RatingBarHtml 新增 .jhs-block-btn；_buildRatingBar 绑定 click→quickBlock；quickBlock 弹确认框+写 FILTER_ACTION+广播+设为已读0星（_triggerJavdbReview(0) 串行+_wantWatchedSyncing 阻断 observer）+关闭页面；_syncRatingBar 异步查 JHS 记录高亮 filter 状态（红色#de3333）；rating-bar.css 加拉黑按钮样式；tsc -b + vite build 通过，version 1.8.3→1.8.4 |
+| `74-fix-cover-click-delegation.md` | 🔧开发指导 | ✅已执行 | 修复列表页封面图未加载时点击走原生跳转：bindClick click 委托选择器 `.item img`→`.item .cover`、contextmenu `.item img, .item video`→`.item .cover, .item video`；根因是 `<img loading="lazy">` 未加载时无尺寸、用户点中 `.cover` div 而非 `<img>`，`.item img` 不匹配走原生 `<a>` 跳转；`.cover` 有 CSS min-height/padding-top 撑开面积始终可点击；version 1.8.4→1.8.5 |
 
 ## 类型图例
 
