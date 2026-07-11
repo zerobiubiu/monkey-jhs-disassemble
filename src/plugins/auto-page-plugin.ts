@@ -17,6 +17,7 @@
  */
 import { currentHref, isJavdbSite } from '../constants/site';
 import { NO, YES } from '../constants/status';
+import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
 
@@ -297,12 +298,17 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 同步当前页到地址栏（replaceState）。对应原 L9283-9291。
+     * 同步当前页到地址栏。
+     * flag 开：replaceState（不污染历史栈）；flag 关：pushState。
      *
      * @param url 目标页 URL
      */
     updatePageUrl(url: string): void {
-        window.history.replaceState({}, '', url);
+        if (featureFlags.autoPageReplaceState) {
+            window.history.replaceState({}, '', url);
+        } else {
+            window.history.pushState({}, '', url);
+        }
     }
 
     /**

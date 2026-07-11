@@ -87,7 +87,7 @@ interface KeywordCandidate {
  * @param desired   用户期望画质（storageManager.getSetting("videoQuality")）。
  * @returns         命中的画质字符串；无任何可用画质时为 null。
  */
-const selectAvailableVideoQuality = (available: string[], desired: string): string | null => {
+export const selectAvailableVideoQuality = (available: string[], desired: string): string | null => {
     if (!available || available.length === 0) {
         return null;
     }
@@ -406,7 +406,7 @@ class DmmPreviewVideoResolver {
  * @param showErrorMessages  失败时是否弹出用户可见错误（默认 true）。
  * @returns 画质 → URL 映射；无结果或失败返回 null。
  */
-const fetchDmmPreviewVideo = async (
+export const fetchDmmPreviewVideo = async (
     carNum: string,
     showErrorMessages = true
 ): Promise<QualityVideoMap | null> =>

@@ -69,6 +69,13 @@ import { VideoListsTagPlugin } from './plugins/video-lists-tag/vlt-plugin';
 import { CarListReaderPlugin } from './plugins/car-status-sync/car-list-reader-plugin';
 import { MissavStatusTagPlugin } from './plugins/car-status-sync/missav-status-tag-plugin';
 import { MissavQuickCopyPlugin } from './plugins/missav-quick-copy-plugin';
+import { featureFlags } from './core/feature-flags';
+import { TranslatePlugin } from './plugins/translate-plugin';
+import { ScreenShotPlugin } from './plugins/screenshot-plugin';
+import { CoverButtonPlugin } from './plugins/cover-button-plugin';
+import { MagnetHubPlugin } from './plugins/magnet-hub-plugin';
+import { ImageRecognitionPlugin } from './plugins/image-recognition-plugin';
+import { Fc2By123AvPlugin } from './plugins/fc2-by-123av-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -305,6 +312,13 @@ const pluginManager: PluginManager = (function () {
         manager.register(ModalListDisablerPlugin);
         manager.register(VideoListsTagPlugin);
         manager.register(CarListReaderPlugin);
+        // 升级新插件（feature flag 可插拔）
+        if (featureFlags.translatePlugin) manager.register(TranslatePlugin);
+        if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin);
+        if (featureFlags.coverButtonPlugin) manager.register(CoverButtonPlugin);
+        if (featureFlags.magnetHubPlugin) manager.register(MagnetHubPlugin);
+        if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin);
+        if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin);
     }
     // MissAV 站点单独注册 missav 专属插件（不注册 javdb 的 33 个插件）
     if (isMissavSite) {

@@ -64,10 +64,17 @@ export function ActressInfoDetailSegment({
     info,
     wikiApiUrl
 }: ActressInfoDetailSegmentProps) {
+    // user-select:all 由插件侧 featureFlags.actressUserSelectAll 控制是否启用；
+    // 组件默认开启（与新版一致）；关 flag 时插件传入 plainName=true 即可回退。
+    const nameNode = (
+        <strong style={{ marginRight: '5px' }}>
+            <span style={{ userSelect: 'all' }}>{actressName}</span>:
+        </strong>
+    );
     if (info) {
         return (
             <div className="panel-block actress-info">
-                <strong>{actressName}:</strong>
+                {nameNode}
                 <a href={info.url} style={{ marginLeft: '5px' }} target="_blank">
                     <span className="info-tag">
                         {info.birthday} {info.age}
@@ -85,8 +92,9 @@ export function ActressInfoDetailSegment({
     return (
         <div className="panel-block actress-info">
             <a href={wikiApiUrl + actressName} target="_blank">
-                <strong>{actressName}:</strong>
+                {nameNode}
             </a>
+            <span style={{ marginLeft: '5px', color: '#999' }}>暂无此演员信息</span>
         </div>
     );
 }

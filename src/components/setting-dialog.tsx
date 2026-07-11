@@ -326,6 +326,28 @@ export function SettingDialog({
                                     gap: '5px'
                                 }}
                             >
+                                已鉴定内容展示方式{' '}
+                                <span data-tip="hide=直接隐藏；visibility=透明占位保留布局">
+                                    ❓
+                                </span>
+                            </span>
+                            <div className="form-content">
+                                <select id="movieShowType">
+                                    <option value="hide">隐藏 (hide)</option>
+                                    <option value="visibility">透明占位 (visibility)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="setting-item">
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
                                 鉴定补录演员信息{' '}
                                 <span data-tip="在列表页进行鉴定是获取不到演员名称的, 开启后, 额外解析详情页补录演员名称, 因发请求解析费时, 会被以往慢1秒左右">
                                     ❓
@@ -337,6 +359,39 @@ export function SettingDialog({
                                     id="enableSaveActressCarInfo"
                                     className="mini-switch"
                                 />
+                            </div>
+                        </div>
+
+                        <hr style={HR_STYLE} />
+
+                        <div className="setting-item">
+                            <span className="setting-label">封面工具栏 - 长缩略图</span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enableScreenSvg" className="mini-switch" />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">封面工具栏 - 预览视频</span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enableVideoSvg" className="mini-switch" />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">封面工具栏 - 鉴定处理</span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enableHandleSvg" className="mini-switch" />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">封面工具栏 - 第三方网站</span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enableSiteSvg" className="mini-switch" />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">封面工具栏 - 复制</span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enableCopySvg" className="mini-switch" />
                             </div>
                         </div>
 

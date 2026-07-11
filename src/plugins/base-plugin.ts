@@ -24,6 +24,16 @@ import {
     REFRESH_SVG as refreshSvg,
     BLACKLIST_SVG as blacklistSvg
 } from '../resources/icons';
+import {
+    COPY_SVG as copySvg,
+    DOWN_SVG as downSvg,
+    HANDLE_SVG as handleSvg,
+    SITE_SVG as siteSvg,
+    VIDEO_SVG as videoSvg,
+    SCREEN_SVG as screenSvg,
+    RECOVERY_VIDEO_SVG as recoveryVideoSvg
+} from '../resources/upgrade-icons';
+import { featureFlags } from '../core/feature-flags';
 
 /** 番号/影片信息（getPageInfo / getBoxCarInfo 返回结构） */
 export interface CarInfo {
@@ -67,6 +77,13 @@ export class BasePlugin {
     newSvg = newSvg;
     refreshSvg = refreshSvg;
     blacklistSvg = blacklistSvg;
+    copySvg = copySvg;
+    downSvg = downSvg;
+    handleSvg = handleSvg;
+    siteSvg = siteSvg;
+    videoSvg = videoSvg;
+    screenSvg = screenSvg;
+    recoveryVideoSvg = recoveryVideoSvg;
     /** 子类必须覆写返回插件名，否则抛错。对应原 L3073-3075。 */
     getName(): string {
         throw new Error(`${this.constructor.name} 未显示getName()`);
@@ -255,12 +272,30 @@ export class BasePlugin {
             show.error(msg);
             throw new Error(msg);
         }
+        if (featureFlags.westernCarFormat) {
+            carNum = this._formatWesternCar(carNum, publishTime || '');
+        }
         return {
             carNum,
             url: url || '',
             title: title || '',
             publishTime: publishTime || ''
         };
+    }
+
+    /**
+     * 西方番号格式化：纯字母 carNum + 日期 → carNum.YY.MM.DD。
+     * @param carNum 原始番号
+     * @param rawDate 发布时间文本
+     */
+    _formatWesternCar(carNum: string, rawDate: string): string {
+        if (!carNum || !rawDate) return carNum;
+        if (!/^[a-zA-Z\s]+$/.test(carNum)) return carNum;
+        const dateMatch = rawDate.match(/\d{2}(\d{2})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+            return `${carNum.replace(/\s+/g, '')}.${dateMatch[1]}.${dateMatch[2]}.${dateMatch[3]}`;
+        }
+        return carNum;
     }
 
     /** 提取当前列表页所有影片卡片的番号信息。对应原 L3283-3305。 */

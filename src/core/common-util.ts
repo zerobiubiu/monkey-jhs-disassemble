@@ -437,6 +437,26 @@ export class CommonUtil {
         return this.getHourDifference(new Date(timeStr), new Date()) < hours;
     }
 
+    /** JSON 深拷贝（防外部污染缓存）。 */
+    copyObj<T>(data: T): T {
+        return JSON.parse(JSON.stringify(data));
+    }
+
+    /** 递归 Object.freeze，返回冻结后的对象。 */
+    deepFreeze<T extends object>(obj: T): T {
+        if (obj === null || typeof obj !== 'object' || Object.isFrozen(obj)) {
+            return obj;
+        }
+        const propNames = Object.getOwnPropertyNames(obj);
+        for (const name of propNames) {
+            const value = (obj as any)[name];
+            if (value && typeof value === 'object') {
+                this.deepFreeze(value);
+            }
+        }
+        return Object.freeze(obj);
+    }
+
     /**
      * 下载 Blob/ArrayBuffer/ArrayBufferView/data-URL/字符串为指定文件名（原 download）。
      * @param data     数据源（Blob / ArrayBuffer / TypedArray / data:URL 字符串 / 普通字符串）

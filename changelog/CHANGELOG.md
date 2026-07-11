@@ -9,6 +9,94 @@
 
 ---
 
+## v1.9.4
+
+**发布日期**：2026-07-11
+
+### 变更
+
+- **撤销 CoverButton 可见性加固**（doc/81）：恢复由设置「封面工具栏」五开关
+  控制显隐的简洁实现；去掉 `.jhs-cover-toolbar` 独立行、console 诊断、延迟补注、
+  checkDom 额外注入、设置 end 回调等 1.9.2/1.9.3 改动。doc/80 仅作历史排查记录。
+
+---
+
+## v1.9.3
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **CoverButton series 页仍不可见**（doc/80）：注入日志改 `console.log`（原先
+  `clog.debug` 默认过滤看不到）；工具栏改挂 `.meta` 后独立行
+  `.jhs-cover-toolbar`；800ms/2s 延迟补注适配异步列表
+  （**已于 1.9.4 撤销**）
+
+---
+
+## v1.9.2
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **CoverButton 列表工具栏不可见**（doc/80）：无 `.tags` 时自动创建容器；
+  强化图标尺寸/不透明度 CSS；`enableSvgBtn` 仅对显式关闭隐藏；瀑布流
+  `checkDom` 补注入；阻止点击穿透卡片链接；设置关闭后热更新显隐
+  （**已于 1.9.4 撤销**）
+
+---
+
+## v1.9.1
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **123Av-Fc2 导航出现两次**（doc/79）：根因是 `$('.navbar-start').append`
+  同时命中主导航与 `#search-box` 内的 `.navbar-start`；改为在主栏 FC2 项后
+  单点 `after` 插入，tabs 区单独补链并去重
+- **识图按钮不显示**（doc/79）：误用 `#jhs-search-box`；在 `NavSearchBox`
+  内置 `#search-img-btn`，并绑定 `ImageRecognitionPlugin`；原生 `.search-image`
+  同步 rebind
+
+---
+
+## v1.9.0（对照 3.3.6.027 可插拔升级）
+
+**发布日期**：2026-07-11
+
+### 新增
+
+- **featureFlags 可插拔升级开关中心**（doc/76）：`src/core/feature-flags.ts`，
+  默认全开，可用 `localStorage['jhs_upgrade_flags']` 单项回退
+- **TranslatePlugin**：详情页标题 Google 翻译 + 缓存
+- **ScreenShotPlugin**：javstore.net 长缩略图截图墙
+- **CoverButtonPlugin**：列表封面悬浮工具栏（截图/预览/鉴定/第三方/复制）
+- **MagnetHubPlugin**：U9A9 / U3C3 / Sukebei 多引擎磁链聚合
+- **ImageRecognitionPlugin**：以图识图（Google / Lens / Yandex + Imgur 中转）
+- **Fc2By123AvPlugin**：123Av FC2 浏览/搜索/详情弹窗
+
+### 优化
+
+- 签名缓存 20s→300s（单 key `jhs_jdsignature`）+ `removeSignature`
+- 番号大小写不敏感匹配
+- 瀑布流 `replaceState` 不污染历史栈
+- 想看/已观看批量导入（Set 查重 + saveCarList + 200ms 间隔）
+- 已鉴定内容 hide / visibility 双模式
+- StorageManager 读路径深拷贝防污染
+- WebDav 目录幂等创建
+- 西方番号 `carNum.YY.MM.DD` 格式化
+- 演员名 `user-select:all` 一键复制
+- 导航栏移除粘贴自动搜索
+- `javDbApi` 聚合层 + `markDataListHtml`
+
+### 版本
+
+- `1.8.5` → `1.9.0`（minor：新插件 + 基础设施）
+
+---
+
 ## v1.8.5（法律条款更新）
 
 **发布日期**：2026-07-11

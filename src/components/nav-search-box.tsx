@@ -79,6 +79,23 @@ export function NavSearchBox() {
                 >
                     <span>...</span>
                 </a>
+                {/* 识图入口（与 jhs.3.3.6.027 一致，位于进阶检索与检索按钮之间） */}
+                <a
+                    id="search-img-btn"
+                    title="以图识图"
+                    style={{
+                        padding: '6px 16px',
+                        backgroundColor: '#444',
+                        color: '#fff',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        border: '1px solid #555'
+                    }}
+                >
+                    识图
+                </a>
                 <a
                     id="search-btn"
                     style={{

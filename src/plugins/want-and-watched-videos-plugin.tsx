@@ -21,6 +21,7 @@
  * 从未使用，按 TS 惯例加下划线前缀 _clickEvent 以豁免 noUnusedParameters，签名保持不变。
  */
 import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../constants/status';
+import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import { WantWatchedHintSpan } from '../components/want-watched-hint-span';
 import { WantWatchedImportButton } from '../components/want-watched-import-button';
@@ -29,6 +30,8 @@ import { jsxToString } from '../core/jsx-to-string';
 export class WantAndWatchedVideosPlugin extends BasePlugin {
     /** 当前导入动作类型（"favorite" 或 "hasWatch"），由按钮点击时设定。对应原 L10588。 */
     type: string | null = null;
+    /** 批量导入当前页码（flag 开时使用） */
+    currentPage: number = 1;
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L10590-10592。 */
     getName(): string {
@@ -73,6 +76,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
             async () => {
                 const loadingOverlay = loading();
                 try {
+                    this.currentPage = 1;
                     await this.parseMovieList();
                 } catch (error) {
                     console.error(error);
@@ -84,14 +88,15 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
     }
 
     /**
-     * 解析影片列表页：遍历条目提取番号/链接/发布时间，已存在的番号跳过，否则写入 JHS 库；
-     * 发现下一页时延迟 1s 后 ajax 拉取并递归解析，无下一页时提示结束并刷新窗口。
-     * 对应原 L10641-10694。
-     * @param rootEl 可选，jQuery 包裹的已解析 DOM（递归翻页时传入下一页解析结果）；
-     *               省略时直接从当前文档查询。
-     * @returns Promise<void>；单条保存异常仅 console.error 并继续下一条，不向上抛出。
+     * 解析影片列表页：遍历条目提取番号/链接/发布时间并写入 JHS 库。
+     * flag 开：Set 查重 + 批量 saveCarList + 200ms 间隔；
+     * flag 关：逐条 getCar/saveCar + 1000ms ajax 翻页。
      */
     async parseMovieList(rootEl?: any): Promise<void> {
+        if (featureFlags.wantWatchBatchImport) {
+            await this.parseMovieListBatch(rootEl);
+            return;
+        }
         let itemElements: any;
         let nextPageHref: string;
         if (rootEl) {
@@ -143,6 +148,70 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         } else {
             show.ok('导入结束!');
             refresh();
+        }
+    }
+
+    /** 批量导入优化路径（Set 查重 + saveCarList + gmHttp 翻页）。 */
+    async parseMovieListBatch(rootEl?: any): Promise<void> {
+        const container = rootEl || $('body');
+        const movieList = container.find(this.getSelector().itemSelector);
+        const nextPageLink = container.find('.pagination-next').attr('href');
+        if (movieList.length === 0) {
+            show.success('导入结束!');
+            refresh();
+            return;
+        }
+        show.info(`正在处理第 ${this.currentPage} 页...`);
+        const allLocalCars = await storageManager.getCarList();
+        const carNumCache = new Set(
+            allLocalCars.map((c: any) =>
+                featureFlags.caseInsensitiveCarNum ? c.carNum.toLowerCase() : c.carNum
+            )
+        );
+        const currentPageRecords: any[] = [];
+        movieList.each((_i: number, element: any) => {
+            const item = $(element);
+            const carNum2 = item.find('.video-title strong').text().trim();
+            const href = item.find('a').attr('href');
+            const publishTime = item.find('.meta').text().trim();
+            const key = featureFlags.caseInsensitiveCarNum
+                ? carNum2.toLowerCase()
+                : carNum2;
+            if (carNum2 && href && !carNumCache.has(key)) {
+                currentPageRecords.push({
+                    carNum: carNum2,
+                    url: href,
+                    names: null,
+                    actionType: this.type,
+                    publishTime
+                });
+                carNumCache.add(key);
+            }
+        });
+        if (currentPageRecords.length > 0) {
+            try {
+                await storageManager.saveCarList(currentPageRecords);
+                clog.log(
+                    `第 ${this.currentPage} 页：成功写入 ${currentPageRecords.length} 条`
+                );
+            } catch (e) {
+                clog.error('批量保存失败:', e);
+            }
+        }
+        this.currentPage++;
+        if (!nextPageLink) {
+            show.ok('导入结束!');
+            refresh();
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        try {
+            const html = await gmHttp.get(nextPageLink);
+            const next$dom = utils.htmlTo$dom(html);
+            await this.parseMovieListBatch(next$dom);
+        } catch (e) {
+            clog.error('请求下一页失败', e);
+            show.error('加载下一页失败');
         }
     }
 }

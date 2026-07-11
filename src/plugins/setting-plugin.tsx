@@ -321,7 +321,29 @@ export class SettingPlugin extends BasePlugin {
         $('#videoQuality').val(settings.videoQuality);
         $('#reviewCount').val(settings.reviewCount || 20);
         $('#tagPosition').val(settings.tagPosition || 'rightTop');
+        $('#movieShowType').val(settings.movieShowType || 'hide');
         $('#waitCheckCount').val(settings.waitCheckCount || 5);
+        // 封面工具栏 5 开关（CoverButtonPlugin）
+        $('#enableScreenSvg').prop(
+            'checked',
+            !settings.enableScreenSvg || settings.enableScreenSvg === YES
+        );
+        $('#enableVideoSvg').prop(
+            'checked',
+            !settings.enableVideoSvg || settings.enableVideoSvg === YES
+        );
+        $('#enableHandleSvg').prop(
+            'checked',
+            !settings.enableHandleSvg || settings.enableHandleSvg === YES
+        );
+        $('#enableSiteSvg').prop(
+            'checked',
+            !settings.enableSiteSvg || settings.enableSiteSvg === YES
+        );
+        $('#enableCopySvg').prop(
+            'checked',
+            !settings.enableCopySvg || settings.enableCopySvg === YES
+        );
         const tagNumber = settings.highlightedTagNumber || 1;
         const tagColor = settings.highlightedTagColor || '#ce2222';
         $('#highlightedTagNumber').val(settings.highlightedTagNumber || 1);
@@ -1001,7 +1023,15 @@ export class SettingPlugin extends BasePlugin {
         settings.videoQuality = $('#videoQuality').val();
         settings.reviewCount = $('#reviewCount').val();
         settings.tagPosition = $('#tagPosition').val();
+        settings.movieShowType = $('#movieShowType').val();
         settings.waitCheckCount = $('#waitCheckCount').val();
+        if ($('#enableScreenSvg').length) {
+            settings.enableScreenSvg = $('#enableScreenSvg').is(':checked') ? YES : NO;
+            settings.enableVideoSvg = $('#enableVideoSvg').is(':checked') ? YES : NO;
+            settings.enableHandleSvg = $('#enableHandleSvg').is(':checked') ? YES : NO;
+            settings.enableSiteSvg = $('#enableSiteSvg').is(':checked') ? YES : NO;
+            settings.enableCopySvg = $('#enableCopySvg').is(':checked') ? YES : NO;
+        }
         settings.highlightedTagNumber = $('#highlightedTagNumber').val();
         settings.highlightedTagColor = $('#highlightedTagColor').val();
         settings.httpTimeout = $('#httpTimeout').val();

@@ -17,6 +17,7 @@
 
 import { ACTOR, ACTRESS, CENSORED, UNCENSORED } from '../constants/site';
 import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../constants/status';
+import { featureFlags } from './feature-flags';
 
 /** 「已下载」状态兼容常量（原 g，已下载功能删除后保留以兼容历史数据） */
 const HAS_DOWN_STATUS = 'hasDown';
@@ -130,6 +131,10 @@ export class StorageManager {
         storeName: 'appData'
     });
 
+    /** 番号清单缓存（新版） */
+    private cacheCarList: CarRecord[] | null = null;
+    /** 收藏演员缓存（新版） */
+    private cacheFavoriteActressList: FavoriteActress[] | null = null;
     /** 黑名单番号清单缓存 */
     private cache_filter_actor_actress_car_list: CarRecord[] | null = null;
     /** 设置对象缓存 */
@@ -159,6 +164,16 @@ export class StorageManager {
         this.cacheSettingObj = null;
     }
 
+    /** 清空番号清单缓存。 */
+    clearCarListCache(): void {
+        this.cacheCarList = null;
+    }
+
+    /** 清空收藏演员缓存。 */
+    clearFavoriteActressListCache(): void {
+        this.cacheFavoriteActressList = null;
+    }
+
     constructor() {
         if (StorageManager.instance) {
             throw new Error('StorageManager已被实例化过了!');
@@ -170,12 +185,23 @@ export class StorageManager {
 
     /** 获取全部番号记录。 @returns carList（空时返回 []） */
     async getCarList(): Promise<CarRecord[]> {
+        if (featureFlags.storageCacheDeepCopy) {
+            if (!this.cacheCarList) {
+                this.cacheCarList = (await this.forage.getItem(this.car_list_key)) || [];
+            }
+            return utils.copyObj(this.cacheCarList);
+        }
         return (await this.forage.getItem(this.car_list_key)) || [];
     }
 
     /** 按番号查询单条记录。 @param carNum 番号 @returns 命中记录或 undefined */
     async getCar(carNum: string): Promise<CarRecord | undefined> {
-        return (await this.getCarList()).find((car) => car.carNum === carNum);
+        const list = await this.getCarList();
+        if (featureFlags.caseInsensitiveCarNum) {
+            const lower = carNum.toLowerCase();
+            return list.find((car) => car.carNum.toLowerCase() === lower);
+        }
+        return list.find((car) => car.carNum === carNum);
     }
 
     /**
@@ -200,7 +226,9 @@ export class StorageManager {
         if (names) {
             names = names.trim();
         }
-        let car = list.find((item) => item.carNum === carNum);
+        let car = featureFlags.caseInsensitiveCarNum
+            ? list.find((item) => item.carNum.toLowerCase() === carNum.toLowerCase())
+            : list.find((item) => item.carNum === carNum);
         if (car) {
             if (names) {
                 car.names = names;
@@ -274,9 +302,12 @@ export class StorageManager {
         const list: CarRecord[] = (await this.forage.getItem(this.car_list_key)) || [];
         this._saveSingleCar(input, list);
         await this.forage.setItem(this.car_list_key, list);
+        this.cacheCarList = list;
         await this.removeNewVideoList([input.carNum]);
         // 增量通知：推送被修改的单条记录
-        const car = list.find((c) => c.carNum === input.carNum);
+        const car = featureFlags.caseInsensitiveCarNum
+            ? list.find((c) => c.carNum.toLowerCase() === input.carNum.toLowerCase())
+            : list.find((c) => c.carNum === input.carNum);
         if (car) this.carListChangeCallback?.({ action: 'upsert', upserts: [car] });
     }
 
@@ -323,6 +354,7 @@ export class StorageManager {
             }
         }
         await this.forage.setItem(this.car_list_key, list);
+        this.cacheCarList = list;
         // 增量通知：推送被更新的单条记录
         this.carListChangeCallback?.({ action: 'upsert', upserts: [car] });
     }
@@ -346,9 +378,14 @@ export class StorageManager {
             }
         }
         await this.forage.setItem(this.car_list_key, list);
+        this.cacheCarList = list;
         // 增量通知：推送所有被修改的记录
-        const numSet = new Set(inputs.map((i) => i.carNum));
-        const upserts = list.filter((c) => numSet.has(c.carNum));
+        const numSet = featureFlags.caseInsensitiveCarNum
+            ? new Set(inputs.map((i) => i.carNum.toLowerCase()))
+            : new Set(inputs.map((i) => i.carNum));
+        const upserts = featureFlags.caseInsensitiveCarNum
+            ? list.filter((c) => numSet.has(c.carNum.toLowerCase()))
+            : list.filter((c) => numSet.has(c.carNum));
         if (upserts.length > 0) this.carListChangeCallback?.({ action: 'upsert', upserts });
     }
 
@@ -497,10 +534,16 @@ export class StorageManager {
     async getBlacklistCarList(): Promise<CarRecord[]> {
         const cached = this.cache_filter_actor_actress_car_list;
         if (cached && cached.length > 0) {
+            if (featureFlags.storageCacheDeepCopy) {
+                return utils.deepFreeze(utils.copyObj(cached));
+            }
             return cached;
         }
         const fresh: CarRecord[] = (await this.forage.getItem(this.blacklist_car_list_key)) || [];
         this.cache_filter_actor_actress_car_list = fresh;
+        if (featureFlags.storageCacheDeepCopy) {
+            return utils.deepFreeze(utils.copyObj(fresh));
+        }
         return fresh;
     }
 
@@ -545,6 +588,13 @@ export class StorageManager {
 
     /** 获取收藏演员列表。 @returns favoriteActresses（空时返回 []） */
     async getFavoriteActressList(): Promise<FavoriteActress[]> {
+        if (featureFlags.storageCacheDeepCopy) {
+            if (!this.cacheFavoriteActressList) {
+                this.cacheFavoriteActressList =
+                    (await this.forage.getItem(this.favorite_actresses_key)) || [];
+            }
+            return utils.copyObj(this.cacheFavoriteActressList);
+        }
         return (await this.forage.getItem(this.favorite_actresses_key)) || [];
     }
 
@@ -801,7 +851,9 @@ export class StorageManager {
         if (!this.cacheSettingObj) {
             this.cacheSettingObj = (await this.forage.getItem(this.setting_key)) || {};
         }
-        const setting = this.cacheSettingObj!;
+        const setting = featureFlags.storageCacheDeepCopy
+            ? utils.copyObj(this.cacheSettingObj!)
+            : this.cacheSettingObj!;
         if (key === null) {
             return setting;
         }

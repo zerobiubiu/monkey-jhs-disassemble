@@ -46,6 +46,7 @@
  * - 控制流（分支、MutationObserver、try/catch/finally、fire-and-forget .then()、
  *   Promise 串行化 _reviewChain、IIFE、空 catch）与原脚本一致。
  */
+import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import { SubtitleActionCell } from '../components/subtitle-action-cell';
 import { SubtitleLine } from '../components/subtitle-line';
@@ -208,6 +209,27 @@ export class DetailPageButtonPlugin extends BasePlugin {
             )
         );
         $('#xunLeiSubtitleBtn').on('click', () => this.searchXunLeiSubtitle(carNum));
+        // 磁力搜索（MagnetHubPlugin，feature flag 控制）
+        if (featureFlags.magnetHubPlugin && !$('#magnetSearchBtn').length) {
+            $('.movie-panel-info, .tabs')
+                .first()
+                .after(
+                    `<a id="magnetSearchBtn" class="button is-small is-warning" style="margin:8px 0">磁力搜索</a>`
+                );
+            $('#magnetSearchBtn').on('click', () => {
+                const hub = this.getBean('MagnetHubPlugin');
+                if (!hub) return;
+                layer.open({
+                    type: 1,
+                    title: `磁力搜索 - ${carNum}`,
+                    content: '<div id="magnet-hub-mount" style="padding:10px"></div>',
+                    area: utils.getResponsiveArea(['80%', '80%']),
+                    success: () => {
+                        $('#magnet-hub-mount').append(hub.createMagnetHub(carNum));
+                    }
+                });
+            });
+        }
         this.showStatus(carNum).then();
     }
 

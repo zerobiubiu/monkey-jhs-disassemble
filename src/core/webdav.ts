@@ -37,6 +37,8 @@ interface WebDavResponse {
 /** HTTP 请求头映射 */
 type HttpHeaders = Record<string, string>;
 
+import { featureFlags } from './feature-flags';
+
 export class WebDavClient {
     davUrl: string;
     username: string;
@@ -105,14 +107,53 @@ export class WebDavClient {
     }
 
     /**
+     * PROPFIND Depth:0 检测目录是否存在。
+     * @param path 目录路径
+     * @returns 存在 true；404 false；其它错误抛出
+     */
+    async checkFolderExists(path: string): Promise<boolean> {
+        try {
+            await this._sendRequest('PROPFIND', path, { Depth: '0' });
+            return true;
+        } catch (error: any) {
+            const statusMatch = String(error?.message || '').match(/请求失败 (\d+):/);
+            if ((statusMatch ? parseInt(statusMatch[1], 10) : 0) === 404) {
+                return false;
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * 幂等创建目录（flag 开时先检查再 MKCOL；flag 关直接 MKCOL）。
+     * @param folderName 目录名
+     */
+    async createFolder(folderName: string): Promise<void> {
+                if (!featureFlags.webdavIdempotentMkdir) {
+            await this._sendRequest('MKCOL', folderName);
+            return;
+        }
+        try {
+            if (!(await this.checkFolderExists(folderName))) {
+                clog.log(`目录 ${folderName} 不存在，正在创建...`);
+                await this._sendRequest('MKCOL', folderName, { Depth: '0' });
+                clog.log(`目录 ${folderName} 创建成功。`);
+            }
+        } catch (error) {
+            clog.error(`创建目录 ${folderName} 时发生错误:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * 在 folder 目录下备份名为 filename 的文件，内容为 content。
-     * 先 MKCOL 创建目录，再 PUT 写入文件。
+     * 先确保目录存在，再 PUT 写入文件。
      * @param folder   目录名
      * @param filename 文件名
      * @param content  文本内容
      */
     async backup(folder: string, filename: string, content: string): Promise<void> {
-        await this._sendRequest('MKCOL', folder);
+        await this.createFolder(folder);
         const path = folder + '/' + filename;
         await this._sendRequest('PUT', path, { 'Content-Type': 'text/plain' }, content);
     }
@@ -181,7 +222,7 @@ export class WebDavClient {
      */
     async getBackupList(folder: string): Promise<WebDavFileItem[]> {
         this.folderName = folder;
-        await this._sendRequest('MKCOL', folder);
+        await this.createFolder(folder);
         return this.getFileList(folder);
     }
 
@@ -199,3 +240,4 @@ export class WebDavClient {
         ).responseText;
     }
 }
+

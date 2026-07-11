@@ -41,6 +41,7 @@ import {
     NO,
     YES
 } from '../constants/status';
+import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import { Hotkey } from '../core/hotkey';
 import { ImagePreview } from '../core/image-preview';
@@ -277,6 +278,9 @@ export class ListPagePlugin extends BasePlugin {
         const itemEls = $(this.getSelector().itemSelector).toArray();
         if (itemEls.length) {
             await this.filterMovieList(itemEls);
+            if (featureFlags.coverButtonPlugin) {
+                await this.getBean('CoverButtonPlugin')?.addSvgBtn?.();
+            }
         }
     }
 
@@ -352,11 +356,12 @@ export class ListPagePlugin extends BasePlugin {
                 storageManager.getSetting()
             ]);
         const readDataTime = utils.time('读取数据耗时');
+        const useLower = featureFlags.caseInsensitiveCarNum;
         const statusCarSets: Record<string, Set<string>> = carList.reduce(
             (acc: Record<string, Set<string>>, car: any) => {
                 const status = car.status;
                 if (acc.hasOwnProperty(status)) {
-                    acc[status].add(car.carNum);
+                    acc[status].add(useLower ? car.carNum.toLowerCase() : car.carNum);
                 }
                 return acc;
             },
@@ -403,6 +408,10 @@ export class ListPagePlugin extends BasePlugin {
         const showHasWatchItem = setting?.showHasWatchItem ?? YES;
         const showAllItem = setting?.showAllItem ?? NO;
         const tagPosition = setting?.tagPosition || 'rightTop';
+        const movieShowType =
+            featureFlags.movieShowTypeVisibility
+                ? setting?.movieShowType || 'hide'
+                : 'hide';
         this.currentPageFilterCount = 0;
         this.currentPageFavoriteCount = 0;
         this.currentPageHasWatchCount = 0;
@@ -420,15 +429,23 @@ export class ListPagePlugin extends BasePlugin {
                     favorite: favoriteSet,
                     hasWatch: hasWatchSet
                 } = statusCarSets;
-                const isFavorite = favoriteSet.has(carNum);
-                const isHasWatch = hasWatchSet.has(carNum);
-                const isFiltered = filterSet.has(carNum);
+                const lookupCarNum = useLower ? carNum.toLowerCase() : carNum;
+                const lowerTitle = useLower ? (title || '').toLowerCase() : title || '';
+                const isFavorite = favoriteSet.has(lookupCarNum);
+                const isHasWatch = hasWatchSet.has(lookupCarNum);
+                const isFiltered = filterSet.has(lookupCarNum);
                 const isActorBlacklist = actorCarNumToNameMap.has(carNum);
                 const isActressBlacklist = actressCarNumToNameMap.has(carNum);
                 const isBlacklistActor = isActorBlacklist || isActressBlacklist;
-                const matchedKeyword = titleFilterKeywords.find(
-                    (keyword: string) => title.includes(keyword) || carNum.startsWith(keyword)
-                );
+                const matchedKeyword = titleFilterKeywords.find((keyword: string) => {
+                    if (useLower) {
+                        return (
+                            lowerTitle.includes(keyword.toLowerCase()) ||
+                            lookupCarNum.startsWith(keyword.toLowerCase())
+                        );
+                    }
+                    return title.includes(keyword) || carNum.startsWith(keyword);
+                });
                 const hasKeywordMatch = !!matchedKeyword;
                 if (!isSearchOrUserPage) {
                     let shouldHide =
@@ -437,14 +454,41 @@ export class ListPagePlugin extends BasePlugin {
                         (showFilterItem === NO && isFiltered && !isFavorite && !isHasWatch) ||
                         (showFilterActorItem === NO && isBlacklistActor) ||
                         (showFilterKeywordItem === NO && hasKeywordMatch);
+                    if ($item.attr('data-movieShowType') !== movieShowType) {
+                        $item.css('border', '');
+                        $item.children().css('visibility', '');
+                        $item.removeAttr('data-hide');
+                        $item.show();
+                    }
                     const isHidden = $item.attr('data-hide') === YES;
                     if (showAllItem === YES) {
                         shouldHide = false;
                     }
-                    if (shouldHide && !isHidden) {
-                        $item.hide().attr('data-hide', YES);
-                    } else if (!shouldHide && isHidden) {
-                        $item.show().removeAttr('data-hide');
+                    if (shouldHide !== isHidden) {
+                        if (shouldHide) {
+                            $item.attr('data-hide', YES);
+                        } else {
+                            $item.removeAttr('data-hide');
+                        }
+                        if (movieShowType === 'hide') {
+                            if (shouldHide) {
+                                $item.hide();
+                            } else {
+                                $item.show();
+                            }
+                        } else if (movieShowType === 'visibility') {
+                            const borderStyle = shouldHide
+                                ? '1px solid rgb(192 176 176)'
+                                : 'none';
+                            const visibilityValue = shouldHide ? 'hidden' : 'visible';
+                            $item.css('border', borderStyle);
+                            $item.children().css('visibility', visibilityValue);
+                        } else {
+                            throw new Error('movieShowType值有误:' + movieShowType);
+                        }
+                        if ($item.attr('data-movieShowType') !== movieShowType) {
+                            $item.attr('data-movieShowType', movieShowType);
+                        }
                     }
                 }
                 let tagConfig: StatusTagConfig = STATUS_TAG_CONFIG.IS_WAIT_CHECK;
@@ -807,6 +851,7 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
     async translate($item: any): Promise<void> {
+        // 列表页标题就地替换逻辑保留在本方法；TranslatePlugin 负责详情页
         if ((await storageManager.getSetting('translateTitle', YES)) !== YES) {
             return;
         }

@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 35 个功能插件（JavDB 33 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -23,9 +23,9 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册 35 插件（javdb 33 + missav 2）
-│   ├── core/               # 核心模块（16 个）
-│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 35 插件）
+│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 2）
+│   ├── core/               # 核心模块（含 feature-flags）
+│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）
@@ -86,7 +86,7 @@ monkey-jhs-disassemble/
 - `processCss()` — 并发执行所有插件 initCss，返回结构化结果并汇总失败项
 - `processPlugins()` — 并发执行所有插件 handle，返回结构化结果并汇总失败项
 
-### 3.3 插件清单（34 个）
+### 3.3 插件清单
 
 **主脚本拆分插件（22 个）**：来自 `archetype/jhs.user.js`
 
@@ -132,10 +132,22 @@ monkey-jhs-disassemble/
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 
-### 3.4 核心模块 `src/core/`（16 个）
+**升级新插件（6 个，feature flag 可关）**：对照 `jhs.3.3.6.027`，见 doc/76
+
+| 插件 | 文件 | flag | 职责 |
+|------|------|------|------|
+| TranslatePlugin | translate-plugin.ts | translatePlugin | 详情页标题翻译 |
+| ScreenShotPlugin | screenshot-plugin.ts | screenShotPlugin | javstore 截图墙 |
+| CoverButtonPlugin | cover-button-plugin.tsx | coverButtonPlugin | 列表封面工具栏 |
+| MagnetHubPlugin | magnet-hub-plugin.ts | magnetHubPlugin | 多引擎磁链 |
+| ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
+| Fc2By123AvPlugin | fc2-by-123av-plugin.ts | fc2By123AvPlugin | 123Av FC2 浏览 |
+
+### 3.4 核心模块 `src/core/`
 
 | 文件 | 职责 |
 |------|------|
+| feature-flags.ts | 升级特性开关（localStorage 可覆盖） |
 | libs.ts | 第三方库 ESM import + 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5） |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
 | storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；提供运行时缓存清理方法） |

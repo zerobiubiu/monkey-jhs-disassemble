@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 36 个功能插件（JavDB 34 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
 
 ## 文档清单
 
@@ -86,6 +86,12 @@
 | `73-quick-block-button.md` | 🔧开发指导 | ✅已执行 | 快捷评分面板新增拉黑按钮（第二步）：RatingBarHtml 新增 .jhs-block-btn；_buildRatingBar 绑定 click→quickBlock；quickBlock 弹确认框+写 FILTER_ACTION+广播+设为已读0星（_triggerJavdbReview(0) 串行+_wantWatchedSyncing 阻断 observer）+关闭页面；_syncRatingBar 异步查 JHS 记录高亮 filter 状态（红色#de3333）；rating-bar.css 加拉黑按钮样式；tsc -b + vite build 通过，version 1.8.3→1.8.4 |
 | `74-fix-cover-click-delegation.md` | 🔧开发指导 | ✅已执行 | 修复列表页封面图未加载时点击走原生跳转：bindClick click 委托选择器 `.item img`→`.item .cover`、contextmenu `.item img, .item video`→`.item .cover, .item video`；根因是 `<img loading="lazy">` 未加载时无尺寸、用户点中 `.cover` div 而非 `<img>`，`.item img` 不匹配走原生 `<a>` 跳转；`.cover` 有 CSS min-height/padding-top 撑开面积始终可点击；version 1.8.4→1.8.5 |
 | `75-legal-and-license-update.md` | 🔧开发指导 | ✅已执行 | 法律条款与项目说明更新：新建 LICENSE 文件（MIT 全文+版权声明+衍生关系+集成脚本清单）；README License 节重写为 Attribution（基于 JAV-JHS 3.3.6 MIT 二次开发+后续版本转私密付费+13 集成脚本致谢表）；vite.config.ts 增加 @copyright 元数据；package.json 增加 license 字段；纯元数据/文档变更不递增版本号 |
+| `76-upgrade-from-336027.md` | 🔧开发指导 | ✅已执行 | 对照 jhs.3.3.6.027 可插拔升级**落地记录**（批次 A–D）：feature-flags、行为优化 10 项、Translate/ScreenShot/CoverButton/MagnetHub/ImageRecognition/Fc2By123Av、javDbApi；version 1.9.0；**执行方案见 doc/78**，**对照基准见 doc/77**；不含 TaskPlugin 定时检测 |
+| `77-archetype-336027-reference.md` | 📄参考说明 | ✅已执行 | archetype/jhs.3.3.6.027.user.js 参考脚本说明：v3.3.6.027 维护版架构/插件清单/与本项目差异；升级目标对照基准；方案链 doc/78 → doc/76 |
+| `78-upgrade-plan-336027.md` | 🔧开发指导 | ✅已执行 | 对照 jhs.3.3.6.027 **可插拔升级执行方案**（原根目录 `upgrade-plan-temp.md` 归档）：featureFlags 中心、依赖图、批次 A–D 分项改动/验证、@connect、版本与文档要求；已落地，详见 doc/76 |
+| `79-fix-nav-123av-and-image-search.md` | 🔧开发指导 | ✅已执行 | 修复 123Av-Fc2 导航双份（`.navbar-start` 误命中搜索框）与识图按钮缺失（错误选择器 `#jhs-search-box`）；NavSearchBox 内置识图；version 1.9.0→1.9.1 |
+| `80-fix-cover-button-not-visible.md` | 🔧开发指导 | ✅已执行 | CoverButton 不可见排查加固（1.9.2/1.9.3）；**已被 doc/81 撤销**，仅作历史记录 |
+| `81-revert-cover-button-visibility-hacks.md` | 🔧开发指导 | ✅已执行 | 撤销 CoverButton 可见性加固，恢复设置五开关控制；version 1.9.3→1.9.4 |
 
 ## 类型图例
 
@@ -181,6 +187,8 @@
 ## 相关文件
 
 - 原始脚本：`archetype/jhs.user.js`
+- 升级对照脚本：`archetype/jhs.3.3.6.027.user.js`（说明见 doc/77）
 - 原脚本历史文档：`archetype/doc/`（已执行的历史定稿，仅作参考）
 - 工程入口：`src/main.tsx`（完整启动序列）
 - 构建配置：`vite.config.ts`
+- 3.3.6.027 升级文档链：`doc/77`（基准）→ `doc/78`（执行方案）→ `doc/76`（落地记录）

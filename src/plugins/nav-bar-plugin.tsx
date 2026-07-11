@@ -21,6 +21,7 @@
  * 签名（行为等价，子任务均为同步调用）；内联 HTML 已提取为组件
  * （NavSearchBox / NavOtherDropdown）。
  */
+import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import { NavOtherDropdown } from '../components/nav-other-dropdown';
 import { NavSearchBox } from '../components/nav-search-box';
@@ -93,8 +94,9 @@ export class NavBarPlugin extends BasePlugin {
      */
     hookSearch(): void {
         $('#navbar-menu-hero').after(jsxToString(<NavSearchBox />));
-        $('#search-keyword')
-            .on('paste', (event: any) => {
+        const $keyword = $('#search-keyword');
+        if (!featureFlags.navBarNoPaste) {
+            $keyword.on('paste', (event: any) => {
                 const items: any = event.originalEvent.clipboardData.items;
                 for (let index = 0; index < items.length; index++) {
                     if (items[index].type.indexOf('image') !== -1) {
@@ -104,14 +106,15 @@ export class NavBarPlugin extends BasePlugin {
                 setTimeout(() => {
                     $('#search-btn').click();
                 }, 0);
-            })
-            .on('keypress', (event: any) => {
-                if (event.key === 'Enter') {
-                    setTimeout(() => {
-                        $('#search-btn').click();
-                    }, 0);
-                }
             });
+        }
+        $keyword.on('keypress', (event: any) => {
+            if (event.key === 'Enter') {
+                setTimeout(() => {
+                    $('#search-btn').click();
+                }, 0);
+            }
+        });
         $('#search-btn').on('click', (_event: any) => {
             const keyword: any = $('#search-keyword').val();
             const searchType: any = $('#search-type option:selected').val();
@@ -123,11 +126,21 @@ export class NavBarPlugin extends BasePlugin {
                 }
             }
         });
+        // 自定义检索框内的「识图」按钮（NavSearchBox 内 #search-img-btn）
+        if (featureFlags.imageRecognitionPlugin) {
+            $('#search-img-btn').on('click', (e: any) => {
+                e.preventDefault();
+                this.getBean('ImageRecognitionPlugin')?.open?.();
+            });
+        } else {
+            $('#search-img-btn').hide();
+        }
     }
 
     /**
-     * 克隆旧版以图识图按钮以解绑其原有事件，并改 tooltip 为"以图识图"。
-     * 对应原 L4800-4808。
+     * 克隆旧版以图识图按钮以解绑其原有事件，并改 tooltip 为"以图识图"；
+     * flag 开时点击走 ImageRecognitionPlugin。
+     * 对应原 L4800-4808 / 新版 rebind .search-image。
      * 无参数，无返回值；无 .search-image 元素时短路返回。
      */
     hookOldSearch(): void {
@@ -138,6 +151,13 @@ export class NavBarPlugin extends BasePlugin {
         const clonedEl: Node = searchImageEl.cloneNode(true);
         searchImageEl.parentNode!.replaceChild(clonedEl, searchImageEl);
         $('#button-search-image').attr('data-tooltip', '以图识图');
+        if (featureFlags.imageRecognitionPlugin) {
+            $('.search-image').on('click', (event: any) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.getBean('ImageRecognitionPlugin')?.open?.();
+            });
+        }
     }
 
     /**
