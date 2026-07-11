@@ -24,15 +24,6 @@ import {
     REFRESH_SVG as refreshSvg,
     BLACKLIST_SVG as blacklistSvg
 } from '../resources/icons';
-import {
-    COPY_SVG as copySvg,
-    DOWN_SVG as downSvg,
-    HANDLE_SVG as handleSvg,
-    SITE_SVG as siteSvg,
-    VIDEO_SVG as videoSvg,
-    SCREEN_SVG as screenSvg,
-    RECOVERY_VIDEO_SVG as recoveryVideoSvg
-} from '../resources/upgrade-icons';
 import { featureFlags } from '../core/feature-flags';
 
 /** 番号/影片信息（getPageInfo / getBoxCarInfo 返回结构） */
@@ -77,13 +68,6 @@ export class BasePlugin {
     newSvg = newSvg;
     refreshSvg = refreshSvg;
     blacklistSvg = blacklistSvg;
-    copySvg = copySvg;
-    downSvg = downSvg;
-    handleSvg = handleSvg;
-    siteSvg = siteSvg;
-    videoSvg = videoSvg;
-    screenSvg = screenSvg;
-    recoveryVideoSvg = recoveryVideoSvg;
     /** 子类必须覆写返回插件名，否则抛错。对应原 L3073-3075。 */
     getName(): string {
         throw new Error(`${this.constructor.name} 未显示getName()`);

@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
 
 ## 文档清单
 
@@ -92,6 +92,8 @@
 | `79-fix-nav-123av-and-image-search.md` | 🔧开发指导 | ✅已执行 | 修复 123Av-Fc2 导航双份（`.navbar-start` 误命中搜索框）与识图按钮缺失（错误选择器 `#jhs-search-box`）；NavSearchBox 内置识图；version 1.9.0→1.9.1 |
 | `80-fix-cover-button-not-visible.md` | 🔧开发指导 | ✅已执行 | CoverButton 不可见排查加固（1.9.2/1.9.3）；**已被 doc/81 撤销**，仅作历史记录 |
 | `81-revert-cover-button-visibility-hacks.md` | 🔧开发指导 | ✅已执行 | 撤销 CoverButton 可见性加固，恢复设置五开关控制；version 1.9.3→1.9.4 |
+| `82-remove-cover-button-plugin.md` | 🔧开发指导 | ✅已执行 | 删除封面工具栏全套（CoverButtonPlugin + 设置五开关 + flag + SVG）；version 1.9.4→1.10.0 |
+| `83-fix-mini-switch-css.md` | 🔧开发指导 | ✅已执行 | 修复设置面板开关 CSS：doc/70 的 form-content 通配 + content-panel checkbox 规则压过 mini-switch；排除冲突并强化开关选择器；version 1.10.0→1.10.1 |
 
 ## 类型图例
 

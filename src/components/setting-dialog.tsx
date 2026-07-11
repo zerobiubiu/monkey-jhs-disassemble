@@ -365,39 +365,6 @@ export function SettingDialog({
                         <hr style={HR_STYLE} />
 
                         <div className="setting-item">
-                            <span className="setting-label">封面工具栏 - 长缩略图</span>
-                            <div className="form-content">
-                                <input type="checkbox" id="enableScreenSvg" className="mini-switch" />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">封面工具栏 - 预览视频</span>
-                            <div className="form-content">
-                                <input type="checkbox" id="enableVideoSvg" className="mini-switch" />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">封面工具栏 - 鉴定处理</span>
-                            <div className="form-content">
-                                <input type="checkbox" id="enableHandleSvg" className="mini-switch" />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">封面工具栏 - 第三方网站</span>
-                            <div className="form-content">
-                                <input type="checkbox" id="enableSiteSvg" className="mini-switch" />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">封面工具栏 - 复制</span>
-                            <div className="form-content">
-                                <input type="checkbox" id="enableCopySvg" className="mini-switch" />
-                            </div>
-                        </div>
-
-                        <hr style={HR_STYLE} />
-
-                        <div className="setting-item">
                             <span className="setting-label">预览视频默认画质:</span>
                             <div className="form-content">
                                 <select

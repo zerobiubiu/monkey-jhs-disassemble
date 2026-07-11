@@ -72,7 +72,6 @@ import { MissavQuickCopyPlugin } from './plugins/missav-quick-copy-plugin';
 import { featureFlags } from './core/feature-flags';
 import { TranslatePlugin } from './plugins/translate-plugin';
 import { ScreenShotPlugin } from './plugins/screenshot-plugin';
-import { CoverButtonPlugin } from './plugins/cover-button-plugin';
 import { MagnetHubPlugin } from './plugins/magnet-hub-plugin';
 import { ImageRecognitionPlugin } from './plugins/image-recognition-plugin';
 import { Fc2By123AvPlugin } from './plugins/fc2-by-123av-plugin';
@@ -315,7 +314,6 @@ const pluginManager: PluginManager = (function () {
         // 升级新插件（feature flag 可插拔）
         if (featureFlags.translatePlugin) manager.register(TranslatePlugin);
         if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin);
-        if (featureFlags.coverButtonPlugin) manager.register(CoverButtonPlugin);
         if (featureFlags.magnetHubPlugin) manager.register(MagnetHubPlugin);
         if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin);
         if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin);

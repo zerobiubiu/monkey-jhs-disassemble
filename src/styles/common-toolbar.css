@@ -61,11 +61,6 @@
     height: 16px;
 }
 
-.tool-box .jhs-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-}
-
 /*表格内按钮溢出,防止被隐藏*/
 .tabulator .tabulator-row .action-cell-dropdown {
     overflow: visible !important;

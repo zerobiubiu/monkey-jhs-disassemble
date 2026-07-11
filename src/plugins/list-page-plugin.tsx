@@ -278,9 +278,6 @@ export class ListPagePlugin extends BasePlugin {
         const itemEls = $(this.getSelector().itemSelector).toArray();
         if (itemEls.length) {
             await this.filterMovieList(itemEls);
-            if (featureFlags.coverButtonPlugin) {
-                await this.getBean('CoverButtonPlugin')?.addSvgBtn?.();
-            }
         }
     }
 

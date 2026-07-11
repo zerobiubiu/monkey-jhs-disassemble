@@ -22,7 +22,6 @@ export const featureFlags: Record<string, boolean> = {
     screenShotPlugin: true,
     javDbApiAggregate: true,
     // —— 依赖型新插件（批次 C）——
-    coverButtonPlugin: true,
     magnetHubPlugin: true,
     imageRecognitionPlugin: true,
     // —— 复合型新插件（批次 D）——

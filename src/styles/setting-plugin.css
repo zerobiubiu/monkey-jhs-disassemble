@@ -62,7 +62,7 @@ __CSS_TEXT__ .nav-btn::after {
     min-width: 180px;
     flex: 1;
 }
-.form-content * {
+.form-content > *:not(.mini-switch):not(br) {
     width: 100%;
     padding: 5px 8px;
     text-align: left;
@@ -190,24 +190,34 @@ __CSS_TEXT__ .nav-btn::after {
     color: #333;
 }
 
-/* ===== 简化设置面板开关 ===== */
-.mini-switch {
+/* ===== 开关（mini-switch）===== */
+/* 排除 form-content 通配与 content-panel checkbox 规则的干扰 */
+input.mini-switch[type='checkbox'] {
     appearance: none;
     -webkit-appearance: none;
     width: 40px;
     height: 20px;
+    min-width: 40px;
+    max-width: 40px;
+    padding: 0;
+    margin: 0;
     background: #e0e0e0;
+    border: none;
     border-radius: 20px;
     position: relative;
     cursor: pointer;
     outline: none;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    vertical-align: middle;
+    accent-color: unset;
 }
 
-.mini-switch:checked {
+input.mini-switch[type='checkbox']:checked {
     background: #4caf50;
 }
 
-.mini-switch::before {
+input.mini-switch[type='checkbox']::before {
     content: '';
     position: absolute;
     width: 16px;
@@ -217,9 +227,10 @@ __CSS_TEXT__ .nav-btn::after {
     top: 2px;
     left: 2px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: left 0.15s ease;
 }
 
-.mini-switch:checked::before {
+input.mini-switch[type='checkbox']:checked::before {
     left: calc(100% - 18px);
 }
 
@@ -299,8 +310,8 @@ __CSS_TEXT__ .nav-btn::after {
     cursor: default;
 }
 
-/* ===== 复选框美化 ===== */
-.content-panel input[type='checkbox'] {
+/* ===== 复选框美化（不含开关）===== */
+.content-panel input[type='checkbox']:not(.mini-switch) {
     width: 16px;
     height: 16px;
     accent-color: #5d87c2;

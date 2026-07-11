@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -132,13 +132,12 @@ monkey-jhs-disassemble/
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 
-**升级新插件（6 个，feature flag 可关）**：对照 `jhs.3.3.6.027`，见 doc/76
+**升级新插件（5 个，feature flag 可关）**：对照 `jhs.3.3.6.027`，见 doc/76（CoverButtonPlugin 已于 doc/82 删除）
 
 | 插件 | 文件 | flag | 职责 |
 |------|------|------|------|
 | TranslatePlugin | translate-plugin.ts | translatePlugin | 详情页标题翻译 |
 | ScreenShotPlugin | screenshot-plugin.ts | screenShotPlugin | javstore 截图墙 |
-| CoverButtonPlugin | cover-button-plugin.tsx | coverButtonPlugin | 列表封面工具栏 |
 | MagnetHubPlugin | magnet-hub-plugin.ts | magnetHubPlugin | 多引擎磁链 |
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2-by-123av-plugin.ts | fc2By123AvPlugin | 123Av FC2 浏览 |

@@ -9,6 +9,31 @@
 
 ---
 
+## v1.10.1
+
+**发布日期**：2026-07-11
+
+### 修复
+
+- **设置面板开关按钮显示异常**（doc/83）：doc/70 美化引入的 `.form-content *`
+ （`box-sizing:border-box` + padding）与 `.content-panel input[type=checkbox]`
+  （16×16）压过 `.mini-switch`，开关全部变形；排除冲突并强化开关选择器。
+
+---
+
+## v1.10.0
+
+**发布日期**：2026-07-11
+
+### 移除
+
+- **删除封面工具栏全套**（doc/82）：移除 CoverButtonPlugin 本体、设置「基础配置」
+  中五个「封面工具栏 - *」开关（loadForm/saveForm）、featureFlags.coverButtonPlugin、
+  ListPagePlugin 触发、BasePlugin 升级 SVG 字段、`upgrade-icons.ts`、以及
+  `.tool-box .jhs-icon` 专用样式。列表页封面不再注入悬浮快捷按钮。
+
+---
+
 ## v1.9.4
 
 **发布日期**：2026-07-11
