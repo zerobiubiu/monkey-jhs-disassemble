@@ -4,7 +4,7 @@
  * 全局设置入口：注入设置按钮（JavDb 顶栏下拉 / 详情页 h3 前），
  * 悬浮显示简化设置面板（显示已鉴定/收藏/已观看、弹窗打开、瀑布流、翻译、悬浮大图、
  * 115 匹配、女优信息、第三方资源、长缩略图、更高画质预览、竖图模式、页面列数/宽度），
- * 点击打开完整设置弹层（数据备份 / 基础配置 / 屏蔽配置 / 外部网站 / 快捷键 / 清理缓存）；
+ * 点击打开完整设置弹层（数据备份 / 基础配置 / 外部网站 / 缓存管理等）；
  * 提供本地导入导出、WebDav 云备份/查看/下载/导入、缓存清理与查看、回到顶部按钮。
  *
  * JS→TS 改造要点：
@@ -37,7 +37,7 @@
  *   requestAnimationFrame 滚动监听、FileReader 异步链）与原脚本一致。
  */
 import { isJavdbSite } from '../constants/site';
-import { BLOCK_TEXT, FAVORITE_TEXT, WATCHED_TEXT, YES, NO } from '../constants/status';
+import { YES, NO } from '../constants/status';
 import { VIDEO_QUALITY_LIST } from '../constants/video-quality';
 import { BasePlugin } from './base-plugin';
 import { ImagePreview } from '../core/image-preview';
@@ -52,10 +52,10 @@ import { HelpDialog } from '../components/help-dialog';
 import { BackupFileDialog } from '../components/backup-file-dialog';
 import { BackToTopButton } from '../components/back-to-top-button';
 import { CacheItemHtml } from '../components/cache-item-html';
-import { KeywordLabel } from '../components/keyword-label';
 import { SettingMountBox } from '../components/setting-mount-box';
 import { SimpleSettingPanel } from '../components/simple-setting-panel';
 import { VideoQualityOption } from '../components/video-quality-option';
+import { KeywordLabel } from '../components/keyword-label';
 import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
 import { showToast } from './video-lists-tag/vlt-toast';
 import { GM_KEY_CAR_STATUS_DATA } from './car-status-sync/car-status-config';
@@ -287,9 +287,6 @@ export class SettingPlugin extends BasePlugin {
                 cacheItemsHtml={cacheItemsHtml}
                 qualityOptionsHtml={qualityOptionsHtml}
                 isJavdbSite={isJavdbSite}
-                blockText={BLOCK_TEXT}
-                favoriteText={FAVORITE_TEXT}
-                watchedText={WATCHED_TEXT}
             />
         );
         layer.open({
@@ -342,10 +339,6 @@ export class SettingPlugin extends BasePlugin {
         $('#autoBackupFrequency').val(autoBackupConfig.frequency);
         // 本机凭证 ID（只读显示，不进入备份系统）
         $('#credentialIdDisplay').val(getCredentialId());
-        $('#enableTitleSelectFilter').prop(
-            'checked',
-            !settings.enableTitleSelectFilter || settings.enableTitleSelectFilter === YES
-        );
         $('#enableFavoriteActresses').prop(
             'checked',
             !settings.enableFavoriteActresses || settings.enableFavoriteActresses === YES
@@ -359,122 +352,20 @@ export class SettingPlugin extends BasePlugin {
         const supJavUrl = await otherSitePlugin.getSupJavUrl();
         $('#missAvUrl').val(missAvUrl);
         $('#supJavUrl').val(supJavUrl);
-        const reviewFilterKeywordList = await storageManager.getReviewFilterKeywordList();
         const titleFilterKeyword = await storageManager.getTitleFilterKeyword();
-        if (reviewFilterKeywordList) {
-            reviewFilterKeywordList.forEach((keyword: string) => {
-                this.addLabelTag('#reviewKeywordContainer', keyword);
-            });
-        }
         if (titleFilterKeyword) {
             titleFilterKeyword.forEach((keyword: string) => {
                 this.addLabelTag('#filterKeywordContainer', keyword);
             });
         }
-        ['#reviewKeywordContainer', '#filterKeywordContainer'].forEach(
-            (containerSelector: string) => {
-                $(`${containerSelector} .add-tag-btn`).on('click', () =>
-                    this.addKeyword(containerSelector)
-                );
-                $(`${containerSelector} .keyword-input`).on('keypress', (event: any) => {
-                    if (event.key === 'Enter') {
-                        this.addKeyword(containerSelector);
-                    }
-                });
-            }
+        $('#filterKeywordContainer .add-tag-btn').on('click', () =>
+            this.addKeyword('#filterKeywordContainer')
         );
-        $('#hotkey-panel [id]')
-            .map((_index: number, element: any) => element.id)
-            .get()
-            .forEach((inputId: string) => {
-                const $input = $(`#${inputId}`);
-                const hotkeyValue =
-                    settings[inputId] !== undefined
-                        ? settings[inputId]
-                        : $input.attr('data-default-hotkey') || '';
-                $input
-                    .val(hotkeyValue)
-                    .on('input', (event: any) => {
-                        const value = $(event.target).val();
-                        if (/[\u4e00-\u9fa5]/.test(value) || /^Shift[a-zA-Z0-9]+$/.test(value)) {
-                            $(event.target).val('');
-                            show.error('非法输入：不能输入中文或输入法转换错误');
-                        }
-                    })
-                    .on('keydown', (event: any) => this.handleHotkeyInput(event, $input));
-            });
-        $('#enableImageHotKey').prop(
-            'checked',
-            !!settings.enableImageHotKey && settings.enableImageHotKey === YES
-        );
-    }
-
-    /** 快捷键输入框 keydown 处理：解析按键并查重。对应原 L9748-9760。 */
-    handleHotkeyInput(event: any, $input: any): void {
-        event.preventDefault();
-        const hotkeyString = this.parseHotkey(event);
-        if (hotkeyString !== '') {
-            if (this.isDuplicateHotkey(hotkeyString, $input.attr('id'))) {
-                show.error('该快捷键已被其他功能使用！');
-            } else {
-                $input.val(hotkeyString);
-            }
-        } else {
-            $input.val('');
-        }
-    }
-
-    /** 将 KeyboardEvent 解析为快捷键字符串（如 "Ctrl+Shift+A"）。对应原 L9761-9796。 */
-    parseHotkey(event: any): string {
-        if (event.key === 'Backspace' || event.key === 'Process') {
-            return '';
-        }
-        const parts: string[] = [];
-        if (event.ctrlKey) {
-            parts.push('Ctrl');
-        }
-        if (event.shiftKey) {
-            parts.push('Shift');
-        }
-        if (event.altKey) {
-            parts.push('Alt');
-        }
-        if (event.metaKey) {
-            parts.push('Cmd');
-        }
-        const keyName =
-            (
-                {
-                    ' ': 'Space',
-                    Control: 'Ctrl',
-                    Meta: 'Cmd',
-                    ArrowUp: 'Up',
-                    ArrowDown: 'Down',
-                    ArrowLeft: 'Left',
-                    ArrowRight: 'Right'
-                } as Record<string, string>
-            )[event.key as string] ||
-            (event.key.length > 1 ? event.key.replace('Arrow', '') : event.key);
-        if (!['Control', 'Shift', 'Alt', 'Meta'].includes(event.key)) {
-            parts.push(keyName);
-        }
-        if (parts.length > 0) {
-            return parts.join('+');
-        } else {
-            return '';
-        }
-    }
-
-    /** 检查快捷键字符串是否已被其他输入框占用。对应原 L9797-9806。 */
-    isDuplicateHotkey(hotkeyString: string, inputId: string): boolean {
-        let isDuplicate = false;
-        $('#hotkey-panel [id]').each((_index: number, element: any) => {
-            if (element.id !== inputId && hotkeyString && hotkeyString === $(element).val()) {
-                isDuplicate = true;
-                return false;
+        $('#filterKeywordContainer .keyword-input').on('keypress', (event: any) => {
+            if (event.key === 'Enter') {
+                this.addKeyword('#filterKeywordContainer');
             }
         });
-        return isDuplicate;
     }
 
     /** 初始化简化设置面板表单（回填值 + 绑定即时生效的 change/input 事件）。对应原 L9807-10044。 */
@@ -1025,32 +916,11 @@ export class SettingPlugin extends BasePlugin {
         };
         settings.missAvUrl = $('#missAvUrl').val().replace(/\/$/, '');
         settings.supJavUrl = $('#supJavUrl').val().replace(/\/$/, '');
-        settings.enableTitleSelectFilter = $('#enableTitleSelectFilter').is(':checked') ? YES : NO;
         settings.enableFavoriteActresses = $('#enableFavoriteActresses').is(':checked') ? YES : NO;
         settings.enableSaveActressCarInfo = $('#enableSaveActressCarInfo').is(':checked')
             ? YES
             : NO;
-        $('#hotkey-panel [id]')
-            .map((_index: number, element: any) => element.id)
-            .get()
-            .forEach((inputId: string) => {
-                settings[inputId] = $(`#${inputId}`).val();
-            });
-        settings.enableImageHotKey = $('#enableImageHotKey').is(':checked') ? YES : NO;
         await storageManager.saveSetting(settings);
-        const reviewKeywordList: string[] = [];
-        $('#reviewKeywordContainer .keyword-label')
-            .toArray()
-            .forEach((label: any) => {
-                const keyword = $(label)
-                    .text()
-                    .replace('×', '')
-                    .replace(/[\r\n]+/g, ' ')
-                    .replace(/\s{2,}/g, ' ')
-                    .trim();
-                reviewKeywordList.push(keyword);
-            });
-        await storageManager.saveReviewFilterKeyword(reviewKeywordList);
         const titleFilterKeywordList: string[] = [];
         $('#filterKeywordContainer .keyword-label')
             .toArray()
@@ -1074,7 +944,7 @@ export class SettingPlugin extends BasePlugin {
         this.getBean('BlacklistPlugin').reloadTable();
     }
 
-    /** 在关键词容器内添加一个关键词标签（带删除按钮）。对应原 L10208-10236。 */
+    /** 在关键词容器内添加一个关键词标签（带删除按钮）。 */
     addLabelTag(containerSelector: string, keyword: string): void {
         const $tagBox = $(`${containerSelector} .tag-box`);
         let $label: any;
@@ -1120,7 +990,7 @@ export class SettingPlugin extends BasePlugin {
         $tagBox.append($label);
     }
 
-    /** 从输入框读取关键词并添加为标签。对应原 L10237-10244。 */
+    /** 从输入框读取关键词并添加为标签。 */
     addKeyword(containerSelector: string): void {
         const $input = $(`${containerSelector} .keyword-input`);
         const keyword = $input.val().trim();

@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 39 个功能插件（JavDB 37 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -57,7 +57,7 @@ monkey-jhs-disassemble/
 4. BroadcastChannel('channel-refresh') 跨标签页刷新
 5. loading/show/showImageViewer 挂载
 6. clog 日志控制台 + 全局异常捕获
-7. tooltip + 快捷键监听
+7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
 9. **PluginManager 实例化 + 注册插件**（javdb 站点 33 插件在 `if (isJavdbSite)` 块内；missav 站点 1 插件在 `if (isMissavSite)` 块内）
 10. `await processCss()` — 并发执行所有插件 initCss，完成后再进入页面逻辑
@@ -92,7 +92,7 @@ monkey-jhs-disassemble/
 
 | 插件 | 文件 | 职责 |
 |------|------|------|
-| ListPagePlugin | list-page-plugin.tsx | 列表页主插件：过滤/状态标签/翻译/点击绑定/快捷键 |
+| ListPagePlugin | list-page-plugin.tsx | 列表页主插件：过滤/状态标签/翻译/点击绑定 |
 | AutoPagePlugin | auto-page-plugin.ts | 瀑布流自动翻页 |
 | FoldCategoryPlugin | fold-category-plugin.tsx | 折叠分类 |
 | ListPageButtonPlugin | list-page-button-plugin.tsx | 列表页按钮组（批量打开/排序切换/加入黑名单） |
@@ -106,7 +106,6 @@ monkey-jhs-disassemble/
 | DetailPageButtonPlugin | detail-page-button-plugin.tsx | 详情页按钮（想看/观看/评分/清单/字幕） |
 | HighlightMagnetPlugin | highlight-magnet-plugin.ts | 高亮磁链 |
 | PreviewVideoPlugin | preview-video-plugin.tsx | 预览视频 |
-| FilterTitleKeywordPlugin | filter-title-keyword-plugin.ts | 标题关键词过滤 |
 | ActressInfoPlugin | actress-info-plugin.tsx | 演员信息 |
 | OtherSitePlugin | other-site-plugin.tsx | 第三方站点 |
 | WantAndWatchedVideosPlugin | want-and-watched-videos-plugin.tsx | 想看/已观看 |
@@ -155,7 +154,7 @@ monkey-jhs-disassemble/
 | toast.ts | Toastify-js 封装（show.ok/error/success） |
 | loading.ts | 加载遮罩 |
 | logger.tsx | 日志控制台（clog） |
-| hotkey.ts | 快捷键监听 |
+
 | image-preview.tsx | 图片查看器 |
 | viewer.ts | Viewer.js 配置 |
 | webdav.ts | WebDav 客户端 |
@@ -200,7 +199,6 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
     <div class="side-menu-item" data-panel="base-panel">⚙️ 基础配置</div>
     <div class="side-menu-item" data-panel="filter-panel">🚫 屏蔽配置</div>
     <div class="side-menu-item" data-panel="domain-panel">🌐 外部网站</div>
-    <div class="side-menu-item" data-panel="hotkey-panel">⌨️ 快捷键配置</div>
     <div class="side-menu-item" data-panel="cache-panel">🧹 清理缓存</div>
     <div class="side-menu-item" data-panel="vlt-panel">📋 收藏清单关系</div>  ← doc/45 新增
   </div>

@@ -146,8 +146,7 @@ export class ReviewPlugin extends BasePlugin {
             container.append(jsxToString(<ReviewEmpty />));
             return;
         }
-        const filterKeywords = await storageManager.getReviewFilterKeywordList();
-        this.displayReviews(reviews, container, filterKeywords);
+        this.displayReviews(reviews, container);
         if (reviews.length === limit) {
             footer.html(jsxToString(<ReviewLoadMore />));
             let page = 1;
@@ -164,7 +163,7 @@ export class ReviewPlugin extends BasePlugin {
                     loadMoreBtn.text('加载失败, 请点击重试').prop('disabled', false);
                 }
                 if (moreReviews) {
-                    this.displayReviews(moreReviews, container, filterKeywords);
+                    this.displayReviews(moreReviews, container);
                     if (moreReviews.length < limit) {
                         loadMoreBtn.remove();
                         $('#reviewsEnd').show();
@@ -179,20 +178,12 @@ export class ReviewPlugin extends BasePlugin {
     }
 
     /**
-     * 将评论数组渲染为 DOM 追加到容器，过滤含关键词的评论，并转换正文内的 ed2k/磁力/HTTP 链接。
+     * 将评论数组渲染为 DOM 追加到容器，并转换正文内的 ed2k/磁力/HTTP 链接。
      * 对应原 L7237-7263。
-     *
-     * @param reviews 评论数组（来自 fetchMovieReviews）
-     * @param container 评论挂载容器（#reviewsContainer）
-     * @param filterKeywords 过滤关键词列表；命中任一关键词的评论会被跳过
-     * @returns 无返回值；渲染末尾会注册右键过滤
      */
-    displayReviews(reviews: any, container: any, filterKeywords: any): void {
+    displayReviews(reviews: any, container: any): void {
         if (reviews.length) {
             reviews.forEach((review: any) => {
-                if (filterKeywords.some((keyword: any) => review.content.includes(keyword))) {
-                    return;
-                }
                 const stars = Array(review.score).fill('<i class="icon-star"></i>').join('');
                 const content = review.content.replace(
                     /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
@@ -209,29 +200,6 @@ export class ReviewPlugin extends BasePlugin {
                     />
                 );
                 container.append(html);
-            });
-            this.rightClickFilter();
-        }
-    }
-
-    /**
-     * 为 .review-content 注册右键菜单：选中文字后确认加入评论过滤关键词。对应原 L7264-7284。
-     *
-     * 仅当设置 enableTitleSelectFilter === YES 时启用。
-     *
-     * @returns 无返回值；右键回调内部异步保存关键词并提示，不阻塞本方法
-     */
-    async rightClickFilter(): Promise<void> {
-        if ((await storageManager.getSetting('enableTitleSelectFilter', YES)) === YES) {
-            utils.rightClick(document.body, '.review-content', async (event: any) => {
-                const selectedText = window.getSelection()!.toString();
-                if (selectedText) {
-                    event.preventDefault();
-                    await utils.q(event, `是否将 '${selectedText}' 加入评论区关键词?`, async () => {
-                        await storageManager.saveReviewFilterKeyword(selectedText);
-                        show.ok('操作成功, 刷新页面后生效');
-                    });
-                }
             });
         }
     }

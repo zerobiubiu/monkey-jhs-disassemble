@@ -62,12 +62,7 @@ export function HelpDialog() {
             <details className="help-section">
                 <summary>2. 如何屏蔽某一系列的番号?</summary>
                 <div className="help-content">
-                    <p>方法一：设置中-添加视频标题关键词，如: VENX-</p>
-                    <p>方法二：进入详情页，选中标题文字，右键可加入</p>
-                    <img
-                        src="https://i.imgur.com/lVnhK5A.png"
-                        alt="进入详情页，选中标题，进行右键"
-                    />
+                    <p>设置中-屏蔽配置-添加视频标题关键词，如: VENX-</p>
                 </div>
             </details>
 

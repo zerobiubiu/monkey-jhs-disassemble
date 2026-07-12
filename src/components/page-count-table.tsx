@@ -120,24 +120,20 @@ export function PageCountTable({
                 <td style={tdStyle}>
                     <strong>{actorFilterCount}</strong>
                 </td>
-            </tr>
-            <tr>
                 <td style={tdStyle}>屏蔽关键词</td>
                 <td style={tdStyle}>
                     <strong>{keywordFilterCount}</strong>
                 </td>
+            </tr>
+            <tr>
                 <td style={tdStyle}>已观看</td>
                 <td style={tdStyle}>
                     <strong>{hasWatchCount}</strong>
                 </td>
-            </tr>
-            <tr>
                 <td style={tdStyle}>待鉴定</td>
                 <td style={tdStyle}>
                     <strong>{waitCheckCount}</strong>
                 </td>
-                <td style={tdStyle}></td>
-                <td style={tdStyle}></td>
             </tr>
             <tr>
                 <td style={tdStyle}>

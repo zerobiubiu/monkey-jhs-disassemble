@@ -98,6 +98,11 @@
 | `85-esc-close-top-layer-only.md` | 🔧开发指导 | ✅已执行 | ESC 逐级关闭：DOM z-index 只关顶层 + event.repeat/_escClosing 防连发 + 捕获阶段单路径；version 1.10.2→1.10.3 |
 | `86-esc-close-hard-gate.md` | 🔧开发指导 | ✅已执行 | ESC 硬门：模块级 gate（keydown 锁/keyup 解锁）+ 关闭前立即 display:none 摘顶层，防动画期连关；version 1.10.3→1.10.4 |
 | `87-esc-close-cross-frame-gate.md` | 🔧开发指导 | ✅已执行 | ESC 逐级关闭 iframe 内层优先修复（doc/84-87 共六次未成功的真根因，最终版）：诊断发现 ESC 只触发外层 handler 并关掉外层 type=iframe 弹层，iframe 销毁连带内层弹层消失。修复外层 handler 检测 iframe contentDocument 内有无弹层，有则释放 gate 并向 iframe contentDocument dispatch ESC keydown 让 iframe 关内层弹层；保留 doc/86 立即 display:none、doc/87 二版 window.top.__jhsEscGate 共享、doc/85 event.repeat 忽略；version 1.10.7→1.10.8 |
+| `88-remove-hotkey-settings.md` | 🔧开发指导 | ✅已执行 | 移除设置快捷键面板及列表/详情/预览业务快捷键；删 hotkey.ts；保留 KeyPageTurning 方向键翻页；version 1.10.8→1.11.0 |
+| `89-remove-filter-panel-and-keyword-block.md` | 🔧开发指导 | ✅已执行 | 移除屏蔽配置面板、封面右键屏蔽、评论/标题关键词屏蔽与划词屏蔽；删 FilterTitleKeywordPlugin；version 1.11.0→1.12.0 |
+| `90-restore-title-keyword-filter.md` | 🔧开发指导 | ✅已执行 | 修正 doc/89：恢复视频标题屏蔽词配置与列表过滤；划词/评论区/封面右键仍删除；version 1.12.0→1.12.1 |
+| `91-fix-keyword-remove-mojibake.md` | 🔧开发指导 | ✅已执行 | 修复关键词标签删除钮 × 乱码为 脳（UTF-8 损坏）；version 1.12.1→1.12.2 |
+| `92-remove-toolbar-script-widgets.md` | 🔧开发指导 | ✅已执行 | 清理 .toolbar 第3/4 子节点：禁用 PageSort 注入 + 演员页按钮改挂 section-addition；version 1.12.2→1.12.3 |
 
 ## 类型图例
 

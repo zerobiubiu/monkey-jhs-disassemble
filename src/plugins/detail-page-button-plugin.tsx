@@ -13,7 +13,6 @@
  *   ../constants/status 引入（FILTER_ACTION/FAVORITE_ACTION/HAS_WATCH_ACTION/
  *   BLOCK_TEXT/BLOCKED_TEXT/BLOCK_COLOR/FAVORITE_TEXT/FAVORITED_TEXT/FAVORITE_COLOR/
  *   WATCHED_TEXT/WATCHED_COLOR/YES/NO）。
- * - 原顶层 se（= ie，Hotkey 静态类）改由 ../core/hotkey 引入为 Hotkey。
  * - window.isDetailPage 为运行时挂载全局，以 (window as any).isDetailPage 访问；
  *   window.refresh() 以全局 refresh() 调用（src/types/globals.d.ts 已声明）。
  * - 动态挂载到 this 的内部状态字段（_wantWatchedObserved / _lastWantState /
@@ -68,7 +67,6 @@ import {
     YES,
     NO
 } from '../constants/status';
-import { Hotkey } from '../core/hotkey';
 import { jsxToString } from '../core/jsx-to-string';
 import { DetailMenuButtons } from '../components/detail-menu-buttons';
 import { RatingBarHtml } from '../components/rating-bar-html';
@@ -94,16 +92,6 @@ interface WantWatchedSyncPayload {
 }
 
 export class DetailPageButtonPlugin extends BasePlugin {
-    /** 连续屏蔽快捷键确认计数（≥2 时直接屏蔽不弹确认框）。对应原 L5124。 */
-    answerCount: number = 1;
-    /** 屏蔽快捷键（运行时从设置加载）。对应原 handle 中 this.filterHotKey。 */
-    filterHotKey: any = null;
-    /** 收藏快捷键。 */
-    favoriteHotKey: any = null;
-    /** 已观看快捷键。 */
-    hasWatchHotKey: any = null;
-    /** 快进预览视频快捷键。 */
-    speedVideoHotKey: any = null;
     /** .review-buttons MutationObserver 是否已安装（hookWantAndWatchedButtons）。 */
     _wantWatchedObserved: boolean = false;
     /** 上一次检测到的「想看/已观看」状态（用于差异比对）。 */
@@ -132,24 +120,11 @@ export class DetailPageButtonPlugin extends BasePlugin {
         return 'DetailPageButtonPlugin';
     }
 
-    /** 构造函数：初始化连续屏蔽计数。对应原 L5122-5125。 */
-    constructor() {
-        super();
-        this.answerCount = 1;
-    }
-
     /**
-     * 详情页主处理：加载快捷键设置 → 绑定快捷键 → 隐藏视频控件；
-     * 仅详情页时创建菜单按钮、挂钩想看/看過同步、注入快捷评分组件、安装同步监听器。
-     * 对应原 L5126-5140。
+     * 详情页主处理：隐藏视频控件；仅详情页时创建菜单按钮、挂钩想看/看過同步、
+     * 注入快捷评分组件、安装同步监听器。对应原 L5126-5140。
      */
     async handle(): Promise<void> {
-        const settings = await storageManager.getSetting();
-        this.filterHotKey = settings.filterHotKey;
-        this.favoriteHotKey = settings.favoriteHotKey;
-        this.hasWatchHotKey = settings.hasWatchHotKey;
-        this.speedVideoHotKey = settings.speedVideoHotKey;
-        this.bindHotkey().then();
         this.hideVideoControls();
         if ((window as any).isDetailPage) {
             this.createMenuBtn();
@@ -242,21 +217,20 @@ export class DetailPageButtonPlugin extends BasePlugin {
         const $filterSpan = $('#filterBtn span');
         const $favoriteSpan = $('#favoriteBtn span');
         const $hasWatchSpan = $('#hasWatchBtn span');
-        const formatHotkey = (key: any) => (key ? `(${key})` : '');
-        $filterSpan.text(`${BLOCK_TEXT} ${formatHotkey(this.filterHotKey)}`);
-        $favoriteSpan.text(`${FAVORITE_TEXT} ${formatHotkey(this.favoriteHotKey)}`);
-        $hasWatchSpan.text(`${WATCHED_TEXT} ${formatHotkey(this.hasWatchHotKey)}`);
+        $filterSpan.text(BLOCK_TEXT);
+        $favoriteSpan.text(FAVORITE_TEXT);
+        $hasWatchSpan.text(WATCHED_TEXT);
         const carRecord = await storageManager.getCar(carNum);
         if (carRecord) {
             switch (carRecord.status) {
                 case FILTER_ACTION:
-                    $filterSpan.text(`${BLOCKED_TEXT} ${formatHotkey(this.filterHotKey)}`);
+                    $filterSpan.text(BLOCKED_TEXT);
                     break;
                 case FAVORITE_ACTION:
-                    $favoriteSpan.text(`${FAVORITED_TEXT} ${formatHotkey(this.favoriteHotKey)}`);
+                    $favoriteSpan.text(FAVORITED_TEXT);
                     break;
                 case HAS_WATCH_ACTION:
-                    $hasWatchSpan.text(`🔍 已标记观看 ${formatHotkey(this.hasWatchHotKey)}`);
+                    $hasWatchSpan.text('🔍 已标记观看');
             }
         }
     }
@@ -1369,14 +1343,13 @@ export class DetailPageButtonPlugin extends BasePlugin {
     /**
      * 屏蔽当前影片。对应原 L6267-6306。
      * @param event 点击事件（可 null）
-     * @param force 是否直接屏蔽不弹确认框
      */
-    async filterOne(event: any, force?: boolean): Promise<void> {
+    async filterOne(event: any): Promise<void> {
         if (event) {
             event.preventDefault();
         }
         const pageInfo = this.getPageInfo();
-        if (force) {
+        utils.q(event, `是否屏蔽${pageInfo.carNum}?`, async () => {
             await storageManager.saveCar({
                 carNum: pageInfo.carNum,
                 url: pageInfo.url,
@@ -1387,29 +1360,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
             this.showStatus(pageInfo.carNum).then();
             refresh();
             utils.closePage();
-            layer.closeAll();
-            this.answerCount = 1;
-        } else {
-            utils.q(
-                event,
-                `是否屏蔽${pageInfo.carNum}?`,
-                async () => {
-                    await storageManager.saveCar({
-                        carNum: pageInfo.carNum,
-                        url: pageInfo.url,
-                        names: pageInfo.actress,
-                        actionType: FILTER_ACTION,
-                        publishTime: pageInfo.publishTime
-                    });
-                    this.showStatus(pageInfo.carNum).then();
-                    refresh();
-                    utils.closePage();
-                },
-                () => {
-                    this.answerCount = 1;
-                }
-            );
-        }
+        });
     }
 
     /**
@@ -1454,64 +1405,6 @@ export class DetailPageButtonPlugin extends BasePlugin {
     hideVideoControls(): void {
         $(document).on('mouseenter', '#preview-video', function (this: any) {
             $(this).prop('controls', true);
-        });
-    }
-
-    /**
-     * 注册快捷键（屏蔽/收藏/已观看/快进预览视频）。对应原 L6344-6396。
-     * 详情页直接执行回调；非详情页将快捷键指令 postMessage 到 iframe 内层。
-     */
-    async bindHotkey(): Promise<void> {
-        const hotkeyMap: Record<string, () => void> = {};
-        if (this.filterHotKey) {
-            hotkeyMap[this.filterHotKey] = () => {
-                if (this.answerCount >= 2) {
-                    this.filterOne(null, true);
-                } else {
-                    this.filterOne(null);
-                }
-                this.answerCount++;
-            };
-        }
-        if (this.favoriteHotKey) {
-            hotkeyMap[this.favoriteHotKey] = () => this.favoriteOne();
-        }
-        if (this.hasWatchHotKey) {
-            hotkeyMap[this.hasWatchHotKey] = () => this.hasWatchOne();
-        }
-        if (this.speedVideoHotKey) {
-            hotkeyMap[this.speedVideoHotKey] = () => this.speedVideo();
-        }
-        const register = (hotkeyStr: string, callback: () => void) => {
-            Hotkey.registerHotkey(hotkeyStr, (_keyEvent: KeyboardEvent) => {
-                const activeEl = document.activeElement as any;
-                if (
-                    activeEl.tagName !== 'INPUT' &&
-                    activeEl.tagName !== 'TEXTAREA' &&
-                    !activeEl.isContentEditable
-                ) {
-                    if ((window as any).isDetailPage) {
-                        callback();
-                    } else {
-                        ((key: string) => {
-                            const $iframe = $('.layui-layer-content iframe');
-                            if ($iframe.length !== 0) {
-                                $iframe[0].contentWindow.postMessage(key, '*');
-                            }
-                        })(hotkeyStr);
-                    }
-                }
-            });
-        };
-        if ((window as any).isDetailPage) {
-            window.addEventListener('message', (messageEvent: MessageEvent) => {
-                if (hotkeyMap[messageEvent.data]) {
-                    hotkeyMap[messageEvent.data]();
-                }
-            });
-        }
-        Object.entries(hotkeyMap).forEach(([key, cb]) => {
-            register(key, cb);
         });
     }
 

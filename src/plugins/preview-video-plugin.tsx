@@ -417,13 +417,6 @@ export const fetchDmmPreviewVideo = async (
  * 对应原 L3633-3836。
  */
 export class PreviewVideoPlugin extends BasePlugin {
-    /** 屏蔽快捷键（运行时由 storageManager 配置注入）。 */
-    filterHotKey: string | null = null;
-    /** 收藏快捷键。 */
-    favoriteHotKey: string | null = null;
-    /** 快进快捷键。 */
-    speedVideoHotKey: string | null = null;
-
     /** 返回插件名，供 PluginManager 注册去重。对应原 L3634-3636。 */
     getName(): string {
         return 'PreviewVideoPlugin';
@@ -442,11 +435,10 @@ export class PreviewVideoPlugin extends BasePlugin {
      * 详情页主处理：绑定预览视频点击、按设置预加载 DMM、处理画廊/自动播放跳转。
      * 对应原 L3640-3678。
      *
-     * 仅当 (window as any).isDetailPage 为真时执行；从 storageManager 读取
-     * 屏蔽/收藏/快进快捷键；监听 .preview-video-container 点击并在 fancybox
-     * 内 #preview-video 出现后调用 handleVideo；若启用预加载且非 autoPlay 链接
-     * 则调用 initDmm；gallery-1/2 链接直接探测并 handleVideo；autoPlay=1 自动
-     * 触发首个容器点击。
+     * 仅当 (window as any).isDetailPage 为真时执行；监听 .preview-video-container
+     * 点击并在 fancybox 内 #preview-video 出现后调用 handleVideo；若启用预加载
+     * 且非 autoPlay 链接则调用 initDmm；gallery-1/2 链接直接探测并 handleVideo；
+     * autoPlay=1 自动触发首个容器点击。
      *
      * @returns Promise<void>；不抛出异常（内部错误均被 catch 或 .then() 吞掉）。
      */
@@ -454,10 +446,6 @@ export class PreviewVideoPlugin extends BasePlugin {
         if (!(window as any).isDetailPage) {
             return;
         }
-        const settings = await storageManager.getSetting();
-        this.filterHotKey = settings.filterHotKey;
-        this.favoriteHotKey = settings.favoriteHotKey;
-        this.speedVideoHotKey = settings.speedVideoHotKey;
         const $container = $('.preview-video-container');
         $container.on('click', () => {
             utils.loopDetector(
@@ -619,35 +607,18 @@ export class PreviewVideoPlugin extends BasePlugin {
         });
         const $filterBtn = $(
             jsxToString(
-                <PreviewVideoActionBtn
-                    id="video-filterBtn"
-                    color="#de3333"
-                    label="屏蔽"
-                    hotKey={this.filterHotKey}
-                />
+                <PreviewVideoActionBtn id="video-filterBtn" color="#de3333" label="屏蔽" />
             )
         );
         $actionGroup.append($filterBtn);
         const $favoriteBtn = $(
             jsxToString(
-                <PreviewVideoActionBtn
-                    id="video-favoriteBtn"
-                    color="#25b1dc"
-                    label="收藏"
-                    hotKey={this.favoriteHotKey}
-                />
+                <PreviewVideoActionBtn id="video-favoriteBtn" color="#25b1dc" label="收藏" />
             )
         );
         $actionGroup.append($favoriteBtn);
         const $speedBtn = $(
-            jsxToString(
-                <PreviewVideoActionBtn
-                    id="speed-btn"
-                    color="#76b45d"
-                    label="快进"
-                    hotKey={this.speedVideoHotKey}
-                />
-            )
+            jsxToString(<PreviewVideoActionBtn id="speed-btn" color="#76b45d" label="快进" />)
         );
         $actionGroup.append($speedBtn);
         $toolbar.append($actionGroup);

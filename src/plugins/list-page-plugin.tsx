@@ -4,17 +4,15 @@
  * 列表页（window.isListPage）主插件：监听跨标签页 BroadcastChannel 刷新/清缓存
  * 消息；替换高清封面图、挂载分页跳页控件；
  * 依 IndexedDB 的收藏/屏蔽/已观看/关键词/演员黑名单数据对 .item 卡片做显隐
- * 过滤并注入 status-tag；绑定卡片点击/右键屏蔽/快捷键（屏蔽·收藏·已观看·
- * 折叠分类·clog 展开）；记忆演员页标签展开态；DOM 变更后自动重过滤；并对
- * JavDb 标题做 Google 翻译（带 localStorage 缓存）。
+ * 过滤并注入 status-tag；绑定卡片点击；记忆演员页标签展开态；
+ * DOM 变更后自动重过滤；并对 JavDb 标题做 Google 翻译（带 localStorage 缓存）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/o 等）已语义化；顶层站点/状态常量
  * o/r/c/d/h/p/B/C/_ 改由 ../constants 引入（currentHref/isJavdbSite/
  * isSearchOrUserPage/FILTER_ACTION/FAVORITE_ACTION/
  * HAS_WATCH_ACTION/ACTOR/NO/YES）。原顶层 Te（状态标签配置）改写为模块级
  * STATUS_TAG_CONFIG；原 _e（Google 翻译）改写为模块级 translateText；
- * 原 se（快捷键单例 ie）改用 ../core/hotkey 的 Hotkey 静态类；原
- * ImageHoverPreview 改用 ../core/image-preview 的 ImagePreview（同名重构）。
+ * 原 ImageHoverPreview 改用 ../core/image-preview 的 ImagePreview（同名重构）。
  *
  * 注意：原顶层常量 g（"hasDown"，「已下载」动作状态）已在 archetype/doc/
  * 09-remove-hasdown-constants.md 中作为「已删除」定稿移除。filterMovieList
@@ -43,7 +41,6 @@ import {
 } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
-import { Hotkey } from '../core/hotkey';
 import { ImagePreview } from '../core/image-preview';
 import { StatusTagHtml } from '../components/status-tag-html';
 import { JumpPageControl } from '../components/jump-page-control';
@@ -165,17 +162,6 @@ export class ListPagePlugin extends BasePlugin {
     /** 翻译写入队列，串行化 localStorage 写入。 */
     writeQueue: Promise<any> = Promise.resolve();
 
-    /** 当前悬浮的封面图 jQuery 对象（快捷键操作目标）。 */
-    $currentImage: any = null;
-
-    // —— 快捷键设置（运行时由 bindListPageHotKey 从设置读取） ——
-    filterHotKey: any;
-    favoriteHotKey: any;
-    hasWatchHotKey: any;
-    enableImageHotKey: any;
-    clogHotKey: any;
-    foldCategoryHotKey: any;
-
     /** 返回插件名，供 PluginManager 注册去重。对应原 L8298-8300。 */
     getName(): string {
         return 'ListPagePlugin';
@@ -209,7 +195,6 @@ export class ListPagePlugin extends BasePlugin {
         this.addJumpPageControl();
         await this.doFilter();
         this.bindClick().then();
-        this.bindListPageHotKey().then();
         this.rememberTagExpand();
         $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
         this.checkDom();
@@ -554,7 +539,7 @@ export class ListPagePlugin extends BasePlugin {
     }
 
     /**
-     * 绑定列表项点击/视频播放/标题点击/右键屏蔽。对应原 L8634-8711。
+     * 绑定列表项点击/视频播放/标题点击。对应原 L8634-8711。
      *
      * 点击委托选择器使用 `.item .cover` 而非原始脚本的 `.item img`：
      * JavDB 封面图使用 `loading="lazy"` 原生懒加载，图片未加载时
@@ -562,7 +547,7 @@ export class ListPagePlugin extends BasePlugin {
      * div 而非 `<img>`，导致 `.item img` 不匹配、走 JavDB 原生 `<a>`
      * 跳转。`.cover` 有 CSS min-height/padding-top 撑开面积，始终可点击；
      * 且 `<img>` 在 `.cover` 内，点击 `<img>` 时事件冒泡也能匹配
-     * `.item .cover`。contextmenu 同理改为 `.item .cover, .item video`。
+     * `.item .cover`。
      */
     async bindClick(): Promise<void> {
         const selectorConfig = this.getSelector();
@@ -580,7 +565,6 @@ export class ListPagePlugin extends BasePlugin {
                 this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carNum, aHref);
             } else if (dialogOpenDetail === YES) {
                 utils.openPage(aHref, carNum, true, event);
-                this.$currentImage = null;
             } else {
                 window.open(aHref);
             }
@@ -607,34 +591,6 @@ export class ListPagePlugin extends BasePlugin {
                 this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carNum, aHref);
             }
         });
-        $(selectorConfig.boxSelector).on(
-            'contextmenu',
-            '.item .cover, .item video',
-            async (event: any) => {
-                event.preventDefault();
-                const $item = $(event.target).closest('.item');
-                const { carNum, url, publishTime } = this.findCarNumAndHref($item);
-                const nameEl = $('.actor-section-name');
-                let actressName: string | null = '';
-                if (nameEl.length) {
-                    actressName = nameEl.text().trim().split(',')[0].replace('(無碼)', '');
-                }
-                utils.q(event, `是否屏蔽番号 ${carNum}?`, async () => {
-                    setTimeout(async () => {
-                        actressName ||= await this.parseActressName(url);
-                        await storageManager.saveCar({
-                            carNum,
-                            url,
-                            names: actressName,
-                            actionType: FILTER_ACTION,
-                            publishTime
-                        });
-                        refresh();
-                        show.ok('操作成功');
-                    });
-                });
-            }
-        );
     }
 
     /** 解析详情页女演员名称（若启用补录）。对应原 L8712-8739。 */
@@ -656,89 +612,6 @@ export class ListPagePlugin extends BasePlugin {
             clog.debug('解析到名称:', actressName);
         }
         return actressName;
-    }
-
-    /** 绑定列表页快捷键（屏蔽/收藏/已观看/折叠分类/clog）。对应原 L8740-8820。 */
-    async bindListPageHotKey(): Promise<void> {
-        this.$currentImage = null;
-        $(document)
-            .on('mouseenter', this.getSelector().coverImgSelector, (event: any) => {
-                this.$currentImage = $(event.currentTarget);
-            })
-            .on('mouseleave', this.getSelector().coverImgSelector, () => {
-                this.$currentImage = null;
-            });
-        const setting = await storageManager.getSetting();
-        this.filterHotKey = setting.filterHotKey;
-        this.favoriteHotKey = setting.favoriteHotKey;
-        this.hasWatchHotKey = setting.hasWatchHotKey;
-        this.enableImageHotKey = setting.enableImageHotKey || NO;
-        this.clogHotKey = setting.clogHotKey;
-        this.foldCategoryHotKey = setting.foldCategoryHotKey;
-        if (this.enableImageHotKey === NO) {
-            return;
-        }
-        const saveCarByHotkey = async (carInfo: any, actionType: string) => {
-            setTimeout(async () => {
-                const names = await this.parseActressName(carInfo.url);
-                await storageManager.saveCar({
-                    carNum: carInfo.carNum,
-                    url: carInfo.url,
-                    names,
-                    actionType,
-                    publishTime: carInfo.publishTime
-                });
-                refresh();
-                show.ok('操作成功');
-            });
-        };
-        const hotkeyHandlers: Record<string, (carInfo: any) => void> = {};
-        if (this.filterHotKey) {
-            hotkeyHandlers[this.filterHotKey] = (carInfo: any) => {
-                saveCarByHotkey(carInfo, FILTER_ACTION);
-            };
-        }
-        if (this.favoriteHotKey) {
-            hotkeyHandlers[this.favoriteHotKey] = (carInfo: any) => {
-                saveCarByHotkey(carInfo, FAVORITE_ACTION);
-            };
-        }
-        if (this.hasWatchHotKey) {
-            hotkeyHandlers[this.hasWatchHotKey] = (carInfo: any) => {
-                saveCarByHotkey(carInfo, HAS_WATCH_ACTION);
-            };
-        }
-        if (this.clogHotKey) {
-            Hotkey.registerHotkey(this.clogHotKey, () => {
-                clog.toggleExpandCollapsed();
-            });
-        }
-        if (this.foldCategoryHotKey) {
-            Hotkey.registerHotkey(this.foldCategoryHotKey, () => {
-                const foldBtn = $('#foldCategoryBtn');
-                if (foldBtn.length) {
-                    foldBtn[0].click();
-                }
-            });
-        }
-        const registerImageHotkey = (hotkey: any, handler: (carInfo: any) => void) => {
-            Hotkey.registerHotkey(hotkey, () => {
-                const activeEl = document.activeElement as HTMLElement;
-                if (
-                    activeEl.tagName !== 'INPUT' &&
-                    activeEl.tagName !== 'TEXTAREA' &&
-                    !activeEl.isContentEditable &&
-                    this.$currentImage
-                ) {
-                    const $item = this.$currentImage.closest('.item');
-                    const carInfo = this.findCarNumAndHref($item);
-                    handler(carInfo);
-                }
-            });
-        };
-        Object.entries(hotkeyHandlers).forEach(([hotkey, handler]) => {
-            registerImageHotkey(hotkey, handler);
-        });
     }
 
     /**

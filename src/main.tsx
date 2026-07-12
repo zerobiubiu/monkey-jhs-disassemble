@@ -17,7 +17,6 @@ import loggerCssRaw from './styles/logger.css?raw';
 import javdbSiteCssRaw from './styles/javdb-site.css?raw';
 import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
 import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
-import { Hotkey } from './core/hotkey';
 import { injectCss } from './core/style-injector';
 import { loadGfriends, filetreeDb } from './core/gfriends';
 import { WebDavClient } from './core/webdav';
@@ -35,7 +34,6 @@ import { setupTooltip } from './core/tooltip';
 import { encryptCredential, decryptCredential } from './core/webdav-crypto';
 import { PluginManager } from './plugins/plugin-manager';
 import { DetailPagePlugin } from './plugins/detail-page-plugin';
-import { FilterTitleKeywordPlugin } from './plugins/filter-title-keyword-plugin';
 import { HighlightMagnetPlugin } from './plugins/highlight-magnet-plugin';
 import { FoldCategoryPlugin } from './plugins/fold-category-plugin';
 import { ActressInfoPlugin } from './plugins/actress-info-plugin';
@@ -256,14 +254,8 @@ unsafeWindow.show = window.show = show;
     });
 })();
 
-// ===== Tooltip + 快捷键监听 =====
+// ===== Tooltip =====
 setupTooltip();
-document.addEventListener('keydown', (event) => {
-    Hotkey.handleKeydown(event);
-});
-document.addEventListener('keyup', (event) => {
-    Hotkey.handleKeyup(event);
-});
 
 // WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 (window as any).encryptCredential / .decryptCredential 访问
 unsafeWindow.encryptCredential = window.encryptCredential = encryptCredential;
@@ -292,7 +284,6 @@ const pluginManager: PluginManager = (function () {
         manager.register(DetailPageButtonPlugin);
         manager.register(HighlightMagnetPlugin);
         manager.register(PreviewVideoPlugin);
-        manager.register(FilterTitleKeywordPlugin);
         manager.register(ActressInfoPlugin);
         manager.register(OtherSitePlugin);
         manager.register(WantAndWatchedVideosPlugin);

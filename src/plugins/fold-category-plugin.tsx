@@ -10,7 +10,7 @@
  *
  * 单字母局部变量（原 e/t/n/a/i/s/o/r）已语义化：
  *   settings / tagEl / btnEl / cloneEl / tagName / highlightedTags / isFolded /
- *   label / iconClass / nextLabel / nextIconClass / hotkey / tagsEl /
+ *   label / iconClass / nextLabel / nextIconClass / tagsEl /
  *   selectedTagsText / sectionTitleEl / foldBtnEl / expandEl / event。
  * 顶层常量 o / _ / C 改由 ../constants 引入（currentHref / YES / NO）。
  * 运行时挂载到 window 的 isListPage，以此处 (window as any).isListPage 访问，
@@ -141,7 +141,6 @@ export class FoldCategoryPlugin extends BasePlugin {
      * @returns Promise<void>；若无已选分类或目标容器则提前 return，不抛出异常
      */
     async createFoldBtn(): Promise<void> {
-        const hotkey = await storageManager.getSetting('foldCategoryHotKey');
         let tagsEl = $('#tags');
         let selectedTagsText = $('#tags dl div.tag.is-info')
             .map(function (this: any) {
@@ -153,9 +152,7 @@ export class FoldCategoryPlugin extends BasePlugin {
             return;
         }
         $('.tabs').append(
-            jsxToString(
-                <FoldCategoryToolbar selectedTagsText={selectedTagsText} hotkey={hotkey || ''} />
-            )
+            jsxToString(<FoldCategoryToolbar selectedTagsText={selectedTagsText} />)
         );
         let sectionTitleEl = $('h2.section-title');
         if (sectionTitleEl.length > 0) {

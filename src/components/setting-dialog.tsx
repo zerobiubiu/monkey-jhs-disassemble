@@ -3,15 +3,12 @@
  *
  * 提取自 src/plugins/setting-plugin.ts 的 openSettingDialog（L288，
  * 原 archetype/jhs.user.js L9642 的 layer.open content）：
- * 左侧栏（backup/base/filter/domain/hotkey/cache 六菜单项）+ 右侧
- * 六面板（数据备份 / 基础配置 / 外部网站 / 快捷键 / 屏蔽配置 / 清理缓存）+
- * 底部保存/清理按钮。
+ * 左侧栏（backup/base/filter/domain/cache/…）+ 右侧各面板 + 底部保存/清理按钮。
  *
  * 保留原 HTML 结构、id、类名（含条件 active/do-hide）、内联 style 值（含
- * linear-gradient 渐变 hr、flex 布局）、data-tip/data-panel/data-default-hotkey、
+ * linear-gradient 渐变 hr、flex 布局）、data-tip/data-panel、
  * `<option>`/`<input>`/`<select>`/`<hr/>`/`<br/>`/`<pre>` 原样不动。
- * 当前激活面板（panelName）、JavDb 站点标识（isJavdbSite）、屏蔽/收藏/
- * 已观看文案（blockText/favoriteText/watchedText）通过 props 注入。
+ * 当前激活面板（panelName）、JavDb 站点标识（isJavdbSite）通过 props 注入。
  *
  * cacheItemsHtml / qualityOptionsHtml 为预拼接 HTML 字符串（由调用方循环
  * jsxToString(<CacheItemHtml/>)/jsxToString(<VideoQualityOption/>) 拼接），
@@ -45,12 +42,6 @@ export interface SettingDialogProps {
     qualityOptionsHtml: string;
     /** 是否 JavDb 站点（控制高亮演员/分类标签项的 do-hide 类）。 */
     isJavdbSite: boolean;
-    /** 屏蔽文案（原 BLOCK_TEXT），用于快捷键面板 filterHotKey 标签。 */
-    blockText: string;
-    /** 收藏文案（原 FAVORITE_TEXT），用于快捷键面板 favoriteHotKey 标签。 */
-    favoriteText: string;
-    /** 已观看文案（原 WATCHED_TEXT），用于快捷键面板 hasWatchHotKey 标签。 */
-    watchedText: string;
 }
 
 /** hr 分隔线内联样式（渐变背景，原模板中重复多次）。 */
@@ -68,20 +59,13 @@ const HR_STYLE = {
  * @param props.cacheItemsHtml 缓存项预拼接 HTML
  * @param props.qualityOptionsHtml 画质选项预拼接 HTML
  * @param props.isJavdbSite 是否 JavDb 站点
- * @param props.blockText 屏蔽文案
- * @param props.favoriteText 收藏文案
- * @param props.watchedText 已观看文案
- * @returns 设置弹层 JSX（侧栏 + 六面板 + 底部按钮），经 jsxToString 转 HTML
- *          字符串后供 layer.open 消费。
+ * @returns 设置弹层 JSX，经 jsxToString 转 HTML 字符串后供 layer.open 消费。
  */
 export function SettingDialog({
     panelName,
     cacheItemsHtml,
     qualityOptionsHtml,
-    isJavdbSite,
-    blockText,
-    favoriteText,
-    watchedText
+    isJavdbSite
 }: SettingDialogProps) {
     return (
         <div style={{ display: 'flex', height: '100%' }}>
@@ -119,12 +103,6 @@ export function SettingDialog({
                     title="第三方视频资源域名配置"
                 >
                     🌐 外部网站
-                </div>
-                <div
-                    className={`side-menu-item ${panelName === 'hotkey-panel' ? 'active' : ''}`}
-                    data-panel="hotkey-panel"
-                >
-                    ⌨️ 快捷键配置
                 </div>
                 <div
                     className={`side-menu-item ${panelName === 'cache-panel' ? 'active' : ''}`}
@@ -473,6 +451,30 @@ export function SettingDialog({
                         </div>
                     </div>
 
+                    {/* 屏蔽配置：仅标题屏蔽词（划词/评论区屏蔽已移除） */}
+                    <div
+                        id="filter-panel"
+                        className="content-panel"
+                        style={{
+                            display: panelName === 'filter-panel' ? 'block' : 'none'
+                        }}
+                    >
+                        <div id="filterKeywordContainer">
+                            <div className="setting-item">
+                                <span className="setting-label">视频标题屏蔽词:</span>
+                                <div style={{ display: 'flex' }}>
+                                    <input
+                                        type="text"
+                                        className="keyword-input"
+                                        placeholder="添加屏蔽词"
+                                    />
+                                    <button className="add-tag-btn">添加</button>
+                                </div>
+                            </div>
+                            <div className="tag-box"> </div>
+                        </div>
+                    </div>
+
                     <div
                         id="domain-panel"
                         className="content-panel"
@@ -491,142 +493,6 @@ export function SettingDialog({
                             <div className="form-content">
                                 <input id="supJavUrl" />
                             </div>
-                        </div>
-                    </div>
-
-                    {/* 快捷键 */}
-                    <div
-                        id="hotkey-panel"
-                        className="content-panel"
-                        style={{
-                            display: panelName === 'hotkey-panel' ? 'block' : 'none'
-                        }}
-                    >
-                        <p style={{ color: '#666', fontSize: '0.9em' }}>修改后, 刷新页面生效</p>
-                        <div className="setting-item">
-                            <span className="setting-label">{blockText}:</span>
-                            <div className="form-content">
-                                <input
-                                    id="filterHotKey"
-                                    placeholder="录入快捷键"
-                                    data-default-hotkey="a"
-                                />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">{favoriteText}:</span>
-                            <div className="form-content">
-                                <input
-                                    id="favoriteHotKey"
-                                    placeholder="录入快捷键"
-                                    data-default-hotkey="s"
-                                />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">{watchedText}:</span>
-                            <div className="form-content">
-                                <input id="hasWatchHotKey" placeholder="录入快捷键" />
-                            </div>
-                        </div>
-                        <div className="setting-item">
-                            <span className="setting-label">⏩ 快进:</span>
-                            <div className="form-content">
-                                <input
-                                    id="speedVideoHotKey"
-                                    placeholder="录入快捷键"
-                                    data-default-hotkey="z"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="setting-item">
-                            <span className="setting-label">▲ 折叠:</span>
-                            <div className="form-content">
-                                <input id="foldCategoryHotKey" placeholder="录入快捷键" />
-                            </div>
-                        </div>
-
-                        <div className="setting-item">
-                            <span className="setting-label">💻 控制台:</span>
-                            <div className="form-content">
-                                <input id="clogHotKey" placeholder="录入快捷键" />
-                            </div>
-                        </div>
-
-                        <hr style={HR_STYLE} />
-
-                        <div className="setting-item">
-                            <span className="setting-label">
-                                <span data-tip="列表页,鼠标放置图片上时可使用快捷键">❓</span>{' '}
-                                对视频列表页启用快捷键:
-                            </span>
-                            <div className="form-content">
-                                <input
-                                    type="checkbox"
-                                    id="enableImageHotKey"
-                                    className="mini-switch"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 屏蔽设置面板 */}
-                    <div
-                        id="filter-panel"
-                        className="content-panel"
-                        style={{
-                            display: panelName === 'filter-panel' ? 'block' : 'none'
-                        }}
-                    >
-                        <div className="setting-item">
-                            <span className="setting-label">
-                                启用划词屏蔽{' '}
-                                <span data-tip="视频详情页中, 标题或评论区选中文字, 按右键可快捷加入屏蔽词">
-                                    ❓
-                                </span>
-                            </span>
-                            <div style={{ display: 'flex' }}>
-                                <input
-                                    type="checkbox"
-                                    id="enableTitleSelectFilter"
-                                    className="mini-switch"
-                                />
-                            </div>
-                        </div>
-
-                        <hr style={HR_STYLE} />
-
-                        <div id="reviewKeywordContainer">
-                            <div className="setting-item">
-                                <span className="setting-label">评论区屏蔽词:</span>
-                                <div style={{ display: 'flex' }}>
-                                    <input
-                                        type="text"
-                                        className="keyword-input"
-                                        placeholder="添加屏蔽词"
-                                    />
-                                    <button className="add-tag-btn">添加</button>
-                                </div>
-                            </div>
-                            <div className="tag-box"> </div>
-                        </div>
-
-                        <hr style={HR_STYLE} />
-
-                        <div id="filterKeywordContainer">
-                            <div className="setting-item">
-                                <span className="setting-label">视频标题屏蔽词:</span>
-                                <div style={{ display: 'flex' }}>
-                                    <input
-                                        type="text"
-                                        className="keyword-input"
-                                        placeholder="添加屏蔽词"
-                                    />
-                                    <button className="add-tag-btn">添加</button>
-                                </div>
-                            </div>
-                            <div className="tag-box"> </div>
                         </div>
                     </div>
 
