@@ -149,6 +149,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 favoriteColor={FAVORITE_COLOR}
                 watchedText={WATCHED_TEXT}
                 watchedColor={WATCHED_COLOR}
+                showMagnetSearch={featureFlags.magnetHubPlugin}
             />
         );
         if (isJavdbSite) {
@@ -184,13 +185,9 @@ export class DetailPageButtonPlugin extends BasePlugin {
             )
         );
         $('#xunLeiSubtitleBtn').on('click', () => this.searchXunLeiSubtitle(carNum));
-        // 磁力搜索（MagnetHubPlugin，feature flag 控制）
-        if (featureFlags.magnetHubPlugin && !$('#magnetSearchBtn').length) {
-            $('.movie-panel-info, .tabs')
-                .first()
-                .after(
-                    `<a id="magnetSearchBtn" class="button is-small is-warning" style="margin:8px 0">磁力搜索</a>`
-                );
+        // 磁力搜索按钮（#magnetSearchBtn）由 DetailMenuButtons 组件右行渲染，
+        // 此处仅绑定 click 事件（MagnetHubPlugin，feature flag 控制）。
+        if (featureFlags.magnetHubPlugin) {
             $('#magnetSearchBtn').on('click', () => {
                 const hub = this.getBean('MagnetHubPlugin');
                 if (!hub) return;

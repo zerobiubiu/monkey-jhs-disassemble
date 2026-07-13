@@ -5,11 +5,11 @@
  * （L147 的 menuHtml 模板，原 archetype/jhs.user.js L5141-5182）：
  * 两行按钮组——
  *   - 左行：屏蔽 / 收藏 / 已观看（三色按钮，颜色与文案由 status 常量驱动）
- *   - 右行：磁力过滤开关 / 字幕(迅雷) / 字幕(SubTitleCat)
+ *   - 右行：磁力过滤开关 / 字幕(迅雷) / 字幕(SubTitleCat) / 磁力搜索（可选）
  *
  * 保留原 HTML 结构、id（filterBtn / favoriteBtn / hasWatchBtn /
  * enable-magnets-filter / magnets-span / xunLeiSubtitleBtn /
- * search-subtitle-btn）、class（menu-btn）、内联 style（含
+ * search-subtitle-btn / magnetSearchBtn）、class（menu-btn）、内联 style（含
  * linear-gradient 渐变背景、width/padding/text-align 等）。原模板中的
  * 换行缩进由 jsxToString 紧凑输出丢失（DOM/CSS 渲染等价，与示范
  * temporary-image-container.tsx 风格一致）。
@@ -17,7 +17,9 @@
  * 动态值仅为六个 status 常量（BLOCK_COLOR/TEXT、FAVORITE_COLOR/TEXT、
  * WATCHED_COLOR/TEXT），通过 props 注入。磁力过滤 span 的初始文案保留
  * 原硬编码「关闭磁力过滤」，运行时由插件按 enableMagnetsFilter 设置
- * 经 `$("#magnets-span").text(...)` 切换，组件不做该动态化。
+ * 经 `$("#magnets-span").text(...)` 切换，组件不做该动态化。磁力搜索
+ * 按钮由 showMagnetSearch prop（featureFlags.magnetHubPlugin）控制是否渲染，
+ * 点击事件仍由 createMenuBtn 绑定。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 createMenuBtn 中
  * `$(".tabs").after(menuHtml)` 消费：
@@ -44,6 +46,9 @@ export interface DetailMenuButtonsProps {
     watchedText: string;
     /** 已观看按钮底色（WATCHED_COLOR）。 */
     watchedColor: string;
+    /** 是否渲染磁力搜索按钮（featureFlags.magnetHubPlugin 控制）。
+     *  开启时在右行末尾追加 #magnetSearchBtn，样式与同行 menu-btn 一致。 */
+    showMagnetSearch: boolean;
 }
 
 /** 外层容器内联样式：flex 两端对齐 + 自动水平边距 + 换行 + 20px 间距。 */
@@ -96,7 +101,8 @@ export function DetailMenuButtons({
     favoriteText,
     favoriteColor,
     watchedText,
-    watchedColor
+    watchedColor,
+    showMagnetSearch
 }: DetailMenuButtonsProps) {
     return (
         <div style={wrapperStyle}>
@@ -160,6 +166,21 @@ export function DetailMenuButtons({
                 >
                     <span>字幕 (SubTitleCat)</span>
                 </a>
+                {showMagnetSearch && (
+                    <a
+                        id="magnetSearchBtn"
+                        className="menu-btn"
+                        style={{
+                            width: '120px',
+                            background: 'linear-gradient(to right, rgb(245,140,1), rgb(84,161,29))',
+                            color: 'white',
+                            textAlign: 'center',
+                            padding: '8px 0'
+                        }}
+                    >
+                        <span>磁力搜索</span>
+                    </a>
+                )}
             </div>
         </div>
     );

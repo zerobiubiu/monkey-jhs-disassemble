@@ -9,6 +9,22 @@
 
 ---
 
+## v1.12.6
+
+**发布日期**：2026-07-13
+
+### 优化
+
+- **磁力搜索按钮并入字幕搜索菜单行**（doc/95）：原 `#magnetSearchBtn` 由
+  `createMenuBtn` 在 `DetailMenuButtons` 渲染后单独 `.after()` 注入，样式为
+  Bulma `button is-small is-warning`，与同行 `menu-btn` 渐变按钮风格割裂。改为
+  由 `DetailMenuButtons` 组件右行 `.jhs-menu-tools-row` 内条件渲染（新增
+  `showMagnetSearch` prop），放 `#search-subtitle-btn` 之后，采用 `menu-btn` +
+  渐变背景 `rgb(245,140,1)→rgb(84,161,29)` 统一风格。删除 `createMenuBtn`
+  单独注入逻辑，保留 click 事件绑定。feature flag `magnetHubPlugin` 控制显隐。
+
+---
+
 ## v1.12.5
 
 **发布日期**：2026-07-12
