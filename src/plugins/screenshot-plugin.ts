@@ -16,7 +16,6 @@ export class ScreenShotPlugin extends BasePlugin {
 
     async loadScreenShot(): Promise<void> {
         if (!(window as any).isDetailPage) return;
-        if ((await storageManager.getSetting('enableLoadScreenShot', 'yes')) !== 'yes') return;
         const carNum = this.getPageInfo().carNum as string;
         $('.preview-images .tile-item')
             .first()

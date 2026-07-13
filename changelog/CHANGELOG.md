@@ -9,6 +9,40 @@
 
 ---
 
+## v1.12.9
+
+**发布日期**：2026-07-13
+
+### 清理
+
+- **彻底删除 4 设置项功能读取逻辑**（doc/98，方案 B）：doc/97 保留了各插件
+  getSetting 读取（方案 A，可恢复/可查询），用户确认改为彻底删除，功能固定按
+  默认值运行，不给老用户兜底。逐项删除：① list-page-plugin hoverBigImg 读取 +
+  ImagePreview 创建/bindEvents + ImagePreview import + 注释；② screenshot-plugin
+  enableLoadScreenShot 判断行；③ preview-video-plugin enableLoadPreviewVideo
+  两处条件（L459 简化为仅 autoPlay 判断、L547 删除 === NO return）；
+  ④ setting-plugin applyImageMode 竖图分支 + verticalImgCssRaw import +
+  孤儿 CSS 文件 setting-image-mode-vertical.css。产物 -7.26 kB，5 关键词 0 残留。
+
+---
+
+## v1.12.8
+
+**发布日期**：2026-07-13
+
+### 优化
+
+- **整理优化快捷设置菜单**（doc/97）：精简 SimpleSettingPanel，删除 4 个不常用
+  设置项的 UI + 绑定（保留功能读取按默认值运行）：① hoverBigImg 启用悬浮大图
+  （含 ImagePreview 创建/销毁绑定，删除 unused import）；② enableLoadScreenShot
+  加载长缩略图（含 .screen-container 移除）；③ enableLoadPreviewVideo 更高画质
+  预览视频；④ enableVerticalModel 竖图模式（含 applyImageMode 调用，方法保留）。
+  调整 2 个默认值：containerColumns 默认 5→4、containerWidth 默认 100%→70%
+  （各修改 3 处）。功能初始化在各插件 getSetting 中保留，底层 setting 键保留
+  可查可恢复。产物 -4.07 kB，UI/绑定 0 残留。
+
+---
+
 ## v1.12.7
 
 **发布日期**：2026-07-13

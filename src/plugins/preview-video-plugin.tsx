@@ -455,10 +455,7 @@ export class PreviewVideoPlugin extends BasePlugin {
                 }
             );
         });
-        if (
-            (await storageManager.getSetting('enableLoadPreviewVideo', YES)) === YES &&
-            !currentHref.includes('autoPlay=1')
-        ) {
+        if (!currentHref.includes('autoPlay=1')) {
             this.initDmm().then();
         }
         const href = window.location.href;
@@ -544,9 +541,6 @@ export class PreviewVideoPlugin extends BasePlugin {
      * @returns Promise<void>；不抛出异常（画质切换失败仅 console.error）。
      */
     async handleVideo(): Promise<void> {
-        if ((await storageManager.getSetting('enableLoadPreviewVideo', YES)) === NO) {
-            return;
-        }
         const $video = $('#preview-video');
         if (!$video.length) {
             return;

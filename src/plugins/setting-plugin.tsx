@@ -40,11 +40,11 @@ import { isJavdbSite } from '../constants/site';
 import { YES, NO } from '../constants/status';
 import { VIDEO_QUALITY_LIST } from '../constants/video-quality';
 import { BasePlugin } from './base-plugin';
-import { ImagePreview } from '../core/image-preview';
+
 import settingCssRaw from '../styles/setting-plugin.css?raw';
 import helpDialogCssRaw from '../styles/help-dialog.css?raw';
 import backToTopCssRaw from '../styles/back-to-top-button.css?raw';
-import verticalImgCssRaw from '../styles/setting-image-mode-vertical.css?raw';
+
 import horizontalImgCssRaw from '../styles/setting-image-mode-horizontal.css?raw';
 import { jsxToString } from '../core/jsx-to-string';
 import { SettingDialog } from '../components/setting-dialog';
@@ -163,11 +163,11 @@ export class SettingPlugin extends BasePlugin {
      *  与原脚本 content 字符级一致。 */
     async initCss(): Promise<string> {
         const settings = await storageManager.getSetting();
-        const containerWidth = (settings == null ? undefined : settings.containerWidth) ?? '100';
+        const containerWidth = (settings == null ? undefined : settings.containerWidth) ?? '70';
         const containerColumns =
             utils.isMobile() && window.innerWidth < 1000
                 ? 1
-                : ((settings == null ? undefined : settings.containerColumns) ?? 5);
+                : ((settings == null ? undefined : settings.containerColumns) ?? 4);
         this.applyImageMode().then();
         let cssText = `\n            section .container{\n                max-width: 1000px !important;\n                min-width: ${containerWidth}%;\n            }\n            .movie-list, .movie-list.v{\n                grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n            }\n        `;
         return settingCssRaw
@@ -371,10 +371,10 @@ export class SettingPlugin extends BasePlugin {
     /** 初始化简化设置面板表单（回填值 + 绑定即时生效的 change/input 事件）。对应原 L9807-10044。 */
     async initSimpleSettingForm(): Promise<void> {
         const settings = await storageManager.getSetting();
-        $('#containerColumns').val(settings.containerColumns || 5);
-        $('#showContainerColumns').text(settings.containerColumns || 5);
-        $('#containerWidth').val((settings.containerWidth || 100) - 70);
-        $('#showContainerWidth').text((settings.containerWidth || 100) + '%');
+        $('#containerColumns').val(settings.containerColumns || 4);
+        $('#showContainerColumns').text(settings.containerColumns || 4);
+        $('#containerWidth').val((settings.containerWidth || 70) - 70);
+        $('#showContainerWidth').text((settings.containerWidth || 70) + '%');
         $('#dialogOpenDetail').prop(
             'checked',
             !settings.dialogOpenDetail || settings.dialogOpenDetail === YES
@@ -510,18 +510,6 @@ export class SettingPlugin extends BasePlugin {
                 $('.translated-title').remove();
             }
         });
-        $('#hoverBigImg').prop('checked', !!settings.hoverBigImg && settings.hoverBigImg === YES);
-        $('#hoverBigImg').on('change', async () => {
-            const value = $('#hoverBigImg').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('hoverBigImg', value);
-            if (value === YES) {
-                (window as any).imageHoverPreviewObj = new ImagePreview({
-                    selector: this.getSelector().coverImgSelector
-                });
-            } else if ((window as any).imageHoverPreviewObj) {
-                (window as any).imageHoverPreviewObj.destroy();
-            }
-        });
         $('#enableLoadActressInfo').on('change', async () => {
             const value = $('#enableLoadActressInfo').is(':checked') ? YES : NO;
             await storageManager.saveSettingItem('enableLoadActressInfo', value);
@@ -540,35 +528,6 @@ export class SettingPlugin extends BasePlugin {
                 $('#otherSiteBox').remove();
             }
         });
-        $('#enableLoadScreenShot').prop(
-            'checked',
-            !settings.enableLoadScreenShot || settings.enableLoadScreenShot === YES
-        );
-        $('#enableLoadScreenShot').on('change', async () => {
-            const value = $('#enableLoadScreenShot').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enableLoadScreenShot', value);
-            if (value !== YES) {
-                $('.screen-container').remove();
-            }
-        });
-        $('#enableLoadPreviewVideo').prop(
-            'checked',
-            !settings.enableLoadPreviewVideo || settings.enableLoadPreviewVideo === YES
-        );
-        $('#enableLoadPreviewVideo').on('change', async () => {
-            const value = $('#enableLoadPreviewVideo').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enableLoadPreviewVideo', value);
-        });
-
-        $('#enableVerticalModel').prop(
-            'checked',
-            !!settings.enableVerticalModel && settings.enableVerticalModel === YES
-        );
-        $('#enableVerticalModel').on('change', async () => {
-            const value = $('#enableVerticalModel').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enableVerticalModel', value);
-            this.applyImageMode();
-        });
         $('#moreBtn').on('click', () => {
             $('.simple-setting').html('').hide();
             this.openSettingDialog('base-panel');
@@ -585,22 +544,10 @@ export class SettingPlugin extends BasePlugin {
         });
     }
 
-    /** 按 enableVerticalModel 设置切换竖图/横图 CSS。对应原 L10045-10065。 */
+    /** 注入横图模式 CSS（竖图设置项已移除，固定横图）。对应原 L10045-10065。 */
     async applyImageMode(): Promise<void> {
         $('#verticalImgStyle').remove();
-        if ((await storageManager.getSetting('enableVerticalModel', NO)) === YES) {
-            let objectPosition = '100% 50% !important';
-            if (window.location.href.includes('/advanced_search?type=100')) {
-                objectPosition = '50% 50% !important';
-            }
-            const verticalCss = verticalImgCssRaw.replace(
-                '100% 50% !important; /*__OBJECT_POSITION__*/',
-                `${objectPosition}; /*__OBJECT_POSITION__*/`
-            );
-            $('<style>').attr('id', 'verticalImgStyle').text(verticalCss).appendTo('head');
-        } else {
-            $('<style>').attr('id', 'verticalImgStyle').text(horizontalImgCssRaw).appendTo('head');
-        }
+        $('<style>').attr('id', 'verticalImgStyle').text(horizontalImgCssRaw).appendTo('head');
     }
 
     /** 绑定设置弹层内各按钮/输入的点击/输入事件。对应原 L10066-10131。 */

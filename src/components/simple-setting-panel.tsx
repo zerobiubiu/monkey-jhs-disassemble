@@ -3,8 +3,8 @@
  *
  * 提取自 src/plugins/setting-plugin.ts 的 simpleSetting（L330-332）：原方法返回
  * 巨型模板字符串（含显示已鉴定内容开关组、显示所有、弹窗方式、鉴定后关闭、瀑布流、
- * 标题翻译、悬浮大图、加载女优信息（isJavdbSite 条件）、第三方资源、
- * 长缩略图、更高画质预览、竖图模式、页面列数/宽度 range、底部常见问题/更多设置按钮）。
+ * 标题翻译、加载女优信息（isJavdbSite 条件）、第三方资源、
+ * 页面列数/宽度 range、底部常见问题/更多设置按钮）。
  * 由 `$(".simple-setting").html(this.simpleSetting())` 消费。
  *
  * 保留原 HTML 结构、id/类名/内联 style、`<hr>` 分隔线、data-tip、`<br/>`、
@@ -145,14 +145,6 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                     </div>
                 </div>
 
-                <div className="setting-item">
-                    <span className="setting-label">启用悬浮大图:</span>
-                    <div className="form-content" style={{ textAlign: 'right' }}>
-                        <input type="checkbox" id="hoverBigImg" className="mini-switch" />
-                    </div>
-                </div>
-
-
                 <hr style={HR_STYLE} />
 
                 {isJavdbSite && (
@@ -181,39 +173,7 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                     </div>
                 </div>
 
-                <div className="setting-item">
-                    <span className="setting-label">
-                        <span data-tip="详情页图片区首列位置加载长缩略图">❓</span> 加载长缩略图:
-                    </span>
-                    <div className="form-content" style={{ textAlign: 'right' }}>
-                        <input type="checkbox" id="enableLoadScreenShot" className="mini-switch" />
-                    </div>
-                </div>
-
-                <div className="setting-item">
-                    <span className="setting-label">
-                        <span data-tip="详情页解析更多更高画质的预览视频">❓</span>{' '}
-                        更高画质预览视频:
-                    </span>
-                    <div className="form-content" style={{ textAlign: 'right' }}>
-                        <input
-                            type="checkbox"
-                            id="enableLoadPreviewVideo"
-                            className="mini-switch"
-                        />
-                    </div>
-                </div>
-
                 <hr style={HR_STYLE} />
-
-                <div className="setting-item">
-                    <span className="setting-label">
-                        <span data-tip="列数6以上,建议开启竖图">❓</span> 竖图模式:
-                    </span>
-                    <div className="form-content" style={{ textAlign: 'right' }}>
-                        <input type="checkbox" id="enableVerticalModel" className="mini-switch" />
-                    </div>
-                </div>
 
                 <div className="setting-item">
                     <span className="setting-label">

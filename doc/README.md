@@ -107,6 +107,8 @@
 | `94-fix-cross-tab-status-tag-sync.md` | 🔧开发指导 | ✅已执行 | 修复跨标签页收藏/已观看状态标签不同步：doc/76 引入 cacheCarList 但 clearCarListCache 从未调用，在 handleSync + BroadcastChannel refresh 两处接收端清除缓存；version 1.12.4→1.12.5 |
 | `95-magnet-search-btn-into-menu-row.md` | 🔧开发指导 | ✅已执行 | 磁力搜索按钮从单独 .after() 注入改为 DetailMenuButtons 右行内条件渲染：新增 showMagnetSearch prop，按钮放 #search-subtitle-btn 之后，采用 menu-btn + 渐变背景统一风格；删除 createMenuBtn 单独注入逻辑保留事件绑定；version 1.12.5→1.12.6 |
 | `96-cleanup-115-residuals.md` | 🔧开发指导 | ✅已执行 | 清理 115 视频匹配相关残留死代码：删 simple-setting-panel 启用115视频匹配设置项 + setting-plugin enable115Match 绑定 + review-link-content 评论区 115离线下载按钮 + fc2-plugin FC2 弹窗 115离线下载按钮注入块 + help-dialog 115网盘登录帮助；保留 storage-manager downPath115 善后清理逻辑；version 1.12.6→1.12.7 |
+| `97-streamline-quick-settings-menu.md` | 🔧开发指导 | ✅已执行 | 整理优化快捷设置菜单：删 4 设置项 UI+绑定（hoverBigImg 启用悬浮大图 / enableLoadScreenShot 加载长缩略图 / enableLoadPreviewVideo 更高画质预览 / enableVerticalModel 竖图模式）保留功能读取默认值运行；删 ImagePreview unused import；containerColumns 默认 5→4 / containerWidth 默认 100%→70%（各改 3 处）；UI/绑定产物 0 残留，功能读取全保留；version 1.12.7→1.12.8 |
+| `98-remove-feature-reads-option-b.md` | 🔧开发指导 | ✅已执行 | 彻底删除 4 设置项功能读取逻辑（方案 B）：删 list-page-plugin hoverBigImg 读取+ImagePreview import+注释 / screenshot-plugin enableLoadScreenShot 判断 / preview-video-plugin enableLoadPreviewVideo 两处条件 / setting-plugin applyImageMode 竖图分支+verticalImgCssRaw import+孤儿 CSS 文件 setting-image-mode-vertical.css；功能固定默认值运行不给老用户兜底；产物 -7.26 kB，5 关键词 0 残留；version 1.12.8→1.12.9 |
 
 ## 类型图例
 

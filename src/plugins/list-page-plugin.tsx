@@ -12,7 +12,7 @@
  * isSearchOrUserPage/FILTER_ACTION/FAVORITE_ACTION/
  * HAS_WATCH_ACTION/ACTOR/NO/YES）。原顶层 Te（状态标签配置）改写为模块级
  * STATUS_TAG_CONFIG；原 _e（Google 翻译）改写为模块级 translateText；
- * 原 ImageHoverPreview 改用 ../core/image-preview 的 ImagePreview（同名重构）。
+
  *
  * 注意：原顶层常量 g（"hasDown"，「已下载」动作状态）已在 archetype/doc/
  * 09-remove-hasdown-constants.md 中作为「已删除」定稿移除。filterMovieList
@@ -41,7 +41,7 @@ import {
 } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
-import { ImagePreview } from '../core/image-preview';
+
 import { StatusTagHtml } from '../components/status-tag-html';
 import { JumpPageControl } from '../components/jump-page-control';
 import { PageCountTable } from '../components/page-count-table';
@@ -692,7 +692,7 @@ export class ListPagePlugin extends BasePlugin {
     }
 
     /**
-     * 替换列表封面缩略图为高清图，并按设置挂载悬浮大图预览。对应原 L8886-8933。
+     * 替换列表封面缩略图为高清图。对应原 L8886-8933。
      * @param imgEls 可选的图片元素集合（jQuery 或 NodeList），缺省取封面选择器
      */
     replaceHdImg(imgEls?: any): void {
@@ -706,18 +706,7 @@ export class ListPagePlugin extends BasePlugin {
                 img.title = '';
             });
         }
-        storageManager.getSetting('hoverBigImg', NO).then((setting: any) => {
-            if (setting === YES) {
-                const win = window as any;
-                if (win.imageHoverPreviewObj) {
-                    win.imageHoverPreviewObj.bindEvents();
-                } else {
-                    win.imageHoverPreviewObj = new ImagePreview({
-                        selector: this.getSelector().coverImgSelector
-                    });
-                }
-            }
-        });
+
     }
 
     /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
