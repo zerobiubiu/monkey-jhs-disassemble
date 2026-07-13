@@ -174,6 +174,7 @@ export class ListPagePlugin extends BasePlugin {
             async (event: MessageEvent) => {
                 const msgType = event.data.type;
                 if (msgType === 'refresh') {
+                    storageManager.clearCarListCache();
                     await this.doFilter();
                     const historyPlugin = this.getBean('HistoryPlugin');
                     if (historyPlugin.tableObj) {

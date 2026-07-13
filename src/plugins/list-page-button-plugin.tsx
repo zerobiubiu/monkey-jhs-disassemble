@@ -2,11 +2,11 @@
  * 列表页按钮插件 ListPageButtonPlugin —— 对应原脚本 archetype/jhs.user.js L7952-8207。
  *
  * 在列表页（window.isListPage）渲染顶部工具按钮组（打开待鉴定/打开已收藏/
- * 加入黑名单/一键屏蔽所有作品/新作品检测/演员黑名单/排序切换），并绑定其点击
+ * 加入黑名单/新作品检测/演员黑名单/排序切换），并绑定其点击
  * 行为：批量打开待鉴定与已收藏影片（FC2 番号走 Fc2Plugin，其余直接 window.open
- * 并附加 autoPlay=1）、调用 BlacklistPlugin 加入黑名单/一键屏蔽、调用
+ * 并附加 autoPlay=1）、调用 BlacklistPlugin 加入黑名单、调用
  * NewVideoPlugin 打开新作品弹窗；另提供列表项排序（按评价人数/时间/默认序，
- * 依 localStorage 的 jhs_sortMethod）。
+ * 依 localStorage 的 jhs_sortMethod）。演员页（/actors/）不再渲染按钮组。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/r/l/d 等）已语义化；顶层站点/状态常量
  * o/r/c/_/h/u/b/k 改由 ../constants 引入（currentHref/isJavdbSite/
@@ -38,9 +38,6 @@ import { jsxToString } from '../core/jsx-to-string';
 const HAS_DOWN_TEXT = '📥️ 已下载';
 
 export class ListPageButtonPlugin extends BasePlugin {
-    /** 一键屏蔽时的 loading 遮罩句柄（原 this.loadObj，运行时动态赋值）。 */
-    loadObj: { close: () => void } | null = null;
-
     /** 返回插件名，供 PluginManager 注册去重。对应原 L7953-7955。 */
     getName(): string {
         return 'ListPageButtonPlugin';
@@ -66,27 +63,22 @@ export class ListPageButtonPlugin extends BasePlugin {
     }
 
     /**
-     * 创建列表页按钮组：JavDb 站（isJavdbSite）渲染模板；演员页/标签页/高级搜索页
-     * 分别定制按钮与文案，已加入黑名单时切换文案与配色。对应原 L7968-8043。
+     * 创建列表页按钮组：JavDb 站（isJavdbSite）渲染模板；演员页直接跳过，
+     * 标签页/高级搜索页分别定制按钮与文案，已加入黑名单时切换文案与配色。
+     * 对应原 L7968-8043。
      *
      * @returns Promise<void>；无显式抛出
      */
     async createMenuBtn(): Promise<void> {
         if (isJavdbSite) {
-            const isActorsPage = currentHref.includes('/actors/');
+            if (currentHref.includes('/actors/')) {
+                return;
+            }
             let containerEl = $('.main-tabs, .tabs');
             let blacklistLabel = '加入黑名单';
             let blacklistColor = '#d22020';
             let tagBlacklistEntry: any = null;
-            if (isActorsPage) {
-                containerEl = $('.toolbar, .section-addition').filter(':last');
-                const blacklist = await storageManager.getBlacklist();
-                const actressInfo = this.getActressPageInfo();
-                if (blacklist.find((entry: any) => entry.starId === actressInfo.starId)) {
-                    blacklistLabel = '已加入黑名单';
-                    blacklistColor = '#885d5d';
-                }
-            } else if (currentHref.includes('/tags')) {
+            if (currentHref.includes('/tags')) {
                 utils.loopDetector(
                     () => $('#jhs-check-tag').text().trim(),
                     async () => {
@@ -124,7 +116,6 @@ export class ListPageButtonPlugin extends BasePlugin {
                     <MenuButtonBoxHtml
                         blacklistLabel={blacklistLabel}
                         blacklistColor={blacklistColor}
-                        actorsPage={isActorsPage}
                         tagsPage={currentHref.includes('/tags')}
                         advancedSearch={isAdvancedSearch}
                         searchOrUserPage={isSearchOrUserPage}
@@ -137,9 +128,12 @@ export class ListPageButtonPlugin extends BasePlugin {
 
     /**
      * 绑定按钮点击事件：待鉴定/已收藏批量打开、新作品检测、演员黑名单、排序切换、
-     * 加入黑名单、一键屏蔽。对应原 L8044-8104。无参数，无返回值。
+     * 加入黑名单。演员页直接跳过。对应原 L8044-8104。无参数，无返回值。
      */
     bindEvent(): void {
+        if (currentHref.includes('/actors/')) {
+            return;
+        }
         $('#waitCheckBtn').on('click', () => {
             this.openWaitCheck().then();
         });
@@ -172,29 +166,6 @@ export class ListPageButtonPlugin extends BasePlugin {
         const blacklistPlugin = this.getBean('BlacklistPlugin');
         $('#addBlacklistBtn').on('click', async (event: any) => {
             await blacklistPlugin.addBlacklist(event);
-        });
-        $('#filterAllVideo').on('click', async (event: any) => {
-            const position = {
-                clientX: event.clientX,
-                clientY: event.clientY + 80
-            };
-            const nameEl = $('.actor-section-name');
-            if (nameEl.length === 0) {
-                show.error('获取演员名称失败');
-                return;
-            }
-            const actressName = nameEl.text().trim().split(',')[0];
-            utils.q(position, '一键屏蔽视频列表?', async () => {
-                this.loadObj = loading();
-                try {
-                    await blacklistPlugin.filterAllVideo(actressName);
-                    (window as any).refresh();
-                } catch (err: any) {
-                    console.error(err);
-                } finally {
-                    this.loadObj?.close();
-                }
-            });
         });
     }
 

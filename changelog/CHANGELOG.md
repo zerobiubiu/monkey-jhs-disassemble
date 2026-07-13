@@ -9,6 +9,38 @@
 
 ---
 
+## v1.12.5
+
+**发布日期**：2026-07-12
+
+### 修复
+
+- **跨标签页收藏/已观看状态标签不同步**（doc/94）：doc/76 为
+  `StorageManager.getCarList()` 引入运行时缓存 `cacheCarList`，但
+  `clearCarListCache()` 从未调用，导致列表页 `cacheCarList` 在其他标签页
+  修改番号记录后仍为旧值。在 `handleSync`（`broadcastWantWatchedSync` 接收端）
+  和 BroadcastChannel `refresh` 分支（`refresh()` 接收端）两处，
+  于读取数据前调用 `storageManager.clearCarListCache()`，确保从 IndexedDB
+  重读最新值后正确刷新 `.status-tag`。
+
+---
+
+## v1.12.4
+
+**发布日期**：2026-07-12
+
+### 移除
+
+- **演员页不再渲染菜单按钮组**（doc/93）：补完 doc/92 未落地的代码改动。
+  `ListPageButtonPlugin` 的 `createMenuBtn`/`bindEvent` 在 `/actors/` 页直接
+  返回，`MenuButtonBoxHtml` 不再注入 `.toolbar`，彻底消除
+  `div.toolbar > div:nth-child(3/4)` 两个脚本节点（打开待鉴定/已收藏/加入黑名单/
+  一键屏蔽/新作品检测/演员黑名单/排序切换）。同步删除已失效的 `actorsPage`
+  渲染分支、`#filterAllVideo` 绑定、`loadObj` 属性；`fold-category` 的
+  `loopDetector` 加演员页前置命中，避免 `#waitCheckBtn` 缺失致 10s 空轮。
+
+---
+
 ## v1.12.3
 
 **发布日期**：2026-07-12

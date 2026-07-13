@@ -3,10 +3,10 @@
  *
  * 提取自 src/plugins/list-page-button-plugin.ts 的 createMenuBtn：
  *   - JavDb 站（L135-137 的 containerEl.append）：两行按钮组（打开待鉴定/
- *     已收藏 + 演员页/标签页黑名单按钮 + 新作品检测/演员黑名单/排序切换）
+ *     已收藏 + 标签页黑名单按钮 + 新作品检测/演员黑名单/排序切换）
  *
  * 保留原 HTML 结构、CSS 类名（menu-btn main-tab-btn）、id（waitCheckBtn /
- * waitDownBtn / addBlacklistBtn / filterAllVideo / newVideoBtn / blacklistBtn /
+ * waitDownBtn / addBlacklistBtn / newVideoBtn / blacklistBtn /
  * sort-toggle-btn / newVideoCount）、data-tip 提示文案、内联 style 值（含
  * `!important`，以字符串值形式写入 CSSProperties，jsxToString 原样输出）
  * 语义零偏差。原模板中的 `\n` 转义与缩进、尾随空格由 jsxToString 紧凑
@@ -33,8 +33,6 @@ export interface MenuButtonBoxHtmlProps {
     /** 黑名单按钮底色（已加入时切 #885d5d），默认 #d22020。 */
     blacklistColor?: string;
     // —— JavDb 专用 ——
-    /** JavDb 演员页（/actors/）：渲染 addBlacklistBtn + filterAllVideo。 */
-    actorsPage?: boolean;
     /** JavDb 标签页（/tags）：渲染 addBlacklistBtn。 */
     tagsPage?: boolean;
     /** JavDb 高级搜索页（advanced_search）：关闭 flex-grow、隐藏 sort-toggle。 */
@@ -49,9 +47,8 @@ export interface MenuButtonBoxHtmlProps {
 
 const BLACKLIST_DEFAULT_LABEL = '加入黑名单';
 const BLACKLIST_DEFAULT_COLOR = '#d22020';
-/** 原 data-tip 文案（演员页与标签页均沿用此句，忠实保留）。 */
+/** 原 data-tip 文案（标签页沿用此句，忠实保留）。 */
 const BLACKLIST_TIP = '将演员加入黑名单, 后续有作品更新也会纳入屏蔽中';
-const FILTER_ALL_TIP = '一键屏蔽已选分类的视频列表至鉴定记录中';
 const SORT_DEFAULT_LABEL = '当前排序方式: 默认';
 
 /**
@@ -66,7 +63,6 @@ function menuBtnStyle(backgroundColor: string): CSSProperties {
  * 渲染列表页菜单按钮组的 JSX。
  * @param props.blacklistLabel 黑名单按钮文案（默认「加入黑名单」）
  * @param props.blacklistColor 黑名单按钮底色（默认 #d22020）
- * @param props.actorsPage JavDb 演员页（渲染黑名单+一键屏蔽）
  * @param props.tagsPage JavDb 标签页（渲染黑名单）
  * @param props.advancedSearch JavDb 高级搜索页（关 flex-grow、隐 sort-toggle）
  * @param props.searchOrUserPage JavDb 搜索/用户页（隐 sort-toggle）
@@ -78,7 +74,6 @@ function menuBtnStyle(backgroundColor: string): CSSProperties {
 export function MenuButtonBoxHtml({
     blacklistLabel = BLACKLIST_DEFAULT_LABEL,
     blacklistColor = BLACKLIST_DEFAULT_COLOR,
-    actorsPage = false,
     tagsPage = false,
     advancedSearch = false,
     searchOrUserPage = false,
@@ -109,29 +104,6 @@ export function MenuButtonBoxHtml({
                 >
                     <span>打开已收藏</span>
                 </a>
-                {actorsPage && (
-                    <>
-                        <a
-                            id="addBlacklistBtn"
-                            className="menu-btn main-tab-btn"
-                            style={menuBtnStyle(blacklistColor)}
-                            data-tip={BLACKLIST_TIP}
-                        >
-                            <span>{blacklistLabel}</span>
-                        </a>
-                        <a
-                            id="filterAllVideo"
-                            className="menu-btn main-tab-btn"
-                            style={{
-                                backgroundColor: '#e8ab39 !important',
-                                marginRight: '30px!important'
-                            }}
-                            data-tip={FILTER_ALL_TIP}
-                        >
-                            <span>一键屏蔽所有作品</span>
-                        </a>
-                    </>
-                )}
                 {tagsPage && (
                     <a
                         id="addBlacklistBtn"

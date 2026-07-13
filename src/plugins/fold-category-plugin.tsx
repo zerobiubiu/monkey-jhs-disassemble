@@ -63,7 +63,9 @@ export class FoldCategoryPlugin extends BasePlugin {
             if (!currentHref.includes('advanced_search')) {
                 this.highlightTag();
                 utils.loopDetector(
-                    () => $('#waitCheckBtn').length,
+                    () =>
+                        currentHref.includes('/actors/') ||
+                        $('#waitCheckBtn').length,
                     () => {
                         this.createFoldBtn();
                     },

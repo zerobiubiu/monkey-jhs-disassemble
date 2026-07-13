@@ -483,6 +483,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 })();
             if (!payload || !payload.carNum) return;
 
+            // 清除 carList 缓存：跨标签页广播时本页 cacheCarList 可能已过期
+            //（detail 页 saveCar 仅更新自身缓存，不跨标签同步）
+            storageManager.clearCarListCache();
+
             // 1) 详情页：刷新 JHS 菜单按钮文案
             try {
                 const currentCarNum = self.getPageInfo().carNum;
