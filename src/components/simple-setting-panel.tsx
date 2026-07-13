@@ -3,7 +3,7 @@
  *
  * 提取自 src/plugins/setting-plugin.ts 的 simpleSetting（L330-332）：原方法返回
  * 巨型模板字符串（含显示已鉴定内容开关组、显示所有、弹窗方式、鉴定后关闭、瀑布流、
- * 标题翻译、悬浮大图、115匹配、加载女优信息（isJavdbSite 条件）、第三方资源、
+ * 标题翻译、悬浮大图、加载女优信息（isJavdbSite 条件）、第三方资源、
  * 长缩略图、更高画质预览、竖图模式、页面列数/宽度 range、底部常见问题/更多设置按钮）。
  * 由 `$(".simple-setting").html(this.simpleSetting())` 消费。
  *
@@ -152,12 +152,6 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                     </div>
                 </div>
 
-                <div className="setting-item">
-                    <span className="setting-label">启用115视频匹配: </span>
-                    <div className="form-content" style={{ textAlign: 'right' }}>
-                        <input type="checkbox" id="enable115Match" className="mini-switch" />
-                    </div>
-                </div>
 
                 <hr style={HR_STYLE} />
 

@@ -77,24 +77,6 @@ export function HelpDialog() {
                 </div>
             </details>
 
-            <details className="help-section">
-                <summary>4. 如何多浏览器同时登录115网盘?</summary>
-                <div className="help-content">
-                    <p>① 访问115登录页, 选择JHS-扫码面板, 并扫码登录</p>
-                    <img src="https://imgur.com/XbaisWD.png" alt="" />
-                </div>
-                <div className="help-content">
-                    <p>② 进入网盘后, 右下角悬浮按钮, 复制Cookie</p>
-                    <img src="https://imgur.com/GvzJ2Gy.png" alt="" />
-                </div>
-                <div className="help-content">
-                    <p>
-                        ③ 打开另一个浏览器(需装JHS脚本), 进入登录页面, 选择JHS-扫码面板,
-                        输入Cookie并回车
-                    </p>
-                    <img src="https://imgur.com/FX08qdO.png" alt="" />
-                </div>
-            </details>
         </div>
     );
 }

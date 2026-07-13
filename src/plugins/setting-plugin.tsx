@@ -559,14 +559,7 @@ export class SettingPlugin extends BasePlugin {
             const value = $('#enableLoadPreviewVideo').is(':checked') ? YES : NO;
             await storageManager.saveSettingItem('enableLoadPreviewVideo', value);
         });
-        $('#enable115Match').prop(
-            'checked',
-            !!settings.enable115Match && settings.enable115Match === YES
-        );
-        $('#enable115Match').on('change', async () => {
-            const value = $('#enable115Match').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enable115Match', value);
-        });
+
         $('#enableVerticalModel').prop(
             'checked',
             !!settings.enableVerticalModel && settings.enableVerticalModel === YES

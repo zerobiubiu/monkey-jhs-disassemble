@@ -2,13 +2,13 @@
  * Fc2Plugin —— FC2 番号详情弹窗（提取自未删减版 jhs.user.js L4162-4439）。
  *
  * 项目的 archetype/jhs.user.js 为删减版，移除了 Fc2Plugin 及 MagnetHubPlugin /
- * TranslatePlugin / ScreenShotPlugin / WangPan115TaskPlugin / Fc2By123AvPlugin 等
+ * TranslatePlugin / ScreenShotPlugin / Fc2By123AvPlugin 等
  * 插件，但 list-page-plugin / history-plugin / list-page-button-plugin 仍以
  * `getBean('Fc2Plugin')?.openFc2Dialog(...)` 调用之，导致 FC2 番号列表项点击后
  * preventDefault 阻止了 <a> 默认跳转、又无弹窗，表现为"点不开"。
  *
  * 本模块从未删减版迁移 Fc2Plugin 主体并注册到 PluginManager，恢复 FC2 详情弹窗
- * 功能。缺失的 5 个依赖插件以 `?.` 可选链静默失败（磁力搜索/翻译/截图/115离线/
+ * 功能。缺失的 4 个依赖插件以 `?.` 可选链静默失败（磁力搜索/翻译/截图/
  * 123av 弹窗暂不可用，其余功能正常）。
  *
  * 依赖映射（未删减版单字母 → 项目模块）：
@@ -386,33 +386,6 @@ export class Fc2Plugin extends BasePlugin {
                     magnetsHtml = '<span class="no-data">暂无磁力信息</span>';
                 }
                 $('#magnets-content').html(magnetsHtml);
-                $(".buttons button[data-clipboard-text*='magnet:']").each(
-                    (_idx: number, btn: any) => {
-                        $(btn)
-                            .parent()
-                            .append(
-                                $('<button>')
-                                    .text('115离线下载')
-                                    .addClass('button is-info is-small')
-                                    .click(async (event: any) => {
-                                        event.stopPropagation();
-                                        event.preventDefault();
-                                        const loadingHandle = loading();
-                                        try {
-                                            // WangPan115TaskPlugin 项目未迁移，缺失时静默失败
-                                            await this.getBean(
-                                                'WangPan115TaskPlugin'
-                                            )?.handleAddTask($(btn).attr('data-clipboard-text'));
-                                        } catch (err: any) {
-                                            show.error('发生错误:' + err);
-                                            console.error(err);
-                                        } finally {
-                                            loadingHandle.close();
-                                        }
-                                    })
-                            );
-                    }
-                );
             })
             .catch((err: any) => {
                 console.error(err);

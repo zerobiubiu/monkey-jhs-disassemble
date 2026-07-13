@@ -9,6 +9,23 @@
 
 ---
 
+## v1.12.7
+
+**发布日期**：2026-07-13
+
+### 清理
+
+- **清理 115 视频匹配相关残留死代码**（doc/96）：115 网盘三件套插件
+  （WangPan115TaskPlugin / WangPan115MatchPlugin / WangPan115Plugin）在 doc/03
+  已删除，但入口/UI 残留仍散落 src。本次清理 5 处死代码：① simple-setting-panel
+  「启用115视频匹配」设置项；② setting-plugin enable115Match 绑定；
+  ③ review-link-content 评论区磁链/ed2k 旁的「115离线下载」按钮（保留链接本身）；
+  ④ fc2-plugin FC2 弹窗磁链后的「115离线下载」按钮注入块；⑤ help-dialog
+  「如何多浏览器同时登录115网盘」帮助段落。保留 storage-manager 的 downPath115
+  善后清理逻辑（自动清除老用户 setting 残留配置）。产物 -3.02 kB。
+
+---
+
 ## v1.12.6
 
 **发布日期**：2026-07-13

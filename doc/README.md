@@ -106,6 +106,7 @@
 | `93-remove-actors-page-toolbar-buttons.md` | 🔧开发指导 | ✅已执行 | 补完 doc/92 未落地的演员页按钮组移除：createMenuBtn/bindEvent 演员页早返回 + 删 actorsPage 渲染分支/filterAllVideo 绑定/loadObj + fold-category loopDetector 防空轮；version 1.12.3→1.12.4 |
 | `94-fix-cross-tab-status-tag-sync.md` | 🔧开发指导 | ✅已执行 | 修复跨标签页收藏/已观看状态标签不同步：doc/76 引入 cacheCarList 但 clearCarListCache 从未调用，在 handleSync + BroadcastChannel refresh 两处接收端清除缓存；version 1.12.4→1.12.5 |
 | `95-magnet-search-btn-into-menu-row.md` | 🔧开发指导 | ✅已执行 | 磁力搜索按钮从单独 .after() 注入改为 DetailMenuButtons 右行内条件渲染：新增 showMagnetSearch prop，按钮放 #search-subtitle-btn 之后，采用 menu-btn + 渐变背景统一风格；删除 createMenuBtn 单独注入逻辑保留事件绑定；version 1.12.5→1.12.6 |
+| `96-cleanup-115-residuals.md` | 🔧开发指导 | ✅已执行 | 清理 115 视频匹配相关残留死代码：删 simple-setting-panel 启用115视频匹配设置项 + setting-plugin enable115Match 绑定 + review-link-content 评论区 115离线下载按钮 + fc2-plugin FC2 弹窗 115离线下载按钮注入块 + help-dialog 115网盘登录帮助；保留 storage-manager downPath115 善后清理逻辑；version 1.12.6→1.12.7 |
 
 ## 类型图例
 
