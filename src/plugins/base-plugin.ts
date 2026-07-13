@@ -307,7 +307,10 @@ export class BasePlugin {
         return list;
     }
 
-    /** 检测两组番号信息是否连续重复(≥2)，用于发现分页被限制。对应原 L3306-3330。 */
+    /** 检测新页番号在已加载页中的重复比例（≥50%），用于发现分页被限制。对应原 L3306-3330。
+     *  原逻辑为"连续≥2个重复"即判定，但加载大量页后已加载番号集合极大，
+     *  个别番号碰巧连续重复易误判。改为重复比例≥50%才判定页码受限
+     *  （JavDB 返回重复内容时大部分番号会重复）。 */
     checkDuplicateCarNumbers(list: CarInfo[], other: CarInfo[]): boolean {
         if (!list || list.length === 0 || !other || other.length === 0) {
             return false;
@@ -316,18 +319,15 @@ export class BasePlugin {
         if (existing.size === 0) {
             return false;
         }
-        let consecutive = 0;
-        for (let i = 0; i < other.length; i++) {
-            const car = other[i] ? other[i].carNum : null;
-            if (car && existing.has(car)) {
-                consecutive++;
-                if (consecutive >= 2) {
-                    clog.warn('警告: 检测到连续番号信息重复, 该类别可能已被限制页码。');
-                    return true;
-                }
-            } else {
-                consecutive = 0;
+        let duplicateCount = 0;
+        for (const item of other) {
+            if (item && item.carNum && existing.has(item.carNum)) {
+                duplicateCount++;
             }
+        }
+        if (duplicateCount / other.length >= 0.5) {
+            clog.warn('警告: 检测到大量番号信息重复, 该类别可能已被限制页码。');
+            return true;
         }
         return false;
     }

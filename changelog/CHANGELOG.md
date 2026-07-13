@@ -9,6 +9,37 @@
 
 ---
 
+## v1.13.2
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **重复检测误判 + 加载全部状态不一致**（doc/101）：`checkDuplicateCarNumbers`
+  原逻辑"连续≥2个重复"在加载全部累积大量页后易误判（existingList 为 DOM 全部
+  已加载番号，个别碰巧连续重复即触发）。改为重复比例≥50%才判定页码受限
+  （JavDB 返回重复内容时大部分会重复）。`loadAllPages` 循环退出后无脑显示
+  "✓已全部加载"未感知 loadNextPage 的 waterfall-error 状态——改为检查 loader
+  className+textContent 区分"已停止页码受限"/"加载失败点击重试"/"全部加载完"
+  三种结果，按钮与 loader 状态一致。
+
+---
+
+## v1.13.1
+
+**发布日期**：2026-07-14
+
+### 优化
+
+- **「加载全部」按钮实时显示/隐藏**（doc/100）：doc/99 的按钮只在页面加载时
+  创建，切换瀑布流模式需刷新才生效。新增 `showLoadAllBtn()` / `hideLoadAllBtn()`
+  方法，setting-plugin 的 autoPage change 通过 `getBean('AutoPagePlugin')`
+  实时调用，开启即时出现、关闭即时消失，不需刷新。`showLoadAllBtn` 幂等
+  （已存在/无下一页/容器未初始化跳过），正在 loadAllPages 时 `hideLoadAllBtn`
+  安全移除（循环自然退出）。
+
+---
+
 ## v1.13.0
 
 **发布日期**：2026-07-13

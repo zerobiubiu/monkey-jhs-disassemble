@@ -494,10 +494,13 @@ export class SettingPlugin extends BasePlugin {
         $('#autoPage').on('change', async () => {
             const value = $('#autoPage').is(':checked') ? YES : NO;
             await storageManager.saveSettingItem('autoPage', value);
+            const autoPagePlugin = this.getBean('AutoPagePlugin');
             if (value === YES) {
                 $('#sort-toggle-btn').hide();
+                autoPagePlugin?.showLoadAllBtn();
             } else {
                 $('#sort-toggle-btn').show();
+                autoPagePlugin?.hideLoadAllBtn();
             }
         });
         $('#translateTitle').on('change', async () => {

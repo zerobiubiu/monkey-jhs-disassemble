@@ -3,7 +3,7 @@
  *
  * 在列表页（window.isListPage）滚动接近底部时自动抓取下一页并追加到列表容器，
  * 同步当前页码到 URL（replaceState）；JavDb 站超过 60 页（c11 类目 30 页）或月度
- * 页时改走 Beyond60Plugin；翻页结果出现连续重复番号时判定被 JavDB 限制页码并
+ * 页时改走 Beyond60Plugin；翻页结果重复番号比例≥50%时判定被 JavDB 限制页码并
  * 停止瀑布流。
  *
  * 原构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
@@ -144,7 +144,7 @@ export class AutoPagePlugin extends BasePlugin {
         if (!this.hasMore) {
             this.setState('waterfall-no-more', '已经到底了');
         } else if ((await storageManager.getSetting('autoPage', YES)) === YES) {
-            this.createLoadAllBtn();
+            this.showLoadAllBtn();
         }
     }
 
@@ -317,6 +317,26 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
+     * 显示「加载全部」按钮（瀑布流模式开启时由设置面板 change 调用）。
+     * 已存在 / 无下一页 / 容器未初始化时不创建，避免重复。
+     */
+    showLoadAllBtn(): void {
+        if (this.loadAllBtn) return;
+        if (!this.container || !this.hasMore) return;
+        this.createLoadAllBtn();
+    }
+
+    /**
+     * 隐藏并移除「加载全部」按钮（瀑布流模式关闭时由设置面板 change 调用）。
+     * 正在 loadAllPages 时安全移除（后续 updateLoadAllBtn 对 null 跳过）。
+     */
+    hideLoadAllBtn(): void {
+        if (!this.loadAllBtn) return;
+        this.loadAllBtn.remove();
+        this.loadAllBtn = null;
+    }
+
+    /**
      * 创建「加载全部」浮动按钮并追加到 body。
      * 瀑布流模式且有下一页时调用，点击后循环加载所有后续页。
      */
@@ -336,6 +356,8 @@ export class AutoPagePlugin extends BasePlugin {
     /**
      * 自动加载后续所有页：循环 loadNextPage 直到无更多页、出错或无进展。
      * 通过 pageItems.length 变化检测无进展（autoPage 被关闭 / isLoading 重入）。
+     * 循环退出后感知 loadNextPage 设置的 loader 状态（waterfall-error/no-more），
+     * 区分"页码受限停止"/"加载失败"/"全部加载完"三种结果，同步按钮文案。
      */
     async loadAllPages(): Promise<void> {
         if (this.isLoadingAll || !this.hasMore) return;
@@ -348,14 +370,24 @@ export class AutoPagePlugin extends BasePlugin {
                 if (this.pageItems.length === before) break;
                 this.updateLoadAllBtn(`加载中...（第 ${this.currentPage} 页）`, true);
             }
-            this.updateLoadAllBtn('✓ 已全部加载', false);
-            setTimeout(() => {
-                this.loadAllBtn?.classList.add('jhs-load-all-fadeout');
+            // 深度融合：感知 loadNextPage 设置的 loader 状态
+            if (this.loader?.classList.contains('waterfall-error')) {
+                const text = this.loader?.textContent || '';
+                if (text.includes('重复')) {
+                    this.updateLoadAllBtn('已停止（页码受限）', false);
+                } else {
+                    this.updateLoadAllBtn('加载失败，点击重试', false);
+                }
+            } else {
+                this.updateLoadAllBtn('✓ 已全部加载', false);
                 setTimeout(() => {
-                    this.loadAllBtn?.remove();
-                    this.loadAllBtn = null;
-                }, 500);
-            }, 2000);
+                    this.loadAllBtn?.classList.add('jhs-load-all-fadeout');
+                    setTimeout(() => {
+                        this.loadAllBtn?.remove();
+                        this.loadAllBtn = null;
+                    }, 500);
+                }, 2000);
+            }
         } catch {
             this.updateLoadAllBtn('加载失败，点击重试', false);
         } finally {
