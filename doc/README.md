@@ -109,6 +109,7 @@
 | `96-cleanup-115-residuals.md` | 🔧开发指导 | ✅已执行 | 清理 115 视频匹配相关残留死代码：删 simple-setting-panel 启用115视频匹配设置项 + setting-plugin enable115Match 绑定 + review-link-content 评论区 115离线下载按钮 + fc2-plugin FC2 弹窗 115离线下载按钮注入块 + help-dialog 115网盘登录帮助；保留 storage-manager downPath115 善后清理逻辑；version 1.12.6→1.12.7 |
 | `97-streamline-quick-settings-menu.md` | 🔧开发指导 | ✅已执行 | 整理优化快捷设置菜单：删 4 设置项 UI+绑定（hoverBigImg 启用悬浮大图 / enableLoadScreenShot 加载长缩略图 / enableLoadPreviewVideo 更高画质预览 / enableVerticalModel 竖图模式）保留功能读取默认值运行；删 ImagePreview unused import；containerColumns 默认 5→4 / containerWidth 默认 100%→70%（各改 3 处）；UI/绑定产物 0 残留，功能读取全保留；version 1.12.7→1.12.8 |
 | `98-remove-feature-reads-option-b.md` | 🔧开发指导 | ✅已执行 | 彻底删除 4 设置项功能读取逻辑（方案 B）：删 list-page-plugin hoverBigImg 读取+ImagePreview import+注释 / screenshot-plugin enableLoadScreenShot 判断 / preview-video-plugin enableLoadPreviewVideo 两处条件 / setting-plugin applyImageMode 竖图分支+verticalImgCssRaw import+孤儿 CSS 文件 setting-image-mode-vertical.css；功能固定默认值运行不给老用户兜底；产物 -7.26 kB，5 关键词 0 残留；version 1.12.8→1.12.9 |
+| `99-load-all-btn-and-cleanup.md` | 🔧开发指导 | ✅已执行 | 清理 shouldDisablePaging 遗留调用（autoPage 读取未用返回值死代码）+ 新增「加载全部」浮动按钮：autoPage=YES 且有下一页时右下角出现蓝色按钮，点击循环 loadNextPage 加载所有后续页，pageItems.length 检测无进展防死循环，isLoadingAll 防重入，加载完淡出移除/失败可重试；version 1.12.9→1.13.0 |
 
 ## 类型图例
 

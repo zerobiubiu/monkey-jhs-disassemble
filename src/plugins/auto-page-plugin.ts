@@ -48,6 +48,10 @@ export class AutoPagePlugin extends BasePlugin {
     hasMore = false;
     /** 是否正在请求下一页（防重入）。 */
     isLoading = false;
+    /** 「加载全部」浮动按钮节点（瀑布流模式且有下一页时创建）。 */
+    loadAllBtn: HTMLDivElement | null = null;
+    /** 是否正在自动加载全部后续页（防重入）。 */
+    isLoadingAll = false;
 
     /**
      * 返回插件名，供 PluginManager 注册去重。对应原 L9077-9079。
@@ -139,6 +143,8 @@ export class AutoPagePlugin extends BasePlugin {
         }, 1000);
         if (!this.hasMore) {
             this.setState('waterfall-no-more', '已经到底了');
+        } else if ((await storageManager.getSetting('autoPage', YES)) === YES) {
+            this.createLoadAllBtn();
         }
     }
 
@@ -276,7 +282,6 @@ export class AutoPagePlugin extends BasePlugin {
         if (!(window as any).isListPage) {
             return true;
         }
-        await storageManager.getSetting('autoPage', YES);
         return [
             'search?q',
             'handlePlayback=1',
@@ -308,6 +313,68 @@ export class AutoPagePlugin extends BasePlugin {
             window.history.replaceState({}, '', url);
         } else {
             window.history.pushState({}, '', url);
+        }
+    }
+
+    /**
+     * 创建「加载全部」浮动按钮并追加到 body。
+     * 瀑布流模式且有下一页时调用，点击后循环加载所有后续页。
+     */
+    createLoadAllBtn(): void {
+        const btn = document.createElement('div');
+        btn.className = 'jhs-load-all-btn';
+        btn.textContent = '加载全部';
+        btn.addEventListener('click', () => {
+            if (!this.isLoadingAll) {
+                this.loadAllPages().then();
+            }
+        });
+        document.body.appendChild(btn);
+        this.loadAllBtn = btn;
+    }
+
+    /**
+     * 自动加载后续所有页：循环 loadNextPage 直到无更多页、出错或无进展。
+     * 通过 pageItems.length 变化检测无进展（autoPage 被关闭 / isLoading 重入）。
+     */
+    async loadAllPages(): Promise<void> {
+        if (this.isLoadingAll || !this.hasMore) return;
+        this.isLoadingAll = true;
+        this.updateLoadAllBtn('加载中...', true);
+        try {
+            while (this.hasMore && this.nextUrl) {
+                const before = this.pageItems.length;
+                await this.loadNextPage();
+                if (this.pageItems.length === before) break;
+                this.updateLoadAllBtn(`加载中...（第 ${this.currentPage} 页）`, true);
+            }
+            this.updateLoadAllBtn('✓ 已全部加载', false);
+            setTimeout(() => {
+                this.loadAllBtn?.classList.add('jhs-load-all-fadeout');
+                setTimeout(() => {
+                    this.loadAllBtn?.remove();
+                    this.loadAllBtn = null;
+                }, 500);
+            }, 2000);
+        } catch {
+            this.updateLoadAllBtn('加载失败，点击重试', false);
+        } finally {
+            this.isLoadingAll = false;
+        }
+    }
+
+    /**
+     * 更新「加载全部」按钮文案与禁用态。
+     * @param text 按钮文案
+     * @param disabled 是否禁用（加载中时禁用点击视觉）
+     */
+    updateLoadAllBtn(text: string, disabled: boolean): void {
+        if (!this.loadAllBtn) return;
+        this.loadAllBtn.textContent = text;
+        if (disabled) {
+            this.loadAllBtn.classList.add('jhs-load-all-disabled');
+        } else {
+            this.loadAllBtn.classList.remove('jhs-load-all-disabled');
         }
     }
 
