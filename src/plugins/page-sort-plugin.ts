@@ -27,7 +27,7 @@
  * 3. AutoPagePlugin 瀑布流 append 新页会触发 sortGuard 重新排序打乱分页
  *
  * 协调方案（本插件单方面适配，不改 jhs 排序系统）：
- * 1. autoPage=YES 时不注入（与 sortItems 一致，避免打乱瀑布流）
+ * 1. sortGuard 监听容器 childList，瀑布流 append 时自动重排（有重试上限）
  * 2. 仅 isListPage 时注入（与 jhs 排序按钮一致）
  * 3. 复用 jhs 的 data-original-index 属性（不另建 data-sort-original-index）
  * 4. 排序互斥：点击本插件按钮时清除 localStorage 的 jhs_sortMethod（让 jhs 排序
@@ -48,7 +48,6 @@
  * 7. waitForContainer 用 MutationObserver 等待 body > section > div 出现
  */
 import { BasePlugin } from './base-plugin';
-import { YES } from '../constants/status';
 import pageSortCssRaw from '../styles/page-sort-plugin.css?raw';
 
 /** 日志前缀。 */
@@ -185,30 +184,35 @@ export class PageSortPlugin extends BasePlugin {
      *
      * 与 jhs 协调：
      * - 仅 isListPage 时注入（与 jhs 排序按钮 #sort-toggle-btn 一致）
-     * - autoPage=YES 时不注入（与 sortItems 一致，避免打乱瀑布流）
+     * - sortGuard 监听容器 childList，瀑布流 append 时若用户已选排序方式
+     *   则自动重排（含新追加项），有 MAX_GUARD_RETRIES 上限防死循环
      *
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
         if (!(window as any).isListPage) return;
-        const autoPage = await storageManager.getSetting('autoPage');
-        if (autoPage === YES) return;
         this.waitForContainer();
     }
 
     /**
      * 等待页面容器出现后注入排序选择器。对应原 L179-190。
-     * 用 MutationObserver 监听 body 子树变化，`body > section > div` 出现后触发。
+     * 先同步尝试 createSortSelector（document-idle 时容器通常已就绪），
+     * 失败才挂 MutationObserver 等待异步渲染的容器。
      */
     private waitForContainer(): void {
-        console.log(`${LOG} 等待页面容器加载...`);
+        // 本项目 @run-at document-idle，body > section > div 在 handle 调用时
+        // 通常已就绪。MutationObserver 不会在 observe 时立即触发回调，只在后续
+        // mutation 时触发；静态页面（如 /lists/{id} 清单详情页无瀑布流 append）
+        // 可能长期无 body 子树 mutation，导致 observer 永不触发、排序按钮组
+        // 不注入（原脚本 @run-at document-end，依赖 mutation 等 section 出现，
+        // 本项目 idle 时 section 已在，该模式失效）。故先同步尝试注入，成功则
+        // 返回；失败才走 observer 等待异步渲染的容器。
+        if (this.createSortSelector()) return;
+        console.log(`${LOG} 页面容器未就绪，开始 MutationObserver 等待`);
         const observer = new MutationObserver(
             (_mutations: MutationRecord[], obs: MutationObserver) => {
-                const $container = $('body > section > div');
-                if ($container.length) {
+                if (this.createSortSelector()) {
                     obs.disconnect();
-                    console.log(`${LOG} 页面容器已就绪，开始注入排序选择器`);
-                    this.createSortSelector();
                 }
             }
         );
@@ -219,23 +223,23 @@ export class PageSortPlugin extends BasePlugin {
      * 创建排序选择器：查找工具栏/列表容器、标记原始位置、构建按钮组、注册事件。
      * 对应原 L48-176。
      */
-    private createSortSelector(): void {
+    private createSortSelector(): boolean {
         const $toolbar = $('body > section > div > div.toolbar');
         if (!$toolbar.length) {
             console.warn(`${LOG} 未找到工具栏 .toolbar，跳过排序选择器注入`);
-            return;
+            return false;
         }
         const $container = $('body > section > div > div.movie-list.h.cols-4.vcols-8');
         if (!$container.length) {
             console.warn(`${LOG} 未找到视频列表容器 .movie-list，跳过排序选择器注入`);
-            return;
+            return false;
         }
         this.$container = $container;
 
         const $items = $container.children('.item');
         if ($items.length === 0) {
             console.warn(`${LOG} 视频列表为空，跳过排序选择器注入`);
-            return;
+            return false;
         }
 
         // 复用 jhs 的 data-original-index 属性标记原始位置（jhs sortItems 也用此属性）
@@ -328,6 +332,7 @@ export class PageSortPlugin extends BasePlugin {
         });
 
         console.log(`${LOG} 排序选择器已注入，共 ${$items.length} 个影片`);
+        return true;
     }
 
     /**

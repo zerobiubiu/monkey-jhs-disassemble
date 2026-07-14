@@ -495,12 +495,12 @@ export class SettingPlugin extends BasePlugin {
             const value = $('#autoPage').is(':checked') ? YES : NO;
             await storageManager.saveSettingItem('autoPage', value);
             const autoPagePlugin = this.getBean('AutoPagePlugin');
+            // 排序按钮始终显示；autoPage=NO 时自动排序
             if (value === YES) {
-                $('#sort-toggle-btn').hide();
                 autoPagePlugin?.showLoadAllBtn();
             } else {
-                $('#sort-toggle-btn').show();
                 autoPagePlugin?.hideLoadAllBtn();
+                this.getBean('ListPageButtonPlugin')?.sortItems().then();
             }
         });
         $('#translateTitle').on('change', async () => {

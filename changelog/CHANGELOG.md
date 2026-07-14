@@ -9,6 +9,88 @@
 
 ---
 
+## v1.13.6
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **恢复演员页 /actors/* 排序组件**（doc/105）：doc/92/93 因 .toolbar 显示
+  混乱把演员页整个按钮组禁用（createMenuBtn/bindEvent 早 return），过度删除。
+  移除早 return 恢复注入，按钮组挂 `.main-tabs/.tabs`（不挂 .toolbar）避免
+  混乱，PageSort 排序选择器注入 `.toolbar` 不冲突。
+
+---
+
+## v1.13.5
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **PageSort 排序选择器在 autoPage=YES 时仍不注入**（doc/104）：doc/103 只
+  恢复了 #sort-toggle-btn（jhs 排序按钮），但 PageSort 排序选择器（按钮组）
+  仍 `autoPage===YES → return` 不注入。重新审查 sortGuard MutationObserver
+  发现冲突不严重：仅 `activeSort≠null`（用户已选排序方式）时才触发重排，
+  有 `MAX_GUARD_RETRIES=5` 上限防死循环。移除 handle 的 autoPage 检查 +
+  /lists/ 条件，所有列表页注入 PageSort。删 unused currentHref/YES import。
+
+---
+
+## v1.13.4
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **普通列表页排序组件丢失**（doc/103）：git 确认非 doc/92/93 导致（只删演员页
+  actorsPage prop + filterAllVideo，未动 sort-toggle-btn）。真正原因是 autoPage=YES
+  时排序与瀑布流互斥——#sort-toggle-btn 被隐藏 + sortItems 跳过。移除 autoPage
+  对 #sort-toggle-btn 的隐藏逻辑：排序按钮始终显示，autoPage=NO 自动排序，
+  autoPage=YES 保持原始顺序但用户可手动点击排序。sortItems 移除 autoPage 判断。
+  PageSort 保持 autoPage=YES 不注入（sortGuard MutationObserver 与瀑布流 append
+  冲突），/lists/* 仍注入（doc/102 条件保留）。
+
+---
+
+## v1.13.3
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **视频清单详情页排序按钮组不注入**（doc/102）：`PageSortPlugin.waitForContainer`
+  照搬原脚本 `archetype/pageSort.user.js` 的 MutationObserver 等待模式——
+  原 `@run-at document-end` 时 `body > section > div` 尚未出现，observer 会在
+  section 渲染时触发；但本项目 `@run-at document-idle` 时 section **已经存在**，
+  MutationObserver 不会在 `observe()` 时立即触发回调，只在**后续 mutation** 时
+  触发。视频清单详情页 `/lists/{id}` 是静态页（视频数有限、通常单页无瀑布流
+  append），`document.body` 子树长期无 mutation → observer **永不触发** →
+  `createSortSelector` **永不调用** → 排序按钮组（按照名称/评分升降序）不注入。
+  实测在 `/lists/Azm8DM` 安装模拟 observer 5 秒触发次数 = 0，证实根因。
+  修复：`waitForContainer` 改为「先同步尝试 `createSortSelector()`，成功直接
+  return，失败才挂 observer 等待异步渲染」（与 `StatusTagFilterPlugin.init`
+  一致）；`createSortSelector` 返回值 `void→boolean`，三处 early return 返回
+  `false`，末尾返回 `true`。同步路径成功后不挂 observer，不会重复调用；
+  observer 路径成功即 disconnect，亦不会重复调用，无需额外防重入守卫。
+
+---
+
+## v1.13.3
+
+**发布日期**：2026-07-14
+
+### 修复
+
+- **/lists/* 清单页排序组件丢失**（doc/102）：autoPage=YES 时无条件禁用排序
+  （#sort-toggle-btn 隐藏 + PageSort 不注入），但 /lists/* 清单详情页不支持
+  瀑布流分页（无 .pagination-next，AutoPagePlugin 显示"已经到底了"），
+  排序互斥不合理。三处加 `!currentHref.includes('/lists/')` 条件
+  （page-sort handle / list-page-button handle / setting-plugin autoPage
+  change），使 /lists/ 页面 autoPage=YES 仍显示排序组件。
+
+---
+
 ## v1.13.2
 
 **发布日期**：2026-07-14

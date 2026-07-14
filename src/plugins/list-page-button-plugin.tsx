@@ -6,7 +6,7 @@
  * 行为：批量打开待鉴定与已收藏影片（FC2 番号走 Fc2Plugin，其余直接 window.open
  * 并附加 autoPlay=1）、调用 BlacklistPlugin 加入黑名单、调用
  * NewVideoPlugin 打开新作品弹窗；另提供列表项排序（按评价人数/时间/默认序，
- * 依 localStorage 的 jhs_sortMethod）。演员页（/actors/）不再渲染按钮组。
+ * 依 localStorage 的 jhs_sortMethod）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/r/l/d 等）已语义化；顶层站点/状态常量
  * o/r/c/_/h/u/b/k 改由 ../constants 引入（currentHref/isJavdbSite/
@@ -55,25 +55,24 @@ export class ListPageButtonPlugin extends BasePlugin {
         }
         await this.createMenuBtn();
         this.bindEvent();
-        if ((await storageManager.getSetting('autoPage')) === YES) {
-            $('#sort-toggle-btn').hide();
-        } else {
+        const autoPageEnabled = (await storageManager.getSetting('autoPage')) === YES;
+        // 排序按钮始终显示；autoPage=NO 时自动排序，autoPage=YES 时保持原始顺序
+        // （用户可手动点击 #sort-toggle-btn 排序，不影响瀑布流追加）
+        if (!autoPageEnabled) {
             this.sortItems().then();
         }
     }
 
     /**
-     * 创建列表页按钮组：JavDb 站（isJavdbSite）渲染模板；演员页直接跳过，
-     * 标签页/高级搜索页分别定制按钮与文案，已加入黑名单时切换文案与配色。
+     * 创建列表页按钮组：JavDb 站（isJavdbSite）渲染模板；标签页/高级搜索页
+     * 分别定制按钮与文案，已加入黑名单时切换文案与配色。演员页同样注入
+     * （按钮组挂 .main-tabs/.tabs 不挂 .toolbar，避免显示混乱）。
      * 对应原 L7968-8043。
      *
      * @returns Promise<void>；无显式抛出
      */
     async createMenuBtn(): Promise<void> {
         if (isJavdbSite) {
-            if (currentHref.includes('/actors/')) {
-                return;
-            }
             let containerEl = $('.main-tabs, .tabs');
             let blacklistLabel = '加入黑名单';
             let blacklistColor = '#d22020';
@@ -128,12 +127,9 @@ export class ListPageButtonPlugin extends BasePlugin {
 
     /**
      * 绑定按钮点击事件：待鉴定/已收藏批量打开、新作品检测、演员黑名单、排序切换、
-     * 加入黑名单。演员页直接跳过。对应原 L8044-8104。无参数，无返回值。
+     * 加入黑名单。对应原 L8044-8104。无参数，无返回值。
      */
     bindEvent(): void {
-        if (currentHref.includes('/actors/')) {
-            return;
-        }
         $('#waitCheckBtn').on('click', () => {
             this.openWaitCheck().then();
         });
@@ -171,8 +167,9 @@ export class ListPageButtonPlugin extends BasePlugin {
 
     /**
      * 列表项排序：依 localStorage 的 jhs_sortMethod（default/rateCount/date）对
-     * .movie-list .item 重排；搜索/用户页、高级搜索页、autoPage 开启时跳过。
-     * 对应原 L8105-8157。
+     * .movie-list .item 重排；搜索/用户页、高级搜索页跳过。
+     * autoPage=YES 时页面加载不自动排序（保持瀑布流原始顺序），但用户
+     * 手动点击 #sort-toggle-btn 时仍执行排序。对应原 L8105-8157。
      *
      * @returns Promise<void>；无显式抛出
      */
@@ -180,8 +177,7 @@ export class ListPageButtonPlugin extends BasePlugin {
         if (currentHref.includes('handle') || currentHref.includes('advanced_search')) {
             return;
         }
-        const autoPage = await storageManager.getSetting('autoPage');
-        if (isSearchOrUserPage || autoPage === YES) {
+        if (isSearchOrUserPage) {
             return;
         }
         const sortMethod = localStorage.getItem('jhs_sortMethod');

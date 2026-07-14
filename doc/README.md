@@ -112,6 +112,11 @@
 | `99-load-all-btn-and-cleanup.md` | 🔧开发指导 | ✅已执行 | 清理 shouldDisablePaging 遗留调用（autoPage 读取未用返回值死代码）+ 新增「加载全部」浮动按钮：autoPage=YES 且有下一页时右下角出现蓝色按钮，点击循环 loadNextPage 加载所有后续页，pageItems.length 检测无进展防死循环，isLoadingAll 防重入，加载完淡出移除/失败可重试；version 1.12.9→1.13.0 |
 | `100-load-all-btn-realtime-toggle.md` | 🔧开发指导 | ✅已执行 | 「加载全部」按钮实时显示/隐藏：原只在 waterfall 启动时创建需刷新页面；新增 showLoadAllBtn/hideLoadAllBtn 方法，setting-plugin autoPage change 通过 getBean 实时调用，切换即时生效不需刷新；showLoadAllBtn 幂等（已存在/无下一页/容器未初始化跳过），hideLoadAllBtn 正在 loadAllPages 时安全移除；version 1.13.0→1.13.1 |
 | `101-duplicate-detection-and-deep-integration.md` | 🔧开发指导 | ✅已执行 | 重复检测优化+深度融合：checkDuplicateCarNumbers 连续≥2 改为重复比例≥50%（减少加载全部累积大量页后误判）；loadAllPages 循环退出后检查 loader waterfall-error 状态区分页码受限/加载失败/全部加载完三种结果同步按钮文案；version 1.13.1→1.13.2 |
+| `102-fix-lists-page-sort-missing.md` | 🔧开发指导 | ✅已执行 | 修复 /lists/* 清单页排序组件丢失：autoPage=YES 时无条件禁用排序但 /lists/* 不支持瀑布流分页无 .pagination-next；三处加 !currentHref.includes('/lists/') 条件（page-sort handle + list-page-button handle + setting-plugin autoPage change）使 /lists/ 页面 autoPage=YES 仍显示排序；version 1.13.2→1.13.3 |
+| `103-fix-list-page-sort-missing.md` | 🔧开发指导 | ✅已执行 | 修复普通列表页排序组件丢失：git 确认 doc/92/93 只删演员页 actorsPage prop+filterAllVideo 没动 sort-toggle-btn；真正原因是 autoPage=YES 时排序与瀑布流互斥隐藏 #sort-toggle-btn；移除 autoPage 对 #sort-toggle-btn 的隐藏逻辑（始终显示）+ sortItems 移除 autoPage 判断（手动点击仍排序）；PageSort 保持 autoPage=YES 不注入（sortGuard 与瀑布流冲突）；version 1.13.3→1.13.4 |
+| `104-remove-pagesort-autopage-disable.md` | 🔧开发指导 | ✅已执行 | 移除 PageSort 的 autoPage 禁用逻辑：doc/103 只恢复了 #sort-toggle-btn 但 PageSort 排序选择器仍 autoPage=YES return 不注入；重新审查 sortGuard 发现冲突不严重（仅 activeSort≠null 时触发+5 次上限）；移除 handle 的 autoPage 检查+lists 条件，所有列表页注入 PageSort；删 unused currentHref/YES import；version 1.13.4→1.13.5 |
+| `105-restore-actors-page-sort.md` | 🔧开发指导 | ✅已执行 | 恢复演员页 /actors/* 排序组件：doc/92/93 因 .toolbar 显示混乱把整个按钮组禁用（createMenuBtn/bindEvent 早 return）过度；移除早 return 恢复注入，按钮组挂 .main-tabs/.tabs 不挂 .toolbar 不混乱；PageSort 排序选择器注入 .toolbar 不冲突；version 1.13.5→1.13.6 |
+| `102-fix-page-sort-static-page-not-injecting.md` | 🔧开发指导 | ✅已执行 | 修复视频清单详情页 /lists/{id} 排序按钮组不注入：waitForContainer 照搬原脚本 MutationObserver 等待模式，但本项目 @run-at document-idle 时 section 已就绪、observer 不会立即触发，静态清单页无瀑布流 mutation 致 observer 永不触发；改为先同步尝试 createSortSelector 成功则返回、失败才 observer 等待（返回值 void→boolean）；version 1.13.2→1.13.3 |
 
 ## 类型图例
 
