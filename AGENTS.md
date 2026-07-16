@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 39 个功能插件（JavDB 37 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -140,6 +140,12 @@ monkey-jhs-disassemble/
 | MagnetHubPlugin | magnet-hub-plugin.ts | magnetHubPlugin | 多引擎磁链 |
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2-by-123av-plugin.ts | fc2By123AvPlugin | 123Av FC2 浏览 |
+
+**新增功能插件（1 个）**：本项目自创（非 archetype 拆分/集成/升级）
+
+| 插件 | 文件 | 职责 |
+|------|------|------|
+| VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
 
 ### 3.4 核心模块 `src/core/`
 

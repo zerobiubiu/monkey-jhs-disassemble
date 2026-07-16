@@ -65,6 +65,7 @@ import { ListReadingStatusPlugin } from './plugins/list-reading-status-plugin';
 import { ModalListDisablerPlugin } from './plugins/modal-list-disabler-plugin';
 import { VideoListsTagPlugin } from './plugins/video-lists-tag/vlt-plugin';
 import { CarListReaderPlugin } from './plugins/car-status-sync/car-list-reader-plugin';
+import { VisitHistoryPlugin } from './plugins/visit-history-plugin';
 import { MissavStatusTagPlugin } from './plugins/car-status-sync/missav-status-tag-plugin';
 import { MissavQuickCopyPlugin } from './plugins/missav-quick-copy-plugin';
 import { featureFlags } from './core/feature-flags';
@@ -302,6 +303,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(ModalListDisablerPlugin);
         manager.register(VideoListsTagPlugin);
         manager.register(CarListReaderPlugin);
+        manager.register(VisitHistoryPlugin);
         // 升级新插件（feature flag 可插拔）
         if (featureFlags.translatePlugin) manager.register(TranslatePlugin);
         if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin);

@@ -76,6 +76,11 @@ import {
     type AutoBackupConfig,
     type AutoBackupFrequency
 } from '../core/auto-backup';
+import {
+    collectLocalStorageBackup,
+    collectGmStorageBackup,
+    applyBackupExtras
+} from '../core/backup-extra-storage';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -133,22 +138,42 @@ export class SettingPlugin extends BasePlugin {
         {
             key: 'jhs_other_site',
             text: '🌍 第三方站点缓存',
-            title: 'missav/supjav 等站点搜索结果'
+            title: 'missav/supjav 等站点搜索结果（随 WebDav 备份）'
+        },
+        {
+            key: 'jhs_other_site_dmm',
+            text: '🌍 DMM 预览伴生缓存',
+            title: 'DMM 预览相关第三方链接（随 WebDav 备份）'
         },
         {
             key: 'jhs_translate',
             text: '🆎 标题翻译',
-            title: '番号→中文标题翻译（Google Translate）'
+            title: '番号→中文标题翻译（Google Translate，随备份）'
         },
         {
             key: 'jhs_actress_info',
             text: '👩 演员信息',
-            title: '演员身高/体重/三围/罩杯/生日（日文维基百科）'
+            title: '演员身高/体重/三围/罩杯/生日（随备份）'
         },
         {
             key: 'jhs_score_info',
             text: '⭐ Top250|热播 评分数据',
-            title: '影片评分 HTML 快照（javdb 详情页）'
+            title: '影片评分 HTML 快照（随备份）'
+        },
+        {
+            key: 'jhs_screenShot',
+            text: '🖼️ 截图墙缓存',
+            title: 'javstore 截图墙（随备份）'
+        },
+        {
+            key: 'jhs_visit_history',
+            text: '🕐 访问记录',
+            title: '页面访问时间记录（随备份）'
+        },
+        {
+            key: 'jdb:rating_cache_v2',
+            text: '⭐ 列表评分缓存',
+            title: '评分显示插件缓存（随备份）'
         }
     ];
 
@@ -1021,6 +1046,7 @@ export class SettingPlugin extends BasePlugin {
                                 btn: ['确定', '取消']
                             },
                             async (layerIndex: any) => {
+                                applyBackupExtras(parsedData);
                                 await storageManager.importData(parsedData);
                                 show.ok('数据导入成功');
                                 layer.close(layerIndex);
@@ -1085,16 +1111,9 @@ export class SettingPlugin extends BasePlugin {
     }
 
     /**
-     * 构造备份 payload：在导出数据基础上注入本机凭证 ID 与自动备份配置。
-     *
-     * 备份格式：`{ ...exportData, credentialId, autoBackupConfig }`，
-     * credentialId 标识备份来源浏览器，autoBackupConfig 随备份文件保存
-     * 自动备份策略。这两个字段不在 exportData（IndexedDB）内，注入到备份
-     * payload 顶层，导入时会被 importData 写入 IndexedDB（无副作用，
-     * 因为导入后凭证 ID 仍以 GM 存储的本地值为准）。
-     *
-     * @param settings 当前设置对象（复用调用方已读取的，避免重复 IO）
-     * @returns 备份 payload 对象
+     * 构造备份 payload：IndexedDB 全量 + 元信息 + localStorage 长期缓存/偏好 + GM 清单数据。
+     * 含 __localStorage / __gmStorage，导入时由 applyBackupExtras 写回后剥离，
+     * 避免 importData 误写入 forage。
      */
     async buildBackupPayload(settings: any): Promise<Record<string, any>> {
         const exportData = await storageManager.exportData();
@@ -1103,6 +1122,8 @@ export class SettingPlugin extends BasePlugin {
             autoBackupConfig: settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG,
             backupTime: utils.getNowStr('_', '_', '_')
         };
+        exportData.__localStorage = collectLocalStorageBackup();
+        exportData.__gmStorage = collectGmStorageBackup();
         return exportData;
     }
 
@@ -1324,6 +1345,7 @@ export class SettingPlugin extends BasePlugin {
                                                         ).decryptCredential(fileContent);
                                                         show.info('解密完成, 开始导入...');
                                                         const parsedData = JSON.parse(fileContent);
+                                                        applyBackupExtras(parsedData);
                                                         await storageManager.importData(parsedData);
                                                         show.ok('导入成功!');
                                                         window.location.reload();
@@ -1364,10 +1386,11 @@ export class SettingPlugin extends BasePlugin {
         });
     }
 
-    /** 导出本地 JSON 数据文件。对应原 L10553-10563。 */
+    /** 导出本地 JSON 数据文件（含访问记录等 __localStorage，与 WebDav 备份一致）。 */
     async exportData(): Promise<void> {
         try {
-            const exportText = JSON.stringify(await storageManager.exportData());
+            const settings = await storageManager.getSetting();
+            const exportText = JSON.stringify(await this.buildBackupPayload(settings));
             const fileName = `${utils.getNowStr('_', '_')}.json`;
             utils.download(exportText, fileName);
             show.ok('数据导出成功');

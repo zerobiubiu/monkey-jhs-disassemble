@@ -9,6 +9,78 @@
 
 ---
 
+## v1.18.0
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **全量长期缓存随 WebDav / 本地备份**（doc/116）：手动备份、自动备份、JSON
+  导出统一附带 `__localStorage`（预加载/翻译/演员/评分/截图/访问记录/列表评分
+  缓存 + 站点启用等偏好）与 `__gmStorage`（清单阅读进度/评分/瀑布流开关等）。
+  导入时 `applyBackupExtras` 写回后剥离，避免写入 IndexedDB。IndexedDB 主数据
+  原样全量导出不变。缓存管理面板补充 DMM 伴生/截图/列表评分缓存项。
+
+---
+
+## v1.17.3
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **访问记录随 WebDav / JSON 备份**（doc/115）：`buildBackupPayload` 增加
+  `__localStorage.jhs_visit_history`；手动备份、自动备份、本地导出均包含访问
+  记录；导入时写回 localStorage（覆盖）并从 payload 剥离，避免误写入
+  IndexedDB。旧备份无该字段时导入不改动本地访问记录。
+
+---
+
+## v1.17.2
+
+**发布日期**：2026-07-16
+
+### 修复
+
+- **访问记录仍需刷新才更新打开时间**（doc/114）：根因是注入时 `history`/`ts`
+  闭包固化，且当时未访问的链接不绑监听。改为全部元数据链接绑 hover；
+  **每次悬浮与定时 tick 都重读 localStorage** 取最新 ts；500ms 刷新文案；
+  `pageshow` 处理 bfcache。新开标签访问后切回详情页无需 F5 即可看到
+  「X秒前打开过」并持续跳动。
+
+---
+
+## v1.17.1
+
+**发布日期**：2026-07-16
+
+### 修复
+
+- **访问记录悬浮时间实时跳动**（doc/113）：原先复用全局 tooltip，文案在 hover
+  时固化，需刷新页面才更新。改为自定义 `.jhs-visit-tooltip`：mouseenter 启动
+  1s 定时器重算「X秒/分钟前打开过」，mouseleave/scroll/resize 隐藏。访问记录
+  仍为 localStorage 本地（不随 WebDav 备份，备份仅序列化 IndexedDB）。
+
+---
+
+## v1.17.0
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **访问记录插件**（doc/112）：新增 `VisitHistoryPlugin`，记录所有打开过的 javdb
+  页面（localStorage `jhs_visit_history`，path→时间戳，5000 条 LRU 淘汰）。在影片
+  详情页元数据面板的可跳转链接（番號/導演/片商/系列/類別/演員，选择器
+  `.movie-panel-info .panel-block .value a[href]`）上悬浮显示「最近打开时间」——
+  复用项目全局 tooltip（设 `data-tip-top`，捕获阶段刷新使停留较久仍实时），格式：
+  <1 分「X秒前打开过」、<1 时「X分钟前打开过」、<1 天「X小时前打开过」、
+  <1 周「X天前打开过」、更久「YYYY-MM-DD 打开过」。路径经 `new URL` 同源归一化
+  匹配。`jhs_visit_history` 加入「缓存管理」面板可清理。live 真机验证选择器命中
+  14 条元数据链接、归一化与时间格式均符合规格。
+
+---
+
 ## v1.16.1
 
 **发布日期**：2026-07-16
