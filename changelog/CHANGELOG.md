@@ -9,6 +9,57 @@
 
 ---
 
+## v1.15.1
+
+**发布日期**：2026-07-16
+
+### 修复
+
+- **仅匹配失败显示徽标、其他状态空白**（doc/109）：已缓存项（missav 曾命中、
+  `jhs_other_site` 有 `carNum_missAv` 键）原 `syncAllBadges` 不建徽标，致列表页
+  仅未命中的「匹配失败」项有徽标、已缓存项全空白。改为已缓存项补「成功匹配」
+  徽标（无徽标或陈旧「排队中」才写，已是成功则跳过）；`handle()` 列表页分支在
+  `preloadListPage` 前同步调 `syncAllBadges` 使首屏即时可见；筛选栏去「已缓存」
+  芯片（已缓存即成功，语义合并）留 4 档（排队中/请求中/成功匹配/匹配失败）。
+
+---
+
+## v1.15.0
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **预加载状态深度融合：实时跟踪 + 筛选栏 + 样式优化**（doc/108）：针对
+  doc/107 反馈深度重构。(1) syncAllBadges 让流式加载（AutoPage append）的
+  新 item 一出现即显示「排队中」徽标，消除 500ms 防抖延迟（startPreloadObserver
+  改为立即 sync+ensure+refresh 再 300ms 防抖 preloadListPage）。(2) 新增预加载
+  筛选栏，镜像 StatusTagFilterPlugin 挂载链，挂于 `.status-tag-filter-bar` 旁，
+  5 档芯片（排队中/请求中/成功匹配/匹配失败/已缓存）实时计数 + 点击过滤，
+  专用 `data-preload-hidden` 属性 + 协同安全（跳过 data-hide/data-status-tag-hidden
+  等其他筛选插件隐藏项）。(3) 样式深度优化：徽标 ✓/✕/脉冲点状态图标 + 配色，
+  芯片药丸 + 状态色圆点 + active，与 .status-tag-filter-chip 视觉统一。状态以
+  DOM 徽标为唯一真相，PageSort 移动节点保留徽标，observer 安全已前置调研确认。
+
+---
+
+## v1.14.0
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **列表页预加载实时状态徽标**（doc/107）：OtherSitePlugin 列表页预加载
+  missav 缓存时，于每个 `.item` 的 `.video-title` 下方注入状态条 + 每站点
+  徽标，四档状态（排队中/请求中/成功匹配/匹配失败）实时反映预加载进度。
+  新增 `PreloadStatusBar`/`PreloadStatusBadge` 组件 +
+  `preload-status-badge.css`；`updatePreloadStatus` 幂等方法 find-or-create
+  后 jQuery 改 class/text 不重建 DOM；前置调研确认对所有 MutationObserver
+  安全（`.movie-list` 三 observer subtree:false 不响应 item 内部变化；
+  body subtree observer 按谓词过滤，类名前缀避开 `tag`/`status-tag` 等谓词）。
+
+---
+
 ## v1.13.7
 
 **发布日期**：2026-07-16

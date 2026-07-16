@@ -33,7 +33,14 @@ import { OtherSiteBox } from '../components/other-site-box';
 import { OtherSiteBtn } from '../components/other-site-btn';
 import { OtherSiteCheckbox } from '../components/other-site-checkbox';
 import { SiteResultTag } from '../components/site-result-tag';
+import {
+    PRELOAD_STATUS_MAP,
+    PreloadStatusBar,
+    PreloadStatusBadge
+} from '../components/preload-status-badge';
+import type { PreloadStatus } from '../components/preload-status-badge';
 import otherSiteCssRaw from '../styles/other-site-plugin.css?raw';
+import preloadStatusCssRaw from '../styles/preload-status-badge.css?raw';
 
 /** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
 interface SiteResult {
@@ -109,6 +116,35 @@ export class OtherSitePlugin extends BasePlugin {
      * 避免逐个失败刷屏 + 浪费请求。下次页面加载时重试（集合在 handle() 入口重置）。
      */
     private blockedSiteIds: Set<string> = new Set();
+    /** 筛选栏构建重试 observer（挂载目标未就绪时等待，构建后断开）。 */
+    private filterBarObserver: MutationObserver | null = null;
+    /** 筛选栏计数刷新防抖计时器。 */
+    private filterRefreshDebounce: ReturnType<typeof setTimeout> | null = null;
+    /**
+     * 筛选栏芯片定义（固定 5 档：排队中/请求中/成功匹配/匹配失败/已缓存）。
+     * 'cached' 表示无徽标的卡片（已缓存或无需预加载）。
+     */
+    private static readonly PRELOAD_CHIPS: { value: string; label: string }[] = [
+        { value: 'queued', label: '排队中' },
+        { value: 'requesting', label: '请求中' },
+        { value: 'success', label: '成功匹配' },
+        { value: 'failed', label: '匹配失败' }
+    ];
+    /** 本插件隐藏卡片使用的属性（与其他筛选插件协同安全，各占一属性）。 */
+    private static readonly PRELOAD_HIDDEN_ATTR = 'data-preload-hidden';
+    /**
+     * 其他筛选/隐藏插件使用的隐藏属性集合。本插件 applyPreloadFilter /
+     * collectPreloadCounts 遇到带这些属性的卡片一律跳过（不纳入管理、不计入计数），
+     * 与 StatusTagFilterPlugin（data-status-tag-hidden）、VideoListsTagPlugin
+     * （data-video-lists-tag-hidden）、ListReadingStatusPlugin（data-lrs-hidden）、
+     * jhs ListPagePlugin（data-hide）协同共存，互不干扰。
+     */
+    private static readonly OTHER_HIDDEN_ATTRS = [
+        'data-hide',
+        'data-lrs-hidden',
+        'data-status-tag-hidden',
+        'data-video-lists-tag-hidden'
+    ];
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4875-4877。 */
     getName(): string {
@@ -120,7 +156,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 无参数，返回 Promise<string>（CSS 文本）。
      */
     async initCss(): Promise<string> {
-        return otherSiteCssRaw;
+        return `${otherSiteCssRaw}\n${preloadStatusCssRaw}`;
     }
 
     /**
@@ -140,13 +176,20 @@ export class OtherSitePlugin extends BasePlugin {
     async handle(): Promise<void> {
         // 每次页面加载重置 Cloudflare 拦截标记，重新尝试
         this.blockedSiteIds.clear();
+        // 外部网站预加载总开关：关闭则不渲染详情页按钮、不预加载、不挂筛选栏
+        if ((await storageManager.getSetting('enableLoadOtherSite', YES)) !== YES) {
+            return;
+        }
         if ((window as any).isDetailPage) {
             this.loadOtherSite().then();
         } else if (document.querySelector('.movie-list')) {
-            // 有 .movie-list 的页面（列表页/清单详情页/搜索页等）才预加载
+            // 有 .movie-list 的页面（列表页/清单详情页/搜索页等）才预加载 + 挂筛选栏
             // /users/* 清单列表页无 .movie-list（容器是 #lists > ul），自动排除
+            // 立即为所有 item 创建徽标（已缓存→成功匹配，未缓存→排队中），消除空窗
+            this.syncAllBadges();
             this.preloadListPage().then();
             this.startPreloadObserver();
+            this.initFilterBar();
         }
     }
 
@@ -413,11 +456,16 @@ export class OtherSitePlugin extends BasePlugin {
                     continue;
                 }
 
-                // 入队串行限流预加载
+                // 入队串行限流预加载（先标记排队中，徽标实时反映队列状态）
+                this.updatePreloadStatus($item, siteConfig.id, 'queued');
                 this.preloadQueue.addTask(async () => {
                     // 二次检查：队列执行期间可能已被标记拦截
-                    if (this.blockedSiteIds.has(siteConfig.id)) return;
-                    await this.preloadSite(carNum, siteConfig);
+                    if (this.blockedSiteIds.has(siteConfig.id)) {
+                        this.updatePreloadStatus($item, siteConfig.id, 'failed');
+                        return;
+                    }
+                    this.updatePreloadStatus($item, siteConfig.id, 'requesting');
+                    await this.preloadSite(carNum, siteConfig, $item);
                 });
                 preloadCount++;
             }
@@ -435,14 +483,16 @@ export class OtherSitePlugin extends BasePlugin {
     /**
      * 单站点缓存预热：请求搜索页 → 解析详情链接 → 写缓存。
      *
-     * 与 handleSite 的区别：不操作按钮 DOM，只写缓存。
+     * 与 handleSite 的区别：不操作详情页按钮 DOM，只写缓存；但会实时更新
+     * 列表页 item 内的预加载状态徽标（成功匹配 / 匹配失败）。
      * 复用 handleSite 的搜索-解析-缓存流程，但全部在 try-catch 中静默执行。
      *
      * @param carNum 番号
      * @param siteConfig 站点配置
+     * @param $item 列表页 .item 的 jQuery 对象，用于实时更新预加载状态徽标
      * @returns Promise<void>；无显式抛出
      */
-    private async preloadSite(carNum: string, siteConfig: SiteConfig): Promise<void> {
+    private async preloadSite(carNum: string, siteConfig: SiteConfig, $item: any): Promise<void> {
         try {
             const baseUrl = await siteConfig.getBaseUrl();
             const searchUrl = siteConfig.searchPath(baseUrl, carNum);
@@ -476,6 +526,7 @@ export class OtherSitePlugin extends BasePlugin {
             // 未命中（detailHrefs.length === 0）不缓存，与 handleSite 一致
 
             if (resultData) {
+                this.updatePreloadStatus($item, siteConfig.id, 'success');
                 const storageKey = 'jhs_other_site';
                 const cache: any = localStorage.getItem(storageKey)
                     ? JSON.parse(localStorage.getItem(storageKey) as string)
@@ -487,6 +538,7 @@ export class OtherSitePlugin extends BasePlugin {
                     `${OtherSitePlugin.PRELOAD_LOG} ✓ ${carNum} ${siteConfig.id.replace('Btn', '')} ${resultData.type === 'single' ? '命中' : '多结果'}`
                 );
             } else {
+                this.updatePreloadStatus($item, siteConfig.id, 'failed');
                 console.log(
                     `${OtherSitePlugin.PRELOAD_LOG} ✗ ${carNum} ${siteConfig.id.replace('Btn', '')} 未命中`
                 );
@@ -497,12 +549,14 @@ export class OtherSitePlugin extends BasePlugin {
             // Cloudflare 拦截（403 + "Just a moment..."）：标记该站点，跳过本轮剩余任务
             if (errorMsg.includes('Just a moment') || errorMsg.includes('403')) {
                 this.blockedSiteIds.add(siteConfig.id);
+                this.updatePreloadStatus($item, siteConfig.id, 'failed');
                 console.warn(
                     `${OtherSitePlugin.PRELOAD_LOG} ⚠ ${siteName} 被 Cloudflare 拦截，跳过本轮剩余任务`
                 );
                 return;
             }
             // 其他错误静默处理（不影用户，下次打开详情页会重试）
+            this.updatePreloadStatus($item, siteConfig.id, 'failed');
             console.warn(
                 `${OtherSitePlugin.PRELOAD_LOG} ✗ ${carNum} ${siteName} 失败: ${errorMsg.slice(0, 60)}`
             );
@@ -510,26 +564,382 @@ export class OtherSitePlugin extends BasePlugin {
     }
 
     /**
-     * 监听 .movie-list 子元素变化（AutoPage 瀑布流 append 新页），
-     * 防抖后对新 item 预加载缓存。
+     * 更新（或创建）某 .item 内某站点的预加载状态徽标，实时反映预加载进度。
+     *
+     * 状态条 `.jhs-preload-status-bar` 注入到 `.video-title` 之后（.item > a.box 内），
+     * 与 VideoListsTag 的 `.custom-tags-display`（.meta afterend）位置不冲突。
+     * 每站点一个 `.jhs-preload-status` 徽标，按 `data-site-id` 定位。
+     *
+     * 已存在徽标 → jQuery 直接改 `.jhs-ps-badge` 的 class 与 text（不重建 DOM，
+     * 避免布局抖动；class 全量覆盖以切换状态色，`::before` 脉冲点随 class 增减）；
+     * 不存在 → 经 jsxToString 注入 PreloadStatusBar/PreloadStatusBadge 初始 HTML。
+     *
+     * 幂等：重复调用同一状态不产生多余 DOM；observer 回调重入也安全
+     * （类名前缀 jhs-preload-status-* 不匹配任何现有 observer 谓词）。
+     *
+     * @param $item .item 的 jQuery 对象。
+     * @param siteId 站点 id（如 "missAvBtn"）。
+     * @param status 预加载状态（queued / requesting / success / failed）。
+     */
+    private updatePreloadStatus($item: any, siteId: string, status: PreloadStatus): void {
+        const $videoTitle = $item.find('.video-title').first();
+        if ($videoTitle.length === 0) return;
+        if ($item.find('.jhs-preload-status-bar').length === 0) {
+            $videoTitle.after(jsxToString(<PreloadStatusBar />));
+        }
+        const $bar = $item.find('.jhs-preload-status-bar');
+        const $badge = $bar.find(`[data-site-id="${siteId}"]`);
+        if ($badge.length === 0) {
+            $bar.append(
+                jsxToString(
+                    <PreloadStatusBadge
+                        siteId={siteId}
+                        siteName={siteId.replace('Btn', '')}
+                        status={status}
+                    />
+                )
+            );
+            return;
+        }
+        const { cls, text } = PRELOAD_STATUS_MAP[status];
+        $badge.find('.jhs-ps-badge').attr('class', `jhs-ps-badge ${cls}`).text(text);
+        // 实时刷新筛选栏计数（防抖合并频繁的状态变更）
+        this.refreshFilterBar();
+    }
+
+    /**
+     * 返回需预加载的站点配置（已启用且无 initUrl——initUrl 站点如 SupJav
+     * 详情页直接显示黄色、列表页不预加载，不产生徽标）。
+     */
+    private getPreloadableSites(): SiteConfig[] {
+        const enabled = this.getEnabledSites();
+        return this.siteConfigs.filter((s) => enabled.includes(s.id) && !s.initUrl);
+    }
+
+    /**
+     * 深度跟踪：扫描所有 .movie-list .item，为每个可预加载站点补全徽标——
+     * 已缓存（jhs_other_site 有 carNum_siteId 键 = missav 曾命中）→「成功匹配」
+     * 徽标；未缓存且无徽标 →「排队中」徽标。在 handle() 初始加载与
+     * startPreloadObserver 回调（流式加载新 item）中调用，使所有 item 始终
+     * 可见其预加载状态，消除「只有失败的显示、其他状态不显示」的空窗。
+     *
+     * 幂等：已显示「成功匹配」不重复写；已有徽标且非成功的不覆盖（避免降级
+     * 正在请求/已失败的态——已缓存项不会进入请求流程，故仅无徽标或陈旧
+     * 排队态会被纠正为成功）；被屏蔽（data-hide）/番号提取失败（跳过）。
+     */
+    private syncAllBadges(): void {
+        const listPagePlugin = this.getBean('ListPagePlugin');
+        if (!listPagePlugin) return;
+        const sites = this.getPreloadableSites();
+        if (sites.length === 0) return;
+        const cache: any = localStorage.getItem('jhs_other_site')
+            ? JSON.parse(localStorage.getItem('jhs_other_site') as string)
+            : {};
+        $('.movie-list .item').each((_index: number, el: any) => {
+            const $item = $(el);
+            if ($item.attr('data-hide') === YES) return;
+            let carNum: string;
+            try {
+                carNum = listPagePlugin.findCarNumAndHref($item).carNum;
+            } catch {
+                return;
+            }
+            if (!carNum) return;
+            for (const site of sites) {
+                const cacheKey = carNum + '_' + site.id.replace('Btn', '');
+                if (cache[cacheKey]) {
+                    // 已缓存 = 曾命中 → 显示「成功匹配」（无徽标或陈旧排队态才纠正）
+                    const $badge = $item.find(`[data-site-id="${site.id}"] .jhs-ps-badge`);
+                    if (!$badge.length || !$badge.hasClass('jhs-ps-success')) {
+                        this.updatePreloadStatus($item, site.id, 'success');
+                    }
+                } else if (!$item.find(`[data-site-id="${site.id}"]`).length) {
+                    // 未缓存且无徽标 → 预填「排队中」（等 preloadListPage 入队转「请求中」）
+                    this.updatePreloadStatus($item, site.id, 'queued');
+                }
+            }
+        });
+    }
+
+    /**
+     * 读取单个 .item 的预加载状态（供筛选计数/过滤用）。
+     * @returns 状态值（queued/requesting/success/failed）；无徽标返回 'none'。
+     */
+    private getItemPreloadStatus(item: Element): string {
+        const badge = item.querySelector('.jhs-preload-status .jhs-ps-badge');
+        if (!badge) return 'none';
+        for (const key of ['queued', 'requesting', 'success', 'failed']) {
+            if (badge.classList.contains(`jhs-ps-${key}`)) return key;
+        }
+        return 'none';
+    }
+
+    // ===================== 预加载筛选栏 =====================
+
+    /**
+     * 初始化预加载筛选栏：立即尝试挂载，挂载目标未就绪则用 observer 重试
+     * （镜像 StatusTagFilterPlugin 的 tryBuild + observer 模式）。
+     * 与 .status-tag-filter-bar / .tag-filter-bar 等其他筛选栏同行挂载。
+     */
+    private initFilterBar(): void {
+        if (this.tryBuildFilterBar()) return;
+        let retries = 0;
+        this.filterBarObserver = new MutationObserver(() => {
+            if (document.querySelector('.preload-filter-bar')) {
+                this.filterBarObserver?.disconnect();
+                this.filterBarObserver = null;
+                return;
+            }
+            if (this.tryBuildFilterBar() || ++retries > 50) {
+                this.filterBarObserver?.disconnect();
+                this.filterBarObserver = null;
+            }
+        });
+        this.filterBarObserver.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => {
+            this.filterBarObserver?.disconnect();
+            this.filterBarObserver = null;
+        }, 10000);
+    }
+
+    /** 尝试构建筛选栏（若已存在或无挂载目标则跳过）。@returns 是否已就绪。 */
+    private tryBuildFilterBar(): boolean {
+        if (document.querySelector('.preload-filter-bar')) return true;
+        const target = this.findFilterMountTarget();
+        if (!target) return false;
+        this.buildFilterBar(target);
+        return true;
+    }
+
+    /**
+     * 按优先级查找筛选栏挂载参考元素（镜像 StatusTagFilterPlugin.findMountTarget，
+     * 但优先紧随 .status-tag-filter-bar）：
+     * .status-tag-filter-bar → .tag-filter-bar → .tabs.is-boxed / .actor-tags.tags
+     * → section/div 首子元素回退。挂载方向：高优先级 afterend，回退 beforebegin。
+     */
+    private findFilterMountTarget(): Element | null {
+        const stf = document.querySelector('.status-tag-filter-bar');
+        if (stf) return stf;
+        const vlt = document.querySelector('.tag-filter-bar');
+        if (vlt) return vlt;
+        const isActorPage = /^\/actors\//.test(window.location.pathname);
+        if (isActorPage) {
+            const actorTags = document.querySelector('body > section > div > div.actor-tags.tags');
+            if (actorTags) return actorTags;
+        } else {
+            const tabsBoxed = document.querySelector('body > section > div > div.tabs.is-boxed');
+            if (tabsBoxed) return tabsBoxed;
+        }
+        const section = document.querySelector('body > section > div > div');
+        if (section && section.firstElementChild) {
+            if (
+                !section.firstElementChild.matches(
+                    '.preload-filter-bar, .status-tag-filter-bar, .tag-filter-bar'
+                )
+            ) {
+                return section.firstElementChild;
+            }
+        }
+        const container = document.querySelector('body > section > div');
+        if (container && container.firstElementChild) {
+            if (
+                !container.firstElementChild.matches(
+                    '.preload-filter-bar, .status-tag-filter-bar, .tag-filter-bar'
+                )
+            ) {
+                return container.firstElementChild;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 构建筛选栏 DOM 并插入挂载参考元素之后。芯片文本含实时计数，
+     * refreshChips 保留已激活状态。点击芯片 toggle active + applyPreloadFilter。
+     */
+    private buildFilterBar(mountTarget: Element): void {
+        const bar = document.createElement('div');
+        bar.className = 'preload-filter-bar';
+
+        const label = document.createElement('span');
+        label.className = 'preload-filter-label';
+        label.textContent = '预加载:';
+        bar.appendChild(label);
+
+        const chipsContainer = document.createElement('div');
+        chipsContainer.className = 'preload-filter-chips';
+        bar.appendChild(chipsContainer);
+
+        const refreshChips = (): void => {
+            const activeValues = new Set(
+                Array.from(chipsContainer.querySelectorAll('.preload-filter-chip.active')).map(
+                    (c: Element) => (c as HTMLElement).dataset.value || ''
+                )
+            );
+            chipsContainer.innerHTML = '';
+            const counts = this.collectPreloadCounts();
+            for (const chip of OtherSitePlugin.PRELOAD_CHIPS) {
+                const el = document.createElement('span');
+                el.className = 'preload-filter-chip';
+                el.dataset.value = chip.value;
+                const dot = document.createElement('span');
+                dot.className = 'pf-dot';
+                el.appendChild(dot);
+                el.appendChild(document.createTextNode(`${chip.label} ${counts[chip.value] ?? 0}`));
+                if (activeValues.has(chip.value)) el.classList.add('active');
+                el.addEventListener('click', () => {
+                    el.classList.toggle('active');
+                    this.applyPreloadFilter();
+                });
+                chipsContainer.appendChild(el);
+            }
+        };
+
+        refreshChips();
+
+        if (
+            mountTarget.matches(
+                '.status-tag-filter-bar, .tag-filter-bar, .actor-tags.tags, .tabs.is-boxed'
+            )
+        ) {
+            mountTarget.insertAdjacentElement('afterend', bar);
+        } else {
+            mountTarget.insertAdjacentElement('beforebegin', bar);
+        }
+
+        (bar as any)._refreshChips = refreshChips;
+    }
+
+    /**
+     * 收集各预加载状态的卡片计数（排除被其他筛选/隐藏插件屏蔽的卡片，
+     * 计数只反映实际可见卡片，与 StatusTagFilterPlugin 一致）。
+     */
+    private collectPreloadCounts(): Record<string, number> {
+        const counts: Record<string, number> = {
+            queued: 0,
+            requesting: 0,
+            success: 0,
+            failed: 0
+        };
+        document.querySelectorAll('.movie-list .item').forEach((item: Element) => {
+            if (OtherSitePlugin.OTHER_HIDDEN_ATTRS.some((a) => item.hasAttribute(a))) return;
+            const st = this.getItemPreloadStatus(item);
+            if (st in counts) counts[st]++;
+        });
+        return counts;
+    }
+
+    /**
+     * 应用筛选：按当前激活芯片显示/隐藏 .item。协同安全——被其他插件隐藏的卡片
+     * 不纳入管理（不恢复、不重复隐藏），本插件专用 data-preload-hidden 属性。
+     * OR 逻辑：命中任一选中状态即显示；无激活芯片则恢复本插件隐藏的卡片。
+     */
+    private applyPreloadFilter(): void {
+        const activeChips = document.querySelectorAll('.preload-filter-chip.active');
+        const selected = new Set(
+            Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
+        );
+        const HIDDEN = OtherSitePlugin.PRELOAD_HIDDEN_ATTR;
+
+        if (selected.size === 0) {
+            document.querySelectorAll(`.item[${HIDDEN}]`).forEach((item: Element) => {
+                const el = item as HTMLElement;
+                if (OtherSitePlugin.OTHER_HIDDEN_ATTRS.some((a) => el.hasAttribute(a))) return;
+                el.removeAttribute(HIDDEN);
+                el.style.display = '';
+            });
+            return;
+        }
+
+        document.querySelectorAll('.movie-list .item').forEach((item: Element) => {
+            const el = item as HTMLElement;
+            // 协同安全：被其他插件隐藏的卡片不管理
+            if (OtherSitePlugin.OTHER_HIDDEN_ATTRS.some((a) => el.hasAttribute(a))) return;
+            if (el.style.display === 'none' && !el.hasAttribute(HIDDEN)) return;
+            const st = this.getItemPreloadStatus(el);
+            if (selected.has(st)) {
+                el.removeAttribute(HIDDEN);
+                el.style.display = '';
+            } else {
+                el.setAttribute(HIDDEN, '');
+                el.style.display = 'none';
+            }
+        });
+    }
+
+    /**
+     * 刷新筛选栏：重建芯片（保留激活状态）+ 重新应用筛选。150ms 防抖，
+     * 合并频繁的状态变更（每条预加载完成都会触发）。
+     */
+    private refreshFilterBar(): void {
+        if (this.filterRefreshDebounce) clearTimeout(this.filterRefreshDebounce);
+        this.filterRefreshDebounce = setTimeout(() => {
+            const bar = document.querySelector('.preload-filter-bar');
+            if (bar && (bar as any)._refreshChips) {
+                (bar as any)._refreshChips();
+                this.applyPreloadFilter();
+            }
+        }, 150);
+    }
+
+    /**
+     * 确保筛选栏存在且紧随其他筛选栏。流式加载/重排时由 observer 调用：
+     * - 栏缺失 → 构建
+     * - .status-tag-filter-bar 晚于本插件挂载 → 将本栏移至其后，保持「放在一块」
+     */
+    private ensureFilterBar(): void {
+        if (!document.querySelector('.preload-filter-bar')) {
+            this.tryBuildFilterBar();
+        }
+        const bar = document.querySelector('.preload-filter-bar');
+        if (!bar) return;
+        const stf = document.querySelector('.status-tag-filter-bar');
+        if (stf && bar.previousElementSibling !== stf) {
+            stf.insertAdjacentElement('afterend', bar);
+            this.refreshFilterBar();
+            return;
+        }
+        const vlt = document.querySelector('.tag-filter-bar');
+        if (!stf && vlt && bar.previousElementSibling !== vlt) {
+            vlt.insertAdjacentElement('afterend', bar);
+            this.refreshFilterBar();
+        }
+    }
+
+    /**
+     * 监听 .movie-list 子元素变化（AutoPage 瀑布流 append 新页 / PageSort 重排），
+     * 同步徽标与筛选栏，并防抖后执行完整预加载。
      *
      * 与瀑布流的联动：
      * - AutoPagePlugin（.movie-list 瀑布流）：loadNextPage 往 .movie-list append
-     *   新 item → 触发本 observer → 500ms 防抖 → preloadListPage（跳过已缓存）
+     *   新 item → 触发本 observer → 立即 syncAllBadges（为新 item 预填「排队中」
+     *   徽标，消除流式加载徽标延迟）+ refreshFilterBar → 防抖后 preloadListPage
+     *   入队并逐站点请求
      * - ListWaterfallPlugin（#lists > ul 瀑布流）：操作的是 #lists > ul 不是
-     *   .movie-list，不触发本 observer（且 /users/* 清单列表页无 .movie-list）
+     *   .movie-list，不触发本 observer
+     * - PageSortPlugin 重排：移动 .item 节点（徽标随节点保留），触发本 observer
+     *   → refreshFilterBar 重计芯片计数（徽标无需重建）
      *
-     * 只读不写 DOM，不会与 ListPagePlugin.checkDom 的 MutationObserver 互相触发。
+     * observer 配置为 `{ childList: true }`（subtree 默认 false），仅响应
+     * .movie-list 直接子节点（.item）的增删/重排，不响应 item 内部 DOM 变化
+     * （如 updatePreloadStatus 注入徽标），不会自我循环触发。
      */
     private startPreloadObserver(): void {
         const containerEl = document.querySelector('.movie-list');
         if (!containerEl) return;
 
         this.preloadObserver = new MutationObserver(() => {
+            // 立即为新出现的未缓存 item 预填「排队中」徽标（深度融合跟踪：不等防抖）
+            this.syncAllBadges();
+            // 确保筛选栏存在且紧随其他筛选栏（status-tag-filter 可能晚于本插件挂载）
+            this.ensureFilterBar();
+            // 实时刷新筛选栏计数
+            this.refreshFilterBar();
+            // 防抖后执行完整预加载（入队 + 逐站点请求）
             if (this.preloadDebounce) clearTimeout(this.preloadDebounce);
             this.preloadDebounce = setTimeout(() => {
                 this.preloadListPage().then();
-            }, 500); // 500ms 防抖，等 autoPage append + ListPagePlugin doFilter 完成
+            }, 300); // 300ms 防抖，等 autoPage append + ListPagePlugin doFilter 完成
         });
         this.preloadObserver.observe(containerEl, { childList: true });
     }
