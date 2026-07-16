@@ -9,6 +9,21 @@
 
 ---
 
+## v1.13.7
+
+**发布日期**：2026-07-16
+
+### 修复
+
+- **SupJav 跳转地址未遵守外部网站设置**（doc/106）：详情页 SupJav 按钮跳转
+  地址始终硬编码 `https://supjav.com`，未读取设置项 `supJavUrl`。根因是
+  doc/52 给 supJavBtn 加的 `initUrl` 写死了域名，而 `handleSite` 检测到
+  `initUrl` 设 href 后 `else` 分支因 href 已存在直接 return，致
+  `getSupJavUrl()` 永不调用。`initUrl` 改为 async 读取 `getSupJavUrl()`，
+  类型放宽为 `Promise<string> | string`，调用处加 `await`。
+
+---
+
 ## v1.13.6
 
 **发布日期**：2026-07-14

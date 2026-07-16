@@ -51,7 +51,7 @@ interface SiteConfig {
     findCarNumOrTitle: (item: any) => string;
     sourceCarNum?: any;
     condition?: (sourceCarNum: any) => boolean;
-    initUrl?: (carNum: string) => string;
+    initUrl?: (carNum: string) => Promise<string> | string;
     noHandle?: boolean;
     headers?: any;
 }
@@ -85,7 +85,8 @@ export class OtherSitePlugin extends BasePlugin {
             // SupJav 全站 Cloudflare 拦截严重，解析不可靠。
             // 设 initUrl 后 handleSite 直接显示黄色（warn 状态）+ 搜索页链接，
             // 跳过所有请求（预加载 + 详情页加载均不发请求）。
-            initUrl: (carNum: string) => `https://supjav.com/?s=${carNum}`
+            // 基址取设置项 supJavUrl，缺省 https://supjav.com（与 missAv 一致）。
+            initUrl: async (carNum: string) => `${await this.getSupJavUrl()}/?s=${carNum}`
         }
     ];
     /** storageManager.getSetting() 全量设置缓存，配合 lastFetchTime 做 TTL 复用。对应原 L4871。 */
@@ -210,7 +211,7 @@ export class OtherSitePlugin extends BasePlugin {
     async handleSite(carNum: string, siteConfig: SiteConfig): Promise<void> {
         const buttonEl = $(`#${siteConfig.id}`);
         if (siteConfig.initUrl) {
-            buttonEl.attr('href', siteConfig.initUrl(carNum));
+            buttonEl.attr('href', await siteConfig.initUrl(carNum));
             buttonEl.css('backgroundColor', this.warnBackgroundColor);
         }
         if (siteConfig.noHandle && siteConfig.noHandle === true) {

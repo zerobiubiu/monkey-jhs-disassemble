@@ -117,6 +117,7 @@
 | `104-remove-pagesort-autopage-disable.md` | 🔧开发指导 | ✅已执行 | 移除 PageSort 的 autoPage 禁用逻辑：doc/103 只恢复了 #sort-toggle-btn 但 PageSort 排序选择器仍 autoPage=YES return 不注入；重新审查 sortGuard 发现冲突不严重（仅 activeSort≠null 时触发+5 次上限）；移除 handle 的 autoPage 检查+lists 条件，所有列表页注入 PageSort；删 unused currentHref/YES import；version 1.13.4→1.13.5 |
 | `105-restore-actors-page-sort.md` | 🔧开发指导 | ✅已执行 | 恢复演员页 /actors/* 排序组件：doc/92/93 因 .toolbar 显示混乱把整个按钮组禁用（createMenuBtn/bindEvent 早 return）过度；移除早 return 恢复注入，按钮组挂 .main-tabs/.tabs 不挂 .toolbar 不混乱；PageSort 排序选择器注入 .toolbar 不冲突；version 1.13.5→1.13.6 |
 | `102-fix-page-sort-static-page-not-injecting.md` | 🔧开发指导 | ✅已执行 | 修复视频清单详情页 /lists/{id} 排序按钮组不注入：waitForContainer 照搬原脚本 MutationObserver 等待模式，但本项目 @run-at document-idle 时 section 已就绪、observer 不会立即触发，静态清单页无瀑布流 mutation 致 observer 永不触发；改为先同步尝试 createSortSelector 成功则返回、失败才 observer 等待（返回值 void→boolean）；version 1.13.2→1.13.3 |
+| `106-fix-supjav-initurl-ignores-setting.md` | 🔧开发指导 | ✅已执行 | 修复详情页 SupJav 跳转地址未遵守设置中 supJavUrl 配置：supJavBtn 的 initUrl 硬编码 https://supjav.com，handleSite 检测到 initUrl 设 href 后 else 分支因 href 已存在直接 return，致 getSupJavUrl() 永不调用；initUrl 类型放宽为 `Promise<string> \| string`、实现改 async 读取 getSupJavUrl()、调用处加 await；version 1.13.6→1.13.7 |
 
 ## 类型图例
 
