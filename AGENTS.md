@@ -201,12 +201,15 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
     <div class="side-menu-item" data-panel="domain-panel">🌐 外部网站</div>
     <div class="side-menu-item" data-panel="cache-panel">🧹 清理缓存</div>
     <div class="side-menu-item" data-panel="vlt-panel">📋 收藏清单关系</div>  ← doc/45 新增
+    <div class="side-menu-item" data-panel="missav-panel">🎬 MissAV 同步</div>
+    <div class="side-menu-item" data-panel="preload-panel">⚡ 预加载配置</div>  ← doc/110 新增
   </div>
   <div style="flex:1">  ← 内容区
     <div id="backup-panel" class="content-panel">...</div>
     <div id="base-panel" class="content-panel">...</div>
     ... 各面板 ...
     <div id="vlt-panel" class="content-panel">...</div>  ← doc/45 新增
+    <div id="preload-panel" class="content-panel">...</div>  ← doc/110 新增
   </div>
 </div>
 ```

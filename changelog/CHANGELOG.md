@@ -9,6 +9,39 @@
 
 ---
 
+## v1.16.1
+
+**发布日期**：2026-07-16
+
+### 优化
+
+- **预加载面板加强 + 缓存去重**（doc/111）：(1) 预加载面板移除重复的「清理预加载
+  缓存」按钮——它与「缓存管理」面板的「第三方站点缓存」（`jhs_other_site`）是同一
+  缓存。改为只读缓存状态（总数 + MissAv/SupJav 分站计数 + 占用，切换面板刷新），
+  清理唯一入口回归缓存管理面板。(2) 新增「预加载缓存有效期」`preloadCacheTTL`
+  （天数，0=永不过期）：缓存条目写入附 `ts`，读取统一经 `isCacheEntryValid` 判定
+  过期（5 处读/写：handleSite 读/写、preloadListPage 跳过、preloadSite 写、
+  syncAllBadges），过期条目触发重新预加载。(3) 细化各配置项 help 文案。
+
+---
+
+## v1.16.0
+
+**发布日期**：2026-07-16
+
+### 新增
+
+- **预加载配置面板**（doc/110）：设置菜单新增「⚡ 预加载配置」侧栏 + `preload-panel`
+  面板，全项拆解视频流外部网站预加载的可调行为：`enablePreload`（列表页预加载总闸）、
+  `enablePreloadStatus`（状态徽标与筛选栏显隐）、`preloadDebounce`（防抖延迟 ms）、
+  MissAv/SupJav 站点启用 checkbox（写 jhs_enabled_sites）、「清理预加载缓存」动作按钮。
+  OtherSitePlugin `handle` 增 `enablePreload` 闸 + 读取 `preloadStatusEnabled`/
+  `preloadDebounceMs`，徽标与筛选栏方法以该开关早 return 守卫，`startPreloadObserver`
+  用配置防抖值替代硬编码 300。总开关 `enableLoadOtherSite` 仍留快捷设置面板
+  （避免同 id 冲突）。镜像 domain/base/vlt/missav 既有面板模式。
+
+---
+
 ## v1.15.1
 
 **发布日期**：2026-07-16

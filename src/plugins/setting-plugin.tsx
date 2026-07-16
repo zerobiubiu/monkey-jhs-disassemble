@@ -352,6 +352,21 @@ export class SettingPlugin extends BasePlugin {
         const supJavUrl = await otherSitePlugin.getSupJavUrl();
         $('#missAvUrl').val(missAvUrl);
         $('#supJavUrl').val(supJavUrl);
+        // 预加载配置（enablePreload/enablePreloadStatus 默认开启）
+        $('#enablePreload').prop(
+            'checked',
+            !settings.enablePreload || settings.enablePreload === YES
+        );
+        $('#enablePreloadStatus').prop(
+            'checked',
+            !settings.enablePreloadStatus || settings.enablePreloadStatus === YES
+        );
+        $('#preloadDebounce').val(settings.preloadDebounce || 300);
+        $('#preloadCacheTTL').val(settings.preloadCacheTTL ?? 0);
+        const enabledSites = otherSitePlugin.getEnabledSites();
+        $('#preload-enable-missAvBtn').prop('checked', enabledSites.includes('missAvBtn'));
+        $('#preload-enable-supJavBtn').prop('checked', enabledSites.includes('supJavBtn'));
+        this.refreshPreloadCacheStats();
         const titleFilterKeyword = await storageManager.getTitleFilterKeyword();
         if (titleFilterKeyword) {
             titleFilterKeyword.forEach((keyword: string) => {
@@ -571,6 +586,10 @@ export class SettingPlugin extends BasePlugin {
             } else if (panelName === 'missav-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').hide();
+            } else if (panelName === 'preload-panel') {
+                $('#saveBtn').show();
+                $('#clean-all').hide();
+                this.refreshPreloadCacheStats();
             } else {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
@@ -814,6 +833,30 @@ export class SettingPlugin extends BasePlugin {
     }
 
     /**
+     * 刷新预加载配置面板的缓存状态显示（jhs_other_site 总数 + MissAv/SupJav 分站计数 + 占用）。
+     * 与「缓存管理」面板的「第三方站点缓存」为同一缓存，此处仅展示统计，清理见缓存管理面板。
+     */
+    refreshPreloadCacheStats(): void {
+        const stats = getCacheStats('jhs_other_site');
+        const raw = localStorage.getItem('jhs_other_site');
+        let missAv = 0;
+        let supJav = 0;
+        if (raw) {
+            try {
+                const cache = JSON.parse(raw);
+                const keys = Object.keys(cache);
+                missAv = keys.filter((k: string) => k.endsWith('_missAv')).length;
+                supJav = keys.filter((k: string) => k.endsWith('_supJav')).length;
+            } catch {
+                /* 解析失败忽略 */
+            }
+        }
+        $('#preload-cache-stats').html(
+            `共 <b>${stats.count}</b> 条（MissAv ${missAv} / SupJav ${supJav}）｜占用 ${formatSize(stats.size)}`
+        );
+    }
+
+    /**
      * 刷新所有缓存项的统计信息 + 总占用大小。
      */
     refreshAllCacheStats(): void {
@@ -859,6 +902,17 @@ export class SettingPlugin extends BasePlugin {
         };
         settings.missAvUrl = $('#missAvUrl').val().replace(/\/$/, '');
         settings.supJavUrl = $('#supJavUrl').val().replace(/\/$/, '');
+        // 预加载配置
+        settings.enablePreload = $('#enablePreload').is(':checked') ? YES : NO;
+        settings.enablePreloadStatus = $('#enablePreloadStatus').is(':checked') ? YES : NO;
+        settings.preloadDebounce = $('#preloadDebounce').val();
+        settings.preloadCacheTTL = $('#preloadCacheTTL').val();
+        // 站点启用写入 jhs_enabled_sites（localStorage，非 settings 对象）
+        const otherSitePluginForSave = this.getBean('OtherSitePlugin');
+        const enabledSiteIds: string[] = [];
+        if ($('#preload-enable-missAvBtn').is(':checked')) enabledSiteIds.push('missAvBtn');
+        if ($('#preload-enable-supJavBtn').is(':checked')) enabledSiteIds.push('supJavBtn');
+        otherSitePluginForSave.saveEnabledSites(enabledSiteIds);
         settings.enableFavoriteActresses = $('#enableFavoriteActresses').is(':checked') ? YES : NO;
         settings.enableSaveActressCarInfo = $('#enableSaveActressCarInfo').is(':checked')
             ? YES

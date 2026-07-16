@@ -122,6 +122,13 @@ export function SettingDialog({
                 >
                     🎬 MissAV 同步
                 </div>
+                <div
+                    className={`side-menu-item ${panelName === 'preload-panel' ? 'active' : ''}`}
+                    data-panel="preload-panel"
+                    title="视频流外部网站预加载配置"
+                >
+                    ⚡ 预加载配置
+                </div>
             </div>
 
             <div
@@ -683,6 +690,158 @@ export function SettingDialog({
                             accept=".json,application/json"
                             style={{ display: 'none' }}
                         />
+                    </div>
+                    <div
+                        id="preload-panel"
+                        className="content-panel"
+                        style={{
+                            display: panelName === 'preload-panel' ? 'block' : 'none'
+                        }}
+                    >
+                        <div className="setting-item">
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                列表页预加载{' '}
+                                <span data-tip="在视频流（列表页/清单详情页/搜索页）后台预加载 missav 等站点搜索结果并缓存，打开详情页时按钮零延迟变绿。关闭后不预加载、不显示状态徽标与筛选栏（详情页按钮仍受「外部网站功能」总开关控制）">
+                                    ❓
+                                </span>
+                            </span>
+                            <div className="form-content">
+                                <input type="checkbox" id="enablePreload" className="mini-switch" />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                显示状态徽标与筛选栏{' '}
+                                <span data-tip="在每个卡片标题下方显示预加载状态（排队中/请求中/成功匹配/匹配失败），并在筛选栏实时计数、可点击过滤。关闭后仍后台预加载缓存，但不显示 UI">
+                                    ❓
+                                </span>
+                            </span>
+                            <div className="form-content">
+                                <input
+                                    type="checkbox"
+                                    id="enablePreloadStatus"
+                                    className="mini-switch"
+                                />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span className="setting-label">预加载防抖延迟 (毫秒):</span>
+                            <div className="form-content">
+                                <input
+                                    id="preloadDebounce"
+                                    type="number"
+                                    min="0"
+                                    max="5000"
+                                    step="50"
+                                />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                预加载缓存有效期 (天){' '}
+                                <span data-tip="命中缓存超过此天数后视为过期，下次打开列表页会重新预加载。0=永不过期（缺省）。建议 7-30 天平衡新鲜度与请求量">
+                                    ❓
+                                </span>
+                            </span>
+                            <div className="form-content">
+                                <input
+                                    id="preloadCacheTTL"
+                                    type="number"
+                                    min="0"
+                                    max="365"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+                        <hr style={HR_STYLE} />
+                        <div className="setting-item">
+                            <span className="setting-label">预加载站点:</span>
+                            <div
+                                className="form-content"
+                                style={{
+                                    display: 'flex',
+                                    gap: '16px',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <label
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <input type="checkbox" id="preload-enable-missAvBtn" /> MissAv
+                                </label>
+                                <label
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <input type="checkbox" id="preload-enable-supJavBtn" /> SupJav
+                                </label>
+                            </div>
+                        </div>
+                        <p
+                            style={{
+                                fontSize: '12px',
+                                color: '#6c757d',
+                                margin: '8px 0 0'
+                            }}
+                        >
+                            SupJav 全站 Cloudflare 拦截严重，列表页预加载已跳过（仅详情页显示黄色搜索页链接），MissAv 为主要预加载源。
+                        </p>
+                        <hr style={HR_STYLE} />
+                        <div className="setting-item">
+                            <span className="setting-label">预加载缓存状态:</span>
+                            <div className="form-content">
+                                <div
+                                    id="preload-cache-stats"
+                                    style={{
+                                        fontSize: '13px',
+                                        color: '#495057',
+                                        lineHeight: '1.8'
+                                    }}
+                                >
+                                    加载中...
+                                </div>
+                            </div>
+                        </div>
+                        <p
+                            style={{
+                                fontSize: '12px',
+                                color: '#6c757d',
+                                margin: '8px 0 0'
+                            }}
+                        >
+                            此缓存即「缓存管理」面板的「第三方站点缓存」（jhs_other_site），清理请前往该面板。总开关「外部网站功能」位于快捷设置面板。
+                        </p>
                     </div>
                 </div>
                 <div

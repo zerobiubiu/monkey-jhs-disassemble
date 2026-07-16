@@ -120,6 +120,12 @@ export class OtherSitePlugin extends BasePlugin {
     private filterBarObserver: MutationObserver | null = null;
     /** 筛选栏计数刷新防抖计时器。 */
     private filterRefreshDebounce: ReturnType<typeof setTimeout> | null = null;
+    /** 是否显示预加载状态徽标与筛选栏（设置项 enablePreloadStatus，缺省开启）。 */
+    private preloadStatusEnabled = true;
+    /** 预加载防抖延迟毫秒（设置项 preloadDebounce，缺省 300）。 */
+    private preloadDebounceMs = 300;
+    /** 预加载缓存有效期天数（设置项 preloadCacheTTL，0=永不过期，缺省 0）。 */
+    private preloadCacheTTLDays = 0;
     /**
      * 筛选栏芯片定义（固定 5 档：排队中/请求中/成功匹配/匹配失败/已缓存）。
      * 'cached' 表示无徽标的卡片（已缓存或无需预加载）。
@@ -185,6 +191,21 @@ export class OtherSitePlugin extends BasePlugin {
         } else if (document.querySelector('.movie-list')) {
             // 有 .movie-list 的页面（列表页/清单详情页/搜索页等）才预加载 + 挂筛选栏
             // /users/* 清单列表页无 .movie-list（容器是 #lists > ul），自动排除
+            // 列表页预加载开关（enablePreload，缺省开启）；关闭则不预加载、不显示 UI
+            // （详情页按钮仍受上方 enableLoadOtherSite 总开关控制）
+            if ((await storageManager.getSetting('enablePreload', YES)) !== YES) {
+                return;
+            }
+            this.preloadStatusEnabled =
+                (await storageManager.getSetting('enablePreloadStatus', YES)) === YES;
+            const debounceRaw = await storageManager.getSetting('preloadDebounce', 300);
+            this.preloadDebounceMs =
+                typeof debounceRaw === 'number' ? debounceRaw : Number(debounceRaw);
+            if (isNaN(this.preloadDebounceMs) || this.preloadDebounceMs < 0) {
+                this.preloadDebounceMs = 300;
+            }
+            this.preloadCacheTTLDays =
+                Number(await storageManager.getSetting('preloadCacheTTL', 0)) || 0;
             // 立即为所有 item 创建徽标（已缓存→成功匹配，未缓存→排队中），消除空窗
             this.syncAllBadges();
             this.preloadListPage().then();
@@ -287,7 +308,7 @@ export class OtherSitePlugin extends BasePlugin {
                     : {};
                 const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
                 const cachedResult: any = cache[cacheKey];
-                if (cachedResult) {
+                if (this.isCacheEntryValid(cachedResult)) {
                     if (cachedResult.type === 'single') {
                         buttonEl.attr('href', cachedResult.url);
                         buttonEl.css('backgroundColor', this.okBackgroundColor);
@@ -351,7 +372,7 @@ export class OtherSitePlugin extends BasePlugin {
                         const cache: any = localStorage.getItem(storageKey)
                             ? JSON.parse(localStorage.getItem(storageKey) as string)
                             : {};
-                        cache[cacheKey] = resultData;
+                        cache[cacheKey] = { ...resultData, ts: Date.now() };
                         localStorage.setItem(storageKey, JSON.stringify(cache));
                     });
                 }
@@ -450,8 +471,8 @@ export class OtherSitePlugin extends BasePlugin {
                 if (siteConfig.initUrl) continue;
 
                 const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
-                // 已缓存则跳过
-                if (cache[cacheKey]) {
+                // 已缓存且在有效期内则跳过
+                if (this.isCacheEntryValid(cache[cacheKey])) {
                     cachedCount++;
                     continue;
                 }
@@ -532,7 +553,7 @@ export class OtherSitePlugin extends BasePlugin {
                     ? JSON.parse(localStorage.getItem(storageKey) as string)
                     : {};
                 const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
-                cache[cacheKey] = resultData;
+                cache[cacheKey] = { ...resultData, ts: Date.now() };
                 localStorage.setItem(storageKey, JSON.stringify(cache));
                 console.log(
                     `${OtherSitePlugin.PRELOAD_LOG} ✓ ${carNum} ${siteConfig.id.replace('Btn', '')} ${resultData.type === 'single' ? '命中' : '多结果'}`
@@ -582,6 +603,7 @@ export class OtherSitePlugin extends BasePlugin {
      * @param status 预加载状态（queued / requesting / success / failed）。
      */
     private updatePreloadStatus($item: any, siteId: string, status: PreloadStatus): void {
+        if (!this.preloadStatusEnabled) return;
         const $videoTitle = $item.find('.video-title').first();
         if ($videoTitle.length === 0) return;
         if ($item.find('.jhs-preload-status-bar').length === 0) {
@@ -617,6 +639,20 @@ export class OtherSitePlugin extends BasePlugin {
     }
 
     /**
+     * 判断预加载缓存条目是否仍在有效期内（配合设置项 preloadCacheTTL）。
+     * - entry 缺失 → 无效
+     * - TTL=0（永不过期）→ 有效
+     * - 旧条目无 ts（向后兼容）→ 有效
+     * - 有 ts 且未过期 → 有效；已过期 → 无效（触发重新预加载）
+     */
+    private isCacheEntryValid(entry: any): boolean {
+        if (!entry) return false;
+        if (!this.preloadCacheTTLDays) return true;
+        if (!entry.ts) return true;
+        return Date.now() - entry.ts < this.preloadCacheTTLDays * 86400000;
+    }
+
+    /**
      * 深度跟踪：扫描所有 .movie-list .item，为每个可预加载站点补全徽标——
      * 已缓存（jhs_other_site 有 carNum_siteId 键 = missav 曾命中）→「成功匹配」
      * 徽标；未缓存且无徽标 →「排队中」徽标。在 handle() 初始加载与
@@ -628,6 +664,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 排队态会被纠正为成功）；被屏蔽（data-hide）/番号提取失败（跳过）。
      */
     private syncAllBadges(): void {
+        if (!this.preloadStatusEnabled) return;
         const listPagePlugin = this.getBean('ListPagePlugin');
         if (!listPagePlugin) return;
         const sites = this.getPreloadableSites();
@@ -647,7 +684,7 @@ export class OtherSitePlugin extends BasePlugin {
             if (!carNum) return;
             for (const site of sites) {
                 const cacheKey = carNum + '_' + site.id.replace('Btn', '');
-                if (cache[cacheKey]) {
+                if (this.isCacheEntryValid(cache[cacheKey])) {
                     // 已缓存 = 曾命中 → 显示「成功匹配」（无徽标或陈旧排队态才纠正）
                     const $badge = $item.find(`[data-site-id="${site.id}"] .jhs-ps-badge`);
                     if (!$badge.length || !$badge.hasClass('jhs-ps-success')) {
@@ -682,6 +719,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 与 .status-tag-filter-bar / .tag-filter-bar 等其他筛选栏同行挂载。
      */
     private initFilterBar(): void {
+        if (!this.preloadStatusEnabled) return;
         if (this.tryBuildFilterBar()) return;
         let retries = 0;
         this.filterBarObserver = new MutationObserver(() => {
@@ -872,6 +910,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 合并频繁的状态变更（每条预加载完成都会触发）。
      */
     private refreshFilterBar(): void {
+        if (!this.preloadStatusEnabled) return;
         if (this.filterRefreshDebounce) clearTimeout(this.filterRefreshDebounce);
         this.filterRefreshDebounce = setTimeout(() => {
             const bar = document.querySelector('.preload-filter-bar');
@@ -888,6 +927,7 @@ export class OtherSitePlugin extends BasePlugin {
      * - .status-tag-filter-bar 晚于本插件挂载 → 将本栏移至其后，保持「放在一块」
      */
     private ensureFilterBar(): void {
+        if (!this.preloadStatusEnabled) return;
         if (!document.querySelector('.preload-filter-bar')) {
             this.tryBuildFilterBar();
         }
@@ -939,7 +979,7 @@ export class OtherSitePlugin extends BasePlugin {
             if (this.preloadDebounce) clearTimeout(this.preloadDebounce);
             this.preloadDebounce = setTimeout(() => {
                 this.preloadListPage().then();
-            }, 300); // 300ms 防抖，等 autoPage append + ListPagePlugin doFilter 完成
+            }, this.preloadDebounceMs);
         });
         this.preloadObserver.observe(containerEl, { childList: true });
     }
