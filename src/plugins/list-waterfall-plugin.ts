@@ -32,7 +32,7 @@
  * 4. loadNextPage：gmGet 抓 HTML → DOMParser 解析 → 提取 li → 去重 → append →
  *    rewriteItemLinks → 替换分页 nav → 记录 pageItems 滚动定位
  * 5. checkLoad：loader 距视口底部 PRELOAD_DISTANCE(800px) 时触发加载
- * 6. updateCurrentPageFromScroll：滚动时同步页码 + replaceState URL
+ * 6. updateCurrentPageFromScroll：滚动时同步内部页码（不改地址栏）
  * 7. createBackToTopBtn + updateBackToTopBtn：rAF 节流的回到顶部按钮
  * 8. MAX_PAGES(200) 保护，防止异常无限加载
  */
@@ -437,8 +437,7 @@ export class ListWaterfallPlugin extends BasePlugin {
             if (y >= item.top) {
                 if (this.currentPage !== item.page) {
                     this.currentPage = item.page;
-                    // 同步地址栏 URL（不触发跳转）
-                    window.history.replaceState({}, '', item.url);
+                    // 不修改地址栏，保持进入清单页时的原始 URL
                 }
                 break;
             }

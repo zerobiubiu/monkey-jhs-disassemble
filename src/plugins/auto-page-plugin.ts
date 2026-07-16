@@ -1,10 +1,10 @@
 /**
  * 自动翻页（瀑布流）插件 AutoPagePlugin —— 对应原脚本 archetype/jhs.user.js L9070-9296。
  *
- * 在列表页（window.isListPage）滚动接近底部时自动抓取下一页并追加到列表容器，
- * 同步当前页码到 URL（replaceState）；JavDb 站超过 60 页（c11 类目 30 页）或月度
- * 页时改走 Beyond60Plugin；翻页结果重复番号比例≥50%时判定被 JavDB 限制页码并
- * 停止瀑布流。
+ * 在列表页（window.isListPage）滚动接近底部时自动抓取下一页并追加到列表容器。
+ * 不修改地址栏 URL（保持进入列表时的原始地址）。JavDb 站超过 60 页（c11 类目
+ * 30 页）或月度页时改走 Beyond60Plugin；翻页结果重复番号比例≥50%时判定被 JavDB
+ * 限制页码并停止瀑布流。
  *
  * 原构造函数中 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  * 改为 class 字段语法（useDefineForClassFields:true，语义一致）；单字母局部变量
@@ -16,7 +16,6 @@
  * 内联 CSS/HTML 模板字符串原样保留。
  */
 import { currentHref, isJavdbSite } from '../constants/site';
-import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
 
@@ -254,8 +253,8 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 滚动时同步当前页码：自末页向前找到首个顶部坐标 ≤ scrollY 的页，页码
-     * 变化时更新 URL。对应原 L9237-9249。
+     * 滚动时同步内部 currentPage（供「加载全部」文案等使用）。
+     * 不再改地址栏，避免瀑布流滚动污染 URL。对应原 L9237-9249（已去 URL 同步）。
      */
     checkScrollPosition(): void {
         const scrollY = window.scrollY;
@@ -264,7 +263,6 @@ export class AutoPagePlugin extends BasePlugin {
             if (scrollY >= item.top) {
                 if (this.currentPage !== item.page) {
                     this.currentPage = item.page;
-                    this.updatePageUrl(item.url);
                 }
                 break;
             }
@@ -346,27 +344,20 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 旧版 URL 同步（pushState）；已被 updatePageUrl 取代，保留以维持原逻辑。
-     * 对应原 L9275-9282。
-     *
-     * @param url 目标页 URL
+     * 历史遗留：曾同步当前页到地址栏。瀑布流不再改 URL，保留空实现以免外部调用报错。
+     * @param _url 忽略
      */
-    updatePageUrl_old(url: string): void {
-        window.history.pushState({}, '', url);
+    updatePageUrl_old(_url: string): void {
+        /* no-op：不修改地址栏 */
     }
 
     /**
-     * 同步当前页到地址栏。
-     * flag 开：replaceState（不污染历史栈）；flag 关：pushState。
-     *
-     * @param url 目标页 URL
+     * 历史遗留：曾同步当前页到地址栏（replaceState/pushState）。
+     * 现固定 no-op，瀑布流保持进入列表时的原始 URL。
+     * @param _url 忽略
      */
-    updatePageUrl(url: string): void {
-        if (featureFlags.autoPageReplaceState) {
-            window.history.replaceState({}, '', url);
-        } else {
-            window.history.pushState({}, '', url);
-        }
+    updatePageUrl(_url: string): void {
+        /* no-op：不修改地址栏 */
     }
 
     /**
