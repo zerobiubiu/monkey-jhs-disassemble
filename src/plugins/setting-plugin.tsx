@@ -128,6 +128,9 @@ export class SettingPlugin extends BasePlugin {
     /** WebDav 备份目录名。对应原 L9432。 */
     folderName = 'JHS-数据备份';
 
+    /** 快捷设置面板 mouseleave 延迟关闭定时器（避免移入间隙误关）。 */
+    private simpleSettingHideTimer: ReturnType<typeof setTimeout> | null = null;
+
     /** 可管理的缓存项清单。对应原 L9433-9464（已删除 jhs_screenShot 死 key）。 */
     cacheItems: CacheItem[] = [
         {
@@ -195,10 +198,32 @@ export class SettingPlugin extends BasePlugin {
                 : ((settings == null ? undefined : settings.containerColumns) ?? 4);
         this.applyImageMode().then();
         let cssText = `\n            section .container{\n                max-width: 1000px !important;\n                min-width: ${containerWidth}%;\n            }\n            .movie-list, .movie-list.v{\n                grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n            }\n        `;
-        return settingCssRaw
-            .replace('__CSS_TEXT__', cssText)
-            .replace('__SIMPLE_SETTING_TOP__', '35px')
-            .replace('__SIMPLE_SETTING_RIGHT__', '-300%');
+        return settingCssRaw.replace('__CSS_TEXT__', cssText);
+    }
+
+    /** 取消快捷设置延迟关闭。 */
+    private cancelSimpleSettingHide(): void {
+        if (this.simpleSettingHideTimer != null) {
+            clearTimeout(this.simpleSettingHideTimer);
+            this.simpleSettingHideTimer = null;
+        }
+    }
+
+    /** 延迟关闭快捷设置面板（给移入面板留缓冲）。 */
+    private scheduleSimpleSettingHide(selector: string): void {
+        this.cancelSimpleSettingHide();
+        this.simpleSettingHideTimer = setTimeout(() => {
+            $(selector).html('').hide();
+            this.simpleSettingHideTimer = null;
+        }, 220);
+    }
+
+    /** 打开快捷设置并初始化表单。 */
+    private openSimpleSetting(selector: string): void {
+        this.cancelSimpleSettingHide();
+        $(selector).html(this.simpleSetting()).show();
+        this.initSimpleSettingForm().then();
+        clog.lowZIndex();
     }
 
     /** 挂载设置按钮入口（顶栏/顶栏迷你/详情页 h3 前）并绑定悬浮/点击。对应原 L9483-9558。 */
@@ -234,21 +259,17 @@ export class SettingPlugin extends BasePlugin {
         });
         $('.main-nav, .container-fluid')
             .on('mouseenter', '.setting-box', () => {
-                $('.simple-setting').html(this.simpleSetting()).show();
-                this.initSimpleSettingForm().then();
-                clog.lowZIndex();
+                this.openSimpleSetting('.simple-setting');
             })
             .on('mouseleave', '.setting-box', () => {
-                $('.simple-setting').html('').hide();
+                this.scheduleSimpleSettingHide('.simple-setting');
             });
         $('.main-nav, .container-fluid')
             .on('mouseenter', '.mini-setting-box', () => {
-                $('.mini-simple-setting').html(this.simpleSetting()).show();
-                this.initSimpleSettingForm().then();
-                clog.lowZIndex();
+                this.openSimpleSetting('.mini-simple-setting');
             })
             .on('mouseleave', '.mini-setting-box', () => {
-                $('.mini-simple-setting').html('').hide();
+                this.scheduleSimpleSettingHide('.mini-simple-setting');
             });
         this.addBackToTopBtn();
     }
@@ -412,6 +433,7 @@ export class SettingPlugin extends BasePlugin {
     /** 初始化简化设置面板表单（回填值 + 绑定即时生效的 change/input 事件）。对应原 L9807-10044。 */
     async initSimpleSettingForm(): Promise<void> {
         const settings = await storageManager.getSetting();
+        const ns = '.jhsQs';
         $('#containerColumns').val(settings.containerColumns || 4);
         $('#showContainerColumns').text(settings.containerColumns || 4);
         $('#containerWidth').val((settings.containerWidth || 70) - 70);
@@ -424,7 +446,12 @@ export class SettingPlugin extends BasePlugin {
             'checked',
             !settings.needClosePage || settings.needClosePage === YES
         );
-        $('#autoPage').prop('checked', !settings.autoPage || settings.autoPage === YES);
+        const loadMode = settings.autoPageLoadMode === 'click' ? 'click' : 'auto';
+        $('#autoPageLoadMode').attr('data-value', loadMode);
+        $('#autoPageLoadMode .jhs-qs-seg-btn')
+            .removeClass('is-active')
+            .filter(`[data-value="${loadMode}"]`)
+            .addClass('is-active');
         $('#translateTitle').prop(
             'checked',
             !settings.translateTitle || settings.translateTitle === YES
@@ -437,29 +464,36 @@ export class SettingPlugin extends BasePlugin {
             'checked',
             !settings.enableLoadOtherSite || settings.enableLoadOtherSite === YES
         );
-        $('#containerColumns').on('input', async () => {
-            const columns = $('#containerColumns').val();
-            $('#showContainerColumns').text(columns);
-            if (isJavdbSite) {
-                (document.querySelector('.movie-list') as any).style.gridTemplateColumns =
-                    `repeat(${columns}, minmax(0, 1fr))`;
-            }
-            await storageManager.saveSettingItem('containerColumns', columns);
-            this.applyImageMode();
-        });
-        $('#containerWidth').on('input', async (event: any) => {
-            const rangeValue = parseInt($(event.target).val());
-            const widthPercent = rangeValue + 70 + '%';
-            $('#showContainerWidth').text(widthPercent);
-            if (isJavdbSite) {
-                (document.querySelector('section .container') as any).style.minWidth = widthPercent;
-            }
-            storageManager.saveSettingItem('containerWidth', rangeValue + 70);
-        });
-        $('#dialogOpenDetail').on('change', () => {
-            const value = $('#dialogOpenDetail').is(':checked') ? YES : NO;
-            storageManager.saveSettingItem('dialogOpenDetail', value);
-        });
+        $('#containerColumns')
+            .off(`input${ns}`)
+            .on(`input${ns}`, async () => {
+                const columns = $('#containerColumns').val();
+                $('#showContainerColumns').text(columns);
+                if (isJavdbSite) {
+                    (document.querySelector('.movie-list') as any).style.gridTemplateColumns =
+                        `repeat(${columns}, minmax(0, 1fr))`;
+                }
+                await storageManager.saveSettingItem('containerColumns', columns);
+                this.applyImageMode();
+            });
+        $('#containerWidth')
+            .off(`input${ns}`)
+            .on(`input${ns}`, async (event: any) => {
+                const rangeValue = parseInt($(event.target).val());
+                const widthPercent = rangeValue + 70 + '%';
+                $('#showContainerWidth').text(widthPercent);
+                if (isJavdbSite) {
+                    (document.querySelector('section .container') as any).style.minWidth =
+                        widthPercent;
+                }
+                storageManager.saveSettingItem('containerWidth', rangeValue + 70);
+            });
+        $('#dialogOpenDetail')
+            .off(`change${ns}`)
+            .on(`change${ns}`, () => {
+                const value = $('#dialogOpenDetail').is(':checked') ? YES : NO;
+                storageManager.saveSettingItem('dialogOpenDetail', value);
+            });
         $('#showFilterItem').prop(
             'checked',
             !!settings.showFilterItem && settings.showFilterItem === YES
@@ -480,31 +514,41 @@ export class SettingPlugin extends BasePlugin {
             'checked',
             !settings.showHasWatchItem || settings.showHasWatchItem === YES
         );
-        $('#showFilterItem').on('change', async () => {
-            const value = $('#showFilterItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showFilterItem', value);
-            refresh();
-        });
-        $('#showFilterActorItem').on('change', async () => {
-            const value = $('#showFilterActorItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showFilterActorItem', value);
-            refresh();
-        });
-        $('#showFilterKeywordItem').on('change', async () => {
-            const value = $('#showFilterKeywordItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showFilterKeywordItem', value);
-            refresh();
-        });
-        $('#showFavoriteItem').on('change', async () => {
-            const value = $('#showFavoriteItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showFavoriteItem', value);
-            refresh();
-        });
-        $('#showHasWatchItem').on('change', async () => {
-            const value = $('#showHasWatchItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showHasWatchItem', value);
-            refresh();
-        });
+        $('#showFilterItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showFilterItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showFilterItem', value);
+                refresh();
+            });
+        $('#showFilterActorItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showFilterActorItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showFilterActorItem', value);
+                refresh();
+            });
+        $('#showFilterKeywordItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showFilterKeywordItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showFilterKeywordItem', value);
+                refresh();
+            });
+        $('#showFavoriteItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showFavoriteItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showFavoriteItem', value);
+                refresh();
+            });
+        $('#showHasWatchItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showHasWatchItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showHasWatchItem', value);
+                refresh();
+            });
         const $filterCheckboxes = $(
             '#showFilterItem, #showFilterActorItem, #showFilterKeywordItem, #showFavoriteItem, #showHasWatchItem'
         );
@@ -513,79 +557,100 @@ export class SettingPlugin extends BasePlugin {
             $filterCheckboxes.prop('disabled', isChecked);
             if (isChecked) {
                 $filterCheckboxes.attr('data-tip', '请先关闭显示所有才可点击');
+                $('#jhs-qs-filter-group').addClass('is-disabled');
             } else {
                 $filterCheckboxes.removeAttr('data-tip');
+                $('#jhs-qs-filter-group').removeClass('is-disabled');
             }
         };
         $('#showAllItem').prop('checked', !!settings.showAllItem && settings.showAllItem === YES);
-        $('#showAllItem').on('change', async () => {
-            const value = $('#showAllItem').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('showAllItem', value);
-            updateDisabledState();
-            refresh();
-        });
-        updateDisabledState();
-        $('#needClosePage').on('change', async () => {
-            await storageManager.saveSettingItem(
-                'needClosePage',
-                $('#needClosePage').is(':checked') ? YES : NO
-            );
-            refresh();
-        });
-        $('#autoPage').on('change', async () => {
-            const value = $('#autoPage').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('autoPage', value);
-            const autoPagePlugin = this.getBean('AutoPagePlugin');
-            // 排序按钮始终显示；autoPage=NO 时自动排序
-            if (value === YES) {
-                autoPagePlugin?.showLoadAllBtn();
-            } else {
-                autoPagePlugin?.hideLoadAllBtn();
-                this.getBean('ListPageButtonPlugin')?.sortItems().then();
-            }
-        });
-        $('#translateTitle').on('change', async () => {
-            const value = $('#translateTitle').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('translateTitle', value);
-            if (value === YES) {
-                await this.getBean('ListPagePlugin').doFilter();
-            } else {
-                await this.getBean('ListPagePlugin').revertTranslation();
-                $('.translated-title').remove();
-            }
-        });
-        $('#enableLoadActressInfo').on('change', async () => {
-            const value = $('#enableLoadActressInfo').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enableLoadActressInfo', value);
-            if (value === YES) {
-                this.getBean('ActressInfoPlugin').loadActressInfo();
-            } else {
-                $('.actress-info').remove();
-            }
-        });
-        $('#enableLoadOtherSite').on('change', async () => {
-            const value = $('#enableLoadOtherSite').is(':checked') ? YES : NO;
-            await storageManager.saveSettingItem('enableLoadOtherSite', value);
-            if (value === YES) {
-                this.getBean('OtherSitePlugin').loadOtherSite().then();
-            } else {
-                $('#otherSiteBox').remove();
-            }
-        });
-        $('#moreBtn').on('click', () => {
-            $('.simple-setting').html('').hide();
-            this.openSettingDialog('base-panel');
-        });
-        $('#helpBtn').on('click', () => {
-            layer.open({
-                type: 1,
-                title: '',
-                shadeClose: true,
-                scrollbar: false,
-                content: '<style>' + helpDialogCssRaw + '</style>' + jsxToString(<HelpDialog />),
-                area: utils.getResponsiveArea(['50%', '90%'])
+        $('#showAllItem')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#showAllItem').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('showAllItem', value);
+                updateDisabledState();
+                refresh();
             });
-        });
+        updateDisabledState();
+        $('#needClosePage')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                await storageManager.saveSettingItem(
+                    'needClosePage',
+                    $('#needClosePage').is(':checked') ? YES : NO
+                );
+                refresh();
+            });
+        $('#autoPageLoadMode')
+            .off(`click${ns}`)
+            .on(`click${ns}`, '.jhs-qs-seg-btn', async (event: any) => {
+                const value =
+                    $(event.currentTarget).attr('data-value') === 'click' ? 'click' : 'auto';
+                const $seg = $('#autoPageLoadMode');
+                if ($seg.attr('data-value') === value) return;
+                $seg.attr('data-value', value);
+                $seg.find('.jhs-qs-seg-btn').removeClass('is-active');
+                $(event.currentTarget).addClass('is-active');
+                await storageManager.saveSettingItem('autoPageLoadMode', value);
+                const autoPagePlugin = this.getBean('AutoPagePlugin');
+                autoPagePlugin?.setLoadMode?.(value);
+                autoPagePlugin?.showLoadAllBtn?.();
+            });
+        $('#translateTitle')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#translateTitle').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('translateTitle', value);
+                if (value === YES) {
+                    await this.getBean('ListPagePlugin').doFilter();
+                } else {
+                    await this.getBean('ListPagePlugin').revertTranslation();
+                    $('.translated-title').remove();
+                }
+            });
+        $('#enableLoadActressInfo')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#enableLoadActressInfo').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('enableLoadActressInfo', value);
+                if (value === YES) {
+                    this.getBean('ActressInfoPlugin').loadActressInfo();
+                } else {
+                    $('.actress-info').remove();
+                }
+            });
+        $('#enableLoadOtherSite')
+            .off(`change${ns}`)
+            .on(`change${ns}`, async () => {
+                const value = $('#enableLoadOtherSite').is(':checked') ? YES : NO;
+                await storageManager.saveSettingItem('enableLoadOtherSite', value);
+                if (value === YES) {
+                    this.getBean('OtherSitePlugin').loadOtherSite().then();
+                } else {
+                    $('#otherSiteBox').remove();
+                }
+            });
+        $('#moreBtn')
+            .off(`click${ns}`)
+            .on(`click${ns}`, () => {
+                this.cancelSimpleSettingHide();
+                $('.simple-setting, .mini-simple-setting').html('').hide();
+                this.openSettingDialog('base-panel');
+            });
+        $('#helpBtn')
+            .off(`click${ns}`)
+            .on(`click${ns}`, () => {
+                layer.open({
+                    type: 1,
+                    title: '',
+                    shadeClose: true,
+                    scrollbar: false,
+                    content:
+                        '<style>' + helpDialogCssRaw + '</style>' + jsxToString(<HelpDialog />),
+                    area: utils.getResponsiveArea(['50%', '90%'])
+                });
+            });
     }
 
     /** 注入横图模式 CSS（竖图设置项已移除，固定横图）。对应原 L10045-10065。 */

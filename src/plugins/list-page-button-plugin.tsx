@@ -27,8 +27,7 @@ import {
     BLOCKED_TEXT,
     FAVORITED_TEXT,
     WATCHED_TEXT,
-    FAVORITE_ACTION,
-    YES
+    FAVORITE_ACTION
 } from '../constants/status';
 import { BasePlugin } from './base-plugin';
 import { MenuButtonBoxHtml } from '../components/menu-button-box-html';
@@ -55,12 +54,7 @@ export class ListPageButtonPlugin extends BasePlugin {
         }
         await this.createMenuBtn();
         this.bindEvent();
-        const autoPageEnabled = (await storageManager.getSetting('autoPage')) === YES;
-        // 排序按钮始终显示；autoPage=NO 时自动排序，autoPage=YES 时保持原始顺序
-        // （用户可手动点击 #sort-toggle-btn 排序，不影响瀑布流追加）
-        if (!autoPageEnabled) {
-            this.sortItems().then();
-        }
+        // 瀑布流常开：页面加载不自动排序，保持原始顺序；用户可手动点排序按钮
     }
 
     /**

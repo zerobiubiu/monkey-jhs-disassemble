@@ -16,7 +16,6 @@
  * 内联 CSS/HTML 模板字符串原样保留。
  */
 import { currentHref, isJavdbSite } from '../constants/site';
-import { NO, YES } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
@@ -48,10 +47,15 @@ export class AutoPagePlugin extends BasePlugin {
     hasMore = false;
     /** 是否正在请求下一页（防重入）。 */
     isLoading = false;
-    /** 「加载全部」浮动按钮节点（瀑布流模式且有下一页时创建）。 */
+    /** 「加载全部」浮动按钮节点（有下一页时始终显示）。 */
     loadAllBtn: HTMLDivElement | null = null;
     /** 是否正在自动加载全部后续页（防重入）。 */
     isLoadingAll = false;
+    /**
+     * 触底加载方式：auto=滑到底自动加载下一页；click=滑到底显示按钮，点击再加载。
+     * 设置项 autoPageLoadMode，缺省 auto。瀑布流本身常开。
+     */
+    loadMode: 'auto' | 'click' = 'auto';
 
     /**
      * 返回插件名，供 PluginManager 注册去重。对应原 L9077-9079。
@@ -125,7 +129,11 @@ export class AutoPagePlugin extends BasePlugin {
             url: window.location.href
         });
         loader.addEventListener('click', () => {
-            if (loader.classList.contains('waterfall-error')) {
+            // 错误重试 / 点按钮加载下一页
+            if (
+                loader.classList.contains('waterfall-error') ||
+                loader.classList.contains('waterfall-click')
+            ) {
                 this.loadNextPage().then();
             }
         });
@@ -138,28 +146,27 @@ export class AutoPagePlugin extends BasePlugin {
         );
         this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.href;
         this.hasMore = !!this.nextUrl;
+        // 瀑布流常开；触底方式由 autoPageLoadMode 控制
+        const mode = await storageManager.getSetting('autoPageLoadMode', 'auto');
+        this.loadMode = mode === 'click' ? 'click' : 'auto';
         setTimeout(() => {
             this.checkLoad();
         }, 1000);
         if (!this.hasMore) {
             this.setState('waterfall-no-more', '已经到底了');
-        } else if ((await storageManager.getSetting('autoPage', YES)) === YES) {
+        } else {
+            // 有下一页时始终显示「加载全部」
             this.showLoadAllBtn();
         }
     }
 
     /**
-     * 抓取并追加下一页：autoPage 设置为 NO 时直接返回；JavDb 站超过 60 页
-     * （c11 类目 30 页）或月度页时走 Beyond60Plugin；否则 gmHttp 抓取并校验
-     * 重复番号后追加。对应原 L9145-9236。
+     * 抓取并追加下一页。JavDb 站超过 60 页（c11 类目 30 页）或月度页时走
+     * Beyond60Plugin；否则 gmHttp 抓取并校验重复番号后追加。对应原 L9145-9236。
      *
      * @returns Promise<void>；抓取失败时切换错误态，不抛出
      */
     async loadNextPage(): Promise<void> {
-        if ((await storageManager.getSetting('autoPage', YES)) === NO) {
-            this.setState('waterfall-loading', '');
-            return;
-        }
         if (this.isLoading || !this.nextUrl) {
             return;
         }
@@ -239,6 +246,10 @@ export class AutoPagePlugin extends BasePlugin {
             this.setState('waterfall-error', '加载失败，点击重试');
         } finally {
             this.isLoading = false;
+            // 点按钮模式：本页加载完若仍在底部，再次显示「点击加载下一页」
+            if (this.loadMode === 'click' && this.hasMore && this.nextUrl) {
+                this.checkLoad();
+            }
         }
     }
 
@@ -261,14 +272,56 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 探测 loader 是否进入预加载区间，是则触发下一页抓取。对应原 L9250-9260。
+     * 探测 loader 是否进入预加载区间。
+     * - loadMode=auto：自动抓取下一页
+     * - loadMode=click：展示「点击加载下一页」，由用户点击 loader 再抓取
      */
     checkLoad(): void {
         if (!this.loader) {
             return;
         }
         if (this.loader.getBoundingClientRect().top < window.innerHeight + this.preloadDistance) {
-            this.loadNextPage().then();
+            if (this.loadMode === 'click') {
+                if (
+                    this.isLoading ||
+                    !this.hasMore ||
+                    !this.nextUrl ||
+                    this.loader.classList.contains('waterfall-error') ||
+                    this.loader.classList.contains('waterfall-loading') ||
+                    this.loader.classList.contains('waterfall-no-more')
+                ) {
+                    return;
+                }
+                this.setState('waterfall-click', '点击加载下一页');
+            } else {
+                this.loadNextPage().then();
+            }
+        }
+    }
+
+    /**
+     * 运行时切换触底加载方式（设置面板即时生效，无需整页刷新）。
+     * @param mode auto | click
+     */
+    setLoadMode(mode: 'auto' | 'click'): void {
+        this.loadMode = mode === 'click' ? 'click' : 'auto';
+        if (this.loadMode === 'auto') {
+            // 切回自动：若已在底部则立即尝试加载
+            this.checkLoad();
+        } else if (
+            this.loader &&
+            this.hasMore &&
+            this.nextUrl &&
+            !this.isLoading &&
+            !this.loader.classList.contains('waterfall-no-more')
+        ) {
+            // 切到点按钮：若已在底部则显示提示
+            if (
+                this.loader.getBoundingClientRect().top <
+                window.innerHeight + this.preloadDistance
+            ) {
+                this.setState('waterfall-click', '点击加载下一页');
+            }
         }
     }
 

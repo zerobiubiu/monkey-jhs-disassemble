@@ -129,6 +129,9 @@
 | `115-visit-history-webdav-backup.md` | 🔧开发指导 | ✅已执行 | 访问记录随 WebDav/JSON 备份：buildBackupPayload 注入 `__localStorage.jhs_visit_history`；导入前 applyBackupLocalStorage 写回 localStorage 并剥离该键防写入 IndexedDB；本地导出改用 buildBackupPayload；version 1.17.2→1.17.3 |
 | `116-backup-all-long-term-caches.md` | 🔧开发指导 | ✅已执行 | 全量长期缓存随备份：新增 backup-extra-storage.ts 清单；`__localStorage` 含 jhs_other_site/dmm/translate/actress/score/screenShot/visit/rating 等 + 偏好键；`__gmStorage` 含清单阅读/瀑布流 GM 键；手动/自动/本地导出共用 buildBackupPayload；import 用 applyBackupExtras；cacheItems 扩充；version 1.17.3→1.18.0 |
 | `117-preload-concurrency-setting.md` | 🔧开发指导 | ✅已执行 | 预加载并发数配置：AsyncTaskQueue 支持 1–N 并发；设置项 preloadConcurrency（默认 1）；预加载面板新增输入；handle 读设置后 setConcurrency；version 1.18.0→1.18.1 |
+| `118-autopage-load-mode-always-on.md` | 🔧开发指导 | ✅已执行 | 瀑布流常开：去掉 autoPage 总开关；新增 autoPageLoadMode（auto 触底自动 / click 触底点按钮）；加载全部按钮有下一页时始终显示；ListPageButton 不再依赖 autoPage 自动排序；version 1.18.1→1.19.0 |
+| `119-quick-settings-ui-polish.md` | 🔧开发指导 | ✅已执行 | 快捷设置 UI 优化：分组卡片布局 + 固定宽右对齐定位（去掉 -300% 占位）+ mouseleave 延迟关闭 + 表单命名空间防重复绑定；version 1.19.0→1.19.1 |
+| `120-autopage-load-mode-segmented-control.md` | 🔧开发指导 | ✅已执行 | 触底加载 UI：原生 select 改为分段按钮「自动 / 点按钮」，同行展示、即时生效；version 1.19.1→1.19.2 |
 
 ## 类型图例
 

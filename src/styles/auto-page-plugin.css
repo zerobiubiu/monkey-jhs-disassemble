@@ -13,6 +13,15 @@
 .jhs-scroll.waterfall-no-more {
     color: #4caf50;
 }
+.jhs-scroll.waterfall-click {
+    color: #1976d2;
+    cursor: pointer;
+    font-weight: 600;
+}
+.jhs-scroll.waterfall-click:hover {
+    color: #0d47a1;
+    text-decoration: underline;
+}
 
 .jhs-load-all-btn {
     position: fixed;

@@ -173,21 +173,283 @@ __CSS_TEXT__ .nav-btn::after {
     background-color: #d35400;
 }
 
-/* ===== 悬浮简化设置面板 ===== */
+/* ===== 悬浮快捷设置面板 ===== */
 .simple-setting,
 .mini-simple-setting {
     display: none;
-    background: rgba(255, 255, 255, 1);
     position: absolute;
-    top: __SIMPLE_SETTING_TOP__;
-    right: __SIMPLE_SETTING_RIGHT__;
-    z-index: 1000;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    z-index: 10000;
+    width: 340px;
+    max-width: min(340px, 92vw);
+    padding: 0;
+    margin: 0;
+    color: #1e293b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow:
+        0 10px 40px rgba(15, 23, 42, 0.12),
+        0 2px 8px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+/* 与触发按钮之间的隐形热区，减少移入时误关 */
+.simple-setting::before,
+.mini-simple-setting::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+}
+.mini-simple-setting {
+    right: 0;
+    left: auto;
+}
+
+/* 快捷设置内部布局 */
+.jhs-qs-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: min(78vh, 560px);
+}
+.jhs-qs-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+.jhs-qs-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.02em;
+}
+.jhs-qs-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+.jhs-qs-body {
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px 10px 12px;
+}
+.jhs-qs-section {
+    margin-bottom: 10px;
+    padding: 8px 8px 4px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+}
+.jhs-qs-section:last-child {
+    margin-bottom: 0;
+}
+.jhs-qs-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    padding: 2px 6px 8px;
+}
+.jhs-qs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+    padding: 6px 8px;
+    margin-bottom: 2px;
+    border-radius: 8px;
+    transition: background 0.12s ease;
+}
+.jhs-qs-row:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+.jhs-qs-row-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    min-height: 0;
+    padding-bottom: 10px;
+}
+.jhs-qs-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.35;
+    min-width: 0;
+}
+.jhs-qs-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #cbd5e1;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: help;
+    line-height: 1;
+}
+.jhs-qs-control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+.jhs-qs-row-stacked .jhs-qs-control {
+    justify-content: stretch;
+}
+.jhs-qs-subcard {
+    margin: 2px 0 6px;
+    padding: 4px;
+    background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-    padding: 0;
-    margin-top: 5px;
-    color: #333;
+}
+.jhs-qs-subcard.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+.jhs-qs-subcard .jhs-qs-row {
+    min-height: 32px;
+    padding: 4px 8px;
+}
+.jhs-qs-subcard .jhs-qs-label {
+    font-weight: 500;
+    font-size: 12.5px;
+    color: #475569;
+}
+/* 触底加载等二选一：分段按钮 */
+.jhs-qs-seg {
+    display: inline-flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    padding: 2px;
+    background: #e2e8f0;
+    border-radius: 9px;
+    box-sizing: border-box;
+}
+.jhs-qs-seg-btn {
+    appearance: none;
+    border: none;
+    margin: 0;
+    padding: 6px 12px;
+    min-width: 64px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #64748b;
+    background: transparent;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease;
+    white-space: nowrap;
+}
+.jhs-qs-seg-btn:hover:not(.is-active) {
+    color: #334155;
+    background: rgba(255, 255, 255, 0.55);
+}
+.jhs-qs-seg-btn.is-active {
+    color: #fff;
+    background: linear-gradient(135deg, #5d87c2, #4a90d9);
+    box-shadow: 0 1px 4px rgba(74, 144, 217, 0.35);
+}
+.jhs-qs-seg-btn:focus-visible {
+    outline: 2px solid #5d87c2;
+    outline-offset: 1px;
+}
+.jhs-qs-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.jhs-qs-range input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    height: 6px;
+    padding: 0 !important;
+    accent-color: #5d87c2;
+    cursor: pointer;
+}
+.jhs-qs-range-val {
+    min-width: 36px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: #5d87c2;
+    font-variant-numeric: tabular-nums;
+}
+.jhs-qs-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid #f1f5f9;
+    background: #fafbfc;
+}
+.jhs-qs-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.15s ease;
+}
+.jhs-qs-btn:hover {
+    transform: translateY(-1px);
+}
+.jhs-qs-btn:active {
+    transform: translateY(0);
+}
+.jhs-qs-btn-ghost {
+    background: #fff;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+.jhs-qs-btn-ghost:hover {
+    background: #f8fafc;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+.jhs-qs-btn-primary {
+    background: linear-gradient(135deg, #5d87c2, #4a90d9);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(74, 144, 217, 0.28);
+}
+.jhs-qs-btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(74, 144, 217, 0.35);
+}
+/* 快捷设置内开关：避免被 form-content 通配拉宽 */
+.jhs-qs-panel input.mini-switch[type='checkbox'] {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
 }
 
 /* ===== 开关（mini-switch）===== */
