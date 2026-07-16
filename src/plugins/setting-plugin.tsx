@@ -387,6 +387,7 @@ export class SettingPlugin extends BasePlugin {
             !settings.enablePreloadStatus || settings.enablePreloadStatus === YES
         );
         $('#preloadDebounce').val(settings.preloadDebounce || 300);
+        $('#preloadConcurrency').val(settings.preloadConcurrency || 1);
         $('#preloadCacheTTL').val(settings.preloadCacheTTL ?? 0);
         const enabledSites = otherSitePlugin.getEnabledSites();
         $('#preload-enable-missAvBtn').prop('checked', enabledSites.includes('missAvBtn'));
@@ -931,6 +932,7 @@ export class SettingPlugin extends BasePlugin {
         settings.enablePreload = $('#enablePreload').is(':checked') ? YES : NO;
         settings.enablePreloadStatus = $('#enablePreloadStatus').is(':checked') ? YES : NO;
         settings.preloadDebounce = $('#preloadDebounce').val();
+        settings.preloadConcurrency = $('#preloadConcurrency').val();
         settings.preloadCacheTTL = $('#preloadCacheTTL').val();
         // 站点启用写入 jhs_enabled_sites（localStorage，非 settings 对象）
         const otherSitePluginForSave = this.getBean('OtherSitePlugin');

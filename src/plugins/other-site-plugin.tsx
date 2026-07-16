@@ -124,6 +124,8 @@ export class OtherSitePlugin extends BasePlugin {
     private preloadStatusEnabled = true;
     /** 预加载防抖延迟毫秒（设置项 preloadDebounce，缺省 300）。 */
     private preloadDebounceMs = 300;
+    /** 预加载并发数（设置项 preloadConcurrency，缺省 1=串行）。 */
+    private preloadConcurrency = 1;
     /** 预加载缓存有效期天数（设置项 preloadCacheTTL，0=永不过期，缺省 0）。 */
     private preloadCacheTTLDays = 0;
     /**
@@ -204,6 +206,12 @@ export class OtherSitePlugin extends BasePlugin {
             if (isNaN(this.preloadDebounceMs) || this.preloadDebounceMs < 0) {
                 this.preloadDebounceMs = 300;
             }
+            const concRaw = await storageManager.getSetting('preloadConcurrency', 1);
+            let conc = typeof concRaw === 'number' ? concRaw : Number(concRaw);
+            if (isNaN(conc) || conc < 1) conc = 1;
+            if (conc > 10) conc = 10;
+            this.preloadConcurrency = Math.floor(conc);
+            this.preloadQueue.setConcurrency(this.preloadConcurrency);
             this.preloadCacheTTLDays =
                 Number(await storageManager.getSetting('preloadCacheTTL', 0)) || 0;
             // 立即为所有 item 创建徽标（已缓存→成功匹配，未缓存→排队中），消除空窗
@@ -413,7 +421,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 优化策略：
      * - 跳过已缓存的番号（避免重复请求）
      * - 跳过被 jhs 屏蔽的 item（data-hide，减少不必要请求）
-     * - AsyncTaskQueue 串行限流（一个接一个，避免洪水请求触发 Cloudflare）
+     * - AsyncTaskQueue 限流（并发数由设置 preloadConcurrency 控制，默认 1 串行）
      *
      * @returns Promise<void>；无显式抛出
      */

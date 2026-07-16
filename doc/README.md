@@ -128,6 +128,7 @@
 | `114-visit-history-hover-reread-realtime.md` | 🔧开发指导 | ✅已执行 | 修复访问记录仍需刷新才更新：根因是注入时 history/ts 闭包固化且未访问链接不绑监听；改为所有元数据链接都绑 hover、每次 mouseenter 与定时 tick 重读 localStorage 最新 ts、TICK_MS=500、pageshow 补记+重绑；version 1.17.1→1.17.2 |
 | `115-visit-history-webdav-backup.md` | 🔧开发指导 | ✅已执行 | 访问记录随 WebDav/JSON 备份：buildBackupPayload 注入 `__localStorage.jhs_visit_history`；导入前 applyBackupLocalStorage 写回 localStorage 并剥离该键防写入 IndexedDB；本地导出改用 buildBackupPayload；version 1.17.2→1.17.3 |
 | `116-backup-all-long-term-caches.md` | 🔧开发指导 | ✅已执行 | 全量长期缓存随备份：新增 backup-extra-storage.ts 清单；`__localStorage` 含 jhs_other_site/dmm/translate/actress/score/screenShot/visit/rating 等 + 偏好键；`__gmStorage` 含清单阅读/瀑布流 GM 键；手动/自动/本地导出共用 buildBackupPayload；import 用 applyBackupExtras；cacheItems 扩充；version 1.17.3→1.18.0 |
+| `117-preload-concurrency-setting.md` | 🔧开发指导 | ✅已执行 | 预加载并发数配置：AsyncTaskQueue 支持 1–N 并发；设置项 preloadConcurrency（默认 1）；预加载面板新增输入；handle 读设置后 setConcurrency；version 1.18.0→1.18.1 |
 
 ## 类型图例
 

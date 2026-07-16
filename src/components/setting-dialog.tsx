@@ -739,7 +739,19 @@ export function SettingDialog({
                             </div>
                         </div>
                         <div className="setting-item">
-                            <span className="setting-label">预加载防抖延迟 (毫秒):</span>
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                预加载防抖延迟 (毫秒){' '}
+                                <span data-tip="列表页瀑布流追加新卡片后，等待多久再开始批量入队预加载。过小可能与页面渲染抢资源；过大则新卡片状态延迟出现。缺省 300">
+                                    ❓
+                                </span>
+                            </span>
                             <div className="form-content">
                                 <input
                                     id="preloadDebounce"
@@ -747,6 +759,30 @@ export function SettingDialog({
                                     min="0"
                                     max="5000"
                                     step="50"
+                                />
+                            </div>
+                        </div>
+                        <div className="setting-item">
+                            <span
+                                className="setting-label"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                预加载并发数 (1-10){' '}
+                                <span data-tip="同时向 missav 等站点发起预加载请求的数量。1=串行最稳（默认，降低 Cloudflare 拦截风险）；2～5 可明显加快列表预加载；过高易被拦截并触发本轮跳过该站点。建议从 2 试起">
+                                    ❓
+                                </span>
+                            </span>
+                            <div className="form-content">
+                                <input
+                                    id="preloadConcurrency"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    step="1"
                                 />
                             </div>
                         </div>
