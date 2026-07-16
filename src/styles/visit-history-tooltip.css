@@ -1,3 +1,4 @@
+/* 访问记录悬浮提示：时间分级配色（由近=安全 → 远=危险） */
 .jhs-visit-tooltip {
     position: fixed;
     padding: 8px 12px;
@@ -7,10 +8,53 @@
     pointer-events: none;
     font-size: 14px;
     line-height: 1.5;
+    font-weight: 600;
     z-index: 9999999999;
-    background: #f0fdf4;
-    color: #166534;
-    border: none;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
     display: none;
+    border: 1px solid transparent;
+}
+
+/* 无访问记录：白底灰字 */
+.jhs-visit-tooltip--none {
+    background: #ffffff;
+    color: #64748b;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+    font-weight: 500;
+}
+
+/* <1 分钟：最安全 · 翠绿 */
+.jhs-visit-tooltip--sec {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #6ee7b7;
+}
+
+/* <1 小时：安全 · 青绿 */
+.jhs-visit-tooltip--min {
+    background: #f0fdf4;
+    color: #15803d;
+    border-color: #86efac;
+}
+
+/* <1 天：留意 · 琥珀 */
+.jhs-visit-tooltip--hour {
+    background: #fffbeb;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+/* <1 周：警告 · 橙 */
+.jhs-visit-tooltip--day {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fdba74;
+}
+
+/* ≥1 周：危险 · 红 */
+.jhs-visit-tooltip--old {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fca5a5;
 }

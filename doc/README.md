@@ -133,6 +133,7 @@
 | `119-quick-settings-ui-polish.md` | 🔧开发指导 | ✅已执行 | 快捷设置 UI 优化：分组卡片布局 + 固定宽右对齐定位（去掉 -300% 占位）+ mouseleave 延迟关闭 + 表单命名空间防重复绑定；version 1.19.0→1.19.1 |
 | `120-autopage-load-mode-segmented-control.md` | 🔧开发指导 | ✅已执行 | 触底加载 UI：原生 select 改为分段按钮「自动 / 点按钮」，同行展示、即时生效；version 1.19.1→1.19.2 |
 | `121-waterfall-no-url-sync.md` | 🔧开发指导 | ✅已执行 | 瀑布流不再 pushState/replaceState 改地址栏，保持进入列表时的原始 URL；version 1.19.2→1.19.3 |
+| `122-visit-history-tier-colors-and-empty.md` | 🔧开发指导 | ✅已执行 | 访问记录悬浮：时间分级配色（近安全→远危险）+ 无记录白框「无访问记录」；version 1.19.3→1.19.4 |
 
 ## 类型图例
 
