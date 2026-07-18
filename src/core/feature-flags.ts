@@ -16,7 +16,7 @@ export const featureFlags: Record<string, boolean> = {
     webdavIdempotentMkdir: true,
     westernCarFormat: true,
     actressUserSelectAll: true,
-    navBarNoPaste: true,
+    navBarNoPaste: false,
     // —— 基础设施 + 独立新插件（批次 B）——
     translatePlugin: true,
     screenShotPlugin: true,

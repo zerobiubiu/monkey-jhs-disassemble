@@ -134,6 +134,8 @@
 | `120-autopage-load-mode-segmented-control.md` | 🔧开发指导 | ✅已执行 | 触底加载 UI：原生 select 改为分段按钮「自动 / 点按钮」，同行展示、即时生效；version 1.19.1→1.19.2 |
 | `121-waterfall-no-url-sync.md` | 🔧开发指导 | ✅已执行 | 瀑布流不再 pushState/replaceState 改地址栏，保持进入列表时的原始 URL；version 1.19.2→1.19.3 |
 | `122-visit-history-tier-colors-and-empty.md` | 🔧开发指导 | ✅已执行 | 访问记录悬浮：时间分级配色（近安全→远危险）+ 无记录白框「无访问记录」；version 1.19.3→1.19.4 |
+| `123-restore-nav-search-paste-auto-search.md` | 🔧开发指导 | ✅已执行 | 恢复导航栏搜索框粘贴自动搜索：`navBarNoPaste` 默认 true→false（doc/76 升级误伤，原版已跳过图片）；version 1.19.4→1.19.5 |
+| `124-auto-remove-from-pending-update-on-rating.md` | 🔧开发指导 | ✅已执行 | 评分/已读(0–5星)后自动移出「等待更新」清单：quickSetHasWatch 成功后 uncheck 匹配 checkbox（Stimulus+VltDb）；version 1.19.5→1.19.6 |
 
 ## 类型图例
 

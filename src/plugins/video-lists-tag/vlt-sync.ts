@@ -442,6 +442,113 @@ export async function handleCheckboxChange(
 }
 
 /**
+ * 评分/已读（0–5 星）后：若当前视频在名称含「等待更新」的清单中，自动移出。
+ *
+ * 主路径：取消勾选 `#modal-save-list` 内已勾选的匹配 checkbox 并派发 change，
+ * 复用 Stimulus（JavDB 服务端移除）+ setupCheckboxListener（本地 IDB + 广播 + toast）。
+ * 同步取消 `.jhs-list-panel` 克隆勾选态（仅 UI，不二次派发）。
+ *
+ * 若清单 DOM 尚未加载：先查 VltDb 是否仍有关联；有则短轮询等待 checkbox，
+ * 超时后仅走 VltDb remove 兜底（本地标签一致；服务端依赖下次打开清单时对齐）。
+ *
+ * fire-and-forget 调用，不阻塞评分主流程。
+ */
+export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
+    try {
+        if (uncheckPendingUpdateListCheckboxes() > 0) return;
+
+        const pending = await findPendingUpdateListsForCurrentMovie();
+        if (pending.length === 0) return;
+
+        for (let i = 0; i < 15; i++) {
+            await new Promise((r) => setTimeout(r, 200));
+            if (uncheckPendingUpdateListCheckboxes() > 0) return;
+        }
+
+        // DOM 仍不可用：仅本地 IDB 移除 + 广播
+        for (const item of pending) {
+            const movieInfo = getMovieInfo(item.videoId);
+            if (!movieInfo) continue;
+            const listInfo = {
+                list_id: item.listId,
+                info: { url: item.url, name: item.name }
+            };
+            await handleCheckboxChange(movieInfo, listInfo, false);
+        }
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} 评分后移出「等待更新」失败`, err);
+    }
+}
+
+/**
+ * 取消勾选名称含「等待更新」且已勾选的清单 checkbox。
+ * @returns 成功触发取消的清单数量（按 listId 去重）
+ */
+function uncheckPendingUpdateListCheckboxes(): number {
+    const inputs = document.querySelectorAll(
+        '#modal-save-list input[type="checkbox"][data-action="change->list#listCheckboxChanged"]'
+    ) as NodeListOf<HTMLInputElement>;
+
+    const seen = new Set<string>();
+    let count = 0;
+
+    for (const input of inputs) {
+        if (!input.checked) continue;
+        const listId = input.dataset.listId || '';
+        if (!listId || seen.has(listId)) continue;
+        const name = getListName(listId);
+        if (!name.includes(AUTO_FAVORITE_KEYWORD)) continue;
+
+        seen.add(listId);
+        count++;
+        input.checked = false;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // 平铺面板克隆仅同步 UI，避免二次 change → 双重 handleCheckboxChange
+        const panelCb = document.querySelector(
+            `.jhs-list-panel input[data-list-id="${listId}"]`
+        ) as HTMLInputElement | null;
+        if (panelCb) panelCb.checked = false;
+
+        console.log(`${LOG_PREFIX} 评分后取消勾选「${name}」(listId=${listId})`);
+    }
+
+    return count;
+}
+
+/**
+ * 从 VltDb 查询当前详情页影片是否关联名称含「等待更新」的清单。
+ */
+async function findPendingUpdateListsForCurrentMovie(): Promise<
+    { videoId: string; listId: string; name: string; url: string }[]
+> {
+    const m = window.location.pathname.match(/\/v\/([^/?#]+)/);
+    const videoId = m?.[1];
+    if (!videoId) return [];
+
+    const movieInfo = getMovieInfo(videoId);
+    if (!movieInfo) return [];
+
+    const map = await VltDb.queryMoviesLists([movieInfo.designation]);
+    const lists = map[movieInfo.designation] || [];
+    const result: { videoId: string; listId: string; name: string; url: string }[] = [];
+
+    for (const item of lists) {
+        if (!item.name.includes(AUTO_FAVORITE_KEYWORD)) continue;
+        const listId = item.url?.match(/\/lists\/([^/?#]+)/)?.[1];
+        if (!listId) continue;
+        result.push({
+            videoId,
+            listId,
+            name: item.name,
+            url: item.url || `https://javdb.com/lists/${listId}?locale=zh`
+        });
+    }
+
+    return result;
+}
+
+/**
  * 注册 checkbox change 事件监听。
  * 对应原 L573-600。
  *

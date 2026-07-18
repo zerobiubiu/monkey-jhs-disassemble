@@ -72,6 +72,7 @@ import { DetailMenuButtons } from '../components/detail-menu-buttons';
 import { RatingBarHtml } from '../components/rating-bar-html';
 import { ListPanel } from '../components/list-panel';
 import ratingBarCssRaw from '../styles/rating-bar.css?raw';
+import { autoRemoveFromPendingUpdateOnWatch } from './video-lists-tag/vlt-sync';
 
 /** 「想看/已观看」状态推断结果（detectWantWatchedState 返回结构） */
 interface WantWatchedState {
@@ -871,6 +872,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     ' \u5df2\u6807\u8bb0\u770b\u8fc7 ' +
                     (score > 0 ? '\u2605' + score : '')
             );
+            // 已读/评分后：若在「等待更新」清单中则自动移出（不在则 noop）
+            autoRemoveFromPendingUpdateOnWatch().then();
         } catch (err: any) {
             console.error('[JHS-快键] 设为已观看失败', err);
             show.error('操作失败: ' + err.message);
