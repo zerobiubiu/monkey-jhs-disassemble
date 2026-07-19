@@ -3,7 +3,7 @@
  * archetype/listsOptionSync.user.js + archetype/videoListsTag.user.js
  *
  * 功能：
- * 1. 详情页清单 checkbox 勾选/取消 → 同步到本地 IndexedDB（替代远程服务器 API）
+ * 1. 详情页清单 checkbox 勾选/取消 → JavDB 成功确认后同步到本地 IndexedDB
  * 2. 列表页从本地 IDB 查询番号所属清单 → 显示标签 + 筛选栏
  * 3. 跨标签页自动刷新标签（三重广播：GM_setValue/localStorage/CustomEvent）
  *
@@ -23,6 +23,7 @@
  *
  * 模块拆分：
  * - vlt-db.ts — IndexedDB 数据层（VltDb.sync/queryMoviesLists/check/importData）
+ * - vlt-reconcile.ts — JavDB 完整分页快照校验 + 本地清单自动对账
  * - vlt-toast.ts — Toast 通知（showToast）
  * - vlt-tags.ts — 标签显示 + 筛选栏（VltTags）
  * - vlt-sync.ts — checkbox 同步 + 三重广播（setupCheckboxListener/handleCheckboxChange）

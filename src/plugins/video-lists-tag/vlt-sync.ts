@@ -4,22 +4,32 @@
  * 提取自 archetype/listsOptionSync.user.js L334-600（getMovieInfo/getListInfo/
  * syncMoviesLists/handleCheckboxChange + change 事件监听）。
  *
- * 原脚本通过 GM_xmlhttpRequest POST /api/sync/movies_lists 同步到远程服务器，
- * 此处改为调用 VltDb.sync() 写入本地 IndexedDB（寄生 JAV-JHS/appData）。
+ * 原脚本的第三方 /api/sync/movies_lists 已改为本地 VltDb；但 JavDB 自身的
+ * /users/save_video_to_list 必须先成功，再把权威状态镜像进 IndexedDB。
  *
  * 三重广播机制保留（GM_setValue/localStorage/CustomEvent），通知 VltTags
  * 自动刷新标签显示。跨标签页同步通过 GM_addValueChangeListener 实现。
  */
 
-import { VltDb, type SyncResult } from './vlt-db';
+import { VltDb } from './vlt-db';
+import type { SyncResult } from './vlt-db';
 import { showToast } from './vlt-toast';
 import { FAVORITE_ACTION } from '../../constants/status';
+import {
+    reconcileAfterConfirmedMutation,
+    reconcileListBeforeMutation,
+    reconcileListWithJavdb,
+    setupAutomaticListReconciliation
+} from './vlt-reconcile';
 
 /** 日志前缀。 */
 const LOG_PREFIX = '[JavDB]';
 
 /** 同步事件广播键。 */
 const LAST_SYNC_KEY = 'jdb:last-sync';
+
+/** 服务端写入已发出、但尚未完成本地镜像的持久化日志前缀。 */
+const PENDING_SYNC_PREFIX = 'jdb:vlt-pending-server-sync:';
 
 /** 触发自动收藏的清单名称关键词（清单名称包含此词时，添加视频自动收藏）。 */
 const AUTO_FAVORITE_KEYWORD = '等待更新';
@@ -190,7 +200,8 @@ export function getListInfo(listId: string): {
 async function syncMoviesLists(
     movieInfo: NonNullable<ReturnType<typeof getMovieInfo>>,
     listInfo: ReturnType<typeof getListInfo>,
-    action: 'add' | 'remove'
+    action: 'add' | 'remove',
+    serverConfirmed = false
 ): Promise<SyncResult> {
     console.log(
         `${LOG_PREFIX} 同步(IDB): ${movieInfo.designation} → ${listInfo.info.name} (${action})`
@@ -212,7 +223,8 @@ async function syncMoviesLists(
             url: listInfo.info.url,
             name: listInfo.info.name
         },
-        action
+        action,
+        { serverConfirmed }
     );
 
     console.log(
@@ -220,9 +232,6 @@ async function syncMoviesLists(
     );
     return result;
 }
-
-/** 防抖计时器映射。 */
-const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
  * 从详情页 DOM 提取演员名（与 BasePlugin.getPageInfo 的 actress 提取逻辑一致）。
@@ -385,8 +394,13 @@ function triggerJavdbWantAndSyncRatingBar(carNum: string): void {
 export async function handleCheckboxChange(
     movieInfo: NonNullable<ReturnType<typeof getMovieInfo>>,
     listInfo: ReturnType<typeof getListInfo>,
-    checked: boolean
-): Promise<void> {
+    checked: boolean,
+    options: {
+        serverConfirmed?: boolean;
+        silent?: boolean;
+        skipAutomation?: boolean;
+    } = {}
+): Promise<SyncResult | null> {
     const des = movieInfo.designation;
     const lname = listInfo.info.name;
     const action = checked ? 'add' : 'remove';
@@ -395,11 +409,18 @@ export async function handleCheckboxChange(
 
     let result: SyncResult;
     try {
-        result = await syncMoviesLists(movieInfo, listInfo, action);
+        result = await syncMoviesLists(
+            movieInfo,
+            listInfo,
+            action,
+            options.serverConfirmed === true
+        );
     } catch (err: any) {
         console.error(`${LOG_PREFIX} 同步失败`, err);
-        showToast(`✗ [${des}] 同步失败：${err.message || '请检查 IndexedDB'}`, 'error');
-        return;
+        if (!options.silent) {
+            showToast(`✗ [${des}] 同步失败：${err.message || '请检查 IndexedDB'}`, 'error');
+        }
+        return null;
     }
 
     // 收集实际新创建了什么
@@ -407,17 +428,24 @@ export async function handleCheckboxChange(
     if (result.movie === 'created') created.push('影片');
     if (result.list === 'created') created.push('清单');
 
-    const entry = ASSOC_TOAST[result.association];
-    if (entry) {
-        const { msg, type } = entry(des, lname, created);
-        showToast(msg, type);
-    } else {
-        showToast(`✗ [${des}] 未知响应：${result.association}`, 'error');
+    if (!options.silent) {
+        const entry = ASSOC_TOAST[result.association];
+        if (entry) {
+            const { msg, type } = entry(des, lname, created);
+            showToast(msg, type);
+        } else {
+            showToast(`✗ [${des}] 未知响应：${result.association}`, 'error');
+        }
     }
 
     // 勾选（添加到清单）且清单名称包含「等待更新」时，自动收藏未收藏视频
-    if (checked) {
+    if (checked && !options.skipAutomation && result.association !== 'limit_exceeded') {
         autoFavoriteIfPendingUpdate(movieInfo, lname).then();
+        // 加入「非等待更新」清单时，若视频仍在名称含「等待更新」的清单中，自动移出
+        // （关键词匹配：清单名包含「等待更新」即视为等待更新清单，非精确字符匹配）
+        if (!lname.includes(AUTO_FAVORITE_KEYWORD)) {
+            uncheckPendingUpdateListCheckboxes();
+        }
     }
 
     console.log(`${LOG_PREFIX} ═══ 完成 ═══`);
@@ -432,24 +460,37 @@ export async function handleCheckboxChange(
     const payloadStr = JSON.stringify(syncPayload);
 
     // 1) 同脚本跨标签页（GM 原生通道）
-    GM_setValue(LAST_SYNC_KEY, payloadStr);
+    try {
+        GM_setValue(LAST_SYNC_KEY, payloadStr);
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} GM 同步广播失败`, error);
+    }
 
     // 2) 跨脚本跨标签页（localStorage 触发 storage 事件）
-    localStorage.setItem(LAST_SYNC_KEY, payloadStr);
+    try {
+        localStorage.setItem(LAST_SYNC_KEY, payloadStr);
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} localStorage 同步广播失败`, error);
+    }
 
     // 3) 跨脚本同页面（CustomEvent 即时）
-    document.dispatchEvent(new CustomEvent('jdb:sync-complete', { detail: syncPayload }));
+    try {
+        document.dispatchEvent(new CustomEvent('jdb:sync-complete', { detail: syncPayload }));
+    } catch (error) {
+        console.warn(`${LOG_PREFIX} 页面同步广播失败`, error);
+    }
+    return result;
 }
 
 /**
  * 评分/已读（0–5 星）后：若当前视频在名称含「等待更新」的清单中，自动移出。
  *
  * 主路径：取消勾选 `#modal-save-list` 内已勾选的匹配 checkbox 并派发 change，
- * 复用 Stimulus（JavDB 服务端移除）+ setupCheckboxListener（本地 IDB + 广播 + toast）。
+ * 复用 setupCheckboxListener 的“JavDB 成功后再写 IDB”链路。
  * 同步取消 `.jhs-list-panel` 克隆勾选态（仅 UI，不二次派发）。
  *
  * 若清单 DOM 尚未加载：先查 VltDb 是否仍有关联；有则短轮询等待 checkbox，
- * 超时后仅走 VltDb remove 兜底（本地标签一致；服务端依赖下次打开清单时对齐）。
+ * 超时后直接调用同一 JavDB 请求链路，禁止只删除本地关联。
  *
  * fire-and-forget 调用，不阻塞评分主流程。
  */
@@ -465,7 +506,7 @@ export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
             if (uncheckPendingUpdateListCheckboxes() > 0) return;
         }
 
-        // DOM 仍不可用：仅本地 IDB 移除 + 广播
+        // DOM 仍不可用：仍先请求 JavDB，确认成功后才删除本地关联
         for (const item of pending) {
             const movieInfo = getMovieInfo(item.videoId);
             if (!movieInfo) continue;
@@ -473,7 +514,7 @@ export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
                 list_id: item.listId,
                 info: { url: item.url, name: item.name }
             };
-            await handleCheckboxChange(movieInfo, listInfo, false);
+            await enqueueServerCheckboxMutation(movieInfo, listInfo, false, null, true);
         }
     } catch (err: any) {
         console.error(`${LOG_PREFIX} 评分后移出「等待更新」失败`, err);
@@ -548,47 +589,513 @@ async function findPendingUpdateListsForCurrentMovie(): Promise<
     return result;
 }
 
+type MovieInfo = NonNullable<ReturnType<typeof getMovieInfo>>;
+type ListInfo = ReturnType<typeof getListInfo>;
+
+interface PendingServerSync {
+    version: 1;
+    videoId: string;
+    desiredChecked: boolean;
+    movieInfo: MovieInfo;
+    listInfo: ListInfo;
+    createdAt: number;
+}
+
+interface AuthoritativeCheckboxState {
+    checked: boolean;
+    count: number | null;
+    name: string | null;
+}
+
+type ServerMutationResult =
+    | { kind: 'confirmed'; message: string }
+    | { kind: 'rejected'; message: string }
+    | { kind: 'unknown'; message: string };
+
+const checkboxMutationQueues = new Map<string, Promise<void>>();
+let checkboxListenerInstalled = false;
+
+function getCheckboxCount(input: HTMLInputElement): number | null {
+    const text = input.closest('label')?.querySelector('span')?.textContent || '';
+    const match = text.match(/\((\d+)\)/);
+    if (!match) return null;
+    const count = Number(match[1]);
+    return Number.isSafeInteger(count) ? count : null;
+}
+
+function matchingListCheckboxes(listId: string): HTMLInputElement[] {
+    return (Array.from(
+        document.querySelectorAll(
+            '#modal-save-list input[type="checkbox"][data-list-id], ' +
+                '.jhs-list-panel input[type="checkbox"][data-list-id]'
+        )
+    ) as HTMLInputElement[]).filter((input) => input.dataset.listId === listId);
+}
+
+function setListCheckboxState(listId: string, checked: boolean): void {
+    for (const input of matchingListCheckboxes(listId)) input.checked = checked;
+}
+
+function setListCheckboxBusy(listId: string, busy: boolean): void {
+    for (const input of matchingListCheckboxes(listId)) {
+        if (busy) {
+            if (input.dataset.vltWasDisabled === undefined) {
+                input.dataset.vltWasDisabled = input.disabled ? '1' : '0';
+            }
+            input.disabled = true;
+        } else {
+            if (input.dataset.vltWasDisabled === undefined) continue;
+            input.disabled = input.dataset.vltWasDisabled === '1';
+            delete input.dataset.vltWasDisabled;
+        }
+    }
+}
+
+function setListDisplayedCount(listId: string, count: number): void {
+    for (const input of matchingListCheckboxes(listId)) {
+        const span = input.closest('label')?.querySelector('span');
+        if (span) span.textContent = `(${count})`;
+    }
+}
+
+function createPendingJournal(entry: PendingServerSync): string | null {
+    try {
+        const randomPart =
+            typeof crypto.randomUUID === 'function'
+                ? crypto.randomUUID()
+                : `${Math.random().toString(36).slice(2)}-${Date.now()}`;
+        const key = `${PENDING_SYNC_PREFIX}${entry.createdAt}:${randomPart}`;
+        localStorage.setItem(key, JSON.stringify(entry));
+        return key;
+    } catch (error) {
+        console.error(`${LOG_PREFIX} 无法写入清单同步恢复日志`, error);
+        return null;
+    }
+}
+
+function removePendingJournal(key: string | null): void {
+    if (!key) return;
+    try {
+        localStorage.removeItem(key);
+    } catch {}
+}
+
+function readPendingJournals(): { key: string; entry: PendingServerSync }[] {
+    const keys: string[] = [];
+    try {
+        for (let index = 0; index < localStorage.length; index++) {
+            const key = localStorage.key(index);
+            if (key?.startsWith(PENDING_SYNC_PREFIX)) keys.push(key);
+        }
+    } catch {
+        return [];
+    }
+
+    const entries: { key: string; entry: PendingServerSync }[] = [];
+    for (const key of keys) {
+        try {
+            const value = localStorage.getItem(key);
+            if (!value) continue;
+            const entry = JSON.parse(value) as Partial<PendingServerSync>;
+            if (
+                entry.version !== 1 ||
+                !entry.videoId ||
+                !entry.movieInfo?.designation ||
+                !entry.listInfo?.list_id ||
+                typeof entry.desiredChecked !== 'boolean' ||
+                typeof entry.createdAt !== 'number'
+            ) {
+                removePendingJournal(key);
+                continue;
+            }
+            entries.push({ key, entry: entry as PendingServerSync });
+        } catch {
+            removePendingJournal(key);
+        }
+    }
+    return entries.sort((left, right) => left.entry.createdAt - right.entry.createdAt);
+}
+
+async function postJavdbListMutation(
+    videoId: string,
+    listId: string,
+    checked: boolean
+): Promise<ServerMutationResult> {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) return { kind: 'rejected', message: '无法获取 CSRF token' };
+
+    try {
+        const response = await fetch(
+            new URL('/users/save_video_to_list', window.location.origin).href,
+            {
+                method: 'POST',
+                body: JSON.stringify({ video_id: videoId, checked, list_id: listId }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'same-origin'
+            }
+        );
+        const data = (await response.json().catch(() => null)) as {
+            success?: unknown;
+            message?: unknown;
+        } | null;
+        const message = typeof data?.message === 'string' ? data.message : `HTTP ${response.status}`;
+        if (response.ok && data?.success === true) return { kind: 'confirmed', message };
+        if (response.ok && data?.success === false) return { kind: 'rejected', message };
+        return { kind: 'unknown', message };
+    } catch (error) {
+        return {
+            kind: 'unknown',
+            message: error instanceof Error ? error.message : String(error)
+        };
+    }
+}
+
+async function fetchAuthoritativeCheckboxState(
+    videoId: string,
+    listId: string
+): Promise<AuthoritativeCheckboxState | null> {
+    try {
+        let url: URL | null = new URL('/users/simple_lists', window.location.origin);
+        url.searchParams.set('vid', videoId);
+        const visited = new Set<string>();
+
+        for (let page = 0; url && page < 50; page++) {
+            if (visited.has(url.href)) return null;
+            visited.add(url.href);
+            const response = await fetch(url.href, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { Accept: 'application/json' }
+            });
+            if (!response.ok) return null;
+            const payload = (await response.json()) as { lists?: unknown; page?: unknown };
+            if (typeof payload.lists !== 'string') return null;
+
+            const documentNode = new DOMParser().parseFromString(payload.lists, 'text/html');
+            const input = (Array.from(
+                documentNode.querySelectorAll('input[type="checkbox"][data-list-id]')
+            ) as HTMLInputElement[]).find((item) => item.dataset.listId === listId);
+            if (input) {
+                const labelText = (input.closest('label')?.textContent || '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                return {
+                    checked: input.checked,
+                    count: getCheckboxCount(input),
+                    name: labelText.replace(/\s*\(\d+\).*$/, '').trim() || null
+                };
+            }
+
+            const pageHtml = typeof payload.page === 'string' ? payload.page : '';
+            const pageDocument = new DOMParser().parseFromString(pageHtml, 'text/html');
+            const nextHref = pageDocument.querySelector('a[rel="next"]')?.getAttribute('href');
+            if (!nextHref) return { checked: false, count: null, name: null };
+            const nextUrl: URL = new URL(nextHref, url.href);
+            if (
+                nextUrl.origin !== window.location.origin ||
+                nextUrl.pathname !== '/users/simple_lists'
+            ) {
+                return null;
+            }
+            url = nextUrl;
+        }
+        return null;
+    } catch (error) {
+        console.error(`${LOG_PREFIX} 查询 JavDB 权威清单状态失败`, error);
+        return null;
+    }
+}
+
+async function commitAuthoritativeState(
+    entry: PendingServerSync,
+    authoritative: AuthoritativeCheckboxState,
+    notify: boolean
+): Promise<boolean> {
+    const listInfo: ListInfo = {
+        ...entry.listInfo,
+        info: {
+            ...entry.listInfo.info,
+            name: authoritative.name || entry.listInfo.info.name
+        }
+    };
+    let reconciledBeforeCommit = false;
+    if (authoritative.count !== null) {
+        const before = await VltDb.getListReconcileState(
+            entry.listInfo.list_id,
+            entry.movieInfo.designation
+        );
+        const projectedCount =
+            before.actualCount +
+            (authoritative.checked && before.hasDesignation === false
+                ? 1
+                : !authoritative.checked && before.hasDesignation === true
+                  ? -1
+                  : 0);
+        if (projectedCount !== authoritative.count) {
+            reconciledBeforeCommit = await reconcileListWithJavdb(entry.listInfo.list_id, {
+                expectedCount: authoritative.count,
+                designation: entry.movieInfo.designation,
+                checked: authoritative.checked,
+                quiet: !notify
+            });
+            if (!reconciledBeforeCommit) return false;
+        }
+    }
+
+    const result = await handleCheckboxChange(
+        entry.movieInfo,
+        listInfo,
+        authoritative.checked,
+        {
+            serverConfirmed: true,
+            silent: !notify || reconciledBeforeCommit,
+            skipAutomation: !notify
+        }
+    );
+    if (!result) return false;
+
+    setListCheckboxState(entry.listInfo.list_id, authoritative.checked);
+    if (authoritative.count !== null) {
+        setListDisplayedCount(entry.listInfo.list_id, authoritative.count);
+        const state = await VltDb.getListReconcileState(
+            entry.listInfo.list_id,
+            entry.movieInfo.designation
+        );
+        if (
+            state.inventory &&
+            (state.actualCount !== authoritative.count ||
+                state.hasDesignation !== authoritative.checked)
+        ) {
+            return reconcileListWithJavdb(entry.listInfo.list_id, {
+                expectedCount: authoritative.count,
+                designation: entry.movieInfo.designation,
+                checked: authoritative.checked,
+                quiet: !notify
+            });
+        }
+    }
+    return true;
+}
+
+async function withAssociationLock(key: string, task: () => Promise<void>): Promise<void> {
+    if (!navigator.locks) {
+        await task();
+        return;
+    }
+    await navigator.locks.request(`javdb-power-tools:vlt:${key}`, { mode: 'exclusive' }, task);
+}
+
+function enqueueAssociationTask(key: string, task: () => Promise<void>): Promise<void> {
+    const previous = checkboxMutationQueues.get(key) || Promise.resolve();
+    const current = previous
+        .catch(() => {})
+        .then(() => withAssociationLock(key, task));
+    checkboxMutationQueues.set(key, current);
+    current.finally(() => {
+        if (checkboxMutationQueues.get(key) === current) checkboxMutationQueues.delete(key);
+    });
+    return current;
+}
+
+async function recoverPendingServerSyncs(): Promise<void> {
+    for (const { key, entry } of readPendingJournals()) {
+        const associationKey = `${entry.movieInfo.designation}::${entry.listInfo.list_id}`;
+        await enqueueAssociationTask(associationKey, async () => {
+            const authoritative = await fetchAuthoritativeCheckboxState(
+                entry.videoId,
+                entry.listInfo.list_id
+            );
+            if (!authoritative) return;
+            if (await commitAuthoritativeState(entry, authoritative, false)) {
+                removePendingJournal(key);
+                console.log(
+                    `${LOG_PREFIX} 已恢复未完成清单同步：${entry.movieInfo.designation} ` +
+                        `${authoritative.checked ? 'add' : 'remove'} ${entry.listInfo.list_id}`
+                );
+            }
+        });
+    }
+}
+
+async function performServerCheckboxMutation(
+    movieInfo: MovieInfo,
+    listInfo: ListInfo,
+    checked: boolean,
+    input: HTMLInputElement | null,
+    checkedBeforeMutation: boolean
+): Promise<void> {
+    const listId = listInfo.list_id;
+    let confirmedChecked: boolean | null = null;
+    setListCheckboxState(listId, checked);
+    setListCheckboxBusy(listId, true);
+
+    try {
+        if (input) {
+            await reconcileListBeforeMutation(input, movieInfo.designation, checkedBeforeMutation);
+        }
+
+        const pending: PendingServerSync = {
+            version: 1,
+            videoId: input?.value || movieInfo.info.href.match(/\/v\/([^/?#]+)/)?.[1] || '',
+            desiredChecked: checked,
+            movieInfo,
+            listInfo,
+            createdAt: Date.now()
+        };
+        if (!pending.videoId) throw new Error('无法识别 JavDB 影片 ID');
+        const journalKey = createPendingJournal(pending);
+        if (!journalKey) throw new Error('无法建立清单同步恢复日志，本次操作已取消');
+        const serverResult = await postJavdbListMutation(pending.videoId, listId, checked);
+
+        if (serverResult.kind === 'rejected') {
+            removePendingJournal(journalKey);
+            setListCheckboxState(listId, checkedBeforeMutation);
+            showToast(`✗ JavDB 清单更新失败：${serverResult.message}`, 'error');
+            return;
+        }
+
+        if (serverResult.kind === 'unknown') {
+            // POST 可能仍在服务端排队；紧随其后的 GET 即使读到旧值也不能证明 POST
+            // 最终未生效，因此本轮绝不写本地、绝不清日志，留到下次页面加载再确认。
+            const observed = await fetchAuthoritativeCheckboxState(pending.videoId, listId);
+            setListCheckboxState(listId, observed?.checked ?? checkedBeforeMutation);
+            if (observed?.count !== null && observed?.count !== undefined) {
+                setListDisplayedCount(listId, observed.count);
+            }
+            showToast(
+                `⚠ 无法确认 JavDB 最终状态（${serverResult.message}），本地未改动；下次打开页面会自动核对`,
+                'warning'
+            );
+            return;
+        }
+
+        confirmedChecked = checked;
+        const authoritative = await fetchAuthoritativeCheckboxState(pending.videoId, listId);
+        if (authoritative) {
+            confirmedChecked = authoritative.checked;
+            if (await commitAuthoritativeState(pending, authoritative, true)) {
+                removePendingJournal(journalKey);
+            } else {
+                showToast(
+                    '⚠ JavDB 已更新，本地完整清单将在下次打开页面时继续校准',
+                    'warning'
+                );
+            }
+            return;
+        }
+
+        // success=true 已确认本次服务端请求被接受；若轻量权威查询临时失败，先用
+        // 完整清单快照校准，禁止在旧集合上盲目 ±1。快照失败时保留原本地状态与日志。
+        setListCheckboxState(listId, checked);
+        const reconciled = await reconcileAfterConfirmedMutation(
+            listId,
+            movieInfo.designation,
+            checked
+        );
+        const result = reconciled
+            ? await handleCheckboxChange(movieInfo, listInfo, checked, {
+                  serverConfirmed: true
+              })
+            : null;
+        if (result) {
+            removePendingJournal(journalKey);
+        } else {
+            showToast(
+                '⚠ JavDB 已更新，但暂时无法复核最终清单；恢复日志已保留',
+                'warning'
+            );
+        }
+    } catch (error) {
+        setListCheckboxState(
+            listId,
+            confirmedChecked === null ? checkedBeforeMutation : confirmedChecked
+        );
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`${LOG_PREFIX} JavDB 清单同步失败`, error);
+        showToast(
+            confirmedChecked === null
+                ? `✗ JavDB 清单同步失败：${message}`
+                : `⚠ JavDB 已更新，本地镜像将在下次打开页面时继续恢复：${message}`,
+            confirmedChecked === null ? 'error' : 'warning'
+        );
+    } finally {
+        setListCheckboxBusy(listId, false);
+    }
+}
+
+function enqueueServerCheckboxMutation(
+    movieInfo: MovieInfo,
+    listInfo: ListInfo,
+    checked: boolean,
+    input: HTMLInputElement | null,
+    checkedBeforeMutation: boolean
+): Promise<void> {
+    const key = `${movieInfo.designation}::${listInfo.list_id}`;
+    return enqueueAssociationTask(key, () =>
+        performServerCheckboxMutation(
+            movieInfo,
+            listInfo,
+            checked,
+            input,
+            checkedBeforeMutation
+        )
+    );
+}
+
 /**
- * 注册 checkbox change 事件监听。
- * 对应原 L573-600。
- *
- * 监听 `input[type=checkbox][data-action="change->list#listCheckboxChanged"]`
- * 的 change 事件，防抖后调用 handleCheckboxChange。
+ * 接管 JavDB 原生清单 checkbox：先等待 `/users/save_video_to_list` 明确成功，
+ * 再写本地 IDB。网络结果不确定时保留恢复日志，下次加载后用
+ * `/users/simple_lists` 的最终权威状态恢复。
  */
 export function setupCheckboxListener(): void {
-    document.addEventListener('change', (e: Event) => {
-        const target = e.target as HTMLElement;
+    if (checkboxListenerInstalled) return;
+    checkboxListenerInstalled = true;
 
-        if (
-            target.tagName !== 'INPUT' ||
-            (target as HTMLInputElement).type !== 'checkbox' ||
-            target.dataset.action !== 'change->list#listCheckboxChanged'
-        ) {
-            return;
-        }
+    document.addEventListener(
+        'change',
+        (event: Event) => {
+            const input = event.target as HTMLInputElement;
+            if (
+                input.tagName !== 'INPUT' ||
+                input.type !== 'checkbox' ||
+                input.dataset.action !== 'change->list#listCheckboxChanged' ||
+                !input.closest('#modal-save-list')
+            ) {
+                return;
+            }
 
-        const input = target as HTMLInputElement;
-        const movieInfo = getMovieInfo(input.value);
-        if (!movieInfo) {
-            console.warn(`${LOG_PREFIX} 无法获取影片信息，跳过`);
-            return;
-        }
-        const listInfo = getListInfo(input.dataset.listId || '');
-        if (!listInfo.info.name) {
-            console.warn(`${LOG_PREFIX} 无法获取清单名称，跳过`);
-            return;
-        }
-        const checked = input.checked;
-        const key = `${movieInfo.designation}::${listInfo.list_id}`;
+            // 捕获阶段阻止 Stimulus 再发第二个相同请求；平铺面板事件会先映射到这里。
+            event.preventDefault();
+            event.stopImmediatePropagation();
 
-        clearTimeout(debounceTimers.get(key));
-        debounceTimers.set(
-            key,
-            setTimeout(() => {
-                handleCheckboxChange(movieInfo, listInfo, checked).then();
-            }, 300)
-        );
-    });
+            const checked = input.checked;
+            const checkedBeforeMutation = !checked;
+            const movieInfo = getMovieInfo(input.value);
+            const listInfo = getListInfo(input.dataset.listId || '');
+            if (!movieInfo || !listInfo.list_id || !listInfo.info.name) {
+                setListCheckboxState(listInfo.list_id, checkedBeforeMutation);
+                showToast('✗ 无法读取影片或清单信息，本次操作已取消', 'error');
+                return;
+            }
+
+            enqueueServerCheckboxMutation(
+                movieInfo,
+                listInfo,
+                checked,
+                input,
+                checkedBeforeMutation
+            ).then();
+        },
+        true
+    );
+
+    const currentVideoId = window.location.pathname.match(/\/v\/([^/?#]+)/)?.[1];
+    const currentMovie = currentVideoId ? getMovieInfo(currentVideoId) : null;
+    if (currentMovie) setupAutomaticListReconciliation(currentMovie.designation);
+    recoverPendingServerSyncs().then();
 }
 
 /* ============================================================
@@ -1104,8 +1611,8 @@ function finishCreateList(newCheckboxes: HTMLInputElement[], listName: string): 
                 `${LOG_PREFIX} 新建清单后无法从 DOM 取得清单名稱，使用传入名稱「${listName}」`
             );
         }
-        // JavDB 已自动勾选（关联视频），故传入 true
-        handleCheckboxChange(movieInfo, listInfo, true).then();
+        // JavDB 创建清单时已自动关联当前视频，只提交本地镜像，禁止再发第二次服务端请求
+        handleCheckboxChange(movieInfo, listInfo, true, { serverConfirmed: true }).then();
     }
 }
 
@@ -1361,35 +1868,26 @@ async function handleListDeletion(listId: string, href: string): Promise<void> {
 
     console.log(`${LOG_PREFIX} ═══ 删除清单 listId=${listId} ═══`);
 
-    // 1. 乐观 UI：立即移除 DOM（用户即时看到清单消失，不等服务器）
-    const li = document.querySelector(`#list-${listId}`);
-    if (li) {
-        li.remove();
-    }
     showToast('正在同步删除…', 'info');
 
-    // 2. 并行：发 DELETE 请求 + 删 IDB（两者互不依赖）
-    const [serverOk, idbResult] = await Promise.all([
-        sendDeleteRequest(href, csrfToken),
-        VltDb.deleteList(listId)
-    ]);
+    // 必须先确认 JavDB 删除成功，禁止服务器失败时仍提前清掉本地镜像。
+    const serverOk = await sendDeleteRequest(href, csrfToken);
+    if (!serverOk) {
+        showToast('✗ JavDB 删除清单失败，本地数据未改动', 'error');
+        return;
+    }
+
+    const idbResult = await VltDb.deleteList(listId);
+    document.querySelector(`#list-${listId}`)?.remove();
 
     console.log(
         `${LOG_PREFIX} 删除完成: listId=${listId} server=${serverOk} inventory=${idbResult.inventory} associations=${idbResult.associations}`
     );
 
-    // 3. 广播（无论服务器是否成功，本地数据已清除，需通知其他页面同步）
+    // JavDB 与本地均成功后再广播
     broadcastListMgmt('delete', listId);
 
-    // 4. toast
-    if (serverOk) {
-        showToast(`✓ 清单已删除（${idbResult.associations} 条关联已清除）`, 'success');
-    } else {
-        showToast(
-            `⚠ 本地数据已清除（${idbResult.associations} 条关联），服务器响应异常，刷新后确认`,
-            'warning'
-        );
-    }
+    showToast(`✓ 清单已删除（${idbResult.associations} 条关联已清除）`, 'success');
     console.log(`${LOG_PREFIX} ═══ 删除完成 ═══`);
 }
 
@@ -1403,7 +1901,7 @@ function sendDeleteRequest(href: string, csrfToken: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
         GM_xmlhttpRequest({
             method: 'DELETE',
-            url: 'https://javdb.com' + href,
+            url: window.location.origin + href,
             headers: {
                 'X-CSRF-Token': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',

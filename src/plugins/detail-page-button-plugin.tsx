@@ -693,10 +693,13 @@ export class DetailPageButtonPlugin extends BasePlugin {
                     '[data-list-target="listContainer"]'
                 );
                 if (!listContainer) return;
-                const panels = Array.from(listPanel.querySelectorAll('input[type="checkbox"]'));
-                const idx = panels.indexOf(e.target);
-                const modalCheckboxes = listContainer.querySelectorAll('input[type="checkbox"]');
-                const target = modalCheckboxes[idx];
+                const listId = e.target.dataset.listId;
+                if (!listId) return;
+                const target = Array.from(
+                    listContainer.querySelectorAll('input[type="checkbox"][data-list-id]')
+                ).find((input: any) => input.dataset.listId === listId) as
+                    | HTMLInputElement
+                    | undefined;
                 if (target) {
                     target.checked = e.target.checked;
                     target.dispatchEvent(new Event('change', { bubbles: true }));

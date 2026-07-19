@@ -1,23 +1,9 @@
 /**
  * IndexedDB 数据层 —— 寄生 JAV-JHS/appData 仓库。
  *
- * 替代原远程服务器 API（POST /api/sync/movies_lists 等），将 movies/inventory/
- * movie_inventory 三张表的数据存储在本地 IndexedDB 的 JAV-JHS/appData 仓库中，
- * 通过 WebDav 备份随 jhs 主数据库一起备份恢复。
- *
- * 数据结构（与 PostgreSQL 表结构一一对应）：
- * - key "vlt_movies": { [designation]: MovieRecord }
- * - key "vlt_inventory": { [listId]: InventoryRecord }
- * - key "vlt_movie_inventory": { [designation::listId]: true }
- * - key "vlt_meta": { version, exportedAt, importedAt }
- *
- * 与服务器端逻辑的等价映射（见 archetype/javdb-lists-server-src/index.ts）：
- * - movie upsert（ON CONFLICT DO UPDATE，created_at 仅首次写入）
- * - list upsert（ON CONFLICT DO NOTHING，已存在不更新）
- * - association add（count < 501 检查 + 复合主键防重复）
- * - association remove（DELETE）
- * - count 维护（服务器用触发器，此处手动 ±1）
- * - count CHECK 约束（服务器用 CHECK count<=501，此处代码检查）
+ * movies / inventory / movie_inventory / meta 四个逻辑对象存放在同一个 object store
+ * 的四个 key 中。所有会改变关联关系的操作均在同一个 readwrite transaction 内完成，
+ * 避免多标签页同时勾选时出现“后写覆盖先写”的丢失更新。
  */
 
 /** 影片记录（对应 PostgreSQL movies 表）。 */
@@ -42,7 +28,7 @@ export interface InventoryRecord {
     style: { name: string; bg: string; text: string } | null;
 }
 
-/** 同步结果（对应服务器 /api/sync/movies_lists 响应）。 */
+/** 同步结果（对应原服务器 /api/sync/movies_lists 响应）。 */
 export interface SyncResult {
     movie: 'created' | 'existed';
     list: 'created' | 'existed';
@@ -59,11 +45,61 @@ export interface MigrationData {
     movieInventory: Record<string, boolean>;
 }
 
+/** 服务端完整清单快照。仅在抓取和校验全部分页后用于对账。 */
+export interface ListReconcileSnapshot {
+    listId: string;
+    name: string;
+    url: string;
+    expectedCount: number;
+    movies: MovieRecord[];
+}
+
+/** 开始抓取清单前保存的本地版本守卫。 */
+export interface ListReconcileGuard {
+    epoch: number;
+    revision: number;
+    fingerprint: string;
+}
+
+/** 当前清单的本地状态，用于判断是否需要抓取服务端清单。 */
+export interface ListReconcileState {
+    inventory: InventoryRecord | null;
+    actualCount: number;
+    hasDesignation: boolean | null;
+    guard: ListReconcileGuard;
+}
+
+/** 完整清单对账结果。 */
+export type ListReconcileResult =
+    | { status: 'applied'; added: number; removed: number; count: number }
+    | { status: 'conflict' };
+
+interface VltMeta {
+    version?: number;
+    exportedAt?: string;
+    importedAt?: string;
+    source?: string;
+    epoch: number;
+    listRevisions: Record<string, number>;
+}
+
+interface VltState {
+    movies: Record<string, MovieRecord>;
+    inventory: Record<string, InventoryRecord>;
+    movieInventory: Record<string, boolean>;
+    meta: VltMeta;
+}
+
+interface SyncOptions {
+    /** JavDB 已明确返回 success=true；本地不得反过来拒绝已发生的服务端写入。 */
+    serverConfirmed?: boolean;
+}
+
 /** JHS IndexedDB 库名/仓库名（与 storageManager 同库，寄生备份）。 */
 const DB_NAME = 'JAV-JHS';
 const STORE_NAME = 'appData';
 
-/** 清单条目上限（与 PostgreSQL CHECK 约束一致）。 */
+/** 清单条目上限（与 JavDB 当前上限一致）。 */
 const MAX_COUNT = 501;
 
 /** Bootstrap 标准配色池（与服务器 randomBootstrapStyle 一致）。 */
@@ -77,11 +113,6 @@ const BOOTSTRAP_COLORS = [
     { name: 'dark', bg: '#212529', text: '#fff' }
 ];
 
-/** 随机选取 Bootstrap 配色（对应服务器 randomBootstrapStyle）。 */
-function randomBootstrapStyle(): { name: string; bg: string; text: string } {
-    return BOOTSTRAP_COLORS[Math.floor(Math.random() * BOOTSTRAP_COLORS.length)];
-}
-
 /** 数据键名。 */
 const KEYS = {
     MOVIES: 'vlt_movies',
@@ -90,10 +121,10 @@ const KEYS = {
     META: 'vlt_meta'
 } as const;
 
-/**
- * 打开 JHS IndexedDB。
- * 与 doc/25 rating-cache.ts 的 openIdb 模式一致：寄生 JAV-JHS/appData。
- */
+function randomBootstrapStyle(): { name: string; bg: string; text: string } {
+    return BOOTSTRAP_COLORS[Math.floor(Math.random() * BOOTSTRAP_COLORS.length)];
+}
+
 function openDb(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME);
@@ -108,55 +139,125 @@ function openDb(): Promise<IDBDatabase> {
     });
 }
 
-/**
- * 读取一个键的值（Promise 包装）。
- * @param db IDBDatabase 实例
- * @param key 键名
- * @returns 键值（可能为 undefined）
- */
-function dbGet<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
+function requestResult<T>(request: IDBRequest<T>): Promise<T> {
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.get(key);
-        req.onsuccess = () => resolve(req.result as T | undefined);
-        req.onerror = () => reject(req.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
     });
 }
 
-/**
- * 写入一个键值（Promise 包装）。
- * @param db IDBDatabase 实例
- * @param key 键名
- * @param value 键值
- */
-function dbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
+function transactionDone(transaction: IDBTransaction): Promise<void> {
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put(value, key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(transaction.error || new Error('IndexedDB 事务已中止'));
+        transaction.onerror = () => reject(transaction.error || new Error('IndexedDB 事务失败'));
     });
 }
 
+function normalizeMeta(value: Partial<VltMeta> | undefined): VltMeta {
+    return {
+        ...value,
+        epoch: Number.isFinite(Number(value?.epoch)) ? Number(value?.epoch) : 0,
+        listRevisions: value?.listRevisions ? { ...value.listRevisions } : {}
+    };
+}
+
+function associationDesignations(
+    movieInventory: Record<string, boolean>,
+    listId: string
+): string[] {
+    const suffix = `::${listId}`;
+    return Object.keys(movieInventory)
+        .filter((key) => movieInventory[key] && key.endsWith(suffix))
+        .map((key) => key.slice(0, -suffix.length));
+}
+
+function listFingerprint(movieInventory: Record<string, boolean>, listId: string): string {
+    return associationDesignations(movieInventory, listId).sort().join('\u001f');
+}
+
+function bumpListRevision(meta: VltMeta, listId: string): void {
+    meta.listRevisions[listId] = (meta.listRevisions[listId] || 0) + 1;
+}
+
 /**
- * VLT 数据库操作类。
- *
- * 所有方法对应原远程服务器 API 端点，用本地 IndexedDB 操作等价替换。
- * count 维护（原 PostgreSQL 触发器）在 addAssociation/removeAssociation 中手动执行。
+ * 在单个 IndexedDB transaction 中读取四个逻辑对象，并可同步修改后一次性写回。
+ * readwrite transaction 会被 IndexedDB 按 object store 串行化，避免跨标签页覆盖。
  */
+async function withState<T>(
+    mode: IDBTransactionMode,
+    callback: (state: VltState) => T
+): Promise<T> {
+    const db = await openDb();
+    const transaction = db.transaction(STORE_NAME, mode);
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(STORE_NAME);
+
+    try {
+        const [moviesValue, inventoryValue, movieInventoryValue, metaValue] = await Promise.all([
+            requestResult(store.get(KEYS.MOVIES)),
+            requestResult(store.get(KEYS.INVENTORY)),
+            requestResult(store.get(KEYS.MOVIE_INVENTORY)),
+            requestResult(store.get(KEYS.META))
+        ]);
+
+        const state: VltState = {
+            movies: (moviesValue as Record<string, MovieRecord> | undefined) || {},
+            inventory: (inventoryValue as Record<string, InventoryRecord> | undefined) || {},
+            movieInventory:
+                (movieInventoryValue as Record<string, boolean> | undefined) || {},
+            meta: normalizeMeta(metaValue as Partial<VltMeta> | undefined)
+        };
+        const result = callback(state);
+
+        if (mode === 'readwrite') {
+            store.put(state.movies, KEYS.MOVIES);
+            store.put(state.inventory, KEYS.INVENTORY);
+            store.put(state.movieInventory, KEYS.MOVIE_INVENTORY);
+            store.put(state.meta, KEYS.META);
+        }
+
+        await done;
+        return result;
+    } catch (error) {
+        try {
+            transaction.abort();
+        } catch {}
+        await done.catch(() => {});
+        throw error;
+    } finally {
+        db.close();
+    }
+}
+
+function validateSnapshot(snapshot: ListReconcileSnapshot): void {
+    if (!snapshot.listId || !snapshot.name || !snapshot.url) {
+        throw new Error('服务端清单快照缺少 listId/name/url');
+    }
+    if (!Number.isInteger(snapshot.expectedCount) || snapshot.expectedCount < 0) {
+        throw new Error('服务端清单快照数量无效');
+    }
+    if (snapshot.movies.length !== snapshot.expectedCount) {
+        throw new Error(
+            `服务端清单快照不完整：期望 ${snapshot.expectedCount}，实际 ${snapshot.movies.length}`
+        );
+    }
+    const designations = new Set<string>();
+    for (const movie of snapshot.movies) {
+        if (!movie.designation || !movie.href) {
+            throw new Error('服务端清单快照包含空番号或空链接');
+        }
+        if (designations.has(movie.designation)) {
+            throw new Error(`服务端清单快照包含重复番号：${movie.designation}`);
+        }
+        designations.add(movie.designation);
+    }
+}
+
+/** VLT 数据库操作类。 */
 export class VltDb {
     /**
-     * 聚合同步：影片 upsert + 清单 upsert + 关联 add/remove。
-     * 对应服务器 POST /api/sync/movies_lists 的 CTE 语句。
-     *
-     * @param designation 影片番号
-     * @param listId 清单 ID
-     * @param movie 影片信息
-     * @param list 清单信息
-     * @param action "add" | "remove"
-     * @returns SyncResult { movie, list, association }
+     * 影片 upsert + 清单 upsert + 关联 add/remove，全部在一个事务中提交。
      */
     static async sync(
         designation: string,
@@ -170,52 +271,27 @@ export class VltDb {
             series?: string;
             code?: string;
         },
-        list: {
-            url?: string;
-            name: string;
-        },
-        action: 'add' | 'remove'
+        list: { url?: string; name: string },
+        action: 'add' | 'remove',
+        options: SyncOptions = {}
     ): Promise<SyncResult> {
-        const db = await openDb();
-        try {
-            // 1. 读取当前数据
-            const movies = (await dbGet<Record<string, MovieRecord>>(db, KEYS.MOVIES)) || {};
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
-
-            // 2. movie upsert（ON CONFLICT DO UPDATE，created_at 仅首次写入）
+        return withState('readwrite', (state) => {
+            const { movies, inventory, movieInventory, meta } = state;
             const movieExisted = !!movies[designation];
             const score = movie.score != null ? Number(movie.score) : null;
-            if (movieExisted) {
-                // 更新（不覆盖 createdAt）
-                movies[designation] = {
-                    ...movies[designation],
-                    href: movie.href,
-                    title: movie.title ?? null,
-                    coverSrc: movie.cover_src ?? null,
-                    score,
-                    releaseDate: movie.release_date ?? null,
-                    series: movie.series ?? null,
-                    code: movie.code ?? null
-                };
-            } else {
-                // 新建
-                movies[designation] = {
-                    designation,
-                    href: movie.href,
-                    title: movie.title ?? null,
-                    coverSrc: movie.cover_src ?? null,
-                    score,
-                    releaseDate: movie.release_date ?? null,
-                    createdAt: new Date().toISOString(),
-                    series: movie.series ?? null,
-                    code: movie.code ?? null
-                };
-            }
-            const movieStatus: 'created' | 'existed' = movieExisted ? 'existed' : 'created';
+            const previousMovie = movies[designation];
+            movies[designation] = {
+                designation,
+                href: movie.href,
+                title: movie.title ?? null,
+                coverSrc: movie.cover_src ?? null,
+                score: Number.isFinite(score) ? score : null,
+                releaseDate: movie.release_date ?? null,
+                createdAt: previousMovie?.createdAt ?? new Date().toISOString(),
+                series: movie.series ?? null,
+                code: movie.code ?? null
+            };
 
-            // 3. list upsert（ON CONFLICT DO NOTHING，已存在不更新）
             const listExisted = !!inventory[listId];
             if (!listExisted) {
                 inventory[listId] = {
@@ -226,62 +302,40 @@ export class VltDb {
                     style: randomBootstrapStyle()
                 };
             }
-            const listStatus: 'created' | 'existed' = listExisted ? 'existed' : 'created';
 
-            // 4. association add/remove
             const assocKey = `${designation}::${listId}`;
-            let associationStatus: SyncResult['association'];
+            const actualCount = associationDesignations(movieInventory, listId).length;
+            inventory[listId].count = actualCount;
+            let association: SyncResult['association'];
 
             if (action === 'add') {
-                if (mi[assocKey]) {
-                    // 关联已存在
-                    associationStatus = 'existed';
+                if (movieInventory[assocKey]) {
+                    association = 'existed';
+                } else if (actualCount >= MAX_COUNT && !options.serverConfirmed) {
+                    association = 'limit_exceeded';
                 } else {
-                    // 检查 count < 501
-                    const currentCount = inventory[listId]?.count ?? 0;
-                    if (currentCount >= MAX_COUNT) {
-                        associationStatus = 'limit_exceeded';
-                    } else {
-                        // 插入关联 + count +1（触发器等价）
-                        mi[assocKey] = true;
-                        inventory[listId].count = currentCount + 1;
-                        associationStatus = 'created';
-                    }
+                    movieInventory[assocKey] = true;
+                    inventory[listId].count = actualCount + 1;
+                    association = 'created';
                 }
+            } else if (movieInventory[assocKey]) {
+                delete movieInventory[assocKey];
+                inventory[listId].count = Math.max(0, actualCount - 1);
+                association = 'deleted';
             } else {
-                // action === 'remove'
-                if (mi[assocKey]) {
-                    // 删除关联 + count -1（触发器等价）
-                    delete mi[assocKey];
-                    if (inventory[listId]) {
-                        inventory[listId].count = Math.max(0, inventory[listId].count - 1);
-                    }
-                    associationStatus = 'deleted';
-                } else {
-                    associationStatus = 'unchanged';
-                }
+                association = 'unchanged';
             }
 
-            // 5. 写回（仅当有变更时）
-            // 注意：即使 association 是 existed/unchanged/limit_exceeded，
-            // movie/list 的 upsert 仍需写回（与服务器 CTE 一致——CTE 总是执行 upsert）
-            await dbPut(db, KEYS.MOVIES, movies);
-            await dbPut(db, KEYS.INVENTORY, inventory);
-            await dbPut(db, KEYS.MOVIE_INVENTORY, mi);
-
-            return { movie: movieStatus, list: listStatus, association: associationStatus };
-        } finally {
-            db.close();
-        }
+            bumpListRevision(meta, listId);
+            return {
+                movie: movieExisted ? 'existed' : 'created',
+                list: listExisted ? 'existed' : 'created',
+                association
+            };
+        });
     }
 
-    /**
-     * 批量查询番号所属的清单列表。
-     * 对应服务器 POST /api/movies_lists。
-     *
-     * @param designations 番号数组
-     * @returns { [designation]: [{ name, url, style }] }
-     */
+    /** 批量查询番号所属的清单列表。 */
     static async queryMoviesLists(designations: string[]): Promise<
         Record<
             string,
@@ -292,13 +346,7 @@ export class VltDb {
             }[]
         >
     > {
-        const db = await openDb();
-        try {
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
-
-            // 反查：遍历 movie_inventory，找到每个 designation 关联的 listId
+        return withState('readonly', (state) => {
             const result: Record<
                 string,
                 {
@@ -307,200 +355,217 @@ export class VltDb {
                     style: { name: string; bg: string; text: string } | null;
                 }[]
             > = {};
+            for (const designation of designations) result[designation] = [];
 
-            // 初始化所有 designation 为空数组
-            for (const des of designations) {
-                result[des] = [];
+            for (const key of Object.keys(state.movieInventory)) {
+                if (!state.movieInventory[key]) continue;
+                const separator = key.indexOf('::');
+                if (separator < 0) continue;
+                const designation = key.slice(0, separator);
+                if (result[designation] === undefined) continue;
+                const listId = key.slice(separator + 2);
+                const list = state.inventory[listId];
+                if (!list) continue;
+                result[designation].push({ name: list.name, url: list.url, style: list.style });
             }
-
-            // 遍历 movie_inventory 的键（格式 "designation::listId"）
-            for (const key of Object.keys(mi)) {
-                const sepIdx = key.indexOf('::');
-                if (sepIdx < 0) continue;
-                const des = key.substring(0, sepIdx);
-                const lid = key.substring(sepIdx + 2);
-                if (result[des] !== undefined) {
-                    const inv = inventory[lid];
-                    if (inv) {
-                        result[des].push({
-                            name: inv.name,
-                            url: inv.url,
-                            style: inv.style
-                        });
-                    }
-                }
-            }
-
             return result;
-        } finally {
-            db.close();
-        }
+        });
     }
 
-    /**
-     * 检查影片/清单/关联是否存在。
-     * 对应服务器 POST /api/check/movies_lists。
-     */
+    /** 检查影片/清单/关联是否存在。 */
     static async check(
         designation: string,
         listId: string
     ): Promise<{ movie: boolean; inventory: boolean; movieInventory: boolean }> {
-        const db = await openDb();
-        try {
-            const movies = (await dbGet<Record<string, MovieRecord>>(db, KEYS.MOVIES)) || {};
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
-            return {
-                movie: !!movies[designation],
-                inventory: !!inventory[listId],
-                movieInventory: !!mi[`${designation}::${listId}`]
-            };
-        } finally {
-            db.close();
-        }
+        return withState('readonly', (state) => ({
+            movie: !!state.movies[designation],
+            inventory: !!state.inventory[listId],
+            movieInventory: !!state.movieInventory[`${designation}::${listId}`]
+        }));
     }
 
     /**
-     * 导入迁移数据（从 PostgreSQL 导出的 JSON）。
-     * @param data 迁移数据
-     * @returns 导入统计
+     * 获取清单对账守卫和真实关联数。fingerprint 可发现旧版本或外部代码绕过 revision
+     * 直接写 movie_inventory 的情况。
      */
+    static async getListReconcileState(
+        listId: string,
+        designation?: string
+    ): Promise<ListReconcileState> {
+        return withState('readonly', (state) => ({
+            inventory: state.inventory[listId] || null,
+            actualCount: associationDesignations(state.movieInventory, listId).length,
+            hasDesignation:
+                designation === undefined
+                    ? null
+                    : !!state.movieInventory[`${designation}::${listId}`],
+            guard: {
+                epoch: state.meta.epoch,
+                revision: state.meta.listRevisions[listId] || 0,
+                fingerprint: listFingerprint(state.movieInventory, listId)
+            }
+        }));
+    }
+
+    /** 返回每个已登记清单的真实关联数（不信任 inventory.count）。 */
+    static async getListAssociationCounts(): Promise<Record<string, number>> {
+        return withState('readonly', (state) => {
+            const counts: Record<string, number> = {};
+            for (const listId of Object.keys(state.inventory)) counts[listId] = 0;
+            for (const key of Object.keys(state.movieInventory)) {
+                if (!state.movieInventory[key]) continue;
+                const separator = key.indexOf('::');
+                if (separator < 0) continue;
+                const listId = key.slice(separator + 2);
+                counts[listId] = (counts[listId] || 0) + 1;
+            }
+            return counts;
+        });
+    }
+
+    /**
+     * 用已经完整验证的 JavDB 清单快照替换单个清单的关联集合。
+     * 抓取期间若本地发生了写入，返回 conflict 且零写入，调用方可重新抓取。
+     */
+    static async reconcileListSnapshot(
+        snapshot: ListReconcileSnapshot,
+        guard: ListReconcileGuard
+    ): Promise<ListReconcileResult> {
+        validateSnapshot(snapshot);
+        return withState('readwrite', (state) => {
+            const currentGuard: ListReconcileGuard = {
+                epoch: state.meta.epoch,
+                revision: state.meta.listRevisions[snapshot.listId] || 0,
+                fingerprint: listFingerprint(state.movieInventory, snapshot.listId)
+            };
+            if (
+                currentGuard.epoch !== guard.epoch ||
+                currentGuard.revision !== guard.revision ||
+                currentGuard.fingerprint !== guard.fingerprint
+            ) {
+                return { status: 'conflict' };
+            }
+
+            const previous = new Set(
+                associationDesignations(state.movieInventory, snapshot.listId)
+            );
+            const incoming = new Set(snapshot.movies.map((movie) => movie.designation));
+            const now = new Date().toISOString();
+
+            for (const movie of snapshot.movies) {
+                const existing = state.movies[movie.designation];
+                state.movies[movie.designation] = existing
+                    ? {
+                          ...existing,
+                          href: movie.href || existing.href,
+                          title: movie.title ?? existing.title,
+                          coverSrc: movie.coverSrc ?? existing.coverSrc,
+                          score: movie.score ?? existing.score,
+                          releaseDate: movie.releaseDate ?? existing.releaseDate,
+                          series: movie.series ?? existing.series,
+                          code: movie.code ?? existing.code,
+                          createdAt: existing.createdAt ?? movie.createdAt ?? now
+                      }
+                    : { ...movie, createdAt: movie.createdAt ?? now };
+            }
+
+            const suffix = `::${snapshot.listId}`;
+            for (const key of Object.keys(state.movieInventory)) {
+                if (key.endsWith(suffix)) delete state.movieInventory[key];
+            }
+            for (const designation of incoming) {
+                state.movieInventory[`${designation}::${snapshot.listId}`] = true;
+            }
+
+            const existingList = state.inventory[snapshot.listId];
+            state.inventory[snapshot.listId] = {
+                listId: snapshot.listId,
+                name: snapshot.name,
+                url: snapshot.url,
+                count: snapshot.expectedCount,
+                style: existingList?.style ?? randomBootstrapStyle()
+            };
+            bumpListRevision(state.meta, snapshot.listId);
+
+            let added = 0;
+            let removed = 0;
+            for (const designation of incoming) if (!previous.has(designation)) added++;
+            for (const designation of previous) if (!incoming.has(designation)) removed++;
+            return { status: 'applied', added, removed, count: snapshot.expectedCount };
+        });
+    }
+
+    /** 导入迁移数据；四个逻辑对象原子替换。 */
     static async importData(
         data: MigrationData
     ): Promise<{ movies: number; inventory: number; movieInventory: number }> {
-        const db = await openDb();
-        try {
-            await dbPut(db, KEYS.MOVIES, data.movies);
-            await dbPut(db, KEYS.INVENTORY, data.inventory);
-            await dbPut(db, KEYS.MOVIE_INVENTORY, data.movieInventory);
-            await dbPut(db, KEYS.META, {
+        return withState('readwrite', (state) => {
+            const nextEpoch = state.meta.epoch + 1;
+            state.movies = data.movies;
+            state.inventory = data.inventory;
+            state.movieInventory = data.movieInventory;
+            state.meta = {
                 version: data._version,
                 exportedAt: data._exportedAt,
                 importedAt: new Date().toISOString(),
-                source: data._source
-            });
+                source: data._source,
+                epoch: nextEpoch,
+                listRevisions: {}
+            };
             return {
                 movies: Object.keys(data.movies).length,
                 inventory: Object.keys(data.inventory).length,
                 movieInventory: Object.keys(data.movieInventory).length
             };
-        } finally {
-            db.close();
-        }
+        });
     }
 
-    /**
-     * 检查是否已导入数据（meta 键是否存在）。
-     */
+    /** 检查是否已导入数据（meta 键是否包含 importedAt）。 */
     static async isImported(): Promise<boolean> {
-        const db = await openDb();
-        try {
-            const meta = await dbGet<{ importedAt: string }>(db, KEYS.META);
-            return !!meta?.importedAt;
-        } finally {
-            db.close();
-        }
+        return withState('readonly', (state) => !!state.meta.importedAt);
     }
 
-    /**
-     * 获取全部清单（用于标签显示时反查清单信息）。
-     */
+    /** 获取全部清单。 */
     static async getAllInventory(): Promise<Record<string, InventoryRecord>> {
-        const db = await openDb();
-        try {
-            return (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-        } finally {
-            db.close();
-        }
+        return withState('readonly', (state) => state.inventory);
     }
 
-    /**
-     * 删除清单：移除 inventory 记录 + 所有 movie_inventory 关联。
-     *
-     * 对应 /users/lists 页面点击「刪除」后 JavDB 服务端删除清单的客户端镜像。
-     * 不删除 movies 记录（影片可能还关联其他清单，留着等自然过期）。
-     *
-     * @param listId 清单 ID
-     * @returns 删除统计 { inventory: 是否删除了清单, associations: 删除的关联数 }
-     */
+    /** 删除清单和其全部关联；不删除影片记录。 */
     static async deleteList(listId: string): Promise<{ inventory: boolean; associations: number }> {
-        const db = await openDb();
-        try {
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
-
-            const inventoryDeleted = !!inventory[listId];
-            delete inventory[listId];
-
-            // 删除所有以 ::{listId} 结尾的关联
+        return withState('readwrite', (state) => {
+            const inventoryDeleted = !!state.inventory[listId];
+            delete state.inventory[listId];
             const suffix = `::${listId}`;
-            let associationsDeleted = 0;
-            for (const key of Object.keys(mi)) {
-                if (key.endsWith(suffix)) {
-                    delete mi[key];
-                    associationsDeleted++;
-                }
+            let associations = 0;
+            for (const key of Object.keys(state.movieInventory)) {
+                if (!key.endsWith(suffix)) continue;
+                delete state.movieInventory[key];
+                associations++;
             }
-
-            await dbPut(db, KEYS.INVENTORY, inventory);
-            await dbPut(db, KEYS.MOVIE_INVENTORY, mi);
-
-            return { inventory: inventoryDeleted, associations: associationsDeleted };
-        } finally {
-            db.close();
-        }
+            bumpListRevision(state.meta, listId);
+            return { inventory: inventoryDeleted, associations };
+        });
     }
 
-    /**
-     * 重命名清单：仅更新 inventory 记录的 name 字段。
-     *
-     * 对应 /users/lists 页面点击「修改」→ 编辑弹窗改名保存后的客户端镜像。
-     * 不影响 movie_inventory 关联（关联按 listId 索引，与名称无关）。
-     *
-     * @param listId 清单 ID
-     * @param newName 新清单名称
-     * @returns 是否成功更新（清单不存在时返回 false）
-     */
+    /** 重命名清单，不改变关联。 */
     static async renameList(listId: string, newName: string): Promise<boolean> {
-        const db = await openDb();
-        try {
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            if (!inventory[listId]) return false;
-            inventory[listId].name = newName;
-            await dbPut(db, KEYS.INVENTORY, inventory);
+        return withState('readwrite', (state) => {
+            if (!state.inventory[listId]) return false;
+            state.inventory[listId].name = newName;
+            bumpListRevision(state.meta, listId);
             return true;
-        } finally {
-            db.close();
-        }
+        });
     }
 
-    /**
-     * 导出全量数据为 MigrationData 格式（与导入格式一致，可逆向导入）。
-     */
+    /** 导出全量数据为 MigrationData 格式。 */
     static async exportData(): Promise<MigrationData> {
-        const db = await openDb();
-        try {
-            const movies = (await dbGet<Record<string, MovieRecord>>(db, KEYS.MOVIES)) || {};
-            const inventory =
-                (await dbGet<Record<string, InventoryRecord>>(db, KEYS.INVENTORY)) || {};
-            const mi = (await dbGet<Record<string, boolean>>(db, KEYS.MOVIE_INVENTORY)) || {};
-            const meta = await dbGet<{ version: number; exportedAt: string; source: string }>(
-                db,
-                KEYS.META
-            );
-            return {
-                _version: meta?.version ?? 1,
-                _exportedAt: meta?.exportedAt ?? new Date().toISOString(),
-                _source: 'IndexedDB (local export)',
-                movies,
-                inventory,
-                movieInventory: mi
-            };
-        } finally {
-            db.close();
-        }
+        return withState('readonly', (state) => ({
+            _version: state.meta.version ?? 1,
+            _exportedAt: state.meta.exportedAt ?? new Date().toISOString(),
+            _source: 'IndexedDB (local export)',
+            movies: state.movies,
+            inventory: state.inventory,
+            movieInventory: state.movieInventory
+        }));
     }
 }

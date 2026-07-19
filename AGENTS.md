@@ -127,7 +127,7 @@ monkey-jhs-disassemble/
 | ListWaterfallPlugin | list-waterfall-plugin.ts | listWaterfall.user.js | doc/39 |
 | ListReadingStatusPlugin | list-reading-status-plugin.ts | listReadingStatus.user.js | doc/40 |
 | ModalListDisablerPlugin | modal-list-disabler-plugin.ts | modalListDisabler.user.js | doc/42 |
-| VideoListsTagPlugin | video-lists-tag/ 子目录（5 模块） | listsOptionSync + videoListsTag | doc/45 |
+| VideoListsTagPlugin | video-lists-tag/ 子目录（6 模块，含服务端/本地对账） | listsOptionSync + videoListsTag | doc/45 + doc/126 |
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 

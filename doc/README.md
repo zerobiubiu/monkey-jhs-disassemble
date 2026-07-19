@@ -136,6 +136,8 @@
 | `122-visit-history-tier-colors-and-empty.md` | 🔧开发指导 | ✅已执行 | 访问记录悬浮：时间分级配色（近安全→远危险）+ 无记录白框「无访问记录」；version 1.19.3→1.19.4 |
 | `123-restore-nav-search-paste-auto-search.md` | 🔧开发指导 | ✅已执行 | 恢复导航栏搜索框粘贴自动搜索：`navBarNoPaste` 默认 true→false（doc/76 升级误伤，原版已跳过图片）；version 1.19.4→1.19.5 |
 | `124-auto-remove-from-pending-update-on-rating.md` | 🔧开发指导 | ✅已执行 | 评分/已读(0–5星)后自动移出「等待更新」清单：quickSetHasWatch 成功后 uncheck 匹配 checkbox（Stimulus+VltDb）；version 1.19.5→1.19.6 |
+| `125-fix-list-count-drift-and-auto-uncheck-pending-on-add.md` | 🔧开发指导 | ✅已执行 | 修复清单 count 漂移致误报 501（count 字段字符串化致 +1 拼接；改用 movie_inventory 实际关联数对账）+ 加入非等待更新清单时自动取消等待更新勾选；version 1.19.6→1.19.7 |
+| `126-fix-javdb-list-server-local-divergence.md` | 🔧开发指导 | ✅已执行 | 修复 JavDB 清单服务端/本地关联分叉：success=true 后才写 IDB；simple_lists 完整分页权威复核；未知网络结果持久化恢复；同页队列 + Web Locks；四对象单 IDB 事务；双完整快照自动对账；删除清单服务端成功优先；version 1.19.7→1.19.8 |
 
 ## 类型图例
 
@@ -211,6 +213,7 @@
 64. `64-delete-perf-optimization.md` — 删除清单性能优化：乐观 UI（confirm 后立即移除 DOM）+ Promise.all 并行（DELETE 请求 + IDB 删除），瓶颈是 JavDB 服务器响应而非 IDB
 65. `65-fix-preset-list-filter.md` — 修复详情页清单面板「预设清单」过滤失效（doc/59 繁→简替换致代码 预设清单 与 DOM 預設清單 不匹配，改用正则 /预[设設]清[单單]/ 匹配简繁体）
 66. `66-fix-traditional-simplified-regression.md` — 修复繁→简替换破坏 DOM 选择器导致番号丢失（base-plugin a[title=複製番號] + 無碼检测 + actress-info 演員/現年齢 + 簽名已過期 等 8 处功能性 bug + 7 个组件显示文本还原）
+126. `126-fix-javdb-list-server-local-divergence.md` — 修复清单服务端/本地关联分叉（JavDB 成功确认后写 IDB + 崩溃恢复 + Web Locks + 原子事务 + 双完整快照自动对账）
 
 ## 当前进度概览
 
