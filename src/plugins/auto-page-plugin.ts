@@ -199,7 +199,8 @@ export class AutoPagePlugin extends BasePlugin {
                     this.nextUrl = beyondNextUrl;
                     const paginationHtml = beyond60Plugin.createPagination(pageNum, beyondHasMore);
                     $('.pagination').html(paginationHtml);
-                    this.setState('waterfall-loading', '');
+                    // 成功且仍可翻页时退出 loading，允许 click 模式下次触底重新显示按钮。
+                    this.setState('', '');
                     if (!this.hasMore) {
                         this.setState('waterfall-no-more', '已经到底了');
                     }
@@ -236,7 +237,8 @@ export class AutoPagePlugin extends BasePlugin {
             this.hasMore = !!this.nextUrl;
             const paginationEl = $dom.find('.pagination');
             $('.pagination').replaceWith(paginationEl);
-            this.setState('waterfall-loading', '');
+            // 成功后回到空闲态；否则 waterfall-loading 会永久阻断后续 checkLoad。
+            this.setState('', '');
             if (!this.hasMore) {
                 this.setState('waterfall-no-more', '已经到底了');
             }
@@ -457,7 +459,7 @@ export class AutoPagePlugin extends BasePlugin {
     /**
      * 设置 loader 的状态类与文案。对应原 L9292-9295。
      *
-     * @param stateClass 状态类名（waterfall-loading/error/no-more）
+     * @param stateClass 状态类名（空字符串表示空闲态，或 waterfall-loading/error/no-more/click）
      * @param text 展示文案
      */
     setState(stateClass: string, text: string): void {
