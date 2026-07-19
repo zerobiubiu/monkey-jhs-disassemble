@@ -118,32 +118,364 @@
     pointer-events: none;
     opacity: 0.6;
 }
-/* 清单平铺面板（位于 #otherSiteBox 下方） */
+/* 详情页清单面板（位于 #otherSiteBox 下方） */
 .jhs-list-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    margin: 8px 0;
-    padding: 8px 12px;
-    background: #fafafa;
-    border-radius: 6px;
-    min-height: 36px;
+    --jhs-list-accent: #3273dc;
+    --jhs-list-border: #dfe4ea;
+    --jhs-list-muted: #5f6b7a;
+    --jhs-list-surface: #fff;
+    --jhs-list-subtle: #f6f8fa;
+    display: block;
+    margin: 10px 0 0;
+    padding: 0;
+    background: var(--jhs-list-surface);
+    border: 1px solid var(--jhs-list-border);
+    border-radius: 10px;
+    color: #2f3540;
 }
-.jhs-list-panel:empty {
+.jhs-list-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #edf0f3;
+}
+.jhs-list-panel__heading {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1px;
+}
+.jhs-list-panel__title {
+    margin: 0;
+    color: #2f3540;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.jhs-list-panel__summary {
+    color: var(--jhs-list-muted);
+    font-size: 12px;
+    line-height: 1.3;
+}
+.jhs-list-panel__summary.is-error {
+    color: #a32626;
+    font-weight: 600;
+}
+.jhs-list-panel__sort {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 5px;
+    color: var(--jhs-list-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+.jhs-list-panel__sort-select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #cbd2da;
+    border-radius: 6px;
+    background: #fff;
+    color: #3d4652;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.jhs-list-panel__sort-select:hover:not(:disabled) {
+    border-color: #9aa6b2;
+}
+.jhs-list-panel__sort-select:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+.jhs-list-panel__search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: 10px;
+}
+.jhs-list-panel__search-icon {
+    position: absolute;
+    left: 10px;
+    color: #6b7683;
+    font-size: 15px;
+    line-height: 1;
+    pointer-events: none;
+}
+.jhs-list-panel__search {
+    width: 100%;
+    height: 34px;
+    padding: 6px 32px 6px 30px;
+    border: 1px solid #cbd2da;
+    border-radius: 7px;
+    background: #fff;
+    color: #2f3540;
+    font-size: 13px;
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+.jhs-list-panel__search::placeholder {
+    color: #667281;
+}
+.jhs-list-panel__search::-webkit-search-cancel-button {
     display: none;
 }
-.jhs-list-panel .control {
-    margin: 0;
+.jhs-list-panel__search:focus-visible,
+.jhs-list-panel__sort-select:focus-visible {
+    border-color: var(--jhs-list-accent);
+    box-shadow: 0 0 0 2px rgba(50, 115, 220, 0.2);
+    outline: none;
 }
-.jhs-list-panel .checkbox {
+.jhs-list-panel__search:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+.jhs-list-panel__search-clear {
+    position: absolute;
+    right: 5px;
     display: inline-flex;
+    width: 26px;
+    height: 26px;
     align-items: center;
-    gap: 4px;
-    font-size: 13px;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #596574;
     cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
 }
-.jhs-list-panel .checkbox input {
+.jhs-list-panel__search-clear[hidden] {
+    display: none !important;
+}
+.jhs-list-panel__search-clear:hover {
+    background: #e9edf2;
+    color: #27313c;
+}
+.jhs-list-panel__search-clear:focus-visible,
+.jhs-list-panel__retry:focus-visible {
+    outline: 2px solid var(--jhs-list-accent);
+    outline-offset: 2px;
+}
+.jhs-list-panel__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+    gap: 6px;
+    max-height: 320px;
+    padding: 0 10px 10px;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+}
+.jhs-list-panel .jhs-list-item {
+    min-width: 0;
     margin: 0;
+}
+.jhs-list-panel .jhs-list-item[hidden] {
+    display: none !important;
+}
+.jhs-list-panel .jhs-list-item__label {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 40px;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border: 1px solid #e0e5eb;
+    border-radius: 8px;
+    background: #fff;
+    color: #3d4652;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.25;
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+.jhs-list-panel .jhs-list-item__label:hover {
+    border-color: #aeb8c3;
+    background: #f8fafc;
+}
+.jhs-list-panel .jhs-list-item__label:focus-within {
+    border-color: var(--jhs-list-accent);
+    box-shadow: 0 0 0 2px rgba(50, 115, 220, 0.18);
+}
+.jhs-list-panel .jhs-list-item:has(input:checked) .jhs-list-item__label {
+    border-color: var(--jhs-list-accent);
+    background: #eef4ff;
+    color: #234f96;
+}
+.jhs-list-panel .jhs-list-item:has(input:disabled) .jhs-list-item__label {
+    border-color: #e1e5ea;
+    background: #f7f8fa;
+    color: #65707d;
+    cursor: not-allowed;
+}
+.jhs-list-panel
+    .jhs-list-item:has(input[data-vlt-was-disabled])
+    .jhs-list-item__label {
+    border-color: #eadba7;
+    background: #fffdf5;
+    cursor: wait;
+}
+.jhs-list-panel .jhs-list-item__label input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--jhs-list-accent);
+}
+.jhs-list-item__name {
+    display: -webkit-box;
+    min-width: 0;
+    max-height: 2.5em;
+    overflow: hidden;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+}
+.jhs-list-item__count {
+    min-width: 24px;
+    padding: 2px 6px;
+    border-radius: 50rem;
+    background: #edf0f4;
+    color: #4d5967;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    text-align: center;
+}
+.jhs-list-panel .jhs-list-item:has(input:checked) .jhs-list-item__count {
+    background: #d9e7ff;
+    color: #234f96;
+}
+.jhs-list-item__status {
+    display: inline-flex;
+    min-width: 32px;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 5px;
+    border-radius: 50rem;
+    background: #edf0f4;
+    color: #596574;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.jhs-list-item__status[hidden] {
+    display: none !important;
+}
+.jhs-list-item__status[data-state='busy'] {
+    background: #fff3cd;
+    color: #725500;
+}
+.jhs-list-item__status[data-state='full'],
+.jhs-list-item__status[data-state='unavailable'] {
+    background: #f8e2e2;
+    color: #8d2929;
+}
+.jhs-list-panel .jhs-list-item:has(.jhs-list-item__status:not([hidden])) .jhs-list-item__count {
+    display: none;
+}
+.jhs-list-panel__empty {
+    margin: 0;
+    padding: 4px 12px 14px;
+    color: var(--jhs-list-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+}
+.jhs-list-panel__skeleton {
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #edf0f3 25%, #f7f8fa 50%, #edf0f3 75%);
+    background-size: 200% 100%;
+    animation: jhs-list-skeleton 1.1s ease-in-out infinite;
+}
+@keyframes jhs-list-skeleton {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -100% 0;
+    }
+}
+.jhs-list-panel__error {
+    grid-column: 1 / -1;
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #a32626;
+    font-size: 12px;
+    text-align: center;
+}
+.jhs-list-panel__retry {
+    padding: 5px 9px;
+    border: 1px solid #c5ccd5;
+    border-radius: 6px;
+    background: #fff;
+    color: #344252;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.jhs-list-panel__retry:hover {
+    border-color: #8e9aa7;
+    background: #f6f8fa;
+}
+@media (max-width: 768px) {
+    .jhs-list-panel__header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .jhs-list-panel__sort {
+        margin-left: auto;
+    }
+    .jhs-list-panel__sort-select,
+    .jhs-list-panel__search {
+        height: 44px;
+    }
+    .jhs-list-panel__search {
+        padding-right: 48px;
+    }
+    .jhs-list-panel__search-clear {
+        right: 0;
+        width: 44px;
+        height: 44px;
+    }
+    .jhs-list-panel__items {
+        grid-template-columns: 1fr;
+        max-height: none;
+        overflow: visible;
+    }
+    .jhs-list-panel .jhs-list-item__label,
+    .jhs-list-panel__skeleton {
+        min-height: 44px;
+    }
+    .jhs-list-panel__retry {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .jhs-list-panel *,
+    .jhs-list-panel *::before,
+    .jhs-list-panel *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 /* 隐藏详情页菜单按钮组的状态行（屏蔽/收藏/已观看）
    快捷评分条（星星+已读+收藏）已覆盖这三个功能，拉黑待第二步移入评分条

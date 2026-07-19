@@ -36,6 +36,7 @@ monkey-jhs-disassemble/
 ├── dist/                   # 构建产物（vite build 清空重建）
 ├── changelog/              # 更新日志（CHANGELOG.md）
 ├── .agents/skills/         # Agent skills（userscript-integration）
+├── PRODUCT.md              # 产品定位、品牌个性与界面设计原则
 ├── vite.config.ts          # Vite + vite-plugin-monkey 配置
 ├── tsconfig.json           # TS 根配置（references app + node）
 ├── tsconfig.app.json       # src/ 源码 TS 配置（strict, noEmit, jsx: react-jsx）
@@ -189,6 +190,12 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 
 声明 Tampermonkey Grant API（GM_xmlhttpRequest 等）和运行时全局
 （$/layer/Tabulator/utils/gmHttp/storageManager/clog/show 等）为 `any` 类型。
+
+### 3.8 产品设计上下文 `PRODUCT.md`
+
+记录 JavDB Power Tools 的目标用户、产品用途、品牌个性、反例、设计原则与无障碍基线。
+涉及界面新增或改版时以此约束视觉语言和交互反馈，保持增强功能与 JavDB/Bulma 原站
+体验一致。
 
 ## 4. 设置弹窗架构（SettingPlugin）
 

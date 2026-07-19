@@ -348,24 +348,70 @@
 }
 
 /* ---------- 新增清單（詳情頁展開面板旁） ---------- */
+.jhs-list-panel:has(+ .jhs-list-create-wrap) {
+    border-radius: 10px 10px 0 0;
+}
 .jhs-list-create-wrap {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 4px 0 8px;
-    padding: 0 12px;
+    min-height: 44px;
+    margin: -1px 0 10px;
+    padding: 7px 10px;
+    border: 1px solid #dfe4ea;
+    border-top-color: #edf0f3;
+    border-radius: 0 0 10px 10px;
+    background: #f6f8fa;
     flex-wrap: wrap;
 }
 .jhs-list-create-btn {
+    min-height: 32px;
     font-size: 12px;
+    font-weight: 600;
 }
 .jhs-list-create-form {
-    display: inline-flex;
+    display: flex;
+    min-width: 0;
+    flex: 1;
     align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
 }
 .jhs-list-create-form .input.is-small {
-    width: 180px;
+    width: auto;
+    min-width: 120px;
+    flex: 1;
     font-size: 12px;
+}
+.jhs-list-create-wrap[aria-busy='true'] {
+    cursor: wait;
+}
+.jhs-list-create-wrap .button:focus-visible,
+.jhs-list-create-wrap .input:focus-visible {
+    outline: 2px solid #3273dc;
+    outline-offset: 2px;
+}
+.jhs-visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+@media (max-width: 768px) {
+    .jhs-list-create-wrap .button,
+    .jhs-list-create-wrap .input.is-small {
+        min-height: 44px;
+    }
+    .jhs-list-create-form {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .jhs-list-create-form .input.is-small {
+        flex-basis: 100%;
+    }
 }

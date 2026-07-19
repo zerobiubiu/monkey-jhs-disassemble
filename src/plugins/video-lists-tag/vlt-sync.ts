@@ -30,6 +30,7 @@ const LAST_SYNC_KEY = 'jdb:last-sync';
 
 /** 服务端写入已发出、但尚未完成本地镜像的持久化日志前缀。 */
 const PENDING_SYNC_PREFIX = 'jdb:vlt-pending-server-sync:';
+const AUTHORITATIVE_LIST_TIMEOUT_MS = 10000;
 
 /** 触发自动收藏的清单名称关键词（清单名称包含此词时，添加视频自动收藏）。 */
 const AUTO_FAVORITE_KEYWORD = '等待更新';
@@ -162,17 +163,29 @@ export function getMovieInfo(videoId: string): {
  * 从 DOM 提取清单名称。
  * 对应原 L407-424。
  */
-function getListName(listId: string): string {
-    const input = document.querySelector(
-        `input[data-list-id="${listId}"]`
-    ) as HTMLInputElement | null;
-    if (!input) return '';
+function extractListNameFromInput(input: HTMLInputElement): string {
     const label = input.closest('label');
     if (!label) return '';
-    return label.textContent
-        .replace(/\(.*?\)/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const clone = label.cloneNode(true) as HTMLElement;
+    clone.querySelector('input')?.remove();
+    const count = clone.querySelector('.jhs-list-item__count') || clone.querySelector('span');
+    count?.remove();
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function getListName(listId: string): string {
+    const modalInputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('#modal-save-list input[data-list-id]')
+    );
+    const panelInputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('.jhs-list-panel input[data-list-id]')
+    );
+    const input =
+        modalInputs.find((item) => item.dataset.listId === listId) ||
+        panelInputs.find((item) => item.dataset.listId === listId) ||
+        null;
+    if (!input) return '';
+    return extractListNameFromInput(input);
 }
 
 /**
@@ -616,10 +629,13 @@ const checkboxMutationQueues = new Map<string, Promise<void>>();
 let checkboxListenerInstalled = false;
 
 function getCheckboxCount(input: HTMLInputElement): number | null {
-    const text = input.closest('label')?.querySelector('span')?.textContent || '';
-    const match = text.match(/\((\d+)\)/);
+    const label = input.closest('label');
+    const text =
+        (label?.querySelector('.jhs-list-item__count') || label?.querySelector('span'))
+            ?.textContent || '';
+    const match = text.match(/\d+/);
     if (!match) return null;
-    const count = Number(match[1]);
+    const count = Number(match[0]);
     return Number.isSafeInteger(count) ? count : null;
 }
 
@@ -637,24 +653,67 @@ function setListCheckboxState(listId: string, checked: boolean): void {
 }
 
 function setListCheckboxBusy(listId: string, busy: boolean): void {
+    const panel = document.querySelector('.jhs-list-panel') as
+        | (HTMLElement & { __jhsPendingFocusListId?: string })
+        | null;
+    const activeElement = document.activeElement;
+    if (
+        busy &&
+        panel &&
+        activeElement instanceof HTMLInputElement &&
+        panel.contains(activeElement) &&
+        activeElement.dataset.listId === listId
+    ) {
+        panel.__jhsPendingFocusListId = listId;
+    }
+
     for (const input of matchingListCheckboxes(listId)) {
         if (busy) {
             if (input.dataset.vltWasDisabled === undefined) {
                 input.dataset.vltWasDisabled = input.disabled ? '1' : '0';
             }
             input.disabled = true;
+            input.setAttribute('aria-busy', 'true');
         } else {
             if (input.dataset.vltWasDisabled === undefined) continue;
             input.disabled = input.dataset.vltWasDisabled === '1';
             delete input.dataset.vltWasDisabled;
+            input.removeAttribute('aria-busy');
         }
+    }
+
+    if (!busy && panel?.__jhsPendingFocusListId === listId) {
+        delete panel.__jhsPendingFocusListId;
+        requestAnimationFrame(() => {
+            const currentActive = document.activeElement;
+            const canRestore =
+                !currentActive ||
+                currentActive === document.body ||
+                (currentActive instanceof HTMLInputElement &&
+                    currentActive.dataset.listId === listId);
+            if (!canRestore) return;
+            const displayInput = Array.from(
+                panel.querySelectorAll<HTMLInputElement>(
+                    'input[type="checkbox"][data-list-id]'
+                )
+            ).find((input) => input.dataset.listId === listId && !input.disabled);
+            displayInput?.focus({ preventScroll: true });
+        });
     }
 }
 
 function setListDisplayedCount(listId: string, count: number): void {
     for (const input of matchingListCheckboxes(listId)) {
-        const span = input.closest('label')?.querySelector('span');
-        if (span) span.textContent = `(${count})`;
+        const label = input.closest('label');
+        const span = label?.querySelector('.jhs-list-item__count') || label?.querySelector('span');
+        if (!span) continue;
+        if (span.classList.contains('jhs-list-item__count')) {
+            span.textContent = String(count);
+            span.setAttribute('title', `清单内 ${count} 部影片`);
+            span.setAttribute('aria-label', `${count} 部影片`);
+        } else {
+            span.textContent = `(${count})`;
+        }
     }
 }
 
@@ -765,13 +824,26 @@ async function fetchAuthoritativeCheckboxState(
         for (let page = 0; url && page < 50; page++) {
             if (visited.has(url.href)) return null;
             visited.add(url.href);
-            const response = await fetch(url.href, {
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: { Accept: 'application/json' }
-            });
-            if (!response.ok) return null;
-            const payload = (await response.json()) as { lists?: unknown; page?: unknown };
+            const payload = await (async () => {
+                const controller = new AbortController();
+                const timeout = window.setTimeout(
+                    () => controller.abort(),
+                    AUTHORITATIVE_LIST_TIMEOUT_MS
+                );
+                try {
+                    const response = await fetch(url.href, {
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: { Accept: 'application/json' },
+                        signal: controller.signal
+                    });
+                    if (!response.ok) return null;
+                    return (await response.json()) as { lists?: unknown; page?: unknown };
+                } finally {
+                    window.clearTimeout(timeout);
+                }
+            })();
+            if (!payload) return null;
             if (typeof payload.lists !== 'string') return null;
 
             const documentNode = new DOMParser().parseFromString(payload.lists, 'text/html');
@@ -779,13 +851,10 @@ async function fetchAuthoritativeCheckboxState(
                 documentNode.querySelectorAll('input[type="checkbox"][data-list-id]')
             ) as HTMLInputElement[]).find((item) => item.dataset.listId === listId);
             if (input) {
-                const labelText = (input.closest('label')?.textContent || '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
                 return {
                     checked: input.checked,
                     count: getCheckboxCount(input),
-                    name: labelText.replace(/\s*\(\d+\).*$/, '').trim() || null
+                    name: extractListNameFromInput(input) || null
                 };
             }
 
@@ -800,6 +869,7 @@ async function fetchAuthoritativeCheckboxState(
             ) {
                 return null;
             }
+            nextUrl.searchParams.set('vid', videoId);
             url = nextUrl;
         }
         return null;
@@ -1137,6 +1207,10 @@ export function setupCheckboxListener(): void {
 
 /** 新增清单 UI 是否已注入（幂等标记）。 */
 let _createListUiInjected = false;
+/** 新增清单请求是否进行中，避免 Enter 与按钮连击重复创建。 */
+let _createListInFlight = false;
+
+type CreateListResult = 'created' | 'failed' | 'unknown';
 
 /**
  * 在 .jhs-list-panel 后插入「新增清单」UI。
@@ -1156,15 +1230,49 @@ export function setupCreateListButton(): void {
     const wrap = document.createElement('div');
     wrap.className = 'jhs-list-create-wrap';
     wrap.innerHTML =
-        '<button type="button" class="button is-info is-small jhs-list-create-btn">➕ 新增清单</button>' +
-        '<span class="jhs-list-create-form" style="display:none;">' +
-        '<input type="text" class="input is-small jhs-list-create-input" placeholder="输入新清单名稱" maxlength="50" />' +
-        '<button type="button" class="button is-info is-small jhs-list-create-save">保存</button>' +
+        '<button type="button" class="button is-info is-small jhs-list-create-btn" aria-expanded="false" aria-controls="jhs-list-create-form">＋ 新建清单</button>' +
+        '<span id="jhs-list-create-form" class="jhs-list-create-form" style="display:none;">' +
+        '<label class="jhs-visually-hidden" for="jhs-list-create-input">清单名称</label>' +
+        '<input id="jhs-list-create-input" type="text" class="input is-small jhs-list-create-input" placeholder="清单名称" maxlength="50" autocomplete="off" />' +
+        '<button type="button" class="button is-info is-small jhs-list-create-save">新建</button>' +
         '<button type="button" class="button is-light is-small jhs-list-create-cancel">取消</button>' +
         '</span>';
     panel.insertAdjacentElement('afterend', wrap);
     bindCreateListEvents(wrap);
+    bindCreateListAvailability(panel, wrap);
     _createListUiInjected = true;
+}
+
+/** 清单仍在初始/分页载入或错误态时，阻止新建与 DOM 差量侦测发生竞态。 */
+function bindCreateListAvailability(panel: Element, wrap: HTMLElement): void {
+    const items = panel.querySelector('.jhs-list-panel__items');
+    const btn = wrap.querySelector('.jhs-list-create-btn') as HTMLButtonElement | null;
+    if (!items || !btn) return;
+    const sync = () => {
+        const ready = isCreateListPanelReady();
+        btn.disabled = !ready;
+        btn.title = ready ? '新建清单' : '清单载入后可新建';
+    };
+    const observer = new MutationObserver(sync);
+    observer.observe(items, {
+        attributes: true,
+        attributeFilter: ['aria-busy']
+    });
+    observer.observe(panel, {
+        attributes: true,
+        attributeFilter: ['data-list-coverage']
+    });
+    sync();
+}
+
+function isCreateListPanelReady(): boolean {
+    const panel = document.querySelector('.jhs-list-panel') as HTMLElement | null;
+    const items = document.querySelector('.jhs-list-panel__items');
+    return (
+        panel?.dataset.listCoverage === 'complete' &&
+        items?.getAttribute('aria-busy') === 'false' &&
+        Boolean(getCurrentListContainer()?.querySelector('input[data-list-id]'))
+    );
 }
 
 /**
@@ -1179,28 +1287,46 @@ function bindCreateListEvents(wrap: HTMLElement): void {
 
     btn.addEventListener('click', () => {
         btn.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'true');
         form.style.display = 'inline-flex';
         input.value = '';
         input.focus();
     });
 
     cancelBtn.addEventListener('click', () => {
-        form.style.display = 'none';
-        btn.style.display = 'inline-flex';
-        input.value = '';
+        if (_createListInFlight) return;
+        restoreCreateListUi();
     });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
+        if (_createListInFlight) return;
+        if (!isCreateListPanelReady()) {
+            showToast('清单仍在载入，请稍后再新建', 'warning');
+            return;
+        }
         const name = input.value.trim();
         if (!name) {
-            showToast('请输入清单名稱', 'warning');
+            showToast('请输入清单名称', 'warning');
             input.focus();
             return;
         }
-        createList(name).then();
+        _createListInFlight = true;
+        setCreateListBusy(wrap, true);
+        let result: CreateListResult = 'failed';
+        try {
+            result = await createList(name);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} 新增清单发生未处理异常`, error);
+            showToast('✗ 新增清单失败，请稍后重试', 'error');
+        } finally {
+            _createListInFlight = false;
+            setCreateListBusy(wrap, false);
+        }
+        if (result !== 'created') input.focus();
     });
 
     input.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.isComposing) return;
         if (e.key === 'Enter') {
             e.preventDefault();
             saveBtn.click();
@@ -1208,6 +1334,20 @@ function bindCreateListEvents(wrap: HTMLElement): void {
             cancelBtn.click();
         }
     });
+}
+
+/** 更新新增清单表单的提交状态，保留失败时的名称供直接重试。 */
+function setCreateListBusy(wrap: HTMLElement, busy: boolean): void {
+    const input = wrap.querySelector('.jhs-list-create-input') as HTMLInputElement | null;
+    const saveBtn = wrap.querySelector('.jhs-list-create-save') as HTMLButtonElement | null;
+    const cancelBtn = wrap.querySelector('.jhs-list-create-cancel') as HTMLButtonElement | null;
+    wrap.setAttribute('aria-busy', String(busy));
+    if (input) input.disabled = busy;
+    if (saveBtn) {
+        saveBtn.disabled = busy;
+        saveBtn.textContent = busy ? '新建中…' : '新建';
+    }
+    if (cancelBtn) cancelBtn.disabled = busy;
 }
 
 /**
@@ -1241,11 +1381,11 @@ function bindCreateListEvents(wrap: HTMLElement): void {
  *
  * @param listName 新清单名称
  */
-async function createList(listName: string): Promise<void> {
+async function createList(listName: string): Promise<CreateListResult> {
     const modal = document.querySelector('#modal-save-list');
     if (!modal) {
         showToast('✗ 未找到存入清单弹窗，请重新进入详情页', 'error');
-        return;
+        return 'failed';
     }
     const nameInput = modal.querySelector(
         'input[data-list-target="listNewNameInput"]'
@@ -1255,8 +1395,8 @@ async function createList(listName: string): Promise<void> {
         '[data-list-target="listContainer"]'
     ) as HTMLElement | null;
     if (!nameInput || !form || !listContainer) {
-        showToast('✗ 清单建立表单未就绪，请重新进入详情页', 'error');
-        return;
+        showToast('✗ 清单新建表单未就绪，请重新进入详情页', 'error');
+        return 'failed';
     }
 
     // ── 收集表单字段 ──
@@ -1285,11 +1425,12 @@ async function createList(listName: string): Promise<void> {
         formData['video_id'] ||
         (form.querySelector('input[name="video_id"]') as HTMLInputElement | null)?.value ||
         '';
+    if (!videoId) {
+        showToast('✗ 无法识别当前影片，清单未新建', 'error');
+        return 'failed';
+    }
 
-    // ── 还原我们的展开 UI（立即恢复，不等待请求完成） ──
-    restoreCreateListUi();
-
-    showToast('正在建立清单…', 'info');
+    showToast('正在新建清单…', 'info');
     console.log(`${LOG_PREFIX} ═══ 新增清单「${listName}」(video_id=${videoId}) ═══`);
 
     // ── 发送 ajax 请求 ──
@@ -1324,8 +1465,8 @@ async function createList(listName: string): Promise<void> {
         });
     } catch (err: any) {
         console.error(`${LOG_PREFIX} 新增清单失败`, err);
-        showToast(`✗ 新增清单失败：${err.message || '请稍后重試'}`, 'error');
-        return;
+        showToast(`✗ 新建清单失败：${err.message || '请稍后重试'}`, 'error');
+        return 'failed';
     }
 
     console.log(`${LOG_PREFIX} 服务端响应（前 500 字）: ${responseText.slice(0, 500)}`);
@@ -1344,6 +1485,10 @@ async function createList(listName: string): Promise<void> {
             console.warn(`${LOG_PREFIX} JS 响应注入失败`, e);
         }
     }
+    if (/\btoastr\s*(?:\.\s*error|\[\s*['"]error['"]\s*\])\s*\(/i.test(responseText)) {
+        showToast('✗ JavDB 拒绝新建清单，请检查名称后重试', 'error');
+        return 'failed';
+    }
 
     // ── 快速检测列表是否被 JS 响应直接更新（最多 200ms） ──
     // JavDB 的响应通常是 Toastr.success，不会更新 DOM，所以很短的轮询
@@ -1351,19 +1496,32 @@ async function createList(listName: string): Promise<void> {
     let newCheckboxes = await pollForNewCheckboxes(modal, beforeIds, 200);
     if (newCheckboxes.length > 0) {
         console.log(`${LOG_PREFIX} 侦测到 ${newCheckboxes.length} 个新 checkbox，走正常完成流程`);
-        finishCreateList(newCheckboxes, listName);
-        return;
+        const confirmedCheckbox = await resolveCreatedListCheckbox(
+            newCheckboxes,
+            listName,
+            videoId,
+            beforeIds
+        );
+        if (confirmedCheckbox) {
+            finishCreateList(confirmedCheckbox, listName);
+            return 'created';
+        }
     }
 
     // ── 从响应提取 list-id（若响应含 HTML 片段） ──
     const listIdMatch = responseText.match(/data-list-id=["']([^"']+)["']/);
     if (listIdMatch) {
         const listId = listIdMatch[1];
-        const manualCb = manuallyBuildCheckbox(listContainer, listId, listName, videoId);
-        if (manualCb) {
-            console.log(`${LOG_PREFIX} 从响应提取 list-id 成功 (list_id=${listId})`);
-            finishCreateList([manualCb], listName);
-            return;
+        const confirmedCheckbox = await resolveAuthoritativeCreatedCheckbox(
+            listId,
+            listName,
+            videoId,
+            beforeIds
+        );
+        if (confirmedCheckbox) {
+            console.log(`${LOG_PREFIX} 从响应提取并权威确认 list-id=${listId}`);
+            finishCreateList(confirmedCheckbox, listName);
+            return 'created';
         }
     }
 
@@ -1386,8 +1544,16 @@ async function createList(listName: string): Promise<void> {
             console.log(
                 `${LOG_PREFIX} 重载后侦测到 ${newCheckboxes.length} 个新 checkbox，走正常完成流程`
             );
-            finishCreateList(newCheckboxes, listName);
-            return;
+            const confirmedCheckbox = await resolveCreatedListCheckbox(
+                newCheckboxes,
+                listName,
+                videoId,
+                beforeIds
+            );
+            if (confirmedCheckbox) {
+                finishCreateList(confirmedCheckbox, listName);
+                return 'created';
+            }
         }
     }
 
@@ -1395,11 +1561,16 @@ async function createList(listName: string): Promise<void> {
     console.log(`${LOG_PREFIX} 按钮重载未找到新 checkbox，尝试 /users/lists 作为最后手段`);
     const listId = await fetchListIdByName(listName);
     if (listId) {
-        const manualCb = manuallyBuildCheckbox(listContainer, listId, listName, videoId);
-        if (manualCb) {
-            console.log(`${LOG_PREFIX} 从 /users/lists 查得 list_id=${listId}，手动构建 checkbox`);
-            finishCreateList([manualCb], listName);
-            return;
+        const confirmedCheckbox = await resolveAuthoritativeCreatedCheckbox(
+            listId,
+            listName,
+            videoId,
+            beforeIds
+        );
+        if (confirmedCheckbox) {
+            console.log(`${LOG_PREFIX} 从 /users/lists 查得并权威确认 list_id=${listId}`);
+            finishCreateList(confirmedCheckbox, listName);
+            return 'created';
         }
     }
 
@@ -1410,7 +1581,8 @@ async function createList(listName: string): Promise<void> {
         `${LOG_PREFIX} 新增清单后无法定位新 checkbox。响应前 300 字: ${responseText.slice(0, 300)}`
     );
     refreshListPanel();
-    showToast(`⚠ 清单「${listName}」可能已建立，请刷新页面确认`, 'warning');
+    showToast(`⚠ 清单「${listName}」可能已新建，请刷新页面确认`, 'warning');
+    return 'unknown';
 }
 
 /**
@@ -1448,6 +1620,88 @@ function pollForNewCheckboxes(
         };
         check();
     });
+}
+
+function normalizeListName(value: string): string {
+    return value.normalize('NFKC').replace(/\s+/g, ' ').trim();
+}
+
+function findCurrentListCheckbox(listId: string): HTMLInputElement | null {
+    const container = getCurrentListContainer();
+    if (!container) return null;
+    return (
+        Array.from(
+            container.querySelectorAll<HTMLInputElement>(
+                'input[type="checkbox"][data-list-id]'
+            )
+        ).find((input) => input.dataset.listId === listId) || null
+    );
+}
+
+/** 只有轻量权威接口确认“名称精确匹配且已勾选”，才允许提交新建后的本地关联。 */
+async function resolveAuthoritativeCreatedCheckbox(
+    listId: string,
+    listName: string,
+    videoId: string,
+    beforeIds: ReadonlySet<string | undefined>
+): Promise<HTMLInputElement | null> {
+    if (!listId || !videoId || beforeIds.has(listId)) return null;
+    const authoritative = await fetchAuthoritativeCheckboxState(videoId, listId);
+    if (
+        !authoritative?.checked ||
+        !authoritative.name ||
+        normalizeListName(authoritative.name) !== normalizeListName(listName) ||
+        (authoritative.count !== null && authoritative.count < 1)
+    ) {
+        return null;
+    }
+
+    let input = findCurrentListCheckbox(listId);
+    if (!input) {
+        const container = getCurrentListContainer();
+        input = container
+            ? manuallyBuildCheckbox(
+                  container,
+                  listId,
+                  authoritative.name,
+                  videoId,
+                  authoritative.count ?? 1
+              )
+            : null;
+    }
+    if (!input) return null;
+    input.checked = true;
+    if (authoritative.count !== null) {
+        setListDisplayedCount(listId, authoritative.count);
+    }
+    return input;
+}
+
+/** 多个 DOM 候选必须最终只权威确认出一个清单，拒绝数组式盲写。 */
+async function resolveCreatedListCheckbox(
+    candidates: HTMLInputElement[],
+    listName: string,
+    videoId: string,
+    beforeIds: ReadonlySet<string | undefined>
+): Promise<HTMLInputElement | null> {
+    const candidateIds = Array.from(
+        new Set(candidates.map((input) => input.dataset.listId).filter(Boolean) as string[])
+    );
+    const confirmed: HTMLInputElement[] = [];
+    for (const listId of candidateIds) {
+        const input = await resolveAuthoritativeCreatedCheckbox(
+            listId,
+            listName,
+            videoId,
+            beforeIds
+        );
+        if (input) confirmed.push(input);
+    }
+    if (confirmed.length === 1) return confirmed[0];
+    if (confirmed.length > 1) {
+        console.warn(`${LOG_PREFIX} 新建清单出现多个权威候选，拒绝写入本地`, candidateIds);
+    }
+    return null;
 }
 
 /**
@@ -1494,6 +1748,8 @@ async function fetchListIdByName(listName: string): Promise<string | null> {
 
         console.log(`${LOG_PREFIX} /users/lists 页面解析到 ${links.length} 条 /lists/ 链接`);
 
+        const matchedIds = new Set<string>();
+        const expectedName = normalizeListName(listName);
         for (const link of Array.from(links)) {
             const href = (link as Element).getAttribute('href') || '';
             // 提取 /lists/{id} 中的 id（排除 /users/lists 自身）
@@ -1501,18 +1757,26 @@ async function fetchListIdByName(listName: string): Promise<string | null> {
             if (!m) continue;
             const id = m[1];
             if (id === 'users' || id === '' || id === 'new') continue;
-            // 匹配清单名称
-            const text = (link as Element).textContent || '';
-            if (text.trim().includes(listName)) {
-                console.log(`${LOG_PREFIX} /users/lists 匹配到清单「${listName}」→ list_id=${id}`);
-                return id;
+            // 只接受去掉末尾数量后的精确名称，禁止「清单4」误匹配「清单4备份」。
+            const text = ((link as Element).textContent || '').replace(/\s*\(\d+\)\s*$/, '');
+            if (normalizeListName(text) === expectedName) {
+                matchedIds.add(id);
             }
+        }
+        if (matchedIds.size === 1) {
+            const [id] = matchedIds;
+            console.log(`${LOG_PREFIX} /users/lists 精确匹配清单「${listName}」→ list_id=${id}`);
+            return id;
+        }
+        if (matchedIds.size > 1) {
+            console.warn(`${LOG_PREFIX} /users/lists 存在重名清单，拒绝猜测 list-id`, matchedIds);
+            return null;
         }
 
         // 未匹配到：打印部分 HTML 以便排查
         const bodyText = doc.body?.textContent?.slice(0, 1000) || '';
         console.warn(
-            `${LOG_PREFIX} /users/lists 未找到名称含「${listName}」的清单（共 ${links.length} 条链接）。` +
+            `${LOG_PREFIX} /users/lists 未精确找到「${listName}」（共 ${links.length} 条链接）。` +
                 `页面文本前 500 字: ${bodyText.slice(0, 500)}`
         );
         return null;
@@ -1533,14 +1797,32 @@ async function fetchListIdByName(listName: string): Promise<string | null> {
  * @param listId        从响应提取的新清单 ID
  * @param listName      新清单名称
  * @param videoId       当前影片 ID
+ * @param count         权威接口返回的清单影片数量
  * @returns 构建的新 checkbox input 元素，失败返回 null
  */
+function getCurrentListContainer(): HTMLElement | null {
+    return document.querySelector(
+        '#modal-save-list [data-list-target="listContainer"]'
+    ) as HTMLElement | null;
+}
+
 function manuallyBuildCheckbox(
     listContainer: HTMLElement,
     listId: string,
     listName: string,
-    videoId: string
+    videoId: string,
+    count: number
 ): HTMLInputElement | null {
+    const duplicate = Array.from(
+        listContainer.querySelectorAll<HTMLInputElement>(
+            'input[type="checkbox"][data-list-id]'
+        )
+    ).find((input) => input.dataset.listId === listId);
+    if (duplicate) {
+        duplicate.checked = true;
+        return duplicate;
+    }
+
     // 找一个已有的 checkbox label 作为模板克隆
     const existingCb = listContainer.querySelector(
         'input[type="checkbox"][data-list-id]'
@@ -1549,24 +1831,39 @@ function manuallyBuildCheckbox(
     const existingLabel = existingCb.closest('label');
     if (!existingLabel) return null;
 
-    const clone = existingLabel.cloneNode(true) as HTMLElement;
-    const cb = clone.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
-    if (!cb) return null;
+    const existingEntry = existingLabel.closest('p.control') || existingLabel;
+    const clone = existingEntry.cloneNode(true) as HTMLElement;
+    const label = (clone.matches('label') ? clone : clone.querySelector('label')) as
+        | HTMLLabelElement
+        | null;
+    const cb = label?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    if (!label || !cb) return null;
     cb.dataset.listId = listId;
     cb.value = videoId;
     cb.checked = true;
+    cb.disabled = false;
+    cb.removeAttribute('id');
+    cb.removeAttribute('disabled');
+    delete cb.dataset.vltWasDisabled;
+    cb.removeAttribute('aria-busy');
+    label.removeAttribute('for');
     // Stimulus action 属性保留（克隆已带）
 
-    // 更新 label 文案为「清单名 (1)」——尝试替换最后一个 (N) 计数
-    // label 文本结构通常是「清单名 (count)」，克隆后改成新名 + (1)
-    const textNodes = Array.from(clone.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE);
-    if (textNodes.length > 0) {
-        // 替换最后一个文本节点的计数部分
-        const lastText = textNodes[textNodes.length - 1] as Text;
-        lastText.nodeValue = ` ${listName} (1)`;
+    // 原生结构是「input + 名称文本 + span(count)」；名称和数量必须分别更新，
+    // 否则结构化面板会把 `(1)` 误当名称，并继续显示模板清单的旧数量。
+    for (const node of Array.from(label.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE) node.remove();
+    }
+    const countSpan = label.querySelector('span') as HTMLElement | null;
+    const nameNode = document.createTextNode(` ${listName} `);
+    if (cb.parentNode === label) label.insertBefore(nameNode, cb.nextSibling);
+    else label.appendChild(nameNode);
+    if (countSpan) {
+        countSpan.textContent = `(${count})`;
     } else {
-        // 无独立文本节点，追加
-        clone.append(` ${listName} (1)`);
+        const createdCount = document.createElement('span');
+        createdCount.textContent = `(${count})`;
+        label.appendChild(createdCount);
     }
 
     listContainer.appendChild(clone);
@@ -1576,10 +1873,10 @@ function manuallyBuildCheckbox(
 /**
  * 新建清单完成态：toast + 刷新平铺面板 + 触发本地 IDB 同步 + 还原 UI。
  *
- * @param newCheckboxes 检测/构建出的新增 checkbox 数组
- * @param listName      新清单名称（用于 toast 文案）
+ * @param checkbox 权威确认后的唯一新增 checkbox
+ * @param listName 新清单名称（用于 toast 文案）
  */
-function finishCreateList(newCheckboxes: HTMLInputElement[], listName: string): void {
+function finishCreateList(checkbox: HTMLInputElement, listName: string): void {
     // 还原 newListArea 状态（点击 list#cancelNewList，避免下次打开仍在新增态）
     const modal = document.querySelector('#modal-save-list');
     if (modal) {
@@ -1592,28 +1889,25 @@ function finishCreateList(newCheckboxes: HTMLInputElement[], listName: string): 
     }
 
     restoreCreateListUi();
-    showToast(`✓ 清单「${listName}」已建立，已自动关联當前影片`, 'success');
+    showToast(`✓ 清单「${listName}」已新建，并已关联当前影片`, 'success');
 
     // 立即刷新 .jhs-list-panel 平铺面板
     refreshListPanel();
 
-    // 对每个新增 checkbox，触发本地 IDB 同步（核心优化：消除手动取消/关联步骤）
-    for (const cb of newCheckboxes) {
-        const movieInfo = getMovieInfo(cb.value);
-        if (!movieInfo) {
-            console.warn(`${LOG_PREFIX} 新建清单后无法取得影片资讯，跳过同步`, cb);
-            continue;
-        }
-        const listInfo = getListInfo(cb.dataset.listId || '');
-        if (!listInfo.info.name) {
-            // 手动构建的 checkbox 文案可能读不到名称，用 listName 兜底
-            console.warn(
-                `${LOG_PREFIX} 新建清单后无法从 DOM 取得清单名稱，使用传入名稱「${listName}」`
-            );
-        }
-        // JavDB 创建清单时已自动关联当前视频，只提交本地镜像，禁止再发第二次服务端请求
-        handleCheckboxChange(movieInfo, listInfo, true, { serverConfirmed: true }).then();
+    const movieInfo = getMovieInfo(checkbox.value);
+    if (!movieInfo) {
+        console.warn(`${LOG_PREFIX} 新建清单后无法取得影片资讯，跳过同步`, checkbox);
+        return;
     }
+    const listInfo = getListInfo(checkbox.dataset.listId || '');
+    if (!listInfo.info.name) {
+        console.warn(
+            `${LOG_PREFIX} 新建清单后无法从 DOM 取得清单名称，使用传入名称「${listName}」`
+        );
+        listInfo.info.name = listName;
+    }
+    // 权威接口已确认创建时自动关联；只提交本地镜像，禁止再发第二次服务端请求。
+    handleCheckboxChange(movieInfo, listInfo, true, { serverConfirmed: true }).then();
 }
 
 /**
@@ -1622,12 +1916,19 @@ function finishCreateList(newCheckboxes: HTMLInputElement[], listName: string): 
 function restoreCreateListUi(): void {
     const w = document.querySelector('.jhs-list-create-wrap') as HTMLElement | null;
     if (!w) return;
-    const btn = w.querySelector('.jhs-list-create-btn') as HTMLElement | null;
+    const activeElement = document.activeElement;
+    const shouldRestoreFocus =
+        !activeElement || activeElement === document.body || w.contains(activeElement);
+    const btn = w.querySelector('.jhs-list-create-btn') as HTMLButtonElement | null;
     const f = w.querySelector('.jhs-list-create-form') as HTMLElement | null;
     const inp = w.querySelector('.jhs-list-create-input') as HTMLInputElement | null;
-    if (btn) btn.style.display = 'inline-flex';
+    if (btn) {
+        btn.style.display = 'inline-flex';
+        btn.setAttribute('aria-expanded', 'false');
+    }
     if (f) f.style.display = 'none';
     if (inp) inp.value = '';
+    if (btn && shouldRestoreFocus) btn.focus({ preventScroll: true });
 }
 
 /**
@@ -1640,15 +1941,22 @@ function restoreCreateListUi(): void {
  * 新清单。此处主动重建，消除该等待。
  */
 function refreshListPanel(): void {
-    const panel = document.querySelector('.jhs-list-panel');
+    const panel = document.querySelector('.jhs-list-panel') as
+        | (HTMLElement & { __jhsRefresh?: () => void })
+        | null;
     if (!panel) return;
+    if (panel.__jhsRefresh) {
+        panel.__jhsRefresh();
+        return;
+    }
     const lc = document.querySelector('#modal-save-list [data-list-target="listContainer"]');
     if (!lc) return;
-    panel.innerHTML = '';
+    const items = panel.querySelector('.jhs-list-panel__items') || panel;
+    items.innerHTML = '';
     Array.from(lc.children).forEach((child: any) => {
         // 跳过「预设清单」/「預設清單」（简/繁体均匹配）
         if (/[预預][设設]清[单單]/.test(child.textContent)) return;
-        panel.appendChild(child.cloneNode(true));
+        items.appendChild(child.cloneNode(true));
     });
 }
 
@@ -2077,6 +2385,7 @@ export function removeDetailPageCheckbox(listId: string): void {
     if (modalCb) {
         modalCb.closest('p.control')?.remove() || modalCb.closest('label')?.remove();
     }
+    refreshListPanel();
     console.log(`${LOG_PREFIX} 详情页已移除清单 ${listId} 的 checkbox`);
 }
 
@@ -2091,6 +2400,11 @@ export function updateDetailPageCheckboxLabel(listId: string, newName: string): 
     checkboxes.forEach((cb: Element) => {
         const label = cb.closest('label');
         if (!label) return;
+        const displayName = label.querySelector('.jhs-list-item__name');
+        if (displayName) {
+            displayName.textContent = newName;
+            return;
+        }
         // label 结构：<input> 清单名&nbsp; <span>(count)</span>
         // 保留 <span>(count)</span>，替换名称文本
         // 清空 label 内除 input 和 span 外的文本节点，再插入新名称
@@ -2107,5 +2421,6 @@ export function updateDetailPageCheckboxLabel(listId: string, newName: string): 
             inputEl.insertAdjacentText('afterend', `\u00A0${newName}\u00A0`);
         }
     });
+    refreshListPanel();
     console.log(`${LOG_PREFIX} 详情页已更新清单 ${listId} 的标签为「${newName}」`);
 }
