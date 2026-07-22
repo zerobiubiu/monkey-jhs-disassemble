@@ -9,6 +9,17 @@
 
 ---
 
+## v1.20.1
+
+**发布日期**：2026-07-22
+
+### 修复
+
+- **Top250/热播榜单封面图加载失败**（doc/129）：`HitShowMovieItem` 封面 CDN 域名
+  替换由硬编码字面量（`tp-iu.cmastd.com`）改为域名无关正则 `_updateImgServer`，
+  兼容 API 返回的 CDN 域名轮换，修复 `advanced_search?handleTop=1` 及
+  `handlePlayback=1` 榜单封面图无法加载的问题。
+
 ## v1.20.0
 
 **发布日期**：2026-07-19

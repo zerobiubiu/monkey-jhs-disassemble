@@ -8,8 +8,9 @@
  *
  * 保留原 HTML 结构、类名（含 `cover ` 尾空格）、内联 style、三元嵌套
  * （has_cnsub / magnets_count / new_magnets）原样不动；movie 通过 prop 注入。
- * 封面 cover_url 的 CDN 域名替换（tp-iu.cmastd.com → c0.jdbstatic.com）
- * 保留在组件内，与原模板行为一致。磁链标签的三元 HTML 改为 JSX 条件渲染
+ * 封面 cover_url 的 CDN 域名替换使用 _updateImgServer（域名无关正则，
+ * 匹配任意 host 下的 /rhe951l4q 路径 → c0.jdbstatic.com），与新版
+ * jhs.3.3.6.027 行为一致，兼容 CDN 域名轮换。磁链标签的三元 HTML 改为 JSX 条件渲染
  * （`cond ? <span/> : <span/>`），输出等价；两个三元之间以 `{" "}` 保留原
  * 模板 `\n` 折叠后的单空格（DOM 等价）。`<img>` 自闭合（void element）。
  * `<strong>{number}</strong> {origin_title}` 同行保留空格。
@@ -23,6 +24,8 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
+import { _updateImgServer } from '../constants/api';
+
 
 /** HitShowMovieItem 的属性（movie 为原始影片对象，字段为 any）。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,10 +48,7 @@ export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
                 <div className="cover ">
                     <img
                         loading="lazy"
-                        src={movie.cover_url.replace(
-                            'https://tp-iu.cmastd.com/rhe951l4q',
-                            'https://c0.jdbstatic.com'
-                        )}
+                        src={_updateImgServer(movie.cover_url || '')}
                         alt=""
                     />
                 </div>

@@ -140,6 +140,7 @@
 | `126-fix-javdb-list-server-local-divergence.md` | 🔧开发指导 | ✅已执行 | 修复 JavDB 清单服务端/本地关联分叉：success=true 后才写 IDB；simple_lists 完整分页权威复核；未知网络结果持久化恢复；同页队列 + Web Locks；四对象单 IDB 事务；双完整快照自动对账；删除清单服务端成功优先；version 1.19.7→1.19.8 |
 | `127-fix-autopage-click-loader-state.md` | 🔧开发指导 | ✅已执行 | 修复瀑布流「点按钮」模式只能加载一次：普通分页与 Beyond60 成功后退出 waterfall-loading 回到空闲态，保留请求期防重入守卫；version 1.19.8→1.19.9 |
 | `128-detail-page-list-panel-ui-and-sorting.md` | 🔧开发指导 | ✅已执行 | 详情页清单面板结构化改版：默认名称降序/可切升序、搜索与选中汇总、完整分页聚合、响应式和无障碍状态；强化 listId 映射及新建清单权威确认；version 1.19.9→1.20.0 |
+| `129-fix-top250-cover-cdn-replace.md` | 🔧开发指导 | ✅已执行 | 修复 Top250/热播榜单封面图加载失败：HitShowMovieItem 硬编码 CDN 字面量替换改为域名无关正则 _updateImgServer，兼容 CDN 域名轮换；version 1.20.0→1.20.1 |
 
 ## 类型图例
 
@@ -218,6 +219,7 @@
 126. `126-fix-javdb-list-server-local-divergence.md` — 修复清单服务端/本地关联分叉（JavDB 成功确认后写 IDB + 崩溃恢复 + Web Locks + 原子事务 + 双完整快照自动对账）
 127. `127-fix-autopage-click-loader-state.md` — 修复瀑布流「点按钮」模式首轮成功后残留 loading、后续按钮永久消失
 128. `128-detail-page-list-panel-ui-and-sorting.md` — 优化详情页清单面板 UI、名称排序/搜索、完整分页展示及可靠交互
+129. `129-fix-top250-cover-cdn-replace.md` — 修复 Top250/热播榜单封面图 CDN 域名轮换导致加载失败
 
 ## 当前进度概览
 
