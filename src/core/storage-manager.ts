@@ -110,6 +110,124 @@ export interface Setting {
     [key: string]: any;
 }
 
+/**
+ * 备份可恢复的 IndexedDB 键。
+ *
+ * 这些键覆盖当前核心数据、历史迁移键以及由独立插件寄生到同一
+ * `JAV-JHS/appData` 仓库中的数据。导入时拒绝未知键，避免把任意 JSON
+ * 对象当作业务数据写入存储；新增插件使用新键时必须同步扩展此清单。
+ */
+const BACKUP_ARRAY_KEYS = new Set([
+    'car_list',
+    'blacklist',
+    'blacklist_car_list',
+    'favorite_actresses',
+    'highlighted_tags',
+    'filter_keyword_title',
+    'filter_keyword_review',
+    // 旧版本键（交给启动迁移逻辑继续处理）。
+    'filter_actor_actress_info_list',
+    'favorite_actresses_info_list',
+    'car_list_filter_actor_actress',
+    'title_filter_keyword',
+    'review_filter_keyword',
+    'highlightedTags'
+]);
+
+const BACKUP_OBJECT_KEYS = new Set([
+    'setting',
+    'listReadingStatus_data',
+    'jhsRatingDisplay_data',
+    'vlt_movies',
+    'vlt_inventory',
+    'vlt_movie_inventory',
+    'vlt_meta'
+]);
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+function isKnownBackupKey(key: string): boolean {
+    return BACKUP_ARRAY_KEYS.has(key) || BACKUP_OBJECT_KEYS.has(key);
+}
+
+function isValidBackupValue(key: string, value: unknown): boolean {
+    if (BACKUP_ARRAY_KEYS.has(key)) return Array.isArray(value);
+    if (key === 'setting') return isPlainRecord(value);
+    if (BACKUP_OBJECT_KEYS.has(key)) return isPlainRecord(value) || Array.isArray(value);
+    return false;
+}
+
+/** 比较 localForage 可序列化值；回滚时用它避免覆盖并发标签页的新写入。 */
+function storageValuesEqual(left: unknown, right: unknown): boolean {
+    if (Object.is(left, right)) return true;
+    try {
+        return JSON.stringify(left) === JSON.stringify(right);
+    } catch {
+        return false;
+    }
+}
+
+interface NavigatorWithOptionalLocks {
+    locks?: {
+        request<T>(
+            name: string,
+            options: { mode: 'exclusive' },
+            callback: () => Promise<T>
+        ): Promise<T>;
+    };
+}
+
+const STORAGE_IMPORT_LOCK_NAME = 'jhs-storage-import';
+
+/** 在支持 Web Locks 的浏览器中串行化跨标签页备份导入。 */
+async function withStorageImportLock<T>(task: () => Promise<T>): Promise<T> {
+    const browserNavigator =
+        typeof navigator === 'undefined'
+            ? undefined
+            : (navigator as NavigatorWithOptionalLocks);
+    if (!browserNavigator?.locks) return task();
+    return browserNavigator.locks.request(
+        STORAGE_IMPORT_LOCK_NAME,
+        { mode: 'exclusive' },
+        task
+    );
+}
+
+/**
+ * 校验并复制可导入的 IndexedDB 数据。
+ *
+ * 备份外层的 `__meta`/`__localStorage`/`__gmStorage` 必须由
+ * `prepareBackupImport` 先剥离；StorageManager 本身不接受任何 `__*` 键。
+ */
+export function validateStorageImportData(data: unknown): Record<string, unknown> {
+    if (!isPlainRecord(data)) {
+        throw new Error('导入数据必须是普通对象');
+    }
+
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+        throw new Error('导入数据为空，已拒绝覆盖现有数据');
+    }
+
+    for (const [key, value] of entries) {
+        if (key.startsWith('__')) {
+            throw new Error(`导入数据包含未剥离的元字段：${key}`);
+        }
+        if (!isKnownBackupKey(key)) {
+            throw new Error(`导入数据包含未知键：${key}`);
+        }
+        if (!isValidBackupValue(key, value)) {
+            throw new Error(`导入数据字段格式无效：${key}`);
+        }
+    }
+
+    return Object.fromEntries(entries);
+}
+
 export class StorageManager {
     /** 单例实例（原 n.instance） */
     private static instance: StorageManager | null = null;
@@ -174,6 +292,14 @@ export class StorageManager {
         this.cacheFavoriteActressList = null;
     }
 
+    /** 清空所有运行时缓存，供全量导入完成或回滚后重新读取持久化数据。 */
+    private clearRuntimeCaches(): void {
+        this.clearCarListCache();
+        this.clearFavoriteActressListCache();
+        this.clearFilterActorActressCarListCache();
+        this.clearSettingCache();
+    }
+
     constructor() {
         if (StorageManager.instance) {
             throw new Error('StorageManager已被实例化过了!');
@@ -192,6 +318,22 @@ export class StorageManager {
             return utils.copyObj(this.cacheCarList);
         }
         return (await this.forage.getItem(this.car_list_key)) || [];
+    }
+
+    /**
+     * 读取番号清单并保留“键不存在”和“明确为空”的区别。
+     * 跨域全量同步只有在 exists=true 时才允许发布空快照，避免首次安装或导入中间态
+     * 把 MissAV 端已有状态误判为权威空清单。
+     */
+    async getCarListSnapshot(): Promise<{ exists: boolean; records: CarRecord[] }> {
+        const value = await this.forage.getItem(this.car_list_key);
+        if (value === null || value === undefined) {
+            return { exists: false, records: [] };
+        }
+        if (!Array.isArray(value)) {
+            throw new Error('car_list 数据格式无效');
+        }
+        return { exists: true, records: value as CarRecord[] };
     }
 
     /** 按番号查询单条记录。 @param carNum 番号 @returns 命中记录或 undefined */
@@ -409,6 +551,7 @@ export class StorageManager {
         });
         if (changed) {
             await this.forage.setItem(this.favorite_actresses_key, updated);
+            this.clearFavoriteActressListCache();
         }
     }
 
@@ -426,6 +569,7 @@ export class StorageManager {
             return false;
         } else {
             await this.forage.setItem(this.car_list_key, filtered);
+            this.clearCarListCache();
             // 增量通知：推送被删除的番号
             this.carListChangeCallback?.({ action: 'delete', deletes: [carNum] });
             return true;
@@ -445,6 +589,7 @@ export class StorageManager {
         const removed = beforeLen - filtered.length;
         if (removed === 0) return false;
         await this.forage.setItem(this.car_list_key, filtered);
+        this.clearCarListCache();
         // 增量通知：推送被删除的番号
         this.carListChangeCallback?.({ action: 'delete', deletes: carNums });
         return removed;
@@ -530,10 +675,10 @@ export class StorageManager {
 
     // ===== 黑名单番号清单 =====
 
-    /** 获取黑名单番号清单（带缓存，命中非空缓存直接返回）。 */
+    /** 获取黑名单番号清单（带缓存，空数组也视为有效缓存）。 */
     async getBlacklistCarList(): Promise<CarRecord[]> {
         const cached = this.cache_filter_actor_actress_car_list;
-        if (cached && cached.length > 0) {
+        if (cached !== null) {
             if (featureFlags.storageCacheDeepCopy) {
                 return utils.deepFreeze(utils.copyObj(cached));
             }
@@ -569,6 +714,7 @@ export class StorageManager {
         }
         if (changed) {
             await this.forage.setItem(this.blacklist_car_list_key, cloned);
+            this.clearFilterActorActressCarListCache();
             await this.removeNewVideoList(newCarNums);
             (window as any).cleanCache_filter_actor_actress_car_list();
         }
@@ -580,6 +726,7 @@ export class StorageManager {
         const filtered = list.filter((item) => item.starId !== starId);
         if (filtered.length !== list.length) {
             await this.forage.setItem(this.blacklist_car_list_key, filtered);
+            this.clearFilterActorActressCarListCache();
             (window as any).cleanCache_filter_actor_actress_car_list();
         }
     }
@@ -669,6 +816,7 @@ export class StorageManager {
         }
         if (count > 0) {
             await this.forage.setItem(this.favorite_actresses_key, list);
+            this.clearFavoriteActressListCache();
         } else {
             clog.log('信息已记录, 无需要进行同步收藏的演员');
         }
@@ -689,6 +837,7 @@ export class StorageManager {
             return false;
         } else {
             await this.forage.setItem(this.favorite_actresses_key, filtered);
+            this.clearFavoriteActressListCache();
             return true;
         }
     }
@@ -746,6 +895,7 @@ export class StorageManager {
         }
         existing.updateDate = utils.getNowStr();
         await this.forage.setItem(this.favorite_actresses_key, list);
+        this.clearFavoriteActressListCache();
     }
 
     // ===== 高亮标签 =====
@@ -816,6 +966,7 @@ export class StorageManager {
         });
         if (changed) {
             await this.forage.setItem(this.favorite_actresses_key, updated);
+            this.clearFavoriteActressListCache();
         }
     }
 
@@ -878,6 +1029,7 @@ export class StorageManager {
     async saveSetting(setting: Setting): Promise<void> {
         if (setting) {
             await this.forage.setItem(this.setting_key, setting);
+            this.clearSettingCache();
             (window as any).clean_cacheSettingObj();
         } else {
             show.error('设置对象为空');
@@ -897,21 +1049,73 @@ export class StorageManager {
         const setting = await this.getSetting();
         setting[key] = value;
         await this.saveSetting(setting);
+        // saveSetting 已清理当前缓存；保留这里的显式调用，避免未来替换
+        // saveSetting 实现时单项保存再次引入旧值读取。
+        this.clearSettingCache();
         (window as any).clean_cacheSettingObj();
     }
 
     // ===== 导入/导出 =====
 
-    /** 清空后导入数据。 @param data 键值对数据 */
-    async importData(data: Record<string, any>): Promise<void> {
-        await this.forage.clear();
-        const tasks: Promise<any>[] = [];
-        for (const key in data) {
-            const value = data[key];
-            const task = this.forage.setItem(key, value);
-            tasks.push(task);
-        }
-        await Promise.all(tasks);
+    /**
+     * 以快照保护方式导入数据。
+     *
+     * 调用方负责在调用前剥离不属于 IndexedDB 的备份元字段；本方法会校验键和值
+     * 的基本 schema，并在任一写入失败时恢复导入前快照，避免留下半份数据。
+     * 只覆盖备份中明确出现的键，保留当前版本新增而旧备份未包含的键，避免旧备份
+     * 导致新插件数据被误删。
+     *
+     * @param data 键值对数据
+     */
+    async importData(data: unknown): Promise<void> {
+        const validatedData = validateStorageImportData(data);
+        await withStorageImportLock(async () => {
+            const snapshot = new Map<string, any>();
+            await this.forage.iterate((value: any, key: string) => {
+                snapshot.set(key, value);
+            });
+
+            const entries = Object.entries(validatedData);
+            // 记录“尝试写入”的键，而不是在失败时恢复整个仓库。
+            // 某个 setItem 可能在 reject 前已经落盘，因此失败键也要进入
+            // 条件回滚；未被本次导入触及的键绝不能被回滚覆盖。
+            const attemptedKeys = new Set<string>();
+            try {
+                // 只覆盖备份列出的键，不删除其它键，兼容旧备份与新插件数据。
+                for (const [key, value] of entries) {
+                    attemptedKeys.add(key);
+                    await this.forage.setItem(key, value);
+                }
+            } catch (importError) {
+                try {
+                    // 逐键条件回滚：只有当前值仍等于本次导入值时才恢复。
+                    // 若另一标签页已在导入期间写入同一键，则保留它的最新值，
+                    // 避免“导入失败”反而吞掉并发的正常操作。
+                    for (const [key, importedValue] of entries) {
+                        if (!attemptedKeys.has(key)) continue;
+                        const currentValue = await this.forage.getItem(key);
+                        if (!storageValuesEqual(currentValue, importedValue)) continue;
+                        if (snapshot.has(key)) {
+                            await this.forage.setItem(key, snapshot.get(key));
+                        } else {
+                            await this.forage.removeItem(key);
+                        }
+                    }
+                } catch (rollbackError) {
+                    this.clearRuntimeCaches();
+                    const importMessage =
+                        importError instanceof Error ? importError.message : String(importError);
+                    const rollbackMessage =
+                        rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+                    throw new Error(
+                        `导入失败且原数据回滚失败（导入错误：${importMessage}；回滚错误：${rollbackMessage}）`
+                    );
+                }
+                this.clearRuntimeCaches();
+                throw importError;
+            }
+            this.clearRuntimeCaches();
+        });
     }
 
     /** 导出全部数据。 @returns 键值对数据 @throws 没有可导出的数据 */
@@ -930,48 +1134,53 @@ export class StorageManager {
 
     /** 迁移旧表名到新键名（一次性）。 */
     async merge_table_name(): Promise<void> {
-        let oldKey = 'filter_actor_actress_info_list';
-        let items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.blacklist_key, items);
+        const mappings = [
+            {
+                oldKey: 'filter_actor_actress_info_list',
+                newKey: this.blacklist_key,
+                // blacklist 当前没有独立读取缓存；清理所有运行时快照可覆盖未来
+                // 引入缓存的版本，避免旧键迁移后继续使用旧数据。
+                clearCache: () => this.clearRuntimeCaches()
+            },
+            {
+                oldKey: 'favorite_actresses_info_list',
+                newKey: this.favorite_actresses_key,
+                clearCache: () => this.clearFavoriteActressListCache()
+            },
+            {
+                oldKey: 'car_list_filter_actor_actress',
+                newKey: this.blacklist_car_list_key,
+                clearCache: () => this.clearFilterActorActressCarListCache()
+            },
+            {
+                oldKey: 'title_filter_keyword',
+                newKey: this.filter_keyword_title_key
+            },
+            {
+                oldKey: 'review_filter_keyword',
+                newKey: this.filter_keyword_review_key
+            },
+            {
+                oldKey: 'highlightedTags',
+                newKey: this.highlighted_tags_key
+            }
+        ];
+
+        for (const { oldKey, newKey, clearCache } of mappings) {
+            const items = await this.forage.getItem(oldKey);
+            if (items && items.length > 0) {
+                const currentItems = await this.forage.getItem(newKey);
+                // 新键一旦存在（包括显式空数组）即为权威数据，旧键不得覆盖或复活它。
+                if (currentItems == null) {
+                    console.log('更正', oldKey);
+                    await this.forage.setItem(newKey, items);
+                }
+            }
+            await this.forage.removeItem(oldKey);
+            // 即使旧键为空或新键已存在，也让相关缓存失效；迁移可能由设置页
+            // 手动触发，此时不能假设缓存尚未建立。
+            clearCache?.();
         }
-        await this.forage.removeItem(oldKey);
-        oldKey = 'favorite_actresses_info_list';
-        items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.favorite_actresses_key, items);
-        }
-        await this.forage.removeItem(oldKey);
-        oldKey = 'car_list_filter_actor_actress';
-        items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.blacklist_car_list_key, items);
-        }
-        await this.forage.removeItem(oldKey);
-        oldKey = 'title_filter_keyword';
-        items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.filter_keyword_title_key, items);
-        }
-        await this.forage.removeItem(oldKey);
-        oldKey = 'review_filter_keyword';
-        items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.filter_keyword_review_key, items);
-        }
-        await this.forage.removeItem(oldKey);
-        oldKey = 'highlightedTags';
-        items = (await this.forage.getItem(oldKey)) || [];
-        if (items && items.length > 0) {
-            console.log('更正', oldKey);
-            await this.forage.setItem(this.highlighted_tags_key, items);
-        }
-        await this.forage.removeItem(oldKey);
     }
 
     /** 清理无 url 的黑名单番号与冗余字段（key/recordTime→createTime）。 */
@@ -980,7 +1189,8 @@ export class StorageManager {
             this.getBlacklistCarList(),
             this.getBlacklist()
         ]);
-        if (blacklistCars.length && !blacklistCars[0].actress) {
+        // 无旧番号数据时不能据此删除演员黑名单；否则空番号表会误清整个 blacklist。
+        if (blacklistCars.length === 0 || !blacklistCars[0].actress) {
             return;
         }
         const nameSet: Set<string | undefined> = new Set(blacklist.map((item) => item.name));
@@ -1064,50 +1274,51 @@ export class StorageManager {
         }
         let changed = false;
         const merged = list.map((item) => {
+            const mergedItem: BlacklistItem = { ...item };
             let itemChanged = false;
-            if (Object.prototype.hasOwnProperty.call(item, 'isActor') && !item.role) {
-                item.role = item.isActor ? ACTOR : ACTRESS;
-                delete item.isActor;
+            if (Object.prototype.hasOwnProperty.call(mergedItem, 'isActor') && !mergedItem.role) {
+                mergedItem.role = mergedItem.isActor ? ACTOR : ACTRESS;
+                delete mergedItem.isActor;
                 itemChanged = true;
             }
-            if (!item.starId && item.url) {
+            if (!mergedItem.starId && mergedItem.url) {
                 try {
-                    const pathname = new URL(item.url).pathname;
+                    const pathname = new URL(mergedItem.url).pathname;
                     const extracted = pathname
                         .split('/')
                         .filter((seg) => seg.trim() !== '')
                         .pop();
-                    if (item.starId !== extracted) {
-                        item.starId = extracted;
+                    if (mergedItem.starId !== extracted) {
+                        mergedItem.starId = extracted;
                         itemChanged = true;
                     }
                 } catch (err) {
-                    clog.error('提取url-starId发生错误', item.url, err);
+                    clog.error('提取url-starId发生错误', mergedItem.url, err);
                 }
             }
-            if (!item.allName) {
-                item.allName = item.name ? [item.name] : [];
+            if (!mergedItem.allName) {
+                mergedItem.allName = mergedItem.name ? [mergedItem.name] : [];
                 itemChanged = true;
             }
-            if (!item.movieType) {
-                item.movieType = CENSORED;
+            if (!mergedItem.movieType) {
+                mergedItem.movieType = CENSORED;
                 itemChanged = true;
             }
-            if (item.url && item.url.includes('sort_type')) {
+            if (mergedItem.url && mergedItem.url.includes('sort_type')) {
                 try {
-                    const urlObj = new URL(item.url);
+                    const urlObj = new URL(mergedItem.url);
                     urlObj.searchParams.delete('sort_type');
-                    item.url = urlObj.toString();
+                    mergedItem.url = urlObj.toString();
                     itemChanged = true;
                     clog.debug('去除黑名单地址sort_type参数');
                 } catch (err) {
-                    clog.error('去除黑名单地址sort_type参数失败', item.url, err);
+                    clog.error('去除黑名单地址sort_type参数失败', mergedItem.url, err);
                 }
             }
             if (itemChanged) {
                 changed = true;
             }
-            return item;
+            return mergedItem;
         });
         if (changed) {
             clog.debug('更正 Blacklist 数据结构');
@@ -1116,22 +1327,24 @@ export class StorageManager {
         const carList = await this.getBlacklistCarList();
         changed = false;
         const mergedCars = carList.map((item) => {
-            if (!item.starId) {
-                const match = list.find((entry) => entry.name === item.actress);
+            const mergedItem: CarRecord = { ...item };
+            if (!mergedItem.starId) {
+                const match = merged.find((entry) => entry.name === mergedItem.actress);
                 if (match) {
-                    item.starId = match.starId;
+                    mergedItem.starId = match.starId;
+                    changed = true;
                 }
+            }
+            if (mergedItem.type) {
+                delete mergedItem.type;
                 changed = true;
             }
-            if (item.type) {
-                delete item.type;
-                changed = true;
-            }
-            return item;
+            return mergedItem;
         });
         if (changed) {
             clog.debug('更正 blacklistCarList 数据结构');
             await this.forage.setItem(this.blacklist_car_list_key, mergedCars);
+            this.clearFilterActorActressCarListCache();
         }
     }
 
@@ -1157,6 +1370,7 @@ export class StorageManager {
         if (changed) {
             clog.debug('更正 favoriteActressesInfoList 数据结构');
             await this.forage.setItem(this.favorite_actresses_key, merged);
+            this.clearFavoriteActressListCache();
         }
     }
 
@@ -1166,37 +1380,45 @@ export class StorageManager {
         const carList = await this.getCarList();
         let changed = false;
         const mergedBlacklistCars = blacklistCars.map((item) => {
+            const mergedItem: CarRecord = { ...item };
             let itemChanged = false;
-            if (item.actress !== undefined) {
-                item.names = item.actress;
-                delete item.actress;
+            if (mergedItem.actress !== undefined) {
+                if (mergedItem.names === undefined) {
+                    mergedItem.names = mergedItem.actress;
+                }
+                delete mergedItem.actress;
                 itemChanged = true;
             }
             if (itemChanged) {
                 changed = true;
             }
-            return item;
+            return mergedItem;
         });
         if (changed) {
             clog.debug('更正 blacklistCarList 数据结构 actress->names');
             await this.forage.setItem(this.blacklist_car_list_key, mergedBlacklistCars);
+            this.clearFilterActorActressCarListCache();
         }
         changed = false;
         const mergedCars = carList.map((item) => {
+            const mergedItem: CarRecord = { ...item };
             let itemChanged = false;
-            if (item.actress !== undefined) {
-                item.names = item.actress;
-                delete item.actress;
+            if (mergedItem.actress !== undefined) {
+                if (mergedItem.names === undefined) {
+                    mergedItem.names = mergedItem.actress;
+                }
+                delete mergedItem.actress;
                 itemChanged = true;
             }
             if (itemChanged) {
                 changed = true;
             }
-            return item;
+            return mergedItem;
         });
         if (changed) {
             clog.debug('更正 carList 数据结构 actress->names');
             await this.forage.setItem(this.car_list_key, mergedCars);
+            this.clearCarListCache();
         }
     }
 }

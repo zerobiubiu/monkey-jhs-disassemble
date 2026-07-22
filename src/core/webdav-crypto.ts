@@ -2,8 +2,8 @@
  * WebDav 凭据加密/解密辅助（提取自 archetype/jhs.user.js L10563-10581 / legacy L450-470）
  *
  * 用固定 salt 对称位移码点（+5/-5）做轻度混淆，存放 WebDav 授权串到 storage。
- * 非安全加密，仅用于避免明文。setting-plugin 通过 (window as any).encryptCredential/.decryptCredential 访问，
- * legacy 启动时挂载到 window/unsafeWindow。
+ * 非安全加密，仅用于避免明文。setting-plugin 通过 userscript 沙箱
+ * `(window as any).encryptCredential/.decryptCredential` 访问。
  */
 
 /** 加密 salt，作为密文前后缀。 */

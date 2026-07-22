@@ -7,6 +7,24 @@
 
 import { STATUS_CONFIG } from './car-status-config';
 
+const JAVDB_BASE_URL = 'https://javdb.com';
+
+/** 仅允许指向官方 JavDB HTTPS 地址，避免把外部/脚本协议写入 href。 */
+function safeJavdbUrl(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) return JAVDB_BASE_URL;
+
+    try {
+        const parsed = new URL(raw, JAVDB_BASE_URL);
+        if (parsed.protocol !== 'https:' || parsed.hostname !== 'javdb.com') {
+            return JAVDB_BASE_URL;
+        }
+        return parsed.href;
+    } catch {
+        return JAVDB_BASE_URL;
+    }
+}
+
 /**
  * 将 missav.ws 页面上的番号归一化为 JHS 数据库中的标准格式。
  * 来源：missavStatusTag.user.js L577-588 normalizeCarNum。
@@ -47,7 +65,7 @@ export function createBadge(status: string, url: string): HTMLAnchorElement | nu
     const a = document.createElement('a');
     a.className = 'missav-status-tag';
     a.textContent = cfg.label;
-    a.href = url || 'javascript:;';
+    a.href = safeJavdbUrl(url);
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.title = '点击跳转到 javdb 详情页';
@@ -79,59 +97,115 @@ export function createBadge(status: string, url: string): HTMLAnchorElement | nu
     return a;
 }
 
+/** 将已有标签同步到最新状态，返回可见内容是否发生变化。 */
+function updateBadge(badge: HTMLAnchorElement, status: string, url: string): boolean {
+    const cfg = STATUS_CONFIG[status];
+    if (!cfg) return false;
+
+    const nextUrl = safeJavdbUrl(url);
+    const changed =
+        badge.textContent !== cfg.label ||
+        badge.href !== nextUrl ||
+        badge.style.getPropertyValue('background-color') !== cfg.color;
+
+    badge.textContent = cfg.label;
+    badge.href = nextUrl;
+    badge.target = '_blank';
+    badge.rel = 'noopener noreferrer';
+    badge.title = '点击跳转到 javdb 详情页';
+    badge.style.setProperty('background-color', cfg.color, 'important');
+    return changed;
+}
+
 /**
  * 向容器中的每个缩略图挂载状态标签。
  * 来源：missavStatusTag.user.js L520-562 renderBadges。
  *
  * @param container 包含缩略图的父容器
  * @param carMap carNum → {status, url} 映射
- * @returns total 总新增数；matched 命中数
+ * @returns total 处理卡片数；matched 命中数；added/updated/removed 为 DOM 变化数
  */
 export function renderBadges(
     container: HTMLElement,
     carMap: Map<string, { status: string; url: string }>
-): { total: number; matched: number } {
-    if (!container || carMap.size === 0) return { total: 0, matched: 0 };
+): { total: number; matched: number; added: number; updated: number; removed: number } {
+    if (!container) return { total: 0, matched: 0, added: 0, updated: 0, removed: 0 };
 
     const items = container.querySelectorAll<HTMLElement>('.thumbnail.group');
     let total = 0;
     let matched = 0;
+    let added = 0;
+    let updated = 0;
+    let removed = 0;
 
     for (const item of items) {
-        // 防御：已处理过的跳过（放在 total++ 之前，不计入 total）
-        if (item.querySelector('.missav-status-tag')) continue;
         total++;
+        const existingBadges = Array.from(
+            item.querySelectorAll<HTMLAnchorElement>('.missav-status-tag')
+        );
+        const removeExistingBadges = (): void => {
+            for (const badge of existingBadges) {
+                badge.remove();
+                removed++;
+            }
+        };
 
         // 查找带有 alt 属性的 <a> 标签获取番号
         const link = item.querySelector<HTMLAnchorElement>('a[alt]');
-        if (!link) continue;
+        if (!link) {
+            removeExistingBadges();
+            continue;
+        }
 
         const carNum = link.getAttribute('alt');
-        if (!carNum) continue;
+        if (!carNum) {
+            removeExistingBadges();
+            continue;
+        }
 
         // 归一化番号后查库
         const normalized = normalizeCarNum(carNum);
         const record = carMap.get(normalized);
-        if (!record) continue;
+        if (!record || !STATUS_CONFIG[record.status]) {
+            removeExistingBadges();
+            continue;
+        }
 
         // 找到缩略图容器（.relative 元素，用来定位标签）
         const thumbDiv = item.querySelector<HTMLElement>('div.relative');
-        if (!thumbDiv) continue;
+        if (!thumbDiv) {
+            removeExistingBadges();
+            continue;
+        }
 
         // 确保容器可定位
         if (window.getComputedStyle(thumbDiv).position === 'static') {
             thumbDiv.style.position = 'relative';
         }
 
-        // 创建并挂载标签
-        const badge = createBadge(record.status, record.url);
-        if (badge) {
-            thumbDiv.appendChild(badge);
-            matched++;
+        const existingBadge = existingBadges[0];
+        if (existingBadge) {
+            const contentChanged = updateBadge(existingBadge, record.status, record.url);
+            const positionChanged = existingBadge.parentElement !== thumbDiv;
+            if (positionChanged) thumbDiv.appendChild(existingBadge);
+            if (contentChanged || positionChanged) updated++;
+
+            // 旧版本或页面重绘可能留下重复标签，只保留一个。
+            for (const duplicate of existingBadges.slice(1)) {
+                duplicate.remove();
+                removed++;
+            }
+        } else {
+            const badge = createBadge(record.status, record.url);
+            if (badge) {
+                thumbDiv.appendChild(badge);
+                added++;
+            }
         }
+        matched++;
     }
 
-    return { total, matched };
+    return { total, matched, added, updated, removed };
 }
 
 /**

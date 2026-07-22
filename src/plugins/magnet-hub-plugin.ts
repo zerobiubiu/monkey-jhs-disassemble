@@ -19,6 +19,30 @@ interface MagnetResult {
     date?: string;
 }
 
+/** 仅允许标准 BitTorrent info-hash 磁链进入 href/剪贴板。 */
+function safeMagnetUrl(value: unknown): string | null {
+    const raw = String(value ?? '').trim();
+    if (!raw.toLowerCase().startsWith('magnet:?')) return null;
+    try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== 'magnet:') return null;
+        const exactTopic = parsed.searchParams.get('xt') ?? '';
+        const match = /^urn:btih:([a-f\d]{40}|[a-z2-7]{32}|[a-f\d]{64})$/i.exec(exactTopic);
+        return match ? parsed.href : null;
+    } catch {
+        return null;
+    }
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message) return error.message;
+    if (error && typeof error === 'object' && 'statusText' in error) {
+        const statusText = String((error as { statusText?: unknown }).statusText ?? '');
+        if (statusText) return statusText;
+    }
+    return fallback;
+}
+
 export class MagnetHubPlugin extends BasePlugin {
     currentEngine: MagnetEngine | null = null;
     searchEngines: MagnetEngine[] = [
@@ -131,8 +155,10 @@ export class MagnetHubPlugin extends BasePlugin {
     }
 
     searchEngine($container: any, engine: MagnetEngine, keyword: string): void {
-        $container.html(
-            `<div class="magnet-loading">正在从 ${engine.name} 搜索 "${keyword}"...</div>`
+        $container.empty().append(
+            $('<div class="magnet-loading"></div>').text(
+                `正在从 ${engine.name} 搜索 "${keyword}"...`
+            )
         );
         const cacheKey = `${engine.name}_${keyword}`;
         const cached = sessionStorage.getItem(cacheKey);
@@ -160,15 +186,19 @@ export class MagnetHubPlugin extends BasePlugin {
                             sessionStorage.setItem(cacheKey, JSON.stringify(results));
                         }
                         this.displayResults($container, results, engine.name);
-                    } catch (e: any) {
-                        $container.html(
-                            `<div class="magnet-error">解析 ${engine.name} 结果失败: ${e.message}</div>`
+                    } catch (error: unknown) {
+                        $container.empty().append(
+                            $('<div class="magnet-error"></div>').text(
+                                `解析 ${engine.name} 结果失败: ${getErrorMessage(error, '未知错误')}`
+                            )
                         );
                     }
                 },
-                onerror: (error: any) => {
-                    $container.html(
-                        `<div class="magnet-error">从 ${engine.name} 获取数据失败: ${error.statusText || '网络错误'}</div>`
+                onerror: (error: unknown) => {
+                    $container.empty().append(
+                        $('<div class="magnet-error"></div>').text(
+                            `从 ${engine.name} 获取数据失败: ${getErrorMessage(error, '网络错误')}`
+                        )
                     );
                 }
             });
@@ -182,18 +212,22 @@ export class MagnetHubPlugin extends BasePlugin {
             return;
         }
         results.forEach((result) => {
-            const $result = $(`
-                <div class="magnet-result">
-                    <div class="magnet-title"><a href="${result.magnet}">${result.title}</a></div>
-                    <div class="magnet-info">
-                        <span>大小: ${result.size || '未知'}</span>
-                        <span>日期: ${result.date || '未知'}</span>
-                    </div>
-                    <div class="magnet-copy">
-                        <button class="magnet-hub-btn copy-btn" data-magnet="${result.magnet}">复制链接</button>
-                    </div>
-                </div>
-            `);
+            const magnet = safeMagnetUrl(result.magnet);
+            if (!magnet) return;
+            const $result = $('<div class="magnet-result"></div>');
+            const $title = $('<div class="magnet-title"></div>').append(
+                $('<a></a>').attr('href', magnet).text(String(result.title ?? ''))
+            );
+            const $info = $('<div class="magnet-info"></div>')
+                .append($('<span></span>').text(`大小: ${result.size || '未知'}`))
+                .append($('<span></span>').text(`日期: ${result.date || '未知'}`));
+            const $copy = $('<div class="magnet-copy"></div>').append(
+                $('<button class="magnet-hub-btn copy-btn" type="button">复制链接</button>').attr(
+                    'data-magnet',
+                    magnet
+                )
+            );
+            $result.append($title, $info, $copy);
             $container.append($result);
         });
         $container.on('click', '.copy-btn', function (this: any) {

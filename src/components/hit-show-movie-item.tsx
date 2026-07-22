@@ -21,7 +21,7 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义。
+ * react-dom/server）。属性值统一进行 HTML 属性转义，外链先经过协议校验。
  */
 
 /** HitShowMovieItem 的属性（movie 为原始影片对象，字段为 any）。 */
@@ -32,6 +32,21 @@ export interface HitShowMovieItemProps {
     movie: any;
 }
 
+/** 只接受 HTTPS 封面地址，拒绝 data/javascript 等可执行协议。 */
+function getSafeCoverUrl(value: unknown): string {
+    const replaced = String(value ?? '').replace(
+        'https://tp-iu.cmastd.com/rhe951l4q',
+        'https://c0.jdbstatic.com'
+    );
+    if (!replaced.trim()) return '';
+    try {
+        const url = new URL(replaced, 'https://javdb.com');
+        return url.protocol === 'https:' ? url.href : '';
+    } catch {
+        return '';
+    }
+}
+
 /**
  * 渲染单个热播影片卡片的 JSX。
  * @param props.movie 影片对象
@@ -39,23 +54,21 @@ export interface HitShowMovieItemProps {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
+    const movieId = String(movie.id ?? '');
     return (
-        <div className="item" id={movie.id}>
-            <a href={`/v/${movie.id}`} className="box" title={movie.origin_title}>
+        <div className="item" id={movieId}>
+            <a
+                href={`/v/${encodeURIComponent(movieId)}`}
+                className="box"
+                title={String(movie.origin_title ?? '')}
+            >
                 <div className="cover ">
-                    <img
-                        loading="lazy"
-                        src={movie.cover_url.replace(
-                            'https://tp-iu.cmastd.com/rhe951l4q',
-                            'https://c0.jdbstatic.com'
-                        )}
-                        alt=""
-                    />
+                    <img loading="lazy" src={getSafeCoverUrl(movie.cover_url)} alt="" />
                 </div>
                 <div className="video-title">
                     <strong>{movie.number}</strong> {movie.origin_title}
                 </div>
-                <div className="score" id={`score_${movie.id}`}></div>
+                <div className="score" id={`score_${movieId}`}></div>
                 <div className="meta">{movie.release_date}</div>
                 <div className="tags has-addons">
                     {movie.has_cnsub ? (

@@ -94,20 +94,29 @@ export class TranslatePlugin extends BasePlugin {
                 carNum = '';
             }
         }
-        const cache: Record<string, string> = localStorage.getItem('jhs_translate')
-            ? JSON.parse(localStorage.getItem('jhs_translate') as string)
-            : {};
+        let cache: Record<string, string> = {};
+        const rawCache = localStorage.getItem('jhs_translate');
+        if (rawCache) {
+            try {
+                const parsed: unknown = JSON.parse(rawCache);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    cache = parsed as Record<string, string>;
+                }
+            } catch {
+                localStorage.removeItem('jhs_translate');
+            }
+        }
         if (carNum && cache[carNum]) {
-            $loadingElement.html(
-                showCarNum ? carNum + '&nbsp;&nbsp;&nbsp;' + cache[carNum] : cache[carNum]
+            $loadingElement.text(
+                showCarNum ? `${carNum}\u00a0\u00a0\u00a0${cache[carNum]}` : cache[carNum]
             );
             return;
         }
         try {
             const translatedText = await translateText(originalText, 'ja', 'zh-CN');
-            $loadingElement.html(
+            $loadingElement.text(
                 showCarNum && carNum
-                    ? carNum + '&nbsp;&nbsp;&nbsp;' + translatedText
+                    ? `${carNum}\u00a0\u00a0\u00a0${translatedText}`
                     : translatedText
             );
             if (carNum) {
@@ -116,9 +125,11 @@ export class TranslatePlugin extends BasePlugin {
             }
         } catch (error: any) {
             console.error('翻译失败:', error);
-            $loadingElement.replaceWith(
-                `<div class="translated-title" style="color: red;">翻译失败: ${error.message}</div>`
-            );
+            const message = error instanceof Error ? error.message : String(error);
+            const $errorElement = $('<div class="translated-title"></div>')
+                .css('color', 'red')
+                .text(`翻译失败: ${message}`);
+            $loadingElement.replaceWith($errorElement);
         }
     }
 }

@@ -58,15 +58,9 @@ import { VideoQualityOption } from '../components/video-quality-option';
 import { KeywordLabel } from '../components/keyword-label';
 import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
 import { showToast } from './video-lists-tag/vlt-toast';
-import { GM_KEY_CAR_STATUS_DATA } from './car-status-sync/car-status-config';
-import {
-    toColumnar,
-    gzipToBase64,
-    countColumnar,
-    columnarToFlat,
-    buildJavdbUrl
-} from './car-status-sync/car-status-columnar';
+import { parseColumnarImport, buildJavdbUrl } from './car-status-sync/car-status-columnar';
 import { importLocalDB, exportLocalDB } from './car-status-sync/car-status-db';
+import type { CarListReaderPlugin } from './car-status-sync/car-list-reader-plugin';
 import {
     getCredentialId,
     DEFAULT_AUTO_BACKUP_CONFIG,
@@ -77,9 +71,10 @@ import {
     type AutoBackupFrequency
 } from '../core/auto-backup';
 import {
-    collectLocalStorageBackup,
+    applyBackupExtras,
     collectGmStorageBackup,
-    applyBackupExtras
+    collectLocalStorageBackup,
+    prepareBackupImport
 } from '../core/backup-extra-storage';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
@@ -470,8 +465,11 @@ export class SettingPlugin extends BasePlugin {
                 const columns = $('#containerColumns').val();
                 $('#showContainerColumns').text(columns);
                 if (isJavdbSite) {
-                    (document.querySelector('.movie-list') as any).style.gridTemplateColumns =
-                        `repeat(${columns}, minmax(0, 1fr))`;
+                    const movieList = document.querySelector<HTMLElement>('.movie-list');
+                    if (movieList) {
+                        movieList.style.gridTemplateColumns =
+                            `repeat(${columns}, minmax(0, 1fr))`;
+                    }
                 }
                 await storageManager.saveSettingItem('containerColumns', columns);
                 this.applyImageMode();
@@ -483,8 +481,10 @@ export class SettingPlugin extends BasePlugin {
                 const widthPercent = rangeValue + 70 + '%';
                 $('#showContainerWidth').text(widthPercent);
                 if (isJavdbSite) {
-                    (document.querySelector('section .container') as any).style.minWidth =
-                        widthPercent;
+                    const container = document.querySelector<HTMLElement>('section .container');
+                    if (container) {
+                        container.style.minWidth = widthPercent;
+                    }
                 }
                 storageManager.saveSettingItem('containerWidth', rangeValue + 70);
             });
@@ -661,6 +661,7 @@ export class SettingPlugin extends BasePlugin {
 
     /** 绑定设置弹层内各按钮/输入的点击/输入事件。对应原 L10066-10131。 */
     bindClick(): void {
+        const plugin = this;
         $('.side-menu-item').on('click', function (this: any) {
             $('.side-menu-item').removeClass('active');
             $(this).addClass('active');
@@ -670,7 +671,7 @@ export class SettingPlugin extends BasePlugin {
             if (panelName === 'cache-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').show();
-                this.refreshAllCacheStats();
+                plugin.refreshAllCacheStats();
             } else if (panelName === 'vlt-panel') {
                 $('#saveBtn').hide();
                 $('#clean-all').hide();
@@ -680,7 +681,7 @@ export class SettingPlugin extends BasePlugin {
             } else if (panelName === 'preload-panel') {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
-                this.refreshPreloadCacheStats();
+                plugin.refreshPreloadCacheStats();
             } else {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
@@ -826,27 +827,20 @@ export class SettingPlugin extends BasePlugin {
             const $status = $('#missav-status');
             $status.text('⏳ 同步中...').css('color', '#0d6efd');
             try {
-                const carList = await storageManager.getCarList();
-                if (carList.length === 0) {
-                    $status.text('✗ car_list 为空').css('color', '#dc3545');
-                    return;
+                const reader = this.getBean('CarListReaderPlugin') as CarListReaderPlugin | null;
+                if (!reader) {
+                    throw new Error('车辆状态同步插件尚未初始化');
                 }
-                const colRes = toColumnar(carList);
-                const count = countColumnar(colRes.byStatus);
-                const base64 = await gzipToBase64(colRes.byStatus);
-                if (!base64) {
-                    $status.text('✗ 压缩失败').css('color', '#dc3545');
-                    return;
+                const published = await reader.syncFullCarStatus();
+                if (published) {
+                    $status.text('✓ 全量快照已发布').css('color', '#198754');
+                    showToast('✓ MissAV 状态同步完成', 'success');
+                } else {
+                    $status
+                        .text('⚠ 本次未发布；可能正在排队或数据校验未通过，请查看日志')
+                        .css('color', '#b58105');
+                    showToast('⚠ 同步未发布，请查看日志', 'warning');
                 }
-                const payload = {
-                    data: base64,
-                    hwm: new Date().toISOString(),
-                    count,
-                    ts: Date.now()
-                };
-                GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
-                $status.html(`✓ 同步完成：${count} 条记录已推送到 GM 存储`).css('color', '#198754');
-                showToast(`✓ 同步完成：${count} 条`, 'success');
             } catch (err: any) {
                 $status.text(`✗ 同步失败：${err.message}`).css('color', '#dc3545');
                 showToast(`✗ 同步失败：${err.message}`, 'error');
@@ -862,25 +856,44 @@ export class SettingPlugin extends BasePlugin {
             $status.text('⏳ 导入中...').css('color', '#0d6efd');
             try {
                 const text = await file.text();
-                const data = JSON.parse(text);
+                const data: unknown = JSON.parse(text);
                 // 兼容后端服务器导出格式（列存 groups）和 missav 本地导出格式（行式 records）
                 let records: Array<{ carNum: string; status: string; url: string }>;
                 if (Array.isArray(data)) {
                     // 行式格式 [{carNum, status, url}]
                     records = data;
-                } else if (data.records && Array.isArray(data.records)) {
-                    records = data.records;
+                } else if (
+                    data !== null &&
+                    typeof data === 'object' &&
+                    Array.isArray((data as Record<string, unknown>).records)
+                ) {
+                    records = (data as { records: typeof records }).records;
                 } else {
-                    // 列存格式（后端导出）：转为行式，并将 url_path 转换为完整 url
-                    const flat = columnarToFlat(data);
+                    // 列存格式（后端导出）：先严格识别格式与记录数，再转换完整 URL。
+                    // `{}`、主程序备份或损坏列存会直接拒绝，不能降级成空数组。
+                    const flat = parseColumnarImport(data);
                     records = flat.map((r) => ({
                         carNum: r.carNum,
                         status: r.status,
                         url: buildJavdbUrl(r.url_path)
                     }));
                 }
-                const written = await importLocalDB(records);
-                $status.html(`✓ 导入完成：${written} 条记录`).css('color', '#198754');
+
+                let allowEmpty = false;
+                if (records.length === 0) {
+                    allowEmpty = window.confirm(
+                        '导入文件是结构合法的空状态清单。继续会清除 MissAV 本地的全部状态标签，是否确认？'
+                    );
+                    if (!allowEmpty) {
+                        $status.text('已取消空清单导入，现有数据未改变').css('color', '#b58105');
+                        showToast('已取消导入', 'warning');
+                        e.target.value = '';
+                        return;
+                    }
+                }
+
+                const written = await importLocalDB(records, { allowEmpty });
+                $status.text(`✓ 导入完成：${written} 条记录`).css('color', '#198754');
                 showToast(`✓ 导入完成：${written} 条`, 'success');
             } catch (err: any) {
                 $status.text(`✗ 导入失败：${err.message}`).css('color', '#dc3545');
@@ -1089,6 +1102,13 @@ export class SettingPlugin extends BasePlugin {
         }
     }
 
+    /** 安全恢复备份：先导入主数据库，成功后再应用白名单内的附加存储。 */
+    private async restoreBackup(data: unknown): Promise<string[]> {
+        const { storageData, extras } = prepareBackupImport(data);
+        await storageManager.importData(storageData);
+        return applyBackupExtras(extras);
+    }
+
     /** 从本地 JSON 文件导入数据（覆盖确认 + reload）。对应原 L10245-10291。 */
     importData(): void {
         try {
@@ -1113,11 +1133,21 @@ export class SettingPlugin extends BasePlugin {
                                 btn: ['确定', '取消']
                             },
                             async (layerIndex: any) => {
-                                applyBackupExtras(parsedData);
-                                await storageManager.importData(parsedData);
-                                show.ok('数据导入成功');
-                                layer.close(layerIndex);
-                                location.reload();
+                                try {
+                                    const warnings = await this.restoreBackup(parsedData);
+                                    if (warnings.length > 0) {
+                                        console.warn('[JHS 备份] 部分附加数据恢复失败', warnings);
+                                        show.info(`主数据已导入，${warnings.length} 项附加数据恢复失败`);
+                                    } else {
+                                        show.ok('数据导入成功');
+                                    }
+                                    layer.close(layerIndex);
+                                    location.reload();
+                                } catch (err: unknown) {
+                                    console.error(err);
+                                    const message = err instanceof Error ? err.message : String(err);
+                                    show.error(`导入失败：${message}`);
+                                }
                             }
                         );
                     } catch (err: any) {
@@ -1179,8 +1209,8 @@ export class SettingPlugin extends BasePlugin {
 
     /**
      * 构造备份 payload：IndexedDB 全量 + 元信息 + localStorage 长期缓存/偏好 + GM 清单数据。
-     * 含 __localStorage / __gmStorage，导入时由 applyBackupExtras 写回后剥离，
-     * 避免 importData 误写入 forage。
+     * 含 __localStorage / __gmStorage；导入时先由 prepareBackupImport 提取，
+     * 主数据库成功恢复后再通过 applyBackupExtras 写回。
      */
     async buildBackupPayload(settings: any): Promise<Record<string, any>> {
         const exportData = await storageManager.exportData();
@@ -1411,10 +1441,21 @@ export class SettingPlugin extends BasePlugin {
                                                             window as any
                                                         ).decryptCredential(fileContent);
                                                         show.info('解密完成, 开始导入...');
-                                                        const parsedData = JSON.parse(fileContent);
-                                                        applyBackupExtras(parsedData);
-                                                        await storageManager.importData(parsedData);
-                                                        show.ok('导入成功!');
+                                                        const parsedData: unknown =
+                                                            JSON.parse(fileContent);
+                                                        const warnings =
+                                                            await this.restoreBackup(parsedData);
+                                                        if (warnings.length > 0) {
+                                                            console.warn(
+                                                                '[JHS 备份] 部分附加数据恢复失败',
+                                                                warnings
+                                                            );
+                                                            show.info(
+                                                                `主数据已导入，${warnings.length} 项附加数据恢复失败`
+                                                            );
+                                                        } else {
+                                                            show.ok('导入成功!');
+                                                        }
                                                         window.location.reload();
                                                     } catch (err: any) {
                                                         console.error(err);

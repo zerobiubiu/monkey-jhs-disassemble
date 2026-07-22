@@ -19,8 +19,7 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义，与原始 jQuery `.after(htmlString)`
- * 行为一致。
+ * react-dom/server）。动态文本与属性由 jsxToString 统一转义（doc/129）。
  */
 
 /** 演员维基百科详情（searchInfo 返回结构，对应原 L4304-4324 返回的对象字面量）。 */
@@ -39,6 +38,25 @@ export interface ActressWikiInfo {
     braSize: string;
     /** 维基百科页面 URL。 */
     url: string;
+}
+
+/** 只允许跳转到日文维基 HTTPS 页面，拒绝缓存中被篡改的脚本/外站 URL。 */
+export function safeWikipediaUrl(value: string): string | null {
+    try {
+        const parsed = new URL(value, 'https://ja.wikipedia.org');
+        if (
+            parsed.protocol !== 'https:' ||
+            parsed.hostname !== 'ja.wikipedia.org' ||
+            parsed.port ||
+            parsed.username ||
+            parsed.password
+        ) {
+            return null;
+        }
+        return parsed.href;
+    } catch {
+        return null;
+    }
 }
 
 /** ActressInfoDetailSegment 的属性。 */
@@ -72,28 +90,48 @@ export function ActressInfoDetailSegment({
         </strong>
     );
     if (info) {
+        const infoContent = (
+            <>
+                <span className="info-tag">
+                    {info.birthday} {info.age}
+                </span>
+                <span className="info-tag">
+                    {info.height} {info.weight}
+                </span>
+                <span className="info-tag">
+                    {info.threeSizeText} {info.braSize}
+                </span>
+            </>
+        );
+        const safeInfoUrl = safeWikipediaUrl(info.url);
         return (
             <div className="panel-block actress-info">
                 {nameNode}
-                <a href={info.url} style={{ marginLeft: '5px' }} target="_blank">
-                    <span className="info-tag">
-                        {info.birthday} {info.age}
-                    </span>
-                    <span className="info-tag">
-                        {info.height} {info.weight}
-                    </span>
-                    <span className="info-tag">
-                        {info.threeSizeText} {info.braSize}
-                    </span>
-                </a>
+                {safeInfoUrl ? (
+                    <a
+                        href={safeInfoUrl}
+                        style={{ marginLeft: '5px' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {infoContent}
+                    </a>
+                ) : (
+                    <span style={{ marginLeft: '5px' }}>{infoContent}</span>
+                )}
             </div>
         );
     }
+    const fallbackUrl = safeWikipediaUrl(wikiApiUrl + encodeURIComponent(actressName));
     return (
         <div className="panel-block actress-info">
-            <a href={wikiApiUrl + actressName} target="_blank">
-                {nameNode}
-            </a>
+            {fallbackUrl ? (
+                <a href={fallbackUrl} target="_blank" rel="noopener noreferrer">
+                    {nameNode}
+                </a>
+            ) : (
+                nameNode
+            )}
             <span style={{ marginLeft: '5px', color: '#999' }}>暂无此演员信息</span>
         </div>
     );

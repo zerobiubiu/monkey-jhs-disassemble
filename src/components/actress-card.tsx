@@ -28,7 +28,7 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义。
+ * react-dom/server）。动态文本与属性由 jsxToString 统一转义（doc/129）。
  */
 import type { CSSProperties } from 'react';
 
@@ -102,6 +102,7 @@ export function ActressCard({
             <a
                 href={actressUrl}
                 target="_blank"
+                rel="noopener noreferrer"
                 style={{
                     textDecoration: 'none',
                     color: 'inherit',
@@ -115,6 +116,7 @@ export function ActressCard({
                 <a
                     href={actressUrl}
                     target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                         textDecoration: 'none',
                         color: 'inherit',

@@ -13,7 +13,7 @@
  * - **DOM 元素**：`<tag attrs>children</tag>`；自闭合标签
  *   （img/input/br/hr/meta/link 等 void elements）输出 `<tag attrs />`。
  * - **Fragment**（`<>...</>`）：透明拼接 children。
- * - **文本/数字**：`String()`；文本节点转义 `&` `<` `>`（不转义 `"`）。
+ * - **文本/数字**：`String()`；文本节点转义 `&` `<` `>`。
  * - **数组**：`map(jsxToString).join('')`。
  * - **null/boolean/undefined/bigint(暂忽略)/Promise/Portal**：`''`。
  *
@@ -22,7 +22,7 @@
  * - `style` 对象 → CSS 字符串（camelCase→kebab-case，如
  *   `{backgroundColor:'red'}` → `background-color:red`）
  * - `style` 字符串 → 原样
- * - `data-*` / `aria-*` / 其他 → 原样 `key="value"`
+ * - `data-*` / `aria-*` / 其他 → 属性值转义后输出 `key="value"`
  * - 布尔属性：`true` → 裸属性；`false`/`null`/`undefined` → 省略
  * - `on*` 事件 → 忽略
  * - `dangerouslySetInnerHTML` → 取 `__html` 作为原始 inner HTML 注入（不转义），
@@ -86,13 +86,26 @@ function isReactElement(node: unknown): node is ReactElement {
  * 转义文本节点的特殊字符：`&` `<` `>`。
  *
  * 不转义 `"`（文本节点不需要；属性值单独处理）。
- * 属性值（src/alt/data-* 等）按本工程约定不转义，与原脚本
- * `$('<img src="${t}">')` 字符串拼接行为一致。
  * @param s 原始文本
  * @returns 转义后文本
  */
-function escapeText(s: string): string {
+export function escapeHtmlText(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * 转义双引号 HTML 属性值中的特殊字符。
+ *
+ * `&` 必须最先处理，避免后续生成的实体再次被转义。虽然单引号不会结束
+ * 双引号属性，仍按统一安全边界转义，避免调用方未来更换属性引号后留下缺口。
+ */
+export function escapeHtmlAttribute(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 /**
@@ -132,8 +145,8 @@ function styleToCss(style: PropsRecord): string {
  * 规则：
  * - `children`：跳过（由 `renderChildren` 处理）
  * - `on*`（事件）：跳过（HTML 字符串注入后无意义）
- * - `className`：→ `class="..."`
- * - `style`：对象走 `styleToCss`，字符串原样输出
+ * - `className`：→ `class="..."`，值经过属性转义
+ * - `style`：对象走 `styleToCss`，最终值经过属性转义
  * - 布尔 `true`：裸属性（如 `disabled`）
  * - 布尔 `false` / `null` / `undefined`：省略
  * - 其他：`key="String(value)"`
@@ -149,15 +162,15 @@ function renderAttrs(props: PropsRecord): string {
         if (key === 'dangerouslySetInnerHTML') continue;
         if (key.startsWith('on')) continue;
         if (key === 'className') {
-            if (value !== '') parts.push(`class="${String(value)}"`);
+            if (value !== '') parts.push(`class="${escapeHtmlAttribute(String(value))}"`);
             continue;
         }
         if (key === 'style') {
             if (typeof value === 'string') {
-                parts.push(`style="${value}"`);
+                parts.push(`style="${escapeHtmlAttribute(value)}"`);
             } else if (typeof value === 'object' && value !== null) {
                 const css = styleToCss(value as PropsRecord);
-                if (css) parts.push(`style="${css}"`);
+                if (css) parts.push(`style="${escapeHtmlAttribute(css)}"`);
             }
             continue;
         }
@@ -165,7 +178,7 @@ function renderAttrs(props: PropsRecord): string {
             parts.push(key);
             continue;
         }
-        parts.push(`${key}="${String(value)}"`);
+        parts.push(`${key}="${escapeHtmlAttribute(String(value))}"`);
     }
     return parts.length ? ' ' + parts.join(' ') : '';
 }
@@ -185,7 +198,7 @@ function renderAttrs(props: PropsRecord): string {
  */
 function renderChildren(children: unknown): string {
     if (children == null || typeof children === 'boolean') return '';
-    if (typeof children === 'string') return escapeText(children);
+    if (typeof children === 'string') return escapeHtmlText(children);
     if (typeof children === 'number' || typeof children === 'bigint') {
         return String(children);
     }
@@ -227,7 +240,7 @@ function renderChildren(children: unknown): string {
  */
 export function jsxToString(node: ReactNode): string {
     if (node == null || typeof node === 'boolean') return '';
-    if (typeof node === 'string') return escapeText(node);
+    if (typeof node === 'string') return escapeHtmlText(node);
     if (typeof node === 'number' || typeof node === 'bigint') {
         return String(node);
     }

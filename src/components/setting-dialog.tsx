@@ -28,8 +28,8 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义（data-tip/title 等按本工程约定不转义，
- * 与原 jQuery `layer.open({ content: htmlString })` 行为一致）。
+ * react-dom/server）。属性值会统一进行 HTML 属性转义；预拼接 HTML 只有在
+ * 明确受控且已由组件生成时才通过 dangerouslySetInnerHTML 注入。
  */
 
 /** SettingDialog 的属性。 */
@@ -194,19 +194,23 @@ export function SettingDialog({
                         <div className="setting-item">
                             <span className="setting-label">服务地址:</span>
                             <div className="form-content">
-                                <input id="webDavUrl" />
+                                <input id="webDavUrl" type="url" autoComplete="url" />
                             </div>
                         </div>
                         <div className="setting-item">
                             <span className="setting-label">用户名:</span>
                             <div className="form-content">
-                                <input id="webDavUsername" />
+                                <input id="webDavUsername" type="text" autoComplete="username" />
                             </div>
                         </div>
                         <div className="setting-item">
                             <span className="setting-label">密码:</span>
                             <div className="form-content">
-                                <input id="webDavPassword" />
+                                <input
+                                    id="webDavPassword"
+                                    type="password"
+                                    autoComplete="current-password"
+                                />
                             </div>
                         </div>
                         <div

@@ -77,7 +77,7 @@ import { Fc2By123AvPlugin } from './plugins/fc2-by-123av-plugin';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
-// unsafeWindow 由 src/types/globals.d.ts 声明为 any，无需在此声明。
+// 高权限服务仅挂到 userscript 沙箱 window，不暴露给页面 unsafeWindow。
 declare global {
     interface Window {
         utils: CommonUtil;
@@ -93,6 +93,7 @@ declare global {
         show: typeof show;
         showImageViewer: (src: any, alt?: string) => void;
         clog: Logger;
+        pluginManager: PluginManager;
         encryptCredential: typeof encryptCredential;
         decryptCredential: typeof decryptCredential;
         isDetailPage: boolean;
@@ -133,12 +134,12 @@ injectCss(aNormalButtonsCssRaw);
 injectCss(commonToolbarCss);
 
 // ===== 运行时全局挂载（utils/gmHttp/storageManager/gt/lt/De） =====
-unsafeWindow.utils = window.utils = new CommonUtil();
-unsafeWindow.gmHttp = window.gmHttp = new GmHttp();
-unsafeWindow.storageManager = window.storageManager = new StorageManager();
-unsafeWindow.loadGfriends = window.loadGfriends = loadGfriends;
-unsafeWindow.filetreeDb = window.filetreeDb = filetreeDb;
-unsafeWindow.WebDavClient = window.WebDavClient = WebDavClient;
+window.utils = new CommonUtil();
+window.gmHttp = new GmHttp();
+window.storageManager = new StorageManager();
+window.loadGfriends = loadGfriends;
+window.filetreeDb = filetreeDb;
+window.WebDavClient = WebDavClient;
 
 // ===== BroadcastChannel 跨标签页刷新/清缓存（原 G → refreshChannel） =====
 const refreshChannel = new BroadcastChannel('channel-refresh');
@@ -160,8 +161,8 @@ window.clean_cacheSettingObj = function () {
 
 // ===== loading CSS 注入 + loading/show 挂载 =====
 injectCss(loadingCssRaw);
-unsafeWindow.loading = window.loading = createLoading;
-unsafeWindow.show = window.show = show;
+window.loading = createLoading;
+window.show = show;
 
 // ===== 图片查看器（原 window.showImageViewer） =====
 (function () {
@@ -198,16 +199,7 @@ unsafeWindow.show = window.show = show;
 // ===== 日志控制台 clog + 全局异常捕获（原 async IIFE） =====
 (async function () {
     injectCss(loggerCssRaw);
-    try {
-        if (unsafeWindow.parent.clog && typeof unsafeWindow.parent.clog.log == 'function') {
-            window.clog = unsafeWindow.clog = unsafeWindow.parent.clog;
-        } else {
-            window.clog = unsafeWindow.clog = new Logger();
-        }
-    } catch (err) {
-        console.error('创建日志控制台出现异常', err);
-        window.clog = unsafeWindow.clog = new Logger();
-    }
+    window.clog = new Logger();
     (function () {
         const logger = window.clog || console;
         window.addEventListener('error', function (event) {
@@ -231,7 +223,7 @@ unsafeWindow.show = window.show = show;
             if (reasonMessage.includes('<span>1005</span>') && reasonMessage.includes('fc2ppvdb')) {
                 return;
             }
-            const logMessage = `[全局 Promise 异常捕获] ${reason.message || reason}`;
+            const logMessage = `[全局 Promise 异常捕获] ${reasonMessage || String(reason)}`;
             logger.error(logMessage, reason);
             event.preventDefault();
         });
@@ -258,18 +250,18 @@ unsafeWindow.show = window.show = show;
 // ===== Tooltip =====
 setupTooltip();
 
-// WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 (window as any).encryptCredential / .decryptCredential 访问
-unsafeWindow.encryptCredential = window.encryptCredential = encryptCredential;
-unsafeWindow.decryptCredential = window.decryptCredential = decryptCredential;
+// WebDav 加密/解密辅助函数仅挂到沙箱 window，供现有 setting-plugin 调用。
+window.encryptCredential = encryptCredential;
+window.decryptCredential = decryptCredential;
 setupLayerWrapper();
 
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 35 插件（javdb 33 + missav 2） =====
+// ===== 启动序列：PluginManager + 注册 40 插件（JavDB 38 + MissAV 2） =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
-    unsafeWindow.pluginManager = manager;
+    window.pluginManager = manager;
     if (isJavdbSite) {
         manager.register(ListPagePlugin);
         manager.register(AutoPagePlugin);
@@ -336,12 +328,23 @@ const pluginManager: PluginManager = (function () {
     })();
     // storageManager 合并操作仅在 javdb 站点执行（missav 站点无 jhs 数据，跳过避免创建空库）
     if (isJavdbSite) {
-        await storageManager.merge_table_name();
-        await storageManager.clean_no_url_blacklist();
-        await storageManager.async_merge_other();
-        await storageManager.merge_blacklist();
-        await storageManager.merge_favoriteActress();
-        await storageManager.merge_tow_car_list_table();
+        const storageStartupTasks: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
+            ['merge_table_name', () => storageManager.merge_table_name()],
+            ['clean_no_url_blacklist', () => storageManager.clean_no_url_blacklist()],
+            ['async_merge_other', () => storageManager.async_merge_other()],
+            ['merge_blacklist', () => storageManager.merge_blacklist()],
+            ['merge_favoriteActress', () => storageManager.merge_favoriteActress()],
+            ['merge_tow_car_list_table', () => storageManager.merge_tow_car_list_table()]
+        ];
+        for (const [taskName, runTask] of storageStartupTasks) {
+            try {
+                await runTask();
+            } catch (error: unknown) {
+                window.clog.error(`[启动存储维护失败] ${taskName}`, error);
+                // 后续维护依赖前序数据形态；失败后停止继续迁移，但仍允许插件启动读取原数据。
+                break;
+            }
+        }
     }
     if (isJavdbSite && /(^|;)\s*locale\s*=\s*en\s*($|;)/i.test(document.cookie)) {
         show.error('请切换到中文语言下才可正常使用本脚本', {

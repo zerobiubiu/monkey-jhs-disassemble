@@ -2,10 +2,10 @@
  * GM HTTP 请求类 GmHttp（提取自 archetype/jhs.user.js L1775-2037）
  *
  * 基于 Tampermonkey `GM_xmlhttpRequest` 的请求封装，提供 GET / JSON POST /
- * 表单 POST / multipart 文件 POST / 分块下载能力。原脚本通过
- * `unsafeWindow.gmHttp = window.gmHttp = new (class { ... })()` 挂载为全局单例，
- * 外部以 `gmHttp.get/post/postForm/postFileFormData/downloadFileInChunks` 形式调用。
- * 本模块仅导出 class GmHttp，全局实例化与挂载由 legacy 启动流程负责。
+ * 表单 POST / multipart 文件 POST / 分块下载能力。入口仅在 userscript 沙箱
+ * `window` 挂载全局单例，外部以
+ * `gmHttp.get/post/postForm/postFileFormData/downloadFileInChunks` 形式调用。
+ * 本模块仅导出 class GmHttp，全局实例化与挂载由 `main.tsx` 负责。
  *
  * 重构说明（JS→TS，行为等价）：
  * - 匿名 class 表达式 → 命名导出 class GmHttp

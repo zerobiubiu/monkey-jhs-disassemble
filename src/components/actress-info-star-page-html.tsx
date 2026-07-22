@@ -20,10 +20,12 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义，与原始 jQuery `.append(htmlString)`
- * 行为一致。
+ * react-dom/server）。动态文本与属性由 jsxToString 统一转义（doc/129）。
  */
-import type { ActressWikiInfo } from './actress-info-detail-segment';
+import {
+    safeWikipediaUrl,
+    type ActressWikiInfo
+} from './actress-info-detail-segment';
 
 /** ActressInfoStarPageHtml 的属性。 */
 interface ActressInfoStarPageHtmlProps {
@@ -39,37 +41,48 @@ interface ActressInfoStarPageHtmlProps {
  */
 export function ActressInfoStarPageHtml({ info }: ActressInfoStarPageHtmlProps) {
     if (info) {
-        return (
-            <a className="actress-info" href={info.url} target="_blank">
+        const content = (
+            <div
+                style={{
+                    fontSize: '17px',
+                    fontWeight: 'normal',
+                    marginTop: '5px'
+                }}
+            >
                 <div
                     style={{
-                        fontSize: '17px',
-                        fontWeight: 'normal',
-                        marginTop: '5px'
+                        display: 'flex',
+                        marginBottom: '10px'
                     }}
                 >
-                    <div
-                        style={{
-                            display: 'flex',
-                            marginBottom: '10px'
-                        }}
-                    >
-                        <span style={{ width: '300px' }}>出生日期: {info.birthday}</span>
-                        <span style={{ width: '200px' }}>年龄: {info.age}</span>
-                        <span style={{ width: '200px' }}>身高: {info.height}</span>
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            marginBottom: '10px'
-                        }}
-                    >
-                        <span style={{ width: '300px' }}>体重: {info.weight}</span>
-                        <span style={{ width: '200px' }}>三围: {info.threeSizeText}</span>
-                        <span style={{ width: '200px' }}>罩杯: {info.braSize}</span>
-                    </div>
+                    <span style={{ width: '300px' }}>出生日期: {info.birthday}</span>
+                    <span style={{ width: '200px' }}>年龄: {info.age}</span>
+                    <span style={{ width: '200px' }}>身高: {info.height}</span>
                 </div>
+                <div
+                    style={{
+                        display: 'flex',
+                        marginBottom: '10px'
+                    }}
+                >
+                    <span style={{ width: '300px' }}>体重: {info.weight}</span>
+                    <span style={{ width: '200px' }}>三围: {info.threeSizeText}</span>
+                    <span style={{ width: '200px' }}>罩杯: {info.braSize}</span>
+                </div>
+            </div>
+        );
+        const safeUrl = safeWikipediaUrl(info.url);
+        return safeUrl ? (
+            <a
+                className="actress-info"
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                {content}
             </a>
+        ) : (
+            <div className="actress-info">{content}</div>
         );
     }
     return (

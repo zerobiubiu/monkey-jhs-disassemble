@@ -4,6 +4,29 @@
 import { featureFlags } from '../core/feature-flags';
 import { BasePlugin } from './base-plugin';
 
+/** 截图只允许来自 javstore.net（含其 CDN 子域）的 HTTPS 资源。 */
+function safeHttpsUrl(value: unknown, base = 'https://javstore.net', host = 'javstore.net'): string | null {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    try {
+        const parsed = new URL(raw, base);
+        const normalizedHost = host.toLowerCase();
+        if (
+            parsed.hostname !== normalizedHost &&
+            !parsed.hostname.endsWith(`.${normalizedHost}`)
+        ) {
+            return null;
+        }
+        // JavStore 当前部分图片仍返回 http://img*.javstore.net；仅对已允许的
+        // JavStore 子域升级为 HTTPS，其他协议一律拒绝。
+        if (parsed.protocol === 'http:') parsed.protocol = 'https:';
+        if (parsed.protocol !== 'https:') return null;
+        return parsed.href;
+    } catch {
+        return null;
+    }
+}
+
 export class ScreenShotPlugin extends BasePlugin {
     getName(): string {
         return 'ScreenShotPlugin';
@@ -32,12 +55,23 @@ export class ScreenShotPlugin extends BasePlugin {
     }
 
     async getScreenshot(carNum: string): Promise<string | null> {
-        const cacheData: Record<string, string> = localStorage.getItem('jhs_screenShot')
-            ? JSON.parse(localStorage.getItem('jhs_screenShot') as string)
-            : {};
-        if (cacheData[carNum]) {
-            clog.debug('缓存中存在缩略图:', carNum, cacheData[carNum]);
-            return cacheData[carNum];
+        let cacheData: Record<string, string> = {};
+        const rawCache = localStorage.getItem('jhs_screenShot');
+        if (rawCache) {
+            try {
+                const parsedCache: unknown = JSON.parse(rawCache);
+                if (parsedCache && typeof parsedCache === 'object' && !Array.isArray(parsedCache)) {
+                    cacheData = parsedCache as Record<string, string>;
+                }
+            } catch {
+                // 损坏的旧缓存不应阻断当前页面，直接重新请求截图。
+                localStorage.removeItem('jhs_screenShot');
+            }
+        }
+        const cachedUrl = safeHttpsUrl(cacheData[carNum]);
+        if (cachedUrl) {
+            clog.debug('缓存中存在缩略图:', carNum, cachedUrl);
+            return cachedUrl;
         }
         let imgUrl: string | null = null;
         try {
@@ -46,22 +80,21 @@ export class ScreenShotPlugin extends BasePlugin {
             clog.error('获取缩略图资源失败:', imgUrl, e);
             throw e;
         }
-        if (!imgUrl) {
+        const safeImgUrl = safeHttpsUrl(imgUrl);
+        if (!safeImgUrl) {
             this.showErrorFallback(carNum, null);
             return null;
         }
-        const httpsIndex = imgUrl.indexOf('https://');
-        if (httpsIndex !== -1) {
-            imgUrl = imgUrl.substring(httpsIndex);
-        }
-        cacheData[carNum] = imgUrl;
-        clog.log('缩略图获取成功:', imgUrl);
+        cacheData[carNum] = safeImgUrl;
+        clog.log('缩略图获取成功:', safeImgUrl);
         localStorage.setItem('jhs_screenShot', JSON.stringify(cacheData));
-        return imgUrl;
+        return safeImgUrl;
     }
 
     async getJavStoreScreenShot(carNum: string): Promise<string | null> {
-        const url = `https://javstore.net/search?q=${carNum.toLowerCase().replace('fc2-', '')}`;
+        const searchUrl = new URL('https://javstore.net/search');
+        searchUrl.searchParams.set('q', carNum.toLowerCase().replace('fc2-', ''));
+        const url = searchUrl.href;
         clog.log('正在解析缩略图:', url);
         const html = await gmHttp.get(url);
         const $dom = utils.htmlTo$dom(html);
@@ -80,7 +113,7 @@ export class ScreenShotPlugin extends BasePlugin {
                     .replace(/-/g, '')
                     .includes(tempCarNum)
             ) {
-                detailPageUrl = new URL(href, 'https://javstore.net').href;
+                detailPageUrl = safeHttpsUrl(href, 'https://javstore.net', 'javstore.net');
                 break;
             }
         }
@@ -97,20 +130,29 @@ export class ScreenShotPlugin extends BasePlugin {
             clog.error('JavStore, 解析预览图失败:', url);
             return null;
         }
-        return String(imgUrl).replace('.th', '');
+        return safeHttpsUrl(String(imgUrl).replace('.th', ''), detailPageUrl);
     }
 
     addImg(title: string, imgUrl: string | null): void {
-        if (imgUrl) {
-            $('.screen-container').html(
-                `<img src="${imgUrl}" alt="${title}" loading="lazy" style="width: 100%;">`
-            );
-            $('.screen-container').on('click', (event: any) => {
+        const safeImgUrl = safeHttpsUrl(imgUrl);
+        if (!safeImgUrl) return;
+
+        $('.screen-container').each((_index: number, element: HTMLElement) => {
+            while (element.firstChild) element.removeChild(element.firstChild);
+            const image = document.createElement('img');
+            image.src = safeImgUrl;
+            image.alt = title;
+            image.loading = 'lazy';
+            image.style.width = '100%';
+            element.appendChild(image);
+        });
+        $('.screen-container')
+            .off('click.jhsScreenShot')
+            .on('click.jhsScreenShot', (event: any) => {
                 event.stopPropagation();
                 event.preventDefault();
                 (window as any).showImageViewer(event.currentTarget);
             });
-        }
     }
 
     showErrorFallback(carNum: string, error: any): void {
@@ -119,18 +161,40 @@ export class ScreenShotPlugin extends BasePlugin {
             error?.message?.substring?.(0, 100) ?? error
         );
         const differentCss = 'margin-top: 50px';
+        const searchUrl = new URL('https://javstore.net/search');
+        searchUrl.searchParams.set('q', carNum);
+        $('.screen-container').each((_index: number, element: HTMLElement) => {
+            while (element.firstChild) element.removeChild(element.firstChild);
+            const message = document.createElement('div');
+            message.style.cssText = `${differentCss}; cursor:auto;color:#000;`;
+            message.textContent = '获取缩略图失败';
+            const lineBreak = document.createElement('br');
+            const retryLink = document.createElement('a');
+            retryLink.href = '#';
+            retryLink.className = 'retry-link';
+            retryLink.textContent = '点击重试';
+            const separator = document.createTextNode(' 或 ');
+            const checkLink = document.createElement('a');
+            checkLink.href = searchUrl.href;
+            checkLink.className = 'check-link';
+            checkLink.target = '_blank';
+            checkLink.rel = 'noopener noreferrer';
+            checkLink.textContent = '前往确认';
+            element.append(message, lineBreak, retryLink, separator, checkLink);
+        });
         $('.screen-container')
-            .html(
-                `<div style="${differentCss}; cursor:auto;color:#000;">获取缩略图失败</div><br/><a href='#' class='retry-link'>点击重试</a> 或 <a class="check-link" href='https://javstore.net/search?q=${carNum}' target='_blank'>前往确认</a>`
-            )
-            .off('click', '.retry-link')
-            .off('click', '.check-link')
-            .on('click', '.retry-link', async (e: any) => {
+            .off('click.jhsScreenShot', '.retry-link')
+            .off('click.jhsScreenShot', '.check-link')
+            .on('click.jhsScreenShot', '.retry-link', async (e: any) => {
                 e.stopPropagation();
                 e.preventDefault();
-                $('.screen-container').html(
-                    `<div style="${differentCss};cursor:auto;color:#000;">正在重新加载...</div>`
-                );
+                $('.screen-container').each((_index: number, element: HTMLElement) => {
+                    while (element.firstChild) element.removeChild(element.firstChild);
+                    const message = document.createElement('div');
+                    message.style.cssText = `${differentCss};cursor:auto;color:#000;`;
+                    message.textContent = '正在重新加载...';
+                    element.appendChild(message);
+                });
                 try {
                     const imgUrl = await this.getScreenshot(carNum);
                     this.addImg('缩略图', imgUrl);
@@ -138,10 +202,10 @@ export class ScreenShotPlugin extends BasePlugin {
                     this.showErrorFallback(carNum, err);
                 }
             })
-            .on('click', '.check-link', async (e: any) => {
+            .on('click.jhsScreenShot', '.check-link', async (e: any) => {
                 e.stopPropagation();
                 e.preventDefault();
-                window.open(`https://javstore.net/search?q=${carNum}`, '_blank');
+                window.open(searchUrl.href, '_blank', 'noopener,noreferrer');
             });
     }
 }

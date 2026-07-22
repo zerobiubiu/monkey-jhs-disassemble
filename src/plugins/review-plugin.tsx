@@ -16,6 +16,8 @@
  *   仅替换其中的模板插值变量名。
  * - 控制流（分支、for 循环、IIFE、try/catch/finally、fire-and-forget .then()）与原脚本一致。
  */
+import type { ReactNode } from 'react';
+
 import { BasePlugin } from './base-plugin';
 import { isJavdbSite } from '../constants/site';
 import { fetchMovieReviews } from '../constants/api';
@@ -30,6 +32,31 @@ import { ReviewLinkContent } from '../components/review-link-content';
 import { ReviewLoadMore } from '../components/review-load-more';
 import { ReviewLoading } from '../components/review-loading';
 import { jsxToString } from '../core/jsx-to-string';
+
+/** 评论正文中允许转换为富交互节点的链接；其余内容始终作为纯文本渲染。 */
+const REVIEW_LINK_PATTERN =
+    /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g;
+
+/** 将远端评论拆成文本和受控链接节点，不生成或解析任意 HTML。 */
+function linkifyReviewContent(content: unknown): ReactNode[] {
+    const text = typeof content === 'string' ? content : String(content ?? '');
+    const nodes: ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (const match of text.matchAll(REVIEW_LINK_PATTERN)) {
+        const matchIndex = match.index;
+        if (matchIndex > lastIndex) {
+            nodes.push(text.slice(lastIndex, matchIndex));
+        }
+        nodes.push(<ReviewLinkContent match={match[0]} />);
+        lastIndex = matchIndex + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+        nodes.push(text.slice(lastIndex));
+    }
+    return nodes;
+}
 
 export class ReviewPlugin extends BasePlugin {
     /** 评论楼层序号（渲染时自增） */
@@ -184,19 +211,14 @@ export class ReviewPlugin extends BasePlugin {
     displayReviews(reviews: any, container: any): void {
         if (reviews.length) {
             reviews.forEach((review: any) => {
-                const stars = Array(review.score).fill('<i class="icon-star"></i>').join('');
-                const content = review.content.replace(
-                    /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
-                    (match: any) => jsxToString(<ReviewLinkContent match={match} />)
-                );
                 const html = jsxToString(
                     <ReviewItem
                         floor={this.floorIndex++}
                         username={review.username}
-                        stars={stars}
+                        score={Number(review.score)}
                         time={utils.formatDate(review.created_at)}
                         likesCount={review.likes_count}
-                        content={content}
+                        content={linkifyReviewContent(review.content)}
                     />
                 );
                 container.append(html);

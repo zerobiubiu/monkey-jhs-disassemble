@@ -6,10 +6,8 @@
  * `<span class="console-logger-message" data-type="...">`，由 _createLogElement
  * 创建 div 后写入 innerHTML。
  *
- * 保留原 class/data-type/换行与缩进文本原样不动；timeStr / messageType / message
- * 通过 prop 注入。message 为已格式化的 HTML 字符串（含 `<a>`/`<br/>` 等内联
- * 转换），用 `dangerouslySetInnerHTML` 原样注入，与原 `innerHTML = ...<span
- * ...>${message}</span>` 行为一致（不转义标签）。
+ * 保留原 class/data-type/换行与缩进文本；timeStr / messageType / message 通过 prop
+ * 注入。message 仅接受文本和由 Logger 创建的受控链接节点，不使用 raw HTML。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 _createLogElement 中
  * `el.innerHTML = ...` 消费时，需先用 `jsxToString`（来自 ./jsx-to-string，
@@ -18,8 +16,10 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义。
+ * react-dom/server）。
  */
+
+import type { ReactNode } from 'react';
 
 /** LoggerLogEntry 的属性。 */
 export interface LoggerLogEntryProps {
@@ -27,8 +27,8 @@ export interface LoggerLogEntryProps {
     timeStr: string;
     /** 消息类型（msg/json 等，写入 data-type）。 */
     messageType: string;
-    /** 已格式化的消息 HTML（含链接/JSON 等内联转换），原样注入不转义。 */
-    message: string;
+    /** 安全的消息文本和链接节点。 */
+    message: ReactNode;
 }
 
 /** 前导换行 + 16 空格缩进（与原 innerHTML 模板字符串首段一致）。 */
@@ -42,7 +42,7 @@ const INDENT_AFTER = '\n            ';
  * 渲染单条日志条目的 JSX。
  * @param props.timeStr 时间字符串
  * @param props.messageType 消息类型（写入 data-type）
- * @param props.message 已格式化消息 HTML，原样注入不转义
+ * @param props.message 安全的消息文本和链接节点
  * @returns 日志条目 JSX，经 jsxToString 转 HTML 字符串后供 `el.innerHTML` 消费。
  */
 export function LoggerLogEntry({ timeStr, messageType, message }: LoggerLogEntryProps) {
@@ -51,11 +51,9 @@ export function LoggerLogEntry({ timeStr, messageType, message }: LoggerLogEntry
             {INDENT_BEFORE}
             <span className="console-logger-timestamp">[{timeStr}]</span>
             {INDENT_BETWEEN}
-            <span
-                className="console-logger-message"
-                data-type={messageType}
-                dangerouslySetInnerHTML={{ __html: message }}
-            />
+            <span className="console-logger-message" data-type={messageType}>
+                {message}
+            </span>
             {INDENT_AFTER}
         </>
     );

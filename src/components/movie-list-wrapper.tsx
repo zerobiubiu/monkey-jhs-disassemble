@@ -22,7 +22,8 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，
  * 经轻量 `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时
- * 依赖，不引入 react-dom/server）。属性值不做转义，与原始模板拼接行为一致。
+ * 依赖，不引入 react-dom/server）。普通属性统一转义；受信列表片段仍按上文
+ * 所述通过 dangerouslySetInnerHTML 注入（doc/129）。
  */
 
 /** MovieListWrapper 的属性。 */
@@ -44,7 +45,9 @@ export function MovieListWrapper({ html, nextUrl }: MovieListWrapperProps) {
     return (
         <>
             <div className="movie-list" dangerouslySetInnerHTML={{ __html: html }} />
-            {nextUrl ? <a className="pagination-next" href={nextUrl} /> : null}
+            {nextUrl ? (
+                <a className="pagination-next" href={nextUrl} rel="noopener noreferrer" />
+            ) : null}
         </>
     );
 }

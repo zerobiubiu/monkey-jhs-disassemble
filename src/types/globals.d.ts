@@ -34,7 +34,7 @@ declare const GM_addValueChangeListener: any;
 declare const GM_registerMenuCommand: any;
 declare const unsafeWindow: any;
 
-// 应用运行时全局（由 legacy 启动时挂载到 window/unsafeWindow）
+// 应用运行时全局（由 userscript 沙箱 window 挂载；不主动暴露到 unsafeWindow）
 declare const show: any;
 declare const utils: any;
 declare const storageManager: any;

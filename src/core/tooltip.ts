@@ -32,14 +32,14 @@ const TOOLTIP_SELECTOR =
 /**
  * 创建 tooltip DOM 并挂到 body（原 IIFE 内的匿名工厂）。
  *
- * @param content tooltip 的 HTML 内容
+ * @param content tooltip 的纯文本内容
  * @returns tooltip 根元素（.js-tooltip）
  */
 function createTooltipElement(content: string): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.classList.add('js-tooltip');
     const inner = document.createElement('div');
-    inner.innerHTML = content;
+    inner.textContent = content;
     wrapper.appendChild(inner);
     document.body.appendChild(wrapper);
     return wrapper;
@@ -55,7 +55,7 @@ function createTooltipElement(content: string): HTMLElement {
  * 4. 写入 left/top，加 is-active，挂到 element.tooltipElement
  *
  * @param element   触发元素（运行时挂 tooltipElement）
- * @param content   tooltip HTML 内容
+ * @param content   tooltip 纯文本内容
  * @param direction 首选定位方向
  */
 function positionTooltip(

@@ -6,7 +6,8 @@
  * （id 去掉 "Btn" 后缀），未启用时 display:none。由调用方循环拼接为
  * siteButtonsHtml 后注入 OtherSiteBox。
  *
- * 保留原 target/class/style/id/\<span> 结构原样不动；id / enabled 通过 prop 注入。
+ * 保留原 target/class/style/id/\<span> 结构；外链增加 `rel="noopener noreferrer"`，
+ * id / enabled 通过 prop 注入。
  * enabled 为 false 时 style={display:"none"}，true 时无 style 属性
  * （原模板 true 时 style=""，DOM 渲染等价）。
  *
@@ -17,7 +18,7 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义。
+ * react-dom/server）。动态文本与属性由 jsxToString 统一转义（doc/129）。
  */
 
 /** OtherSiteBtn 的属性。 */
@@ -36,6 +37,7 @@ export function OtherSiteBtn({ id, enabled }: OtherSiteBtnProps) {
     return (
         <a
             target="_blank"
+            rel="noopener noreferrer"
             className="site-btn"
             style={enabled ? undefined : { display: 'none' }}
             id={id}

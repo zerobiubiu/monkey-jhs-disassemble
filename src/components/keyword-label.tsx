@@ -36,6 +36,7 @@ export function KeywordLabel({ keyword, bgColor, textColor, variant, href }: Key
                 style={style}
                 href={href}
                 target="_blank"
+                rel="noopener noreferrer"
             >
                 {keyword}
                 <span className="keyword-remove">{'\u00d7'}</span>

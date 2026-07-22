@@ -1,3 +1,5 @@
+import { validateStorageImportData } from './storage-manager';
+
 /**
  * 备份附加存储清单 —— 除 IndexedDB（storageManager.exportData）外，
  * 需随 WebDav / 本地 JSON 备份的 localStorage 与 GM 存储键。
@@ -45,6 +47,22 @@ export const BACKUP_GM_KEYS: readonly string[] = [
     'jdb:list-waterfall-enabled'
 ];
 
+/** 从备份中提取出的附加存储；仅包含项目明确允许恢复的键。 */
+export interface BackupExtras {
+    localStorage: Record<string, string>;
+    gmStorage: Record<string, unknown>;
+}
+
+/** 已剥离附加字段、可以安全交给 StorageManager 的导入数据。 */
+export interface PreparedBackupImport {
+    storageData: Record<string, unknown>;
+    extras: BackupExtras;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * 不备份的键（文档备忘，勿加入上面列表）：
  * - jhs_review_ts / jhs_review_sign / jhs_jdsignature：API 签名短缓存
@@ -82,33 +100,80 @@ export function collectGmStorageBackup(): Record<string, unknown> {
 }
 
 /**
- * 从备份恢复 localStorage + GM，并从 data 剥离 `__localStorage` / `__gmStorage`。
- * 覆盖策略：备份中有非空值则覆盖本地；缺失则不动（兼容旧备份）。
+ * 校验备份根对象并剥离附加存储字段。未知键不会被恢复到 localStorage / GM，
+ * 主数据库导入成功前也不会产生外部写入。
  */
-export function applyBackupExtras(data: Record<string, any>): void {
-    const ls = data.__localStorage;
-    if (ls && typeof ls === 'object') {
-        for (const key of Object.keys(ls)) {
-            const raw = ls[key];
-            if (raw == null || raw === '') continue;
-            try {
-                localStorage.setItem(key, typeof raw === 'string' ? raw : JSON.stringify(raw));
-            } catch (err: any) {
-                console.warn(`[JHS 备份] 恢复 localStorage.${key} 失败:`, err?.message || err);
-            }
-        }
+export function prepareBackupImport(data: unknown): PreparedBackupImport {
+    if (!isRecord(data)) {
+        throw new Error('备份根数据必须是对象');
     }
-    delete data.__localStorage;
 
-    const gm = data.__gmStorage;
-    if (gm && typeof gm === 'object') {
-        for (const key of Object.keys(gm)) {
-            try {
-                GM_setValue(key, gm[key]);
-            } catch (err: any) {
-                console.warn(`[JHS 备份] 恢复 GM.${key} 失败:`, err?.message || err);
+    const storageData = { ...data };
+    delete storageData.__localStorage;
+    delete storageData.__gmStorage;
+    // __meta 仅用于自动备份触发信息，不属于 JAV-JHS/appData；不能写回业务库。
+    delete storageData.__meta;
+
+    const validatedStorageData = validateStorageImportData(storageData);
+
+    const localStorageData: Record<string, string> = {};
+    const rawLocalStorage = data.__localStorage;
+    if (rawLocalStorage !== undefined && !isRecord(rawLocalStorage)) {
+        throw new Error('备份中的 localStorage 数据格式无效');
+    }
+    if (isRecord(rawLocalStorage)) {
+        for (const key of BACKUP_LOCAL_STORAGE_KEYS) {
+            const raw = rawLocalStorage[key];
+            if (raw == null || raw === '') continue;
+            localStorageData[key] = typeof raw === 'string' ? raw : JSON.stringify(raw);
+        }
+    }
+
+    const gmStorageData: Record<string, unknown> = {};
+    const rawGmStorage = data.__gmStorage;
+    if (rawGmStorage !== undefined && !isRecord(rawGmStorage)) {
+        throw new Error('备份中的 GM 数据格式无效');
+    }
+    if (isRecord(rawGmStorage)) {
+        for (const key of BACKUP_GM_KEYS) {
+            if (rawGmStorage[key] !== undefined) {
+                gmStorageData[key] = rawGmStorage[key];
             }
         }
     }
-    delete data.__gmStorage;
+
+    return {
+        storageData: validatedStorageData,
+        extras: {
+            localStorage: localStorageData,
+            gmStorage: gmStorageData
+        }
+    };
+}
+
+/**
+ * 主数据库成功导入后恢复附加存储。单键失败不会中断其他键，并返回告警信息供 UI 提示。
+ */
+export function applyBackupExtras(extras: BackupExtras): string[] {
+    const warnings: string[] = [];
+    for (const [key, value] of Object.entries(extras.localStorage)) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            warnings.push(`localStorage.${key}: ${message}`);
+            console.warn(`[JHS 备份] 恢复 localStorage.${key} 失败:`, message);
+        }
+    }
+
+    for (const [key, value] of Object.entries(extras.gmStorage)) {
+        try {
+            GM_setValue(key, value);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            warnings.push(`GM.${key}: ${message}`);
+            console.warn(`[JHS 备份] 恢复 GM.${key} 失败:`, message);
+        }
+    }
+    return warnings;
 }

@@ -54,23 +54,27 @@ monkey-jhs-disassemble/
 **执行流程**：
 1. `import './core/libs'` — 加载第三方库（jquery/tabulator/layer/toastify/localforage/viewer/md5）并挂全局
 2. CSS 注入（javdb-site/common-toolbar/a-normal-buttons/loading/viewer/logger）
-3. 全局挂载（utils/gmHttp/storageManager/loadGfriends/filetreeDb/WebDavClient/refresh/cleanCache）
+3. 全局挂载（utils/gmHttp/storageManager/loadGfriends/filetreeDb/WebDavClient/refresh/cleanCache）；
+   高权限服务只挂 userscript 沙箱 `window`，不复制到 `unsafeWindow`
 4. BroadcastChannel('channel-refresh') 跨标签页刷新
 5. loading/show/showImageViewer 挂载
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册插件**（javdb 站点 33 插件在 `if (isJavdbSite)` 块内；missav 站点 1 插件在 `if (isMissavSite)` 块内）
+9. **PluginManager 实例化 + 注册插件**（JavDB 38 个在 `if (isJavdbSite)` 块内；MissAV 2 个在 `if (isMissavSite)` 块内）
 10. `await processCss()` — 并发执行所有插件 initCss，完成后再进入页面逻辑
 11. 页面判定（isDetailPage/isListPage/isFc2Page）
-12. storageManager 合并/清理
+12. storageManager 合并/清理（JavDB 专属；迁移任务按依赖顺序串行，失败后停止后续维护但继续启动插件）
 13. `await processPlugins()` — 并发执行所有插件 handle
 14. `SettingPlugin.autoBackup()` — 自动备份（每天第一次打开/每次打开，javdb only）
 
 **关键点**：
-- 所有插件在 `if (isJavdbSite)` 块内注册（非 javdb 站点不注册）
+- JavDB 插件只在 `if (isJavdbSite)` 块内注册，MissAV 插件只在 `if (isMissavSite)` 块内注册；
+  非目标站点不创建对应存储
 - `processCss()` 在 `processPlugins()` 之前 await 完成（CSS 先于逻辑注入）
 - `isDetailPage`/`isListPage`/`isFc2Page` 在 `window` 上全局挂载，插件以 `(window as any).isDetailPage` 访问
+- 主库备份导入使用 allowlist/schema 校验与条件回滚；车辆状态同步使用 journal/revision、
+  Web Locks（不可用时保守降级）和 MissAV `sync_meta` 水位
 
 ### 3.2 插件系统
 
@@ -131,6 +135,7 @@ monkey-jhs-disassemble/
 | VideoListsTagPlugin | video-lists-tag/ 子目录（6 模块，含服务端/本地对账） | listsOptionSync + videoListsTag | doc/45 + doc/126 |
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
+| MissavQuickCopyPlugin | missav-quick-copy-plugin.ts | missavQuickCopy.user.js | 集成记录 |
 
 **升级新插件（5 个，feature flag 可关）**：对照 `jhs.3.3.6.027`，见 doc/76（CoverButtonPlugin 已于 doc/82 删除）
 
@@ -155,7 +160,8 @@ monkey-jhs-disassemble/
 | feature-flags.ts | 升级特性开关（localStorage 可覆盖） |
 | libs.ts | 第三方库 ESM import + 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5） |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
-| storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；提供运行时缓存清理方法） |
+| storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；备份键/schema allowlist、Web Lock 导入、条件回滚、运行时缓存清理） |
+| backup-extra-storage.ts | 备份附加 localStorage/GM 键的 allowlist、元字段剥离、分阶段恢复 |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
 | common-util.ts | 通用工具（retry/htmlTo$dom/getUrlParam/isMobile/loopDetector） |
 | toast.ts | Toastify-js 封装（show.ok/error/success） |
@@ -267,9 +273,13 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 ### 6.1 vite.config.ts
 
 - `entry: 'src/main.tsx'`
-- `userscript`：name/namespace/version/match/include/grant/connect/run-at
+- `userscript`：name/namespace/version/match/noframes/grant/connect/run-at；当前仅匹配
+  `https://javdb.com/*`、`https://missav.ws/*`、`https://missav.live/*`，不再使用宽泛
+  `include` 或 iframe 执行
 - `grant`：GM_xmlhttpRequest/GM_openInTab/GM_setValue/GM_getValue/GM_addValueChangeListener/GM_registerMenuCommand/unsafeWindow
 - `@require`：全部移除（7 库 ESM import + parallel_GM_xmlhttpRequest URL 失效）
+- `@connect *` 仅因 WebDAV 支持用户自定义 HTTPS 主机而保留；其它远程 URL 在代码中
+  另行执行协议/主机/同源校验
 - `css.lightningcss.errorRecovery: true`（layer.css IE hack 容错）
 - `build.minify`：默认 esbuild（terser 可选但已回退）
 

@@ -10,6 +10,7 @@
  */
 
 import { featureFlags } from '../core/feature-flags';
+import { escapeHtmlAttribute, escapeHtmlText } from '../core/jsx-to-string';
 
 // ============ 基础配置 ============
 
@@ -311,18 +312,34 @@ export async function login(username: string, password: string): Promise<any> {
 export function markDataListHtml(movies: any[]): string {
     let moviesHtml = '';
     movies.forEach((movie: any) => {
-        const newSrc = _updateImgServer(movie.cover_url || '');
+        const movieId = String(movie.id ?? '');
+        const movieHref = `/v/${encodeURIComponent(movieId)}`;
+        const rawCover = _updateImgServer(String(movie.cover_url ?? ''));
+        let coverUrl = '';
+        if (rawCover.trim()) {
+            try {
+                const parsedCover = new URL(rawCover, 'https://javdb.com');
+                if (parsedCover.protocol === 'https:') {
+                    coverUrl = parsedCover.href;
+                }
+            } catch {
+                // 非法封面 URL 留空，由浏览器显示图片加载失败占位，不拼接到属性上下文。
+            }
+        }
+        const title = escapeHtmlText(String(movie.origin_title ?? ''));
+        const number = escapeHtmlText(String(movie.number ?? ''));
+        const releaseDate = escapeHtmlText(String(movie.release_date ?? ''));
         moviesHtml += `
-            <div class="item" id="${movie.id}">
-                <a href="/v/${movie.id}" class="box" title="${movie.origin_title}">
+            <div class="item" id="${escapeHtmlAttribute(movieId)}">
+                <a href="${escapeHtmlAttribute(movieHref)}" class="box" title="${escapeHtmlAttribute(String(movie.origin_title ?? ''))}">
                     <div class="cover ">
-                        <img loading="lazy" src="${newSrc}" alt="">
+                        <img loading="lazy" src="${escapeHtmlAttribute(coverUrl)}" alt="">
                     </div>
-                    <div class="video-title"><strong>${movie.number}</strong> ${movie.origin_title}</div>
-                    <div class="score" id="score_${movie.id}">
+                    <div class="video-title"><strong>${number}</strong> ${title}</div>
+                    <div class="score" id="score_${escapeHtmlAttribute(movieId)}">
                     </div>
                     <div class="meta">
-                        ${movie.release_date}
+                        ${releaseDate}
                     </div>
                     <div class="tags has-addons">
                        ${

@@ -1,10 +1,9 @@
 /**
  * Toast 通知模块（提取自 archetype/jhs.user.js L2075-2144）
  *
- * 基于全局 Toastify（由 userscript @require 引入，类型声明见
- * src/types/globals.d.ts，此处为 any）。提供 createToast 工厂与 show
- * 快捷 API。原 IIFE 中的 window/unsafeWindow 挂载由 legacy 启动逻辑
- * 负责，本模块仅导出对象。
+ * 基于全局 Toastify（由 ESM 依赖加载，类型声明见 src/types/globals.d.ts，
+ * 此处为 any）。提供 createToast 工厂与 show 快捷 API；运行时服务仅挂到
+ * userscript 沙箱 window，本模块只导出对象。
  */
 
 /**

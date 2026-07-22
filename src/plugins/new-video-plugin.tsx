@@ -79,6 +79,17 @@ interface FavoriteActressRecord {
     lastPublishTime?: string;
 }
 
+function safeHttpsImage(value: unknown): string {
+    const fallback = 'https://c0.jdbstatic.com/images/actor_unknow.jpg';
+    if (typeof value !== 'string' || value.trim() === '') return fallback;
+    try {
+        const parsed = new URL(value.trim(), 'https://javdb.com');
+        return parsed.protocol === 'https:' ? parsed.href : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 export class NewVideoPlugin extends BasePlugin {
     /** 当前分页页码（从 1 开始） */
     currentPage: number = 1;
@@ -220,7 +231,12 @@ export class NewVideoPlugin extends BasePlugin {
                 if (Array.isArray(actress.newVideoList)) {
                     actress.newVideoList.join('，');
                 }
-                const actressUrl: string = `${javDbUrl}/actors/${actress.starId}?t=d`;
+                const actressUrlObject = new URL(
+                    `/actors/${encodeURIComponent(String(actress.starId ?? ''))}`,
+                    javDbUrl
+                );
+                actressUrlObject.searchParams.set('t', 'd');
+                const actressUrl = actressUrlObject.href;
                 let isStale: boolean = false;
                 if (actress.lastPublishTime) {
                     isStale = !utils.isUnnecessaryCheck(actress.lastPublishTime, ruleTimeHours);
@@ -244,9 +260,7 @@ export class NewVideoPlugin extends BasePlugin {
                 return jsxToString(
                     <ActressCard
                         starId={actress.starId}
-                        avatar={
-                            actress.avatar || 'https://c0.jdbstatic.com/images/actor_unknow.jpg'
-                        }
+                        avatar={safeHttpsImage(actress.avatar)}
                         name={actress.name}
                         allNameText={allNameText}
                         actressUrl={actressUrl}
@@ -273,7 +287,11 @@ export class NewVideoPlugin extends BasePlugin {
                 const starId: string = $(event.currentTarget).attr('data-starId');
                 const actress = sortedActresses.find((item) => item.starId === starId);
                 utils.q(event, `是否取消收藏 ${actress!.name}?`, async () => {
-                    const uncollectUrl: string = `${await this.getBean('OtherSitePlugin').getJavDbUrl()}/actors/${starId}/uncollect`;
+                    const javDbBaseUrl = await this.getBean('OtherSitePlugin').getJavDbUrl();
+                    const uncollectUrl = new URL(
+                        `/actors/${encodeURIComponent(String(starId))}/uncollect`,
+                        javDbBaseUrl
+                    ).href;
                     const csrfToken: string =
                         document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ??
                         '';

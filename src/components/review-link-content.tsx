@@ -5,11 +5,9 @@
  * ed2k/磁力/HTTP 链接替换为带样式的 `<span>` 或 `<a>` 链接。
  * ed2k → span；magnet → a；http(s) → a；其余原样返回 match 文本。
  *
- * 保留原 class（a-primary）、target、rel、
- * 内联 style、文案原样不动；match 通过 prop 注入。链接作为属性值（href）
- * 不转义（jsxToString 不转义属性值，与原模板拼接一致）；作为
- * 文本子节点（{match}）时 jsxToString 转义 `&`/`<`/`>`，浏览器解析后与原模板
- * 未转义插入 DOM 等价。原模板 `\n` 缩进空白以 `{" "}` 保留单空格，DOM 等价。
+ * 保留原 class（a-primary）、target、rel、内联 style；match 只来自调用方已识别
+ * 的 ed2k/magnet/http(s) URL，属性值由 jsxToString 统一转义，显示文本按文本节点
+ * 渲染。原模板 `\n` 缩进空白以 `{" "}` 保留单空格。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 displayReviews 的 replace 回调
  * 消费时，需先用 `jsxToString`（来自 ../core/jsx-to-string，轻量 JSX→HTML
@@ -18,7 +16,7 @@
  *
  * 统一规定（doc/16-jsx-to-string.md）：HTML→组件转换返回 JSX，经轻量
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
- * react-dom/server）。属性值不做转义。
+ * react-dom/server）。
  */
 
 /** ReviewLinkContent 的属性。 */

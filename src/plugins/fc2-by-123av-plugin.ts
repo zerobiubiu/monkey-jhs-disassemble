@@ -9,9 +9,26 @@ import {
     HAS_WATCH_ACTION,
     YES
 } from '../constants/status';
+import { escapeHtmlAttribute, escapeHtmlText } from '../core/jsx-to-string';
 import { BasePlugin } from './base-plugin';
 
 const HAS_DOWN_STATUS = 'hasDown';
+
+/** 远端 123Av/FC2 字段只允许作为 HTTPS 资源进入页面。 */
+function safeHttpsUrl(value: unknown, base = 'https://123av.com'): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw, base);
+        return parsed.protocol === 'https:' ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+function safeErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error ?? '未知错误');
+}
 
 export class Fc2By123AvPlugin extends BasePlugin {
     $contentBox: any = null;
@@ -37,7 +54,8 @@ export class Fc2By123AvPlugin extends BasePlugin {
     async getBaseUrl(): Promise<string> {
         const other = this.getBean('OtherSitePlugin');
         // 默认 123av 域名
-        const base = (await other?.getAv123Url?.()) || 'https://123av.com';
+        const configured = (await other?.getAv123Url?.()) || 'https://123av.com';
+        const base = safeHttpsUrl(configured) || 'https://123av.com';
         return base.replace(/\/$/, '') + '/ja';
     }
 
@@ -68,14 +86,14 @@ export class Fc2By123AvPlugin extends BasePlugin {
                 .first();
             if ($fc2Nav.length) {
                 $fc2Nav.after(
-                    `<a class="navbar-item" id="navbar-item-123av-fc2" href="${href}">123Av-Fc2</a>`
+                    `<a class="navbar-item" id="navbar-item-123av-fc2" href="${escapeHtmlAttribute(href)}">123Av-Fc2</a>`
                 );
             } else {
                 // 回退：仅主栏 #navbar-menu-hero 内第一个 .navbar-start，避免命中 #search-box
                 $('#navbar-menu-hero .navbar-start')
                     .first()
                     .append(
-                        `<a class="navbar-item" id="navbar-item-123av-fc2" href="${href}">123Av-Fc2</a>`
+                        `<a class="navbar-item" id="navbar-item-123av-fc2" href="${escapeHtmlAttribute(href)}">123Av-Fc2</a>`
                     );
             }
         }
@@ -85,7 +103,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
             !$('.tabs a[href*="advanced_search?type=100"]').length
         ) {
             $('.tabs li:contains("FC2")').after(
-                `<li id="tab-123av-fc2"><a href="${href}"><span>123Av-Fc2</span></a></li>`
+                `<li id="tab-123av-fc2"><a href="${escapeHtmlAttribute(href)}"><span>123Av-Fc2</span></a></li>`
             );
         }
     }
@@ -98,7 +116,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
             <div style="margin-bottom:15px">
                 <h2 class="title is-4">123Av FC2 浏览</h2>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-                    <input id="fc2-123av-keyword" class="input" style="max-width:280px" placeholder="搜索关键词" value="${this.keyword || ''}">
+                    <input id="fc2-123av-keyword" class="input" style="max-width:280px" placeholder="搜索关键词" value="${escapeHtmlAttribute(this.keyword || '')}">
                     <button id="fc2-123av-search" class="button is-info">搜索</button>
                     <select id="fc2-123av-sort" class="select" style="height:2.5em">
                         <option value="release_date">发布日期</option>
@@ -204,7 +222,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
             });
         } catch (e: any) {
             console.error(e);
-            show.error('加载 123Av FC2 失败: ' + (e.message || e));
+            show.error('加载 123Av FC2 失败: ' + safeErrorMessage(e));
         }
     }
 
@@ -317,29 +335,37 @@ export class Fc2By123AvPlugin extends BasePlugin {
             let actorsHtml = '';
             if (actressInfo?.actors?.length) {
                 actorsHtml = actressInfo.actors
-                    .map((a: string) => `<span class="tag" style="margin:2px">${a}</span>`)
+                    .map((a: string) => `<span class="tag" style="margin:2px">${escapeHtmlText(a)}</span>`)
                     .join('');
             }
             const imagesHtml = imgList
                 .map(
-                    (src) =>
-                        `<a class="tile-item" href="${src}" target="_blank"><img src="${src}" style="max-width:150px;margin:4px" loading="lazy"></a>`
+                    (src) => {
+                        const safeSrc = safeHttpsUrl(src);
+                        return safeSrc
+                            ? `<a class="tile-item" href="${escapeHtmlAttribute(safeSrc)}" target="_blank"><img src="${escapeHtmlAttribute(safeSrc)}" style="max-width:150px;margin:4px" loading="lazy"></a>`
+                            : '';
+                    }
                 )
                 .join('');
+            const title = String(info.title || carNum);
+            const infoId = String(info.id || carNum);
+            const releaseDate = String(info.releaseDate || '');
+            const poster = safeHttpsUrl(info.poster);
             $('.movie-info-container').html(`
-                <div class="movie-title"><strong>${info.title || carNum}</strong></div>
-                <div>番号: ${info.id || carNum}</div>
-                <div>发布日: ${info.releaseDate || ''}</div>
-                ${info.poster ? `<div style="margin-top:8px"><img src="${info.poster}" style="max-width:320px"></div>` : ''}
+                <div class="movie-title"><strong>${escapeHtmlText(title)}</strong></div>
+                <div>番号: ${escapeHtmlText(infoId)}</div>
+                <div>发布日: ${escapeHtmlText(releaseDate)}</div>
+                ${poster ? `<div style="margin-top:8px"><img src="${escapeHtmlAttribute(poster)}" style="max-width:320px"></div>` : ''}
                 <div class="movie-actors" style="margin-top:8px"><strong>主演: </strong>${actorsHtml || '未知'}</div>
-                <div id="data-releaseDate" style="display:none">${info.releaseDate || ''}</div>
+                <div id="data-releaseDate" style="display:none">${escapeHtmlText(releaseDate)}</div>
             `);
             $('.movie-gallery .image-list').html(imagesHtml);
             this.getBean('TranslatePlugin')?.translate?.(carNum, false)?.then?.();
         } catch (e: any) {
             console.error(e);
             $('.movie-info-container').html(
-                `<div class="movie-error">加载失败: ${e.message || e}</div>`
+                `<div class="movie-error">加载失败: ${escapeHtmlText(safeErrorMessage(e))}</div>`
             );
         }
     }
@@ -369,9 +395,11 @@ export class Fc2By123AvPlugin extends BasePlugin {
         title: string;
         poster: string;
     }> {
-        const fullHref = href.startsWith('http')
-            ? href
-            : (await this.getBaseUrl()) + href;
+        const baseUrl = await this.getBaseUrl();
+        const fullHref = safeHttpsUrl(href, baseUrl);
+        if (!fullHref) {
+            throw new Error('详情页地址不是安全的 HTTPS 地址');
+        }
         const html = await gmHttp.get(fullHref);
         const $dom = utils.htmlTo$dom(html);
         const title =
@@ -404,7 +432,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
     ): Promise<{ actors: string[]; seller?: string } | null> {
         try {
             const html = await gmHttp.get(
-                `https://fc2ppvdb.com/articles/${fc2Num}`
+                `https://fc2ppvdb.com/articles/${encodeURIComponent(fc2Num)}`
             );
             const $dom = utils.htmlTo$dom(html);
             const actors: string[] = [];
@@ -423,13 +451,14 @@ export class Fc2By123AvPlugin extends BasePlugin {
     async getImgList(fc2Num: string): Promise<string[]> {
         try {
             const html = await gmHttp.get(
-                `https://adult.contents.fc2.com/article/${fc2Num}/`
+                `https://adult.contents.fc2.com/article/${encodeURIComponent(fc2Num)}/`
             );
             const $dom = utils.htmlTo$dom(html);
             const imgs: string[] = [];
             $dom.find('img').each((_i: number, el: any) => {
                 const src = $(el).attr('src') || $(el).attr('data-src') || '';
-                if (src && /sample|preview|main/i.test(src)) imgs.push(src);
+                const safeSrc = safeHttpsUrl(src);
+                if (safeSrc && /sample|preview|main/i.test(safeSrc)) imgs.push(safeSrc);
             });
             return imgs.slice(0, 20);
         } catch {

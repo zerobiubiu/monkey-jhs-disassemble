@@ -2,10 +2,10 @@
  * WebDav 客户端 WebDavClient（提取自 archetype/jhs.user.js L9298-9428，原 class De）
  *
  * 基于 Tampermonkey `GM_xmlhttpRequest` 的 WebDav 客户端，提供目录创建 / 文件上传 /
- * 文件列表 / 文件删除 / 文件读取等备份能力。原脚本将 `new De(davUrl, username, password)`
- * 实例挂载到 `unsafeWindow` 作为全局单例，外部以 `backup / getFileList / deleteFile /
- * getBackupList / getFileContent` 形式调用。本模块仅导出 class WebDavClient，全局实例化与
- * 挂载由 legacy 启动流程负责。
+ * 文件列表 / 文件删除 / 文件读取等备份能力。入口仅将 WebDavClient 挂到 userscript
+ * 沙箱 `window`，外部以 `backup / getFileList / deleteFile / getBackupList /
+ * getFileContent` 形式调用。本模块仅导出 class WebDavClient，全局挂载由
+ * `main.tsx` 负责。
  *
  * 重构说明（JS→TS，行为等价）：
  * - class De → 命名导出 class WebDavClient

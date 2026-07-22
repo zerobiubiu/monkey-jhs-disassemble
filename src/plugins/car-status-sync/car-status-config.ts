@@ -31,8 +31,21 @@ export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 /** GM 存储键：跨域传递的车辆状态数据（全量，列存 + gzip + base64）。 */
 export const GM_KEY_CAR_STATUS_DATA = 'jhs_car_status_data';
 
-/** GM 存储键：跨域传递的车辆状态增量变更（单条/批量，不压缩）。 */
+/**
+ * GM 存储键：跨域传递的车辆状态增量日志（不压缩）。
+ *
+ * 新协议写入 CarStatusDeltaPayload[]；消费端仍兼容历史版本写入的单个对象。
+ */
 export const GM_KEY_CAR_STATUS_DELTA = 'jhs_car_status_delta';
+
+/** GM 存储键：JavDB 端跨标签页共享的修订号分配器。 */
+export const GM_KEY_CAR_STATUS_REVISION = 'jhs_car_status_revision';
+
+/** 增量日志记录项超过此数量时按番号压缩；压缩后仍超限则触发 gzip 全量收敛。 */
+export const CAR_STATUS_DELTA_COMPACT_THRESHOLD = 256;
+
+/** 单次增量超过此数量时改发 gzip 全量快照，避免未压缩 journal 撑爆 GM 配额。 */
+export const CAR_STATUS_DELTA_MAX_ITEMS = 500;
 
 /** GM 存储键：上次全量同步完成的时间戳（毫秒）。 */
 export const GM_KEY_LAST_SYNC_TS = 'jhs_car_status_last_sync_ts';
@@ -50,6 +63,15 @@ export interface CarStatusPayload {
     count: number;
     /** 数据生成时间戳（毫秒）。 */
     ts: number;
+    /**
+     * 单调修订号。新版本发送端总是写入；旧载荷缺失时消费端回退到 ts。
+     * 全量快照在读取 car_list 前生成修订号，确保较晚到达的旧快照不会覆盖新增量。
+     */
+    revision?: number;
+    /** 全量包语义。缺失时按旧协议兼容为 snapshot。 */
+    mode?: 'snapshot';
+    /** 新协议要求来源清单已完成初始化；旧非空载荷缺失时仍兼容。 */
+    ready?: boolean;
 }
 
 /**
@@ -67,7 +89,12 @@ export interface CarStatusDeltaPayload {
     }>;
     /** 变更时间戳（毫秒） */
     ts: number;
+    /** 单调修订号；旧载荷缺失时消费端回退到 ts。 */
+    revision?: number;
 }
+
+/** GM 存储中的增量日志形态（新协议）。 */
+export type CarStatusDeltaJournal = CarStatusDeltaPayload[];
 
 /**
  * 单个 status 下的列存数据（三个并列数组，下标一一对应）。
@@ -91,6 +118,19 @@ export const VIDEO_ROUTE_PREFIX = '/v/';
 /** missav 端本地 IndexedDB 配置（来源：missavStatusTag.user.js L38-40）。 */
 export const MISSAV_DB_NAME = 'MissAV-CarStatus';
 export const MISSAV_DB_STORE = 'cars';
+/** 同步元数据仓库，用于跨标签页防止旧全量覆盖新增量。 */
+export const MISSAV_DB_META_STORE = 'sync_meta';
+export const MISSAV_DB_VERSION = 2;
+export const MISSAV_SYNC_META_KEY = 'car_status_revision';
+export const MISSAV_SYNC_LOCK_NAME = 'jhs-missav-car-status-sync';
+
+export type CarStatusSyncKind = 'full' | 'delta';
+
+export interface CarStatusSyncMeta {
+    key: string;
+    revision: number;
+    kind: CarStatusSyncKind;
+}
 
 /** 日志前缀。 */
 export const LOG_PREFIX_JHS = '[JHS CarSync]';

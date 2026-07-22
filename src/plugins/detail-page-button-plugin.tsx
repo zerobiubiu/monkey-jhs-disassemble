@@ -114,6 +114,7 @@ const DETAIL_LIST_COLLATOR = new Intl.Collator('zh-CN', {
 const LIST_PANEL_INIT_TIMEOUT_MS = 10000;
 const LIST_PANEL_PAGE_TIMEOUT_MS = 10000;
 const LIST_PANEL_MAX_PAGES = 50;
+const DETAIL_DOM_WAIT_TIMEOUT_MS = 15000;
 
 export class DetailPageButtonPlugin extends BasePlugin {
     /** .review-buttons MutationObserver 是否已安装（hookWantAndWatchedButtons）。 */
@@ -275,16 +276,24 @@ export class DetailPageButtonPlugin extends BasePlugin {
         if (!isJavdbSite) return;
         if (this._wantWatchedObserved) return;
         const self = this;
+        const waitDeadline = Date.now() + DETAIL_DOM_WAIT_TIMEOUT_MS;
         // 等待 .review-buttons 出现
         const ensure = () => {
             const container: any = document.querySelector(
                 'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav > div.review-buttons'
             );
             if (!container) {
+                if (Date.now() >= waitDeadline) {
+                    clog.warn('等待详情页原生想看/看过按钮超时，跳过状态监听');
+                    return;
+                }
                 setTimeout(ensure, 200);
                 return;
             }
-            if (container.__jhsObserved) return;
+            if (container.__jhsObserved) {
+                self._wantWatchedObserved = true;
+                return;
+            }
             container.__jhsObserved = true;
             self._wantWatchedObserved = true;
             // 记录初始状态
@@ -584,19 +593,24 @@ export class DetailPageButtonPlugin extends BasePlugin {
         if (this._quickActionAdded) return;
         this._quickActionAdded = true;
         const self = this;
+        const waitDeadline = Date.now() + DETAIL_DOM_WAIT_TIMEOUT_MS;
         this._injectRatingStyles();
         const ensure = () => {
             const nav: any = document.querySelector(
                 'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav'
             );
             if (!nav) {
+                if (Date.now() >= waitDeadline) {
+                    clog.warn('等待详情页评分栏挂载目标超时，跳过快捷操作初始化');
+                    return;
+                }
                 setTimeout(ensure, 400);
                 return;
             }
             // 构建组件（如果不存在）
             self._buildRatingBar(nav);
             self._syncRatingBar();
-            // 清单面板独立等待 #otherSiteBox 出现（OtherSitePlugin 异步注入）
+            // 清单面板挂到当前稳定 nav；不再依赖可关闭的 OtherSitePlugin。
             self._ensureListPanel(nav);
             // 监听 .review-buttons 变化（Rails ajax 替换 innerHTML 会销毁组件 → 重建 + 状态刷新）
             const rb: any = nav.querySelector('.review-buttons');
@@ -696,20 +710,21 @@ export class DetailPageButtonPlugin extends BasePlugin {
     }
 
     /**
-     * 轮询等待 #otherSiteBox 出现后创建清单面板、初始化并绑定交互。
-     * 对应原 L5637-5681，展示顺序只作用于克隆面板，服务端映射始终按 listId。
+     * 创建清单面板、初始化并绑定交互。优先排在 #otherSiteBox 后；该可选插件
+     * 未启用或尚未完成时直接挂到稳定 nav 末尾，避免永久轮询。
      * @param nav nav 容器
      */
     _ensureListPanel(nav: any): void {
         if (this._listPanelEnsured) return;
         const otherSite = nav.querySelector('#otherSiteBox') as HTMLElement | null;
-        if (!otherSite) {
-            setTimeout(() => this._ensureListPanel(nav), 400);
-            return;
-        }
         this._listPanelEnsured = true;
         if (!nav.querySelector('.jhs-list-panel')) {
-            otherSite.insertAdjacentHTML('afterend', jsxToString(<ListPanel />));
+            const panelHtml = jsxToString(<ListPanel />);
+            if (otherSite) {
+                otherSite.insertAdjacentHTML('afterend', panelHtml);
+            } else {
+                nav.insertAdjacentHTML('beforeend', panelHtml);
+            }
         }
         const listPanel = nav.querySelector('.jhs-list-panel') as DetailListPanelElement | null;
         if (!listPanel) return;

@@ -35,6 +35,29 @@ import {
 } from '../constants/status';
 import { fetchMovieDetail, API_BASE, reBuildSignature } from '../constants/api';
 import fc2PluginCssRaw from '../styles/fc2-plugin.css?raw';
+import { escapeHtmlAttribute, escapeHtmlText } from '../core/jsx-to-string';
+
+/** 只允许 HTTPS 资源进入 FC2 弹窗 HTML，避免远端字段形成可执行 URL。 */
+function safeHttpsUrl(value: unknown, base = 'https://javdb.com'): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw, base);
+        return parsed.protocol === 'https:' ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+/** 磁链只接受标准 BTIH（40/64 位十六进制或 32 位 Base32）。 */
+function safeMagnetHash(value: unknown): string {
+    const hash = String(value ?? '').trim();
+    return /^(?:[a-f\d]{40}|[a-f\d]{64}|[a-z2-7]{32})$/i.test(hash) ? hash : '';
+}
+
+function safeErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error ?? '未知错误');
+}
 
 /**
  * FC2 详情弹窗插件。
@@ -263,9 +286,11 @@ export class Fc2Plugin extends BasePlugin {
                     let actressNames = '';
                     for (let i = 0; i < actors.length; i++) {
                         const actor = actors[i];
-                        actorsHtml += `<span class="actor-tag"><a href="/actors/${actor.id}" target="_blank">${actor.name}</a></span>`;
+                        const actorId = encodeURIComponent(String(actor.id ?? ''));
+                        const actorName = String(actor.name ?? '');
+                        actorsHtml += `<span class="actor-tag"><a href="/actors/${escapeHtmlAttribute(actorId)}" target="_blank">${escapeHtmlText(actorName)}</a></span>`;
                         if (actor.gender === 0) {
-                            actressNames += actor.name + ' ';
+                            actressNames += actorName + ' ';
                         }
                     }
                     $('#data-actress').text(actressNames);
@@ -278,26 +303,38 @@ export class Fc2Plugin extends BasePlugin {
                         ? imgList
                               .map(
                                   (img: string, idx: number) => `
-                <a href="${img}" data-fancybox="movie-gallery" data-caption="剧照 ${idx + 1}">
-                    <img src="${img}" class="movie-image-thumb"  alt=""/>
+                <a href="${escapeHtmlAttribute(safeHttpsUrl(img))}" data-fancybox="movie-gallery" data-caption="剧照 ${idx + 1}">
+                    <img src="${escapeHtmlAttribute(safeHttpsUrl(img))}" class="movie-image-thumb"  alt=""/>
                 </a>
             `
                               )
+                              .filter((html: string) => html.includes('href="https://'))
                               .join('')
                         : '<div class="no-data">暂无剧照</div>';
+                const detailTitle = String(detail.title ?? '无标题');
+                const detailCarNum = String(detail.carNum ?? '未知');
+                const detailReleaseDate = String(detail.releaseDate ?? '未知');
+                const detailScore = String(detail.score ?? '无');
+                const detailDuration =
+                    detail.duration == null || detail.duration === ''
+                        ? '无'
+                        : `${String(detail.duration)} m`;
+                const detailCarNumPath = encodeURIComponent(
+                    detailCarNum.replace(/^FC2-/i, '')
+                );
                 $('.movie-info-container').html(`
-                <h3 class="movie-title"><strong class="current-title">${detail.title || '无标题'}</strong></h3>
+                <h3 class="movie-title"><strong class="current-title">${escapeHtmlText(detailTitle)}</strong></h3>
                 <div class="movie-meta">
-                    <span><strong>番号: </strong>${detail.carNum || '未知'}</span>
-                    <span><strong>年份: </strong>${detail.releaseDate || '未知'}</span>
-                    <span><strong>评分: </strong>${detail.score || '无'}</span>
-                    <span><strong>时长: </strong>${detail.duration + ' m' || '无'}</span>
+                    <span><strong>番号: </strong>${escapeHtmlText(detailCarNum)}</span>
+                    <span><strong>年份: </strong>${escapeHtmlText(detailReleaseDate)}</span>
+                    <span><strong>评分: </strong>${escapeHtmlText(detailScore)}</span>
+                    <span><strong>时长: </strong>${escapeHtmlText(detailDuration)}</span>
                 </div>
                 <div class="movie-meta">
                     <span>
                         <strong>站点: </strong>
-                        <a href="https://fc2ppvdb.com/articles/${(detail.carNum || '').replace('FC2-', '')}" target="_blank">fc2ppvdb</a>
-                        <a style="margin-left: 5px;" href="https://adult.contents.fc2.com/article/${(detail.carNum || '').replace('FC2-', '')}/" target="_blank">fc2电子市场</a>
+                        <a href="https://fc2ppvdb.com/articles/${escapeHtmlAttribute(detailCarNumPath)}" target="_blank">fc2ppvdb</a>
+                        <a style="margin-left: 5px;" href="https://adult.contents.fc2.com/article/${escapeHtmlAttribute(detailCarNumPath)}/" target="_blank">fc2电子市场</a>
                     </span>
                 </div>
                 <div class="movie-actors">
@@ -307,7 +344,7 @@ export class Fc2Plugin extends BasePlugin {
                     <strong>剧照: </strong>
                     <div class="image-list">${imagesHtml}</div>
                 </div>
-                <div id="data-releaseDate" style="display: none">${detail.releaseDate || ''}</div>
+                <div id="data-releaseDate" style="display: none">${escapeHtmlText(String(detail.releaseDate ?? ''))}</div>
             `);
                 // TranslatePlugin 项目未迁移，缺失时静默失败
                 this.getBean('TranslatePlugin')?.translate(detail.carNum, false)?.then();
@@ -315,7 +352,7 @@ export class Fc2Plugin extends BasePlugin {
             .catch((err: any) => {
                 console.error(err);
                 $('.movie-info-container').html(`
-                <div class="movie-error">加载失败: ${err.message}</div>
+                <div class="movie-error">加载失败: ${escapeHtmlText(safeErrorMessage(err))}</div>
             `);
             });
     }
@@ -355,6 +392,19 @@ export class Fc2Plugin extends BasePlugin {
                 if (magnets.length > 0) {
                     for (let i = 0; i < magnets.length; i++) {
                         const magnet = magnets[i];
+                        const hash = safeMagnetHash(magnet.hash);
+                        if (!hash) continue;
+                        const magnetHref = `magnet:?xt=urn:btih:${hash}`;
+                        const magnetName = String(magnet.name ?? '');
+                        const sizeValue = Number(magnet.size) / 1024;
+                        const sizeText = Number.isFinite(sizeValue)
+                            ? `${sizeValue.toFixed(2)}GB`
+                            : '未知大小';
+                        const filesValue = Number(magnet.files_count);
+                        const filesText = Number.isFinite(filesValue)
+                            ? `${filesValue}个文件`
+                            : '文件数未知';
+                        const createdAt = String(magnet.created_at ?? '');
                         let rowClass = '';
                         if (i % 2 === 0) {
                             rowClass = 'odd';
@@ -362,11 +412,11 @@ export class Fc2Plugin extends BasePlugin {
                         magnetsHtml += `
                         <div class="item columns is-desktop ${rowClass}">
                             <div class="magnet-name column is-four-fifths">
-                                <a href="magnet:?xt=urn:btih:${magnet.hash}" title="右鍵點擊並選擇「複製鏈接地址」">
-                                    <span class="name">${magnet.name}</span>
+                                <a href="${escapeHtmlAttribute(magnetHref)}" title="右鍵點擊並選擇「複製鏈接地址」">
+                                    <span class="name">${escapeHtmlText(magnetName)}</span>
                                     <br>
                                     <span class="meta">
-                                        ${(magnet.size / 1024).toFixed(2)}GB, ${magnet.files_count}個文件
+                                        ${escapeHtmlText(sizeText)}, ${escapeHtmlText(filesText)}
                                      </span>
                                     <br>
                                     <div class="tags">
@@ -376,9 +426,9 @@ export class Fc2Plugin extends BasePlugin {
                                 </a>
                             </div>
                             <div class="buttons column">
-                                <button class="button is-info is-small copy-to-clipboard" data-clipboard-text="magnet:?xt=urn:btih:${magnet.hash}" type="button">&nbsp;複製&nbsp;</button>
+                                <button class="button is-info is-small copy-to-clipboard" data-clipboard-text="${escapeHtmlAttribute(magnetHref)}" type="button">&nbsp;複製&nbsp;</button>
                             </div>
-                            <div class="date column"><span class="time">${magnet.created_at}</span></div>
+                            <div class="date column"><span class="time">${escapeHtmlText(createdAt)}</span></div>
                         </div>
                     `;
                     }
@@ -390,7 +440,7 @@ export class Fc2Plugin extends BasePlugin {
             .catch((err: any) => {
                 console.error(err);
                 $('#magnets-content').html(`
-                <div class="movie-error">加载失败: ${err.message}</div>
+                <div class="movie-error">加载失败: ${escapeHtmlText(safeErrorMessage(err))}</div>
             `);
             });
     }
@@ -402,8 +452,13 @@ export class Fc2Plugin extends BasePlugin {
     async openFc2Page(movieId: string | number, carNum: string, url: string): Promise<void> {
         const otherSite = this.getBean('OtherSitePlugin');
         const javdbUrl = await otherSite?.getJavDbUrl();
-        window.open(
-            `${javdbUrl}/users/collection_codes?movieId=${movieId}&carNum=${carNum}&url=${url}`
-        );
+        const baseUrl = safeHttpsUrl(javdbUrl || '') || 'https://javdb.com';
+        const target = new URL('/users/collection_codes', baseUrl);
+        target.search = new URLSearchParams({
+            movieId: String(movieId),
+            carNum: String(carNum),
+            url: String(url)
+        }).toString();
+        window.open(target.href, '_blank', 'noopener,noreferrer');
     }
 }

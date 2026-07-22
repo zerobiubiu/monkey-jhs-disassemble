@@ -140,6 +140,8 @@
 | `126-fix-javdb-list-server-local-divergence.md` | 🔧开发指导 | ✅已执行 | 修复 JavDB 清单服务端/本地关联分叉：success=true 后才写 IDB；simple_lists 完整分页权威复核；未知网络结果持久化恢复；同页队列 + Web Locks；四对象单 IDB 事务；双完整快照自动对账；删除清单服务端成功优先；version 1.19.7→1.19.8 |
 | `127-fix-autopage-click-loader-state.md` | 🔧开发指导 | ✅已执行 | 修复瀑布流「点按钮」模式只能加载一次：普通分页与 Beyond60 成功后退出 waterfall-loading 回到空闲态，保留请求期防重入守卫；version 1.19.8→1.19.9 |
 | `128-detail-page-list-panel-ui-and-sorting.md` | 🔧开发指导 | ✅已执行 | 详情页清单面板结构化改版：默认名称降序/可切升序、搜索与选中汇总、完整分页聚合、响应式和无障碍状态；强化 listId 映射及新建清单权威确认；version 1.19.9→1.20.0 |
+| `129-security-boundary-and-runtime-hardening.md` | 🔧开发指导 | ✅已执行 | 综合安全加固：HTML/属性转义、远程内容文本化、动态 URL 协议/主机校验、沙箱全局、精确站点 match/noframes、异步超时与设置面板回调修复 |
+| `130-storage-and-cross-site-sync-consistency.md` | 🔧开发指导 | ✅已执行 | 主库安全导入/条件回滚、MissAV 严格空导入确认、GM journal+revision、IDB 对账与数据/水位补偿回滚；version 1.20.0→1.20.1 |
 
 ## 类型图例
 
@@ -218,20 +220,26 @@
 126. `126-fix-javdb-list-server-local-divergence.md` — 修复清单服务端/本地关联分叉（JavDB 成功确认后写 IDB + 崩溃恢复 + Web Locks + 原子事务 + 双完整快照自动对账）
 127. `127-fix-autopage-click-loader-state.md` — 修复瀑布流「点按钮」模式首轮成功后残留 loading、后续按钮永久消失
 128. `128-detail-page-list-panel-ui-and-sorting.md` — 优化详情页清单面板 UI、名称排序/搜索、完整分页展示及可靠交互
+129. `129-security-boundary-and-runtime-hardening.md` — 收紧 HTML、URL、userscript 权限和异步等待边界
+130. `130-storage-and-cross-site-sync-consistency.md` — 加固备份导入、缓存一致性及 JavDB/MissAV 跨站状态协议
 
 ## 当前进度概览
 
-- core：16 个模块全部提取（`common-util`/`storage-manager`/`gm-http`/`toast`/
-  `loading`/`logger`/`hotkey`/`image-preview`/`viewer`/`webdav`/`gfriends`/
-  `async-task-queue`/`layer-wrapper`/`tooltip`/`webdav-crypto`/`auto-backup`）
-- plugins：`base-plugin` + `plugin-manager` + 34 个插件模块全部外置（含 doc/25 集成的 RatingDisplayPlugin + doc/29 集成的 Fc2Plugin + doc/34 集成的 KeyPageTurningPlugin + doc/35 集成的 ModMyListOpenWayPlugin + doc/36 集成的 PageSortPlugin + doc/38 集成的 StatusTagFilterPlugin + doc/39 集成的 ListWaterfallPlugin + doc/40 集成的 ListReadingStatusPlugin + doc/42 集成的 ModalListDisablerPlugin + doc/43 集成的 ListParserPlugin + doc/45 集成的 VideoListsTagPlugin + doc/46 集成的 CarListReaderPlugin/MissavStatusTagPlugin）
+- core：21 个模块全部提取；除通用工具、HTTP、UI 基础设施外，包含
+  `storage-manager`、`backup-extra-storage`、`auto-backup`、`feature-flags`、
+  `jsx-to-string`、WebDAV 与加密模块（doc/129-130 已补安全边界和导入回滚）
+- plugins：`base-plugin` + `plugin-manager` + 40 个已注册功能插件（JavDB 38 +
+  MissAV 2）；跨站车辆状态插件使用 GM journal/revision + MissAV 独立 IDB 对账
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`
-- styles：21 个 CSS（4 顶层 + 9 插件 `initCss` + 1 弹窗内 `<style>` 提取 + doc/13 新增 5 个：`image-preview`/`tooltip`/`back-to-top-button`/`setting-image-mode-vertical`/`setting-image-mode-horizontal` + doc/107 新增 1 个：`preload-status-badge`）全部提取
+- styles：32 个 CSS 全部外置管理（顶层、插件、弹窗、响应式和状态组件样式）
 - components：`temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter` + doc/13 新增 26 个（`ranking-containers`/`hit-show-tool-bar`/`hit-show-movie-item`/`hit-show-score`/`top250-tool-bar`/`top250-year-button`/`top250-pagination`/`top250-error-message`/`top250-nav-link`/`nav-search-box`/`nav-other-dropdown`/`actress-card`/`actress-pagination`/`new-video-dialog-title`/`other-site-box`/`other-site-btn`/`other-site-checkbox`/`site-result-tag`/`preview-video-quality-btn`/`preview-video-action-btn`/`preview-video-container`/`review-header`/`review-containers`/`review-loading`/`review-error`/`review-empty`/`review-load-more`/`review-end`/`review-link-content`/`review-item`/`setting-mount-box`/`back-to-top-button`/`keyword-label`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`history-source-cell`/`history-status-cell`/`want-watched-hint-span`/`want-watched-import-button`/`logger-log-entry`/`image-preview-img`/`image-preview-error`）+ doc/20 转换 `detail-menu-buttons`/`rating-bar-html`/`list-panel`/`subtitle-action-cell`/`subtitle-line`/`subtitle-table-dialog`/`subtitle-preview-dialog` 7 个为 TSX + doc/21 转换 `setting-dialog`/`help-dialog`/`backup-file-dialog`/`setting-mount-box`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`keyword-label`/`back-to-top-button` 9 个为 TSX + doc/22 转换 top250/nav/other-site/preview/want-watched 17 个为 TSX + doc/23 转换 logger-log-entry/image-preview-img/image-preview-error 3 个为 TSX + doc/107 新增 `preload-status-bar`/`preload-status-badge` 2 个（JSX 函数组件，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（`menu-button-box`/`rating-bar`/`status-tag`）已全部合并删除（doc/17 删 menu-button-box/status-tag，doc/20 删 rating-bar）
-- 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
+- 入口：`src/main.tsx`（完整启动序列，强类型）；legacy 已废弃删除；GM 高权限服务仅挂
+  userscript 沙箱，JavDB/MissAV 使用精确 match 且禁止 iframe 执行
 - 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，产物 1,809.45 kB（gzip 413.37 kB）；jsxToString 轻量渲染器（doc/16）已落地，`temporary-image-container` + 列表页 8（doc/17）+ 鉴定记录/演员 9（doc/18）+ 黑名单 9（doc/19）+ 详情页按钮 7（doc/20）+ 设置弹层 9（doc/21）+ top250/nav/other-site/preview/want-watched 17（doc/22）+ core 3（doc/23）共 63 个组件已转 TSX（返回 JSX，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（menu-button-box/rating-bar/status-tag）已全部合并删除；LoginDialog on* 内联 JS 丢失已由 top250-plugin success 回调 jQuery .on 补回（doc/23）；doc/25 集成 jhsRatingDisplay 评分显示独立脚本为 RatingDisplayPlugin（6 模块 + rating-display.css）；doc/26 单字母标识符语义化重命名（13 文件 + webdav-crypto 导出 Le/Me/Ne + window 全局属性 gt/lt/De/Me/Ne + 修正 main.tsx:13 isJavbusSite 导入笔误）；doc/27 清理全项目 javbus 死代码（删 javbus-masonry.css + 20 文件 javbus 分支/方法/variant + constants isJavbusSite/JAVBUS + vite description）；doc/28 清理其他死代码（删 tabulator-zh.ts + RatingNet + 123av 来源标签 + 去 4 处多余 export + 文案修正）；doc/29 迁移 Fc2Plugin 修复 FC2 点击失效（从未删减版迁移 + hasDown 常量 + 5 缺失依赖 ?. + 注册 24 插件）；doc/31 修复 Tabulator 模块缺失（libs.ts Tabulator→TabulatorFull，恢复 formatter 等列选项，迅雷字幕下载/预览按钮重新渲染）；doc/32 修复 CSS 布局问题（toast 超宽 lightningcss 删 fit-content 加 !important 覆盖 + 设置面板按钮贴连 jsxToString 丢空白加 {" "} 恢复间距）；doc/33 修复收藏状态下评分星星被禁用（want 分支 add→remove is-disabled，星星保持可点击）；doc/34 集成 keyPageTurning 键盘翻页独立脚本为 KeyPageTurningPlugin（60 行单文件 + handle 内详情页守卫 + isTyping/safeClick/lockLeft/lockRight 原样保留，注册 25 插件）；doc/35 集成 modMyListOpenWay 修改我的清单打开方式独立脚本为 ModMyListOpenWayPlugin（37 行单文件 + handle 内路径守卫 + target=_blank + href RESTful 改写 + at(-1) 改 [length-1] 等价，注册 26 插件）；doc/36 集成 pageSort 内容排序独立脚本为 PageSortPlugin（190 行单文件 + CSS + @require jquery 改复用全局 $ + IIFE 闭包转类字段 + jQuery 事件回调改箭头函数 + 4 排序方式 + MutationObserver 排序守卫，注册 27 插件）；doc/37 PageSort 与 jhs 排序系统协调优化（autoPage/isListPage 守卫 + 复用 data-original-index + 排序互斥 + sortGuard disconnect/reconnect，零侵入 jhs 排序系统）；doc/38 集成 statusTagFilter 状态标签筛选独立脚本为 StatusTagFilterPlugin（280 行单文件 + CSS + GM_addStyle 改走 initCss + IIFE 闭包转类字段 + 天然兼容 jhs + isListPage 守卫 + 6 级挂载目标优先级 + 10s 超时兜底，注册 28 插件）；doc/39 集成 listWaterfall 清单瀑布流独立脚本为 ListWaterfallPlugin（510 行单文件 + CSS + GM_getValue 补 grant + ALLOWED_PATHS 路径守卫 + GM_xmlhttpRequest 直接用全局 + ListWaterfall 类转 BasePlugin 子类 + 与 ModMyListOpenWay 不冲突，注册 29 插件）；doc/40 集成 listReadingStatus 清单阅读进度独立脚本为 ListReadingStatusPlugin（1391 行单文件 + CSS + 寄生 jhs IndexedDB + GM_addValueChangeListener 跨标签页同步 5 键 + 10 种排序 + data-lrs-hidden 协同安全 + 天然兼容 ListWaterfall/ModMyListOpenWay/StatusTagFilter，注册 30 插件）；doc/47 完成运行时调度与依赖清理优化（PluginManager 失败汇总、await CSS、StorageManager 缓存接口、去重 layer.css、移除 react-dom）
+- build：`tsc -b && vite build` 通过，产物 2,045.04 kB（gzip 472.06 kB）；
+  doc/129 完成 HTML/URL/权限边界加固，doc/130 完成安全导入、条件回滚和
+  JavDB/MissAV revision 一致性保护；历史组件化与插件集成记录见前述文档链
 
 - 外部库：7 库（jquery/tabulator-tables/toastify-js/localforage/viewerjs/blueimp-md5/layui-layer）已 ESM import 打包进产物（src/core/libs.ts 集中 import + 挂全局，版本与原 @require 一致），qrcodejs 移除（全项目未使用），parallel_GM_xmlhttpRequest 的 @require 已移除（GreasyFork URL 410 Gone，原生 GM_xmlhttpRequest 已足够，doc/41）；layer+jquery 耦合由 _jquery-global.ts 副作用模块保证 ESM 求值顺序（window.jQuery 先于 layer ready.run），layer.css 由 layui-layer 自身带入、不再显式重复 import；卸载 @types/jquery（污染全局 $）改 declare module，viewer.ts 返回 any，tabulator 命名导入，vite.config 加 lightningcss errorRecovery；react-dom/@types/react-dom 已移除（doc/47）；userscript `@require` 全部移除（doc/41）
 

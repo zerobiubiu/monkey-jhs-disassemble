@@ -11,11 +11,13 @@
  * 面板样式由原脚本顶部注入的 `<style>` 块提供，本模块不重复注入。
  */
 
-import { jsxToString } from './jsx-to-string';
+import type { ReactNode } from 'react';
+
 import { LoggerLogEntry } from '../components/logger-log-entry';
+import { jsxToString } from './jsx-to-string';
 
 export interface LogEntry {
-    /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
+    /** 纯文本消息（对象已 JSON 序列化；链接在渲染阶段转换） */
     message: string;
     /** 消息渲染类型：`"msg"` 普通文本 / `"json"` 预格式化 JSON */
     messageType: string;
@@ -52,6 +54,60 @@ const MAXIMIZE_KEY = 'jhs_clog_maximize';
 const EXPAND_KEY = 'jhs_clog_expand';
 /** localStorage 键：当前过滤器 */
 const FILTER_KEY = 'jhs_clog_filter';
+
+/** 日志中可识别的安全链接候选，最终仍会经过 URL 解析和协议白名单校验。 */
+const LOG_LINK_PATTERN =
+    /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]/gi;
+
+/** 将日志链接规范化，并只允许不会执行脚本的网络协议。 */
+function normalizeLogHref(match: string): string | null {
+    let candidate = match;
+    if (match.startsWith('//')) {
+        candidate = `https:${match}`;
+    } else if (match.toLowerCase().startsWith('www.')) {
+        candidate = `https://${match}`;
+    }
+
+    try {
+        const url = new URL(candidate);
+        if (!['http:', 'https:', 'ftp:'].includes(url.protocol)) {
+            return null;
+        }
+        return url.href;
+    } catch {
+        return null;
+    }
+}
+
+/** 将纯文本日志拆分为文本与受控链接节点。 */
+function linkifyLogMessage(message: string): ReactNode[] {
+    const nodes: ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (const match of message.matchAll(LOG_LINK_PATTERN)) {
+        const matchedText = match[0];
+        const matchIndex = match.index;
+        if (matchIndex > lastIndex) {
+            nodes.push(message.slice(lastIndex, matchIndex));
+        }
+        const href = normalizeLogHref(matchedText);
+        nodes.push(
+            href ? (
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                    {matchedText}
+                </a>
+            ) : (
+                matchedText
+            )
+        );
+        lastIndex = matchIndex + matchedText.length;
+    }
+
+    if (lastIndex < message.length) {
+        nodes.push(message.slice(lastIndex));
+    }
+    return nodes;
+}
 
 export class Logger {
     /** 当前生效的过滤器名 */
@@ -286,7 +342,7 @@ export class Logger {
                 parts.push(String(part));
             } else if (typeof part === 'object' && part !== null) {
                 try {
-                    parts.push('<br/>' + JSON.stringify(part, null, 2));
+                    parts.push('\n' + JSON.stringify(part, null, 2));
                     messageType = 'json';
                 } catch {
                     parts.push(String(part));
@@ -296,22 +352,7 @@ export class Logger {
                 parts.push(String(part));
             }
         });
-        let formattedMessage: string = parts.join('  ');
-        formattedMessage = formattedMessage.replace(
-            /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]/gi,
-            (match) => {
-                const isHttpOrFtp = match.startsWith('http') || match.startsWith('ftp');
-                const isProtocolRelative = match.startsWith('//');
-                const isWww = match.startsWith('www.');
-                let href = match;
-                if (isProtocolRelative) {
-                    href = `http:${match}`;
-                } else if (!isHttpOrFtp && isWww) {
-                    href = `http://${match}`;
-                }
-                return `<a href="${href}" target="_blank">${match}</a>`;
-            }
-        );
+        const formattedMessage = parts.join('  ');
         const entry: LogEntry = {
             message: formattedMessage,
             messageType,
@@ -441,7 +482,7 @@ export class Logger {
             <LoggerLogEntry
                 timeStr={timeStr}
                 messageType={entry.messageType}
-                message={entry.message}
+                message={linkifyLogMessage(entry.message)}
             />
         );
         return el;
