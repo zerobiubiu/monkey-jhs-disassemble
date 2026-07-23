@@ -89,6 +89,7 @@ import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
 import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
 import accessibilityCssRaw from './styles/accessibility.css?raw';
 import designTokensCssRaw from './styles/design-tokens.css?raw';
+import filterChipBaseCssRaw from './styles/filter-chip-base.css?raw';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -148,6 +149,7 @@ injectCss(aNormalButtonsCssRaw);
 injectCss(commonToolbarCss);
 injectCss(accessibilityCssRaw);
 injectCss(designTokensCssRaw);
+injectCss(filterChipBaseCssRaw);
 
 // ===== 运行时全局挂载（utils/gmHttp/storageManager/gt/lt/De） =====
 window.utils = new CommonUtil();

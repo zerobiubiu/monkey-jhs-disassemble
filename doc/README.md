@@ -291,6 +291,7 @@
 177. `177-wave4-atomization.md` — Wave 4 原子化拆分（Round 4）：18 个超 400 行文件拆分为原子模块（list-page-plugin 734→258 此前从未原子化 / vlt-create-list 687→11 / vlt-db 571→83 / common-util 522→283 等）+ 新建 7 子目录 + D1 去重 replaceTitleTextNodes + Ratchet 合规；version 1.28.17→1.28.18
 178. `178-wave4-reuse-merge.md` — Wave 4 复用合并（Round 4）：C3 simple_lists 分页获取去重（fetchSimpleListsPage 提取到 core/util/util-simple-lists.ts，dpb-list-panel-fetch + vlt-server-api 双调用方复用，~29 行去重）/ C1 back-to-top CSS 孪生合并（分组选择器，~52 行删除）/ C2 逻辑对 L/N-A 不合并记录 / 复用采纳扫描全 N/A/L；version 1.28.18→1.28.19
 179. `179-loop-convergence-verification.md` — 原子化→复用循环收敛验证：Round 4 执行（v1.28.18 原子化 + v1.28.19 复用）+ Round 5–6 工作级复查 + Round 7–8 导演级源码核查（全部 14 个 ≥290 行文件 + vlt-create-list-api 依赖方向解析）；双维 CONVERGED 不动点 + 重开条件；纯文档不递增版本
+180. `180-css-filter-chip-reuse.md` — CSS 筛选芯片共享基础提取（Round 4 CSS 复用）：status-tag-filter / video-lists-tag / preload-status-badge 三文件的筛选栏+芯片基础样式（~30 声明 × 3）提取为 filter-chip-base.css 分组选择器；各插件 CSS 仅保留 active 配色与 no-tag/pf-dot 变体；零偏差处理（inline-block 基础 + preload inline-flex 覆盖）；导演级 CSS 全文件审查发现 TS/TSX 锚点未覆盖的 CSS-to-CSS 跨文件重复；version 1.28.19→1.28.20
 
 ## 当前进度概览
 
@@ -316,7 +317,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/178（181 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/180（182 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

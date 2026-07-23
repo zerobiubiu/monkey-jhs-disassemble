@@ -91,48 +91,10 @@
 }
 
 /* ========== 筛选栏 ========== */
-.preload-filter-bar {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 0 12px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.preload-filter-label {
-    flex-shrink: 0;
-    font-size: 0.8em;
-    font-weight: 600;
-    color: #6c757d;
-    line-height: 1.8;
-    margin-right: 4px;
-}
-
-.preload-filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
 
 .preload-filter-chip {
     display: inline-flex;
     align-items: center;
-    padding: 0.25em 0.7em;
-    font-size: 0.75em;
-    font-weight: 600;
-    line-height: 1.5;
-    border-radius: 50rem;
-    cursor: pointer;
-    user-select: none;
-    border: 1.5px solid #dee2e6;
-    background: #fff;
-    color: #495057;
-    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.preload-filter-chip:hover {
-    border-color: #adb5bd;
-    background: #f8f9fa;
 }
 
 .preload-filter-chip .pf-dot {

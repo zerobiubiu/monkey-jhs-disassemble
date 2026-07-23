@@ -209,7 +209,8 @@ monkey-jhs-disassemble/
 CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 `PluginManager.processCss()` → `utils.insertStyle()` 注入。
 顶层 CSS 由 `main.tsx` 的 `injectCss()` 直接注入（最先注入
-`design-tokens.css` 设计令牌，再注入 `accessibility.css` 无障碍样式）。
+`design-tokens.css` 设计令牌，再注入 `accessibility.css` 无障碍样式，
+再注入 `filter-chip-base.css`（筛选芯片共享基础，分组选择器统一 stf/vlt/preload 三插件的筛选栏+芯片样式））。
 所有 CSS 已清理 `transition: all` 反模式（doc/147），使用具体过渡属性。
 
 ### 3.7 全局类型 `src/types/globals.d.ts`

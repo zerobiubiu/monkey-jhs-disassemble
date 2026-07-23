@@ -9,6 +9,17 @@
 
 ---
 
+## v1.28.20
+
+**发布日期**：2026-07-24
+
+### 重构
+
+- **CSS 筛选芯片共享基础提取**（doc/180）：status-tag-filter / video-lists-tag / preload-status-badge 三文件的筛选栏+芯片基础样式（~30 声明 × 3）提取为 filter-chip-base.css 分组选择器；各插件 CSS 仅保留 active 配色与变体；零偏差处理（inline-block 基础 + preload inline-flex 覆盖）。
+- **覆盖缺口说明**：先前 TS/TSX 锚点的复用扫描未覆盖 CSS-to-CSS 跨文件重复；本次由导演级 CSS 全文件审查发现。
+
+---
+
 ## v1.28.19
 
 **发布日期**：2026-07-24
