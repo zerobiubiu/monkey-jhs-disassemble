@@ -1,7 +1,7 @@
 {
     "name": "monkey-jhs-disassemble",
     "private": true,
-    "version": "1.28.18",
+    "version": "1.28.19",
     "license": "MIT",
     "type": "module",
     "description": "JavDB Power Tools — JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、截图墙、磁链聚合、以图识图等功能插件",

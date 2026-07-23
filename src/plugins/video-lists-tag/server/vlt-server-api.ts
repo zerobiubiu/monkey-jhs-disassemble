@@ -6,8 +6,9 @@
  * - fetchAuthoritativeCheckboxState：GET /users/simple_lists 权威状态查询
  * - 恢复日志（journal）读写：createPendingJournal / removePendingJournal / readPendingJournals
  */
+import { fetchSimpleListsPage } from '../../../core/util/util-simple-lists';
+
 import {
-    AUTHORITATIVE_LIST_TIMEOUT_MS,
     extractListNameFromInput,
     getCheckboxCount,
     getCsrfToken,
@@ -144,29 +145,9 @@ export async function fetchAuthoritativeCheckboxState(
         for (let page = 0; url && page < 50; page++) {
             if (visited.has(url.href)) return null;
             visited.add(url.href);
-            const payload = await (async () => {
-                const controller = new AbortController();
-                const timeout = window.setTimeout(
-                    () => controller.abort(),
-                    AUTHORITATIVE_LIST_TIMEOUT_MS
-                );
-                try {
-                    const response = await fetch(url.href, {
-                        credentials: 'same-origin',
-                        cache: 'no-store',
-                        headers: { Accept: 'application/json' },
-                        signal: controller.signal
-                    });
-                    if (!response.ok) return null;
-                    return (await response.json()) as { lists?: unknown; page?: unknown };
-                } finally {
-                    window.clearTimeout(timeout);
-                }
-            })();
-            if (!payload) return null;
-            if (typeof payload.lists !== 'string') return null;
+            const result = await fetchSimpleListsPage(url.href, videoId);
 
-            const documentNode = new DOMParser().parseFromString(payload.lists, 'text/html');
+            const documentNode = new DOMParser().parseFromString(result.entries, 'text/html');
             const input = (Array.from(
                 documentNode.querySelectorAll('input[type="checkbox"][data-list-id]')
             ) as HTMLInputElement[]).find((item) => item.dataset.listId === listId);
@@ -178,19 +159,8 @@ export async function fetchAuthoritativeCheckboxState(
                 };
             }
 
-            const pageHtml = typeof payload.page === 'string' ? payload.page : '';
-            const pageDocument = new DOMParser().parseFromString(pageHtml, 'text/html');
-            const nextHref = pageDocument.querySelector('a[rel="next"]')?.getAttribute('href');
-            if (!nextHref) return { checked: false, count: null, name: null };
-            const nextUrl: URL = new URL(nextHref, url.href);
-            if (
-                nextUrl.origin !== window.location.origin ||
-                nextUrl.pathname !== '/users/simple_lists'
-            ) {
-                return null;
-            }
-            nextUrl.searchParams.set('vid', videoId);
-            url = nextUrl;
+            if (!result.nextUrl) return { checked: false, count: null, name: null };
+            url = new URL(result.nextUrl);
         }
         return null;
     } catch (error) {

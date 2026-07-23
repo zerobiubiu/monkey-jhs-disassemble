@@ -9,7 +9,6 @@ export const LOG_PREFIX = '[JavDB]';
 
 /** 服务端写入已发出、但尚未完成本地镜像的持久化日志前缀。 */
 export const PENDING_SYNC_PREFIX = 'jdb:vlt-pending-server-sync:';
-export const AUTHORITATIVE_LIST_TIMEOUT_MS = 10000;
 
 /** 触发自动收藏的清单名称关键词（清单名称包含此词时，添加视频自动收藏）。 */
 export const AUTO_FAVORITE_KEYWORD = '等待更新';

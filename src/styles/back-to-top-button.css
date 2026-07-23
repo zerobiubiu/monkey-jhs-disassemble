@@ -1,4 +1,5 @@
-#jhs-back-to-top {
+#jhs-back-to-top,
+#jdb-wf-back-to-top {
     position: fixed;
     bottom: 40px;
     right: 40px;
@@ -29,7 +30,8 @@
     user-select: none;
 }
 
-#jhs-back-to-top:hover {
+#jhs-back-to-top:hover,
+#jdb-wf-back-to-top:hover {
     background-color: #ff8400;
     color: #fff;
     transform: translateY(0) scale(1);
@@ -37,13 +39,15 @@
     border-color: #ff8400;
 }
 
-#jhs-back-to-top.show {
+#jhs-back-to-top.show,
+#jdb-wf-back-to-top.show {
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);
 }
 
-#jhs-back-to-top svg {
+#jhs-back-to-top svg,
+#jdb-wf-back-to-top svg {
     width: 22px;
     height: 22px;
     fill: currentcolor;

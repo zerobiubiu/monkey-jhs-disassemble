@@ -9,6 +9,19 @@
 
 ---
 
+## v1.28.19
+
+**发布日期**：2026-07-24
+
+### 重构
+
+- **C3 simple_lists 分页获取去重**（doc/178）：提取 fetchSimpleListsPage 到 core/util/util-simple-lists.ts；dpb-list-panel-fetch 保留 collect-all+throw，vlt-server-api 保留 search-one+catch→null；消除 ~29 行跨插件重复。
+- **C1 back-to-top CSS 孪生去重**（doc/178）：4 条规则块逐字节相同，合并为分组选择器 #jhs-back-to-top, #jdb-wf-back-to-top；删除 list-waterfall-plugin.css 冗余块（~52 行），保留 @keyframes jdb-wf-spin。
+- **C2 back-to-top 逻辑对**（doc/178）：分级 L/N-A，不合并（jQuery tween vs native smooth 共存为设计意图），记录备查。
+- **复用采纳扫描**：broadcast 总线 / failWithToast / ColoredTextCell 全 N/A/L。
+
+---
+
 ## v1.28.18
 
 **发布日期**：2026-07-24
