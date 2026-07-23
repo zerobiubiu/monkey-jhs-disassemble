@@ -30,7 +30,7 @@ export function q(
     const layerIdx = layer.confirm(
         content,
         {
-            offset: [top, left],
+            offset: [String(top), String(left)],
             title: '提示',
             btn: ['确定', '取消'],
             shade: 0,
@@ -54,7 +54,7 @@ export function q(
  * 默认弹层尺寸（原 getDefaultArea）。
  * @returns ["85%","90%"]
  */
-export function getDefaultArea(): string[] {
+export function getDefaultArea(): [string, string] {
     return ['85%', '90%'];
 }
 
@@ -63,7 +63,7 @@ export function getDefaultArea(): string[] {
  * @param area 自定义 [宽,高]，仅在宽屏(>=1200)生效
  * @returns 形如 ["85%","90%"] 的尺寸数组
  */
-export function getResponsiveArea(area?: string[]): string[] {
+export function getResponsiveArea(area?: [string, string]): [string, string] {
     const width = window.innerWidth;
     if (width >= 1200) {
         return area || getDefaultArea();
@@ -79,7 +79,7 @@ export function getResponsiveArea(area?: string[]): string[] {
  * 依据设置 needClosePage 决定是否执行：恢复父页滚动、移除遮罩/弹层 DOM、window.close。
  */
 export function closePage(): void {
-    storageManager.getSetting('needClosePage', 'yes').then((setting: any) => {
+    storageManager.getSetting('needClosePage', 'yes').then((setting: unknown) => {
         if (setting !== 'yes') {
             return;
         }

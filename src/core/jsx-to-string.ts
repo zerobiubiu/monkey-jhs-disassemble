@@ -96,6 +96,38 @@ function escapeText(s: string): string {
 }
 
 /**
+ * 转义属性值的特殊字符：`&` `<` `>` `"`。
+ * 属性值必须转义 `"`，否则攻击者可通过 `"` 闭合属性注入新属性。
+ * @param s 原始属性值
+ * @returns 转义后属性值
+ */
+function escapeAttr(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/**
+ * 校验 URL 协议安全性（doc/151 批次 1 安全加固）。
+ * 允许 http/https/mailto/tel/相对路径，阻止 javascript:/data:/vbscript: 等危险协议。
+ * @param url 原始 URL
+ * @returns 安全的 URL（危险协议返回 '#'）
+ */
+function sanitizeUrl(url: string): string {
+    const trimmed = url.trim().toLowerCase();
+    if (
+        trimmed.startsWith('javascript:') ||
+        trimmed.startsWith('data:') ||
+        trimmed.startsWith('vbscript:')
+    ) {
+        return '#';
+    }
+    return url;
+}
+
+/**
  * camelCase → kebab-case 转换。
  * 如 `backgroundColor` → `background-color`、`marginTop` → `margin-top`。
  * @param s camelCase 样式键
@@ -149,15 +181,19 @@ function renderAttrs(props: PropsRecord): string {
         if (key === 'dangerouslySetInnerHTML') continue;
         if (key.startsWith('on')) continue;
         if (key === 'className') {
-            if (value !== '') parts.push(`class="${String(value)}"`);
+            if (value !== '') parts.push(`class="${escapeAttr(String(value))}"`);
+            continue;
+        }
+        if (key === 'htmlFor') {
+            parts.push(`for="${escapeAttr(String(value))}"`);
             continue;
         }
         if (key === 'style') {
             if (typeof value === 'string') {
-                parts.push(`style="${value}"`);
+                parts.push(`style="${escapeAttr(value)}"`);
             } else if (typeof value === 'object' && value !== null) {
                 const css = styleToCss(value as PropsRecord);
-                if (css) parts.push(`style="${css}"`);
+                if (css) parts.push(`style="${escapeAttr(css)}"`);
             }
             continue;
         }
@@ -165,7 +201,8 @@ function renderAttrs(props: PropsRecord): string {
             parts.push(key);
             continue;
         }
-        parts.push(`${key}="${String(value)}"`);
+        const attrValue = (key === 'href' || key === 'src') ? sanitizeUrl(String(value)) : String(value);
+        parts.push(`${key}="${escapeAttr(attrValue)}"`);
     }
     return parts.length ? ' ' + parts.join(' ') : '';
 }

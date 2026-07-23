@@ -26,16 +26,9 @@
  * - 控制流（分支、switch、try/catch/finally、fire-and-forget .then()、空 async 回调）
  *   与原脚本一致；末尾 case 无 break 合规（无下一分支可穿透）。
  */
-import { BasePlugin } from './base-plugin';
-import { EditRecordDialog } from '../components/edit-record-dialog';
-import { HistoryActionButtons } from '../components/history-action-buttons';
-import { HistoryDialog } from '../components/history-dialog';
-import { HistoryNavButton } from '../components/history-nav-button';
-import { HistorySourceCell } from '../components/history-source-cell';
-import { HistoryStatusCell } from '../components/history-status-cell';
-import { jsxToString } from '../core/jsx-to-string';
-import { isJavdbSite } from '../constants/site';
 import type { CSSProperties } from 'react';
+
+import { isJavdbSite } from '../constants/site';
 import {
     FILTER_ACTION,
     FAVORITE_ACTION,
@@ -49,10 +42,25 @@ import {
     WATCHED_TEXT,
     WATCHED_COLOR
 } from '../constants/status';
+
+import { jsxToString } from '../core/jsx-to-string';
+import { CarRecord } from '../core/storage-manager';
+
+import { BasePlugin } from './base-plugin';
+
+import { EditRecordDialog } from '../components/dialogs/edit-record-dialog';
+import { HistoryActionButtons } from '../components/history/history-action-buttons';
+import { HistoryDialog } from '../components/history/history-dialog';
+import { HistoryNavButton } from '../components/history/history-nav-button';
+import { HistorySourceCell } from '../components/history/history-source-cell';
+import { HistoryStatusCell } from '../components/history/history-status-cell';
+import { TableLinkParam } from '../components/misc/table-link-param';
+
 import historyCssRaw from '../styles/history-plugin.css?raw';
 
 export class HistoryPlugin extends BasePlugin {
     /** Tabulator 表格实例（弹窗关闭时销毁置空） */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
     tableObj: any = null;
     /** 全部记录数（getDataList 统计后用于下拉选项文案） */
     allCount: number = 0;
@@ -147,18 +155,18 @@ export class HistoryPlugin extends BasePlugin {
                         await this.reloadTable();
                         $('#allSelectBox').hide();
                     })
-                    .on('focusout keydown', '#searchCarNum', async (event: any) => {
-                        if (event.type === 'focusout' || event.key === 'Enter') {
-                            if (event.key === 'Enter') {
+                    .on('focusout keydown', '#searchCarNum', async (event: Event) => {
+                        if (event.type === 'focusout' || (event as KeyboardEvent).key === 'Enter') {
+                            if ((event as KeyboardEvent).key === 'Enter') {
                                 event.preventDefault();
                             }
-                            if (event.type === 'keydown' && event.key !== 'Enter') {
+                            if (event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter') {
                                 return;
                             }
                             await this.reloadTable();
                         }
                     })
-                    .on('click', '.table-link-param', async (event: any) => {
+                    .on('click', '.table-link-param', async (event: Event) => {
                         const link = $(event.currentTarget);
                         $('#searchCarNum').val(link.text());
                         await this.reloadTable();
@@ -207,25 +215,25 @@ export class HistoryPlugin extends BasePlugin {
         $(document).on(
             'click',
             '.history-deleteBtn, .history-filterBtn, .history-favoriteBtn, .history-hasWatchBtn, .history-detailBtn',
-            (event: any) => {
+            (event: Event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 const btn = $(event.currentTarget);
                 const actionBtns = btn.closest('.action-btns');
                 const carNum = actionBtns.attr('data-car-num');
                 const href = actionBtns.attr('data-href');
-                const applyAction = async (actionType: any) => {
+                const applyAction = async (actionType: string) => {
                     await storageManager.saveCar({
-                        carNum: carNum,
+                        carNum: carNum ?? '',
                         url: href,
-                        names: null,
+                        names: undefined,
                         actionType: actionType
                     });
                     refresh();
                     await this.reloadTable();
                 };
                 if (btn.hasClass('history-filterBtn')) {
-                    utils.q(event, `是否屏蔽${carNum}?`, () => applyAction(FILTER_ACTION));
+                    utils.q(event as MouseEvent, `是否屏蔽${carNum}?`, () => applyAction(FILTER_ACTION));
                 } else if (btn.hasClass('history-favoriteBtn')) {
                     applyAction(FAVORITE_ACTION).then();
                 } else if (btn.hasClass('history-hasWatchBtn')) {
@@ -243,7 +251,7 @@ export class HistoryPlugin extends BasePlugin {
         $(document).on(
             'click',
             '.multiple-history-deleteBtn, .multiple-history-filterBtn, .multiple-history-favoriteBtn, .multiple-history-hasWatchBtn',
-            (event: any) => {
+            (event: Event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 const btn = $(event.currentTarget);
@@ -264,22 +272,22 @@ export class HistoryPlugin extends BasePlugin {
                     actionType = 'delete';
                 }
                 utils.q(
-                    event,
+                    event as MouseEvent,
                     `当前已勾选${selectedRows.length}条数据, 是否全标记为 ${actionLabel}?`,
                     async () => {
                         const loader = loading();
                         try {
                             if (actionType === 'delete') {
-                                const carNums = selectedRows.map((row: any) => row.carNum);
+                                const carNums = selectedRows.map((row: CarRecord) => row.carNum);
                                 const removed = await storageManager.batchRemoveCars(carNums);
-                                if (removed > 0) {
+                                if (Number(removed) > 0) {
                                     show.ok(`已成功删除 ${removed} 个番号`);
                                 } else if (removed === false) {
                                     show.error('提供的番号中没有一个存在于列表中。');
                                 }
                             } else {
                                 const updates = JSON.parse(JSON.stringify(selectedRows));
-                                updates.forEach((item: any) => {
+                                updates.forEach((item: CarRecord) => {
                                     item.actionType = actionType;
                                 });
                                 await storageManager.saveCarList(updates);
@@ -287,8 +295,9 @@ export class HistoryPlugin extends BasePlugin {
                             }
                             this.tableObj.deselectRow();
                             this.reloadTable().then();
-                        } catch (err: any) {
-                            console.error(err);
+                        } catch (err: unknown) {
+                            clog.error('批量操作失败:', err);
+                            show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
                         } finally {
                             loader.close();
                         }
@@ -309,14 +318,14 @@ export class HistoryPlugin extends BasePlugin {
     async getDataList(
         page: number,
         size: number,
-        sort: any
-    ): Promise<{ maxPage: number; dataList: any[]; totalCount: number }> {
+        sort: Array<{ field: string; dir: string }>
+    ): Promise<{ maxPage: number; dataList: CarRecord[]; totalCount: number }> {
         const carList = await storageManager.getCarList();
         this.allCount = carList.length;
         this.filterCount = 0;
         this.favoriteCount = 0;
         this.hasWatchCount = 0;
-        carList.forEach((car: any) => {
+        carList.forEach((car: CarRecord) => {
             switch (car.status) {
                 case FILTER_ACTION:
                     this.filterCount++;
@@ -333,18 +342,18 @@ export class HistoryPlugin extends BasePlugin {
         $('#dataType option[value="favorite"]').text(`${FAVORITED_TEXT} (${this.favoriteCount})`);
         $('#dataType option[value="hasWatch"]').text(`${WATCHED_TEXT} (${this.hasWatchCount})`);
         const selectedType = $('#dataType').val();
-        let filtered: any[] =
+        let filtered: CarRecord[] =
             selectedType === 'all'
                 ? carList
-                : carList.filter((car: any) => car.status === selectedType);
-        const searchText = $('#searchCarNum').val().trim();
+                : carList.filter((car: CarRecord) => car.status === selectedType);
+        const searchText = String($('#searchCarNum').val() ?? '').trim();
         if (searchText) {
             const normalizedSearch = searchText
                 .toLowerCase()
                 .replace('-c', '')
                 .replace('-uc', '')
                 .replace('-4k', '');
-            filtered = filtered.filter((row: any) => {
+            filtered = filtered.filter((row: CarRecord) => {
                 const matchCar = row.carNum.toLowerCase().includes(normalizedSearch);
                 const matchName = (row.names ? row.names : '')
                     .toLowerCase()
@@ -356,7 +365,7 @@ export class HistoryPlugin extends BasePlugin {
             const sortConfig = sort[0];
             const field = sortConfig.field;
             const dir = sortConfig.dir;
-            filtered.sort((rowA: any, rowB: any) => {
+            filtered.sort((rowA: CarRecord, rowB: CarRecord) => {
                 const valA = rowA[field];
                 const valB = rowB[field];
                 const isEmptyA = valA == null || valA === '';
@@ -367,13 +376,13 @@ export class HistoryPlugin extends BasePlugin {
                     return -1;
                 } else if (isEmptyA && isEmptyB) {
                     return 0;
-                } else if (valA < valB) {
+                } else if ((valA as string) < (valB as string)) {
                     if (dir === 'asc') {
                         return -1;
                     } else {
                         return 1;
                     }
-                } else if (valA > valB) {
+                } else if ((valA as string) > (valB as string)) {
                     if (dir === 'asc') {
                         return 1;
                     } else {
@@ -410,7 +419,7 @@ export class HistoryPlugin extends BasePlugin {
             sortMode: 'remote',
             ajaxURL: 'queryRealm',
             dataLoader: false,
-            ajaxRequestFunc: async (_url: any, _config: any, params: any) => {
+            ajaxRequestFunc: async (_url: unknown, _config: unknown, params: { page: number; size: number; sort: Array<{ field: string; dir: string }> }) => {
                 const page = params.page;
                 const size = params.size;
                 const sort = params.sort;
@@ -424,11 +433,11 @@ export class HistoryPlugin extends BasePlugin {
             paginationSize: 50,
             paginationSizeSelector: [50, 100, 1000, 99999],
             paginationCounter: (
-                _pageNumber: any,
-                _pageSize: any,
-                _totalPages: any,
-                recordCount: any,
-                _data: any
+                _pageNumber: unknown,
+                _pageSize: unknown,
+                _totalPages: unknown,
+                recordCount: number,
+                _data: unknown
             ) => `共 ${recordCount} 条记录`,
             responsiveLayout: 'collapse',
             responsiveLayoutCollapse: true,
@@ -449,7 +458,8 @@ export class HistoryPlugin extends BasePlugin {
                     titleFormatterParams: {
                         rowRange: 'active'
                     },
-                    cellClick: (_event: any, cell: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    cellClick: (_event: unknown, cell: any) => {
                         cell.getRow().toggleSelect();
                     }
                 },
@@ -459,13 +469,14 @@ export class HistoryPlugin extends BasePlugin {
                     width: 120,
                     sorter: 'string',
                     responsive: 0,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const carNum = cell.getData().carNum;
                         const dashIndex = carNum.indexOf('-');
                         if (dashIndex === -1) {
                             return carNum;
                         }
-                        return `<a class="table-link-param">${carNum.substring(0, dashIndex + 1)}</a>${carNum.substring(dashIndex + 1)}`;
+                        return jsxToString(<TableLinkParam text={carNum.substring(0, dashIndex + 1)} />) + carNum.substring(dashIndex + 1);
                     }
                 },
                 {
@@ -475,11 +486,12 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: 'string',
                     responsive: 5,
                     headerSort: true,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) =>
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) =>
                         (cell.getData().names || '')
                             .split(' ')
-                            .filter((part: any) => part.trim() !== '')
-                            .map((part: any) => `<a class="table-link-param">${part}</a>`)
+                            .filter((part: string) => part.trim() !== '')
+                            .map((part: string) => jsxToString(<TableLinkParam text={part} />))
                             .join(' ')
                 },
                 {
@@ -510,8 +522,9 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: 'string',
                     responsive: 5,
                     hozAlign: 'left',
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
-                        let url = cell.getData().url;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
+                        const url = cell.getData().url;
                         if (url) {
                             if (url.includes('javdb')) {
                                 return jsxToString(
@@ -534,7 +547,8 @@ export class HistoryPlugin extends BasePlugin {
                     sorter: 'string',
                     responsive: 1,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const status = cell.getData().status;
                         let color = '';
                         let text = '';
@@ -571,7 +585,8 @@ export class HistoryPlugin extends BasePlugin {
                     cssClass: 'action-cell-dropdown',
                     responsive: 0,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, onRendered: (callback: () => void) => void) => {
                         const data = cell.getData();
                         onRendered(() => {
                             const editBtn = cell.getElement().querySelector('.history-editBtn');
@@ -622,7 +637,8 @@ export class HistoryPlugin extends BasePlugin {
         });
         this.tableObj.on(
             'rowSelectionChanged',
-            (rows: any, _deselectedRows: any, _selected: any, _deselected: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+            (rows: any, _deselectedRows: unknown, _selected: unknown, _deselected: unknown) => {
                 const selectBox = $('#allSelectBox');
                 const filterBox = $('#filterBox');
                 if (rows && rows.length > 0) {
@@ -634,7 +650,8 @@ export class HistoryPlugin extends BasePlugin {
                 }
             }
         );
-        this.tableObj.on('rowDblClick', (_event: any, row: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+        this.tableObj.on('rowDblClick', (_event: unknown, row: any) => {
             row.toggleSelect();
         });
         this.tableObj.on('tableBuilt', async () => {});
@@ -646,8 +663,8 @@ export class HistoryPlugin extends BasePlugin {
      * @param event 触发事件（用于 utils.q 定位确认框）
      * @param carNum 待移除番号
      */
-    handleDelete(event: any, carNum: any): void {
-        utils.q(event, `是否移除${carNum}?`, async () => {
+    handleDelete(event: Event, carNum: string): void {
+        utils.q(event as MouseEvent, `是否移除${carNum}?`, async () => {
             await storageManager.removeCar(carNum);
             this.getBean('ListPagePlugin').showCarNumBox(carNum);
             this.reloadTable().then();
@@ -660,17 +677,17 @@ export class HistoryPlugin extends BasePlugin {
      * @param event 触发事件（透传给 utils.openPage）
      * @param carInfo { carNum, url } 影片信息
      */
-    async handleClickDetail(event: any, carInfo: any): Promise<void> {
+    async handleClickDetail(event: Event, carInfo: CarRecord): Promise<void> {
         if (isJavdbSite) {
             if (carInfo.carNum.includes('FC2-')) {
-                const movieId = this.parseMovieId(carInfo.url);
-                this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carInfo.carNum, carInfo.url);
+                const movieId = this.parseMovieId(carInfo.url!);
+                this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carInfo.carNum, carInfo.url!);
             } else {
                 if (!carInfo.url) {
                     window.open('/search?q=' + carInfo.carNum, '_blank');
                     return;
                 }
-                utils.openPage(carInfo.url, carInfo.carNum, false, event);
+                utils.openPage(carInfo.url, carInfo.carNum, false, event as MouseEvent);
             }
         }
     }
@@ -680,7 +697,7 @@ export class HistoryPlugin extends BasePlugin {
      *
      * @param record 待编辑记录（含 carNum/names/url/status/remark 等）
      */
-    async editRecord(record: any): Promise<void> {
+    async editRecord(record: CarRecord): Promise<void> {
         const carNum = record.carNum;
         const names = record.names || '';
         const url = record.url || '';
@@ -723,7 +740,7 @@ export class HistoryPlugin extends BasePlugin {
                 <EditRecordDialog
                     carNum={carNum}
                     names={names}
-                    status={status}
+                    status={status!}
                     url={url}
                     remark={remark}
                     inputStyle={inputStyle}
@@ -733,22 +750,22 @@ export class HistoryPlugin extends BasePlugin {
             ),
             btn: ['保存', '取消'],
             success: () => {
-                const autoResize = (el: any) => {
+                const autoResize = (el: JQuery) => {
                     el.css('height', 'auto');
                     el.css('height', el[0].scrollHeight + 15 + 'px');
                 };
                 const namesInput = $('#edit-names');
-                namesInput.on('input', (event: any) => autoResize($(event.currentTarget)));
+                namesInput.on('input', (event: Event) => autoResize($(event.currentTarget)));
                 autoResize(namesInput);
                 const remarkInput = $('#edit-remark');
-                remarkInput.on('input', (event: any) => autoResize($(event.currentTarget)));
+                remarkInput.on('input', (event: Event) => autoResize($(event.currentTarget)));
                 autoResize(remarkInput);
             },
-            yes: async (index: any) => {
-                const names = $('#edit-names').val().trim();
+            yes: async (index: number) => {
+                const names = String($('#edit-names').val() ?? '').trim();
                 const status = $('#edit-status').val();
-                const url = $('#edit-url').val().trim();
-                const remark = $('#edit-remark').val().trim();
+                const url = String($('#edit-url').val() ?? '').trim();
+                const remark = String($('#edit-remark').val() ?? '').trim();
                 const updated = {
                     ...record,
                     names: names,

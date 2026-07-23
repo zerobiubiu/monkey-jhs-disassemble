@@ -50,7 +50,7 @@ export function broadcastWantWatchedSync(carNum: string, status: string, op: 'ad
         try {
             document.dispatchEvent(new CustomEvent(WANT_WATCHED_SYNC_KEY, { detail: payload }));
         } catch {}
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error(`${LOG_PREFIX} 自动收藏广播失败`, err);
     }
 }

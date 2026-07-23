@@ -38,7 +38,7 @@ function resetOverflowByShadeCount(delay: number = 10): void {
 /** 从 ESC 栈移除指定 layer 索引（close 任意路径同步）。 */
 function removeFromEscStack(index: unknown): void {
     try {
-        const stack = (window as any).utils?.layerIndexStack as number[] | undefined;
+        const stack = window.utils?.layerIndexStack as number[] | undefined;
         if (!stack || index == null) return;
         const num = Number(index);
         for (let i = stack.length - 1; i >= 0; i--) {
@@ -66,7 +66,7 @@ export function setupLayerWrapper(): void {
     injectCss(layerFixCss);
 
     const originalClose = layer.close;
-    layer.close = function (index: any) {
+    layer.close = function (index: number) {
         removeFromEscStack(index);
         const result = originalClose.call(this, index);
         resetOverflowByShadeCount();
@@ -75,9 +75,9 @@ export function setupLayerWrapper(): void {
 
     const originalCloseAll = layer.closeAll;
     if (typeof originalCloseAll === 'function') {
-        layer.closeAll = function (type?: any) {
+        layer.closeAll = function (type?: string) {
             try {
-                const stack = (window as any).utils?.layerIndexStack as number[] | undefined;
+                const stack = window.utils?.layerIndexStack as number[] | undefined;
                 if (stack) stack.length = 0;
             } catch {
                 /* ignore */
@@ -89,6 +89,7 @@ export function setupLayerWrapper(): void {
     }
 
     const originalOpen = layer.open;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- layui-layer options object, layer is untyped global
     layer.open = function (options: any) {
         const opts = options || {};
         if (opts.closeBtn === undefined || opts.closeBtn === null) {
@@ -98,7 +99,7 @@ export function setupLayerWrapper(): void {
             opts.shadeClose = true;
         }
         const originalSuccess = opts.success;
-        opts.success = function (el: any, index: any) {
+        opts.success = function (el: HTMLElement, index: number) {
             if (typeof originalSuccess == 'function') {
                 originalSuccess.call(this, el, index);
             }

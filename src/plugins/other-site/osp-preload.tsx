@@ -60,7 +60,7 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
 
     // 统计缓存情况
     const storageKey = 'jhs_other_site';
-    let cache: any = {};
+    let cache: Record<string, unknown> = {};
     try {
         const raw = localStorage.getItem(storageKey);
         if (raw) cache = JSON.parse(raw);
@@ -69,7 +69,7 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
     let skippedHiddenCount = 0;
     let preloadCount = 0;
 
-    $items.each((_index: number, itemEl: any) => {
+    $items.each((_index: number, itemEl: HTMLElement) => {
         const $item = $(itemEl);
         // 跳过被 jhs 屏蔽的卡片
         if ($item.attr('data-hide') === YES) {
@@ -138,6 +138,7 @@ async function preloadSite(
     plugin: OtherSitePlugin,
     carNum: string,
     siteConfig: SiteConfig,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     $item: any
 ): Promise<void> {
     const dedupeKey = `${carNum}_${siteConfig.id}`;
@@ -170,15 +171,16 @@ async function doPreloadSite(
     plugin: OtherSitePlugin,
     carNum: string,
     siteConfig: SiteConfig,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     $item: any
 ): Promise<void> {
     try {
         const baseUrl = await siteConfig.getBaseUrl();
         const searchUrl = siteConfig.searchPath(baseUrl, carNum);
         const htmlContent = await gmHttp.get(searchUrl, undefined, siteConfig.headers, true);
-        const $dom = utils.htmlTo$dom(htmlContent);
+        const $dom = utils.htmlTo$dom(String(htmlContent));
         const detailHrefs: string[] = [];
-        $dom.find(siteConfig.itemSelector).each((_index: number, element: any) => {
+        $dom.find(siteConfig.itemSelector).each((_index: number, element: HTMLElement) => {
             const itemEl = $(element);
             if (
                 !siteConfig
@@ -207,7 +209,7 @@ async function doPreloadSite(
         if (resultData) {
             updatePreloadStatus(plugin, $item, siteConfig.id, 'success');
             const storageKey = 'jhs_other_site';
-            let cache: any = {};
+            let cache: Record<string, unknown> = {};
             try {
                 const raw = localStorage.getItem(storageKey);
                 if (raw) cache = JSON.parse(raw);
@@ -225,7 +227,7 @@ async function doPreloadSite(
                 `${PRELOAD_LOG} ✗ ${carNum} ${siteConfig.id.replace('Btn', '')} 未命中`
             );
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         const siteName = siteConfig.id.replace('Btn', '');
         const errorMsg = String(error);
         // Cloudflare 拦截（403 + "Just a moment..."）：标记该站点，跳过本轮剩余任务
@@ -265,6 +267,7 @@ async function doPreloadSite(
  */
 function updatePreloadStatus(
     plugin: OtherSitePlugin,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     $item: any,
     siteId: string,
     status: PreloadStatus
@@ -321,12 +324,12 @@ export function syncAllBadges(plugin: OtherSitePlugin): void {
     if (!listPagePlugin) return;
     const sites = getPreloadableSites(plugin);
     if (sites.length === 0) return;
-    let cache: any = {};
+    let cache: Record<string, unknown> = {};
     try {
         const raw = localStorage.getItem('jhs_other_site');
         if (raw) cache = JSON.parse(raw);
     } catch { /* 缓存损坏，回退空对象 */ }
-    $('.movie-list .item').each((_index: number, el: any) => {
+    $('.movie-list .item').each((_index: number, el: HTMLElement) => {
         const $item = $(el);
         if ($item.attr('data-hide') === YES) return;
         let carNum: string;

@@ -71,7 +71,9 @@ interface SortConfig {
  * @param $itemB jQuery 包装的 item B
  * @returns 负/零/正
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, used with .find()/.text()
 function compareItems($itemA: any, $itemB: any): number {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, used with .find()/.length/.text()
     const getStrongText = ($item: any): string => {
         const $strong = $item.find('a > div.video-title > strong');
         return $strong.length ? $strong.text().trim() : '';
@@ -88,6 +90,7 @@ function compareItems($itemA: any, $itemB: any): number {
  * @param $item jQuery 包装的 item
  * @returns 评分浮点数；无评分返回 0
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, used with .find()/.length/.text()
 function getScore($item: any): number {
     const $span = $item.find('a > div.score > span');
     if (!$span.length) return 0;
@@ -103,7 +106,7 @@ function getScore($item: any): number {
  * @param text 按钮文本
  * @returns jQuery 包装的 span.button.is-small
  */
-function newOption(text: string): any {
+function newOption(text: string) {
     return $('<span>', {
         text: text,
         class: 'button is-small'
@@ -144,6 +147,7 @@ const SORT_CONFIGS: SortConfig[] = [
  */
 export class PageSortPlugin extends BasePlugin {
     /** 视频列表容器（createSortSelector 时查询，applySort 重查询其子项）。 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, used with .find()/.length
     private $container: any = null;
     /** 当前激活的排序方式（null = 原始顺序）。 */
     private activeSort: string | null = null;
@@ -156,6 +160,7 @@ export class PageSortPlugin extends BasePlugin {
     /** 排序守卫：监听页面是否把顺序改了回来。 */
     private sortGuard: MutationObserver | null = null;
     /** 排序按钮组 jQuery 对象（供 jhs 排序时清除选中态）。 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, used with .find()/.length
     private $buttons: any = null;
 
     /**
@@ -190,7 +195,7 @@ export class PageSortPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if (!(window as any).isListPage) return;
+        if (!(window as unknown as Record<string, unknown>).isListPage) return;
         this.waitForContainer();
     }
 
@@ -292,7 +297,7 @@ export class PageSortPlugin extends BasePlugin {
         });
 
         // 事件委托：处理排序按钮点击（用箭头函数保留 this 为类实例）
-        $buttons.on('click', '.button.is-small', (e: any) => {
+        $buttons.on('click', '.button.is-small', (e: Event) => {
             e.preventDefault();
             e.stopPropagation();
 

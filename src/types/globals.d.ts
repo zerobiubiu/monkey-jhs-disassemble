@@ -20,26 +20,59 @@ declare const localforage: any;
 declare const Viewer: any;
 declare const md5: (s: string) => string;
 
+// JQuery 类型别名（@types/jquery 已被 shim 屏蔽，此处提供宽松类型供类型注解使用）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- project-wide jQuery is intentionally untyped
+type JQuery<T = HTMLElement> = any;
+
+// Window 接口扩展：第三方库全局挂载（由 src/core/libs.ts 运行时挂载）
+interface Window {
+    jQuery: any;
+    $: any;
+    layer: any;
+    Tabulator: any;
+    Toastify: any;
+    localforage: any;
+    Viewer: any;
+    md5: (s: string) => string;
+}
+
 // 无 @types 的 npm 包，声明模块以允许 import（类型为 any）
 declare module 'layui-layer';
 declare module 'tabulator-tables';
 declare module 'jquery';
 
-// Tampermonkey Grant API
-declare const GM_xmlhttpRequest: any;
-declare const GM_openInTab: any;
-declare const GM_setValue: any;
-declare const GM_getValue: any;
-declare const GM_addValueChangeListener: any;
-declare const GM_registerMenuCommand: any;
+// Tampermonkey Grant API（类型化声明，替代原 any）
+interface GMXmlHttpRequestDetails {
+    method?: string;
+    url: string;
+    headers?: Record<string, string>;
+    data?: string | Record<string, unknown> | FormData | Blob | ArrayBuffer;
+    timeout?: number;
+    responseType?: string;
+    anonymous?: boolean;
+    fetch?: boolean;
+    nocache?: boolean;
+    onload?: (response: any) => void;
+    onerror?: (response: any) => void;
+    ontimeout?: (response: any) => void;
+    onprogress?: (response: any) => void;
+    onabort?: (response: any) => void;
+    onloadstart?: (response: any) => void;
+}
+declare const GM_xmlhttpRequest: (details: GMXmlHttpRequestDetails) => { abort: () => void };
+declare const GM_openInTab: (url: string, options?: boolean | { active?: boolean; insert?: boolean; setParent?: boolean }) => { close: () => void };
+declare const GM_setValue: (key: string, value: string | number | boolean | object) => void;
+declare const GM_getValue: <T = any>(key: string, defaultValue?: T) => T;
+declare const GM_addValueChangeListener: (key: string, callback: (name: string, oldValue: any, newValue: any, remote: boolean) => void) => number;
+declare const GM_registerMenuCommand: (name: string, callback: () => void, accessKey?: string) => number;
 declare const unsafeWindow: any;
 
-// 应用运行时全局（由 legacy 启动时挂载到 window/unsafeWindow）
-declare const show: any;
-declare const utils: any;
-declare const storageManager: any;
-declare const clog: any;
+// 应用运行时全局（由 main.tsx 启动时挂载到 window/unsafeWindow）
+declare const show: typeof import('../core/toast').show;
+declare const utils: import('../core/common-util').CommonUtil;
+declare const storageManager: import('../core/storage-manager').StorageManager;
+declare const clog: import('../core/logger').Logger;
 declare const loading: () => { close: () => void };
-declare const gmHttp: any;
-declare const pluginManager: any;
+declare const gmHttp: import('../core/gm-http').GmHttp;
+declare const pluginManager: import('../plugins/plugin-manager').PluginManager;
 declare const refresh: () => void;

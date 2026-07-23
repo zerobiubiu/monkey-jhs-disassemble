@@ -36,7 +36,11 @@
  * 7. createBackToTopBtn + updateBackToTopBtn：rAF 节流的回到顶部按钮
  * 8. MAX_PAGES(200) 保护，防止异常无限加载
  */
+import { TaskSupervisor } from '../core/task-supervisor';
+import { createBackToTopButton } from '../core/util/back-to-top';
+
 import { BasePlugin } from './base-plugin';
+
 import listWaterfallCssRaw from '../styles/list-waterfall-plugin.css?raw';
 
 /** 日志前缀。 */
@@ -144,7 +148,7 @@ function gmGet(url: string): Promise<string> {
             method: 'GET',
             url,
             timeout: 30000,
-            onload: (resp: any) => {
+            onload: (resp: { status: number; responseText: string }) => {
                 if (resp.status >= 200 && resp.status < 300) {
                     resolve(resp.responseText);
                 } else {
@@ -191,10 +195,10 @@ export class ListWaterfallPlugin extends BasePlugin {
     private pageItems: PageItem[] = [];
     /** scroll 事件处理器引用。 */
     private _onScroll: (() => void) | null = null;
-    /** 回到顶部按钮 DOM 节点。 */
-    private backToTopBtn: HTMLDivElement | null = null;
-    /** rAF 节流标志，用于回到顶部按钮的滚动监听。 */
-    private _ticking = false;
+    /** 回到顶部按钮清理函数。 */
+    private cleanupBackToTop: (() => void) | null = null;
+    /** 任务生命周期管理器。 */
+    private supervisor = new TaskSupervisor();
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -281,7 +285,7 @@ export class ListWaterfallPlugin extends BasePlugin {
         );
 
         // 点击错误状态重试
-        this.loader.addEventListener('click', () => {
+        this.supervisor.addEventListener(this.loader, 'click', () => {
             if (this.loader!.classList.contains('error')) {
                 this.loadNextPage();
             }
@@ -299,20 +303,19 @@ export class ListWaterfallPlugin extends BasePlugin {
         });
 
         // 创建回到顶部按钮
-        this.createBackToTopBtn();
+        this.cleanupBackToTop = createBackToTopButton();
 
         // 绑定滚动监听（passive，不阻止滚动）
         this._onScroll = () => {
             this.checkLoad();
             this.updateCurrentPageFromScroll();
-            this.updateBackToTopBtn();
         };
-        window.addEventListener('scroll', this._onScroll, {
+        this.supervisor.addEventListener(window, 'scroll', this._onScroll, {
             passive: true
         });
 
         // 启动后立即检查一次（可能首屏内容不足以填满视口）
-        setTimeout(() => this.checkLoad(), 500);
+        this.supervisor.setTimeout(() => this.checkLoad(), 500);
 
         if (!this.hasMore) {
             this.setState('no-more', '已经到底了');
@@ -409,7 +412,7 @@ export class ListWaterfallPlugin extends BasePlugin {
                 `${LOG_PREFIX} 已加载第 ${this.currentPage} 页，追加 ${newLis.length} 项`
             );
         } catch (err) {
-            console.error(`${LOG_PREFIX} 加载失败:`, err);
+            clog.error(`${LOG_PREFIX} 加载失败:`, err);
             this.setState('error', '加载失败，点击重试');
         } finally {
             this.isLoading = false;
@@ -457,36 +460,10 @@ export class ListWaterfallPlugin extends BasePlugin {
     }
 
     /**
-     * 创建回到顶部按钮并绑定点击事件。对应原 L473-484。
-     * 固定右下角，滚动超过 300px 时淡入显示，点击平滑回顶。
+     * 销毁插件，中止所有异步任务。
      */
-    private createBackToTopBtn(): void {
-        const btn = document.createElement('div');
-        btn.id = 'jdb-wf-back-to-top';
-        btn.title = '回到顶部';
-        btn.innerHTML =
-            '<svg viewBox="0 0 24 24"><path d="M12 4l-8 8h6v8h4v-8h6z"></path></svg>';
-        document.body.appendChild(btn);
-        btn.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-        this.backToTopBtn = btn;
-    }
-
-    /**
-     * 根据滚动位置更新回到顶部按钮的显示状态。对应原 L490-501。
-     * 使用 requestAnimationFrame 节流，避免滚动卡顿。
-     */
-    private updateBackToTopBtn(): void {
-        if (!this.backToTopBtn || this._ticking) return;
-        this._ticking = true;
-        window.requestAnimationFrame(() => {
-            if (window.scrollY > 300) {
-                this.backToTopBtn!.classList.add('show');
-            } else {
-                this.backToTopBtn!.classList.remove('show');
-            }
-            this._ticking = false;
-        });
+    destroy(): void {
+        this.cleanupBackToTop?.();
+        this.supervisor.abort();
     }
 }

@@ -40,12 +40,17 @@ import {
     YES
 } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
+import { TaskSupervisor } from '../core/task-supervisor';
+import type { PageType } from '../core/page-context';
+import { jsxToString } from '../core/jsx-to-string';
+import { translateText } from '../core/util/util-translate';
+import { failWithToast } from '../core/toast';
+
 import { BasePlugin } from './base-plugin';
 
-import { StatusTagHtml } from '../components/status-tag-html';
-import { JumpPageControl } from '../components/jump-page-control';
-import { PageCountTable } from '../components/page-count-table';
-import { jsxToString } from '../core/jsx-to-string';
+import { StatusTagHtml } from '../components/misc/status-tag-html';
+import { JumpPageControl } from '../components/misc/jump-page-control';
+import { PageCountTable } from '../components/misc/page-count-table';
 
 /** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
 interface StatusTagConfig {
@@ -112,38 +117,6 @@ const STATUS_TAG_CONFIG: Record<string, StatusTagConfig> = {
     }
 };
 
-/**
- * 调用 Google 翻译接口将文本译为目标语言（原顶层 _e）。
- * @param text 待翻译文本
- * @param sourceLang 源语言代码，默认 ja
- * @param targetLang 目标语言代码，默认 zh-CN
- * @returns 翻译结果字符串
- */
-async function translateText(
-    text: string,
-    sourceLang: string = 'ja',
-    targetLang: string = 'zh-CN'
-): Promise<string> {
-    if (!text) {
-        throw new Error('翻译文本不能为空');
-    }
-    const url =
-        'https://translate-pa.googleapis.com/v1/translate?' +
-        new URLSearchParams({
-            'params.client': 'gtx',
-            dataTypes: 'TRANSLATION',
-            key: 'AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA',
-            'query.sourceLanguage': sourceLang,
-            'query.targetLanguage': targetLang,
-            'query.text': text
-        });
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`${response.status} ${response.statusText}`);
-    }
-    return (await response.json()).translation;
-}
-
 export class ListPagePlugin extends BasePlugin {
     // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
     currentPageFilterCount = 0;
@@ -154,17 +127,35 @@ export class ListPagePlugin extends BasePlugin {
     currentPageWaitCheckCount = 0;
     currentPageTotalCount = 0;
 
+    /** 统一生命周期管理：MutationObserver 等资源由此 supervisor 管控。 */
+    private supervisor = new TaskSupervisor();
+
     /** 翻译缓存（localStorage["jhs_translate"]，番号→译文）。 */
-    cache: Record<string, string> = localStorage.getItem('jhs_translate')
-        ? JSON.parse(localStorage.getItem('jhs_translate') as string)
-        : {};
+    cache: Record<string, string> = (() => {
+        try {
+            const raw = localStorage.getItem('jhs_translate');
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    })();
 
     /** 翻译写入队列，串行化 localStorage 写入。 */
-    writeQueue: Promise<any> = Promise.resolve();
+    writeQueue: Promise<void> = Promise.resolve();
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L8298-8300。 */
     getName(): string {
         return 'ListPagePlugin';
+    }
+
+    /** 销毁插件，清理 supervisor 管理的所有资源（MutationObserver 等）。 */
+    destroy(): void {
+        this.supervisor.abort();
+    }
+
+    /** 仅在列表页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list'];
     }
 
     /** 列表页主处理。对应原 L8301-8339。 */
@@ -220,27 +211,26 @@ export class ListPagePlugin extends BasePlugin {
         }
         expandBtn.on('click', function () {
             const isExpanded = !contentEl.hasClass('collapse');
-            console.log('触发');
             localStorage.setItem(storageKey, isExpanded.toString());
         });
     }
 
     /** 监听列表容器 DOM 变更并自动重过滤/重排序。对应原 L8360-8392。 */
     checkDom(): void {
-        if (!(window as any).isListPage) {
+        if (!window.isListPage) {
             return;
         }
         const selectorConfig = this.getSelector();
         const containerEl = document.querySelector(selectorConfig.boxSelector);
         if (!containerEl) {
-            console.error('没有找到容器节点!');
+            clog.error('没有找到容器节点!');
             return;
         }
         const observerOptions: MutationObserverInit = {
             childList: true,
             subtree: false
         };
-        const observer = new MutationObserver(async () => {
+        const observer = this.supervisor.observe(containerEl, async () => {
             observer.disconnect();
             try {
                 this.replaceHdImg();
@@ -252,13 +242,12 @@ export class ListPagePlugin extends BasePlugin {
             } finally {
                 observer.observe(containerEl, observerOptions);
             }
-        });
-        observer.observe(containerEl, observerOptions);
+        }, observerOptions);
     }
 
     /** 触发列表过滤。对应原 L8432-8440。 */
     async doFilter(): Promise<void> {
-        if (!(window as any).isListPage) {
+        if (!window.isListPage) {
             return;
         }
         const itemEls = $(this.getSelector().itemSelector).toArray();
@@ -274,7 +263,7 @@ export class ListPagePlugin extends BasePlugin {
      * @param item jQuery 化的 .item 元素
      * @param carNum 番号
      */
-    async renderItemStatusTag(item: any, carNum: string): Promise<void> {
+    async renderItemStatusTag(item: HTMLElement, carNum: string): Promise<void> {
         try {
             const $item = $(item);
             const carInfo = await storageManager.getCar(carNum);
@@ -318,7 +307,7 @@ export class ListPagePlugin extends BasePlugin {
             }
             $item.find('.photo-info > span > div').append(tagHtml);
         } catch (err) {
-            console.error('[JHS-想看/观看] renderItemStatusTag 失败', err);
+            clog.error('[JHS-想看/观看] renderItemStatusTag 失败', err);
         }
     }
 
@@ -327,7 +316,7 @@ export class ListPagePlugin extends BasePlugin {
      * 对应原 L8484-8633。
      * @param itemEls .item 元素数组（jQuery .toArray() 结果）
      */
-    async filterMovieList(itemEls: any): Promise<void> {
+    async filterMovieList(itemEls: HTMLElement[]): Promise<void> {
         utils.time('累计耗费时间');
         utils.time('读取数据耗时');
         const [carList, titleFilterKeywords, blacklist, blacklistCarList, setting] =
@@ -341,8 +330,8 @@ export class ListPagePlugin extends BasePlugin {
         const readDataTime = utils.time('读取数据耗时');
         const useLower = featureFlags.caseInsensitiveCarNum;
         const statusCarSets: Record<string, Set<string>> = carList.reduce(
-            (acc: Record<string, Set<string>>, car: any) => {
-                const status = car.status;
+            (acc: Record<string, Set<string>>, car) => {
+                const status = car.status ?? '';
                 if (acc.hasOwnProperty(status)) {
                     acc[status].add(useLower ? car.carNum.toLowerCase() : car.carNum);
                 }
@@ -355,16 +344,16 @@ export class ListPagePlugin extends BasePlugin {
             }
         );
         utils.time('组装数据耗时');
-        const blacklistRoleMap: Map<string, any> = new Map(
-            blacklist.map((item: any) => [item.starId, item.role])
+        const blacklistRoleMap = new Map(
+            blacklist.map((item) => [item.starId, item.role])
         );
         const { actorCarNumToNameMap, actressCarNumToNameMap } = blacklistCarList.reduce(
             (
                 acc: {
-                    actorCarNumToNameMap: Map<string, any>;
-                    actressCarNumToNameMap: Map<string, any>;
+                    actorCarNumToNameMap: Map<string, string | undefined>;
+                    actressCarNumToNameMap: Map<string, string | undefined>;
                 },
-                item: any
+                item
             ) => {
                 const role = blacklistRoleMap.get(item.starId);
                 if (!role) {
@@ -379,8 +368,8 @@ export class ListPagePlugin extends BasePlugin {
                 return acc;
             },
             {
-                actorCarNumToNameMap: new Map<string, any>(),
-                actressCarNumToNameMap: new Map<string, any>()
+                actorCarNumToNameMap: new Map<string, string | undefined>(),
+                actressCarNumToNameMap: new Map<string, string | undefined>()
             }
         );
         const assembleDataTime = utils.time('组装数据耗时');
@@ -404,7 +393,7 @@ export class ListPagePlugin extends BasePlugin {
         this.currentPageTotalCount = 0;
         utils.time('处理页面耗时');
         await Promise.all(
-            itemEls.map(async (itemEl: any) => {
+            itemEls.map(async (itemEl) => {
                 const $item = $(itemEl);
                 const { carNum, title } = this.findCarNumAndHref($item);
                 const {
@@ -494,7 +483,7 @@ export class ListPagePlugin extends BasePlugin {
                 }
                 reasonText ||= tagConfig.reasonType;
                 if (tagConfig.isCounted) {
-                    (this as any)[tagConfig.countKey]++;
+                    (this as unknown as Record<string, number>)[tagConfig.countKey]++;
                 }
                 this.currentPageTotalCount++;
                 $item.find('.status-tag').remove();
@@ -523,10 +512,10 @@ export class ListPagePlugin extends BasePlugin {
         clog.log(
             jsxToString(
                 <PageCountTable
-                    readDataTime={readDataTime}
-                    assembleDataTime={assembleDataTime}
-                    processPageTime={processPageTime}
-                    totalTime={totalTime}
+                    readDataTime={readDataTime ?? ''}
+                    assembleDataTime={assembleDataTime ?? ''}
+                    processPageTime={processPageTime ?? ''}
+                    totalTime={totalTime ?? ''}
                     filterCount={this.currentPageFilterCount}
                     favoriteCount={this.currentPageFavoriteCount}
                     actorFilterCount={this.currentPageActorFilterCount}
@@ -552,7 +541,7 @@ export class ListPagePlugin extends BasePlugin {
      */
     async bindClick(): Promise<void> {
         const selectorConfig = this.getSelector();
-        $(selectorConfig.boxSelector).on('click', '.item .cover', async (event: any) => {
+        $(selectorConfig.boxSelector).on('click', '.item .cover', async (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
             if ($(event.target).closest('div.meta-buttons').length) {
@@ -570,17 +559,17 @@ export class ListPagePlugin extends BasePlugin {
                 window.open(aHref);
             }
         });
-        $(selectorConfig.boxSelector).on('click', '.item video', async (event: any) => {
-            const videoEl = event.currentTarget;
+        $(selectorConfig.boxSelector).on('click', '.item video', async (event: Event) => {
+            const videoEl = event.currentTarget as HTMLVideoElement;
             if (videoEl.paused) {
-                videoEl.play().catch((err: any) => console.error('播放失败:', err));
+                videoEl.play().catch((err: unknown) => clog.error('播放失败:', err));
             } else {
                 videoEl.pause();
             }
             event.preventDefault();
             event.stopPropagation();
         });
-        $(selectorConfig.boxSelector).on('click', '.item .video-title', async (event: any) => {
+        $(selectorConfig.boxSelector).on('click', '.item .video-title', async (event: MouseEvent) => {
             if ($(event.target).closest('[class^="jhs-match-"]').length) {
                 return;
             }
@@ -601,12 +590,12 @@ export class ListPagePlugin extends BasePlugin {
             clog.debug('鉴定补录演员信息-已启用, 开始解析详情页');
             clog.debug('开始解析演员详情页', url);
             const html = await gmHttp.get(url);
-            const $dom = utils.htmlTo$dom(html);
+            const $dom = utils.htmlTo$dom(String(html));
             if (isJavdbSite) {
                 actressName = $dom
                     .find('.female')
                     .prev()
-                    .map((_index: number, el: any) => $(el).text())
+                    .map((_index: number, el: HTMLElement) => $(el).text())
                     .get()
                     .join(' ');
             }
@@ -621,6 +610,7 @@ export class ListPagePlugin extends BasePlugin {
      * @param $item jQuery 化的 .item 元素
      * @returns 番号信息（carNum/aHref/url/title/publishTime）
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, $ is any-typed
     findCarNumAndHref($item: any): {
         carNum: string;
         aHref: string;
@@ -654,19 +644,17 @@ export class ListPagePlugin extends BasePlugin {
             const isDate = (val: string) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(val);
             publishTime = $item
                 .find('date')
-                .map((_index: number, el: any) => $(el).text().trim())
+                .map((_index: number, el: HTMLElement) => $(el).text().trim())
                 .get()
                 .find(isDate);
             carNum = $item
                 .find('date')
-                .map((_index: number, el: any) => $(el).text().trim())
+                .map((_index: number, el: HTMLElement) => $(el).text().trim())
                 .get()
                 .find((val: string) => !isDate(val));
         }
         if (!carNum) {
-            const errorMsg = '提取番号信息失败';
-            show.error(errorMsg);
-            throw new Error(errorMsg);
+            failWithToast('提取番号信息失败');
         }
         return {
             carNum,
@@ -681,7 +669,7 @@ export class ListPagePlugin extends BasePlugin {
     showCarNumBox(carNum: string): void {
         const matchedEl = $('.movie-list .item')
             .toArray()
-            .find((itemEl: any) => $(itemEl).find('.video-title strong').text() === carNum);
+            .find((itemEl: HTMLElement) => $(itemEl).find('.video-title strong').text() === carNum);
         if (matchedEl) {
             const $matched = $(matchedEl);
             if ($matched.attr('data-hide') === `${carNum}-hide`) {
@@ -695,13 +683,14 @@ export class ListPagePlugin extends BasePlugin {
      * 替换列表封面缩略图为高清图。对应原 L8886-8933。
      * @param imgEls 可选的图片元素集合（jQuery 或 NodeList），缺省取封面选择器
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts jQuery | NodeList | array
     replaceHdImg(imgEls?: any): void {
         if (imgEls && typeof imgEls.jquery == 'string') {
             imgEls = imgEls.toArray();
         }
         imgEls ||= document.querySelectorAll(this.getSelector().coverImgSelector);
         if (isJavdbSite) {
-            imgEls.forEach((img: any) => {
+            imgEls.forEach((img: HTMLImageElement) => {
                 img.src = img.src.replace('thumbs', 'covers');
                 img.title = '';
             });
@@ -710,19 +699,20 @@ export class ListPagePlugin extends BasePlugin {
     }
 
     /** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, $ is any-typed
     async translate($item: any): Promise<void> {
         // 列表页标题就地替换逻辑保留在本方法；TranslatePlugin 负责详情页
         if ((await storageManager.getSetting('translateTitle', YES)) !== YES) {
             return;
         }
-        let sourceText: any;
-        let carNum: any;
+        let sourceText = '';
+        let carNum = '';
         const videoTitleEl = $item.find('.video-title');
         if (isJavdbSite) {
             sourceText = videoTitleEl
                 .contents()
                 .filter(
-                    (_index: number, node: any) =>
+                    (_index: number, node: Node & { textContent: string }) =>
                         node.nodeType === 3 && node.textContent.trim() !== ''
                 )
                 .text()
@@ -730,7 +720,7 @@ export class ListPagePlugin extends BasePlugin {
             carNum = $item.find('.video-title strong').text().trim();
         }
         if (this.cache[carNum]) {
-            videoTitleEl.contents().each((_index: number, node: any) => {
+            videoTitleEl.contents().each((_index: number, node: Node & { textContent: string }) => {
                 if (node.nodeType === 3 && node.textContent.trim() !== '') {
                     node.textContent = ' ' + this.cache[carNum] + ' ';
                 }
@@ -741,7 +731,7 @@ export class ListPagePlugin extends BasePlugin {
         translateText(sourceText)
             .then((translation) => {
                 if (isJavdbSite) {
-                    videoTitleEl.contents().each((_index: number, node: any) => {
+                    videoTitleEl.contents().each((_index: number, node: Node & { textContent: string }) => {
                         if (
                             node.nodeType === 3 &&
                             node.textContent.trim() !== '' &&
@@ -757,8 +747,8 @@ export class ListPagePlugin extends BasePlugin {
                     localStorage.setItem('jhs_translate', JSON.stringify(this.cache));
                 });
             })
-            .catch((err: any) => {
-                console.error('翻译失败:', err);
+            .catch((err: unknown) => {
+                clog.error('翻译失败:', err);
             });
     }
 
@@ -766,7 +756,7 @@ export class ListPagePlugin extends BasePlugin {
     async revertTranslation(): Promise<void> {
         $(this.getSelector().itemSelector)
             .toArray()
-            .forEach((itemEl: any) => {
+            .forEach((itemEl: HTMLElement) => {
                 const $item = $(itemEl);
                 const originalTitle =
                     $item.find('.box').attr('title') ||
@@ -774,7 +764,7 @@ export class ListPagePlugin extends BasePlugin {
                     $item.find('img').attr('data-title');
                 const carNum = $item.find('.video-title strong').text().trim();
                 const videoTitleEl = $item.find('.video-title');
-                videoTitleEl.contents().each((_index: number, node: any) => {
+                videoTitleEl.contents().each((_index: number, node: Node & { textContent: string }) => {
                     if (
                         node.nodeType === 3 &&
                         node.textContent.trim() !== '' &&
@@ -798,13 +788,13 @@ export class ListPagePlugin extends BasePlugin {
         }
         const currentPage = utils.getUrlParam(currentHref, 'page') || 1;
         const $li = $(
-            jsxToString(<JumpPageControl controlId={controlId} value={currentPage + 1} />)
+            jsxToString(<JumpPageControl controlId={controlId} value={Number(currentPage) + 1} />)
         );
         $('.pagination-list').append($li);
         const $pageInput = $li.find('#jumpPageInput');
         const $jumpBtn = $li.find('button');
         const jumpToPage = () => {
-            const pageNum = parseInt($pageInput.val(), 10);
+            const pageNum = parseInt(String($pageInput.val()), 10);
             if (isNaN(pageNum) || pageNum < 1) {
                 $pageInput.focus();
                 return;
@@ -814,7 +804,7 @@ export class ListPagePlugin extends BasePlugin {
             window.location.href = url.toString();
         };
         $jumpBtn.on('click', jumpToPage);
-        $pageInput.on('keypress', (event: any) => {
+        $pageInput.on('keypress', (event: { which: number; preventDefault(): void }) => {
             if (event.which === 13) {
                 jumpToPage();
                 event.preventDefault();

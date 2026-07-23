@@ -12,7 +12,8 @@
  */
 
 import { jsxToString } from './jsx-to-string';
-import { LoggerLogEntry } from '../components/logger-log-entry';
+import { LoggerLogEntry } from '../components/log/logger-log-entry';
+import { UrlAutoLink } from '../components/misc/url-auto-link';
 
 export interface LogEntry {
     /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
@@ -265,11 +266,11 @@ export class Logger {
             this.maxLogCountInitialized = true;
             storageManager.getSetting('clogMsgCount', 2000).then((v: number) => {
                 this.maxLogCount = v;
-            });
+            }).catch(() => { /* 存储异常时保持默认值 */ });
         }
         const initialized = this.tryInitialize();
         let resolvedType: string;
-        let resolvedExtra: any[] = [];
+        let resolvedExtra: unknown[] = [];
         if (LOG_TYPE_STYLES[typeArg]) {
             resolvedType = typeArg;
             resolvedExtra = extraArgs;
@@ -278,7 +279,7 @@ export class Logger {
             resolvedExtra = [typeArg, ...extraArgs];
         }
         resolvedType = LOG_TYPE_STYLES[resolvedType] ? resolvedType : 'base';
-        const allParts: any[] = [message, ...resolvedExtra];
+        const allParts: unknown[] = [message, ...resolvedExtra];
         let messageType: string = 'msg';
         const parts: string[] = [];
         allParts.forEach((part) => {
@@ -286,7 +287,7 @@ export class Logger {
                 parts.push(String(part));
             } else if (typeof part === 'object' && part !== null) {
                 try {
-                    parts.push('<br/>' + JSON.stringify(part, null, 2));
+                    parts.push(jsxToString(<br />) + JSON.stringify(part, null, 2));
                     messageType = 'json';
                 } catch {
                     parts.push(String(part));
@@ -298,7 +299,7 @@ export class Logger {
         });
         let formattedMessage: string = parts.join('  ');
         formattedMessage = formattedMessage.replace(
-            /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]/gi,
+            /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|]/gi,
             (match) => {
                 const isHttpOrFtp = match.startsWith('http') || match.startsWith('ftp');
                 const isProtocolRelative = match.startsWith('//');
@@ -309,7 +310,7 @@ export class Logger {
                 } else if (!isHttpOrFtp && isWww) {
                     href = `http://${match}`;
                 }
-                return `<a href="${href}" target="_blank">${match}</a>`;
+                return jsxToString(<UrlAutoLink href={href} text={match} />);
             }
         );
         const entry: LogEntry = {

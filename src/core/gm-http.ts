@@ -49,7 +49,7 @@ export class GmHttp {
         queryParams: StringRecord = {},
         headers: HttpHeaders = {},
         followRedirect?: boolean
-    ): Promise<any> {
+    ): Promise<unknown> {
         return this.gmRequest('GET', url, null, queryParams, headers, followRedirect);
     }
 
@@ -61,7 +61,7 @@ export class GmHttp {
      * @param headers 自定义请求头（覆盖默认 Content-Type）
      * @returns 解析后的响应体
      */
-    post(url: string, body: StringRecord = {}, headers: HttpHeaders = {}): Promise<any> {
+    post(url: string, body: StringRecord = {}, headers: HttpHeaders = {}): Promise<unknown> {
         const requestHeaders: HttpHeaders = {
             'Content-Type': 'application/json',
             ...headers
@@ -79,7 +79,7 @@ export class GmHttp {
      * @param headers  自定义请求头（写回 Content-Type，保持原引用语义）
      * @returns 解析后的响应体
      */
-    postForm(url: string, formData: StringRecord = {}, headers: HttpHeaders = {}): Promise<any> {
+    postForm(url: string, formData: StringRecord = {}, headers: HttpHeaders = {}): Promise<unknown> {
         const requestHeaders: HttpHeaders = headers || {};
         requestHeaders['Content-Type'] ||= 'application/x-www-form-urlencoded';
         let bodyString = '';
@@ -103,7 +103,7 @@ export class GmHttp {
         url: string,
         formFields: StringRecord = {},
         headers: HttpHeaders = {}
-    ): Promise<any> {
+    ): Promise<unknown> {
         const requestHeaders: HttpHeaders = headers || {};
         const boundary = `----WebKitFormBoundary${Math.random().toString(36).substring(2)}`;
         requestHeaders['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
@@ -145,7 +145,7 @@ export class GmHttp {
         let mimeType: string | undefined;
         clog.log(`[${filename}] 正在获取文件大小...`);
         try {
-            const sizeResponse: GmResponse = await utils.retry(
+            const sizeResponse: GmResponse = (await utils.retry(
                 () =>
                     new Promise<GmResponse>((resolve, reject) => {
                         GM_xmlhttpRequest({
@@ -162,7 +162,7 @@ export class GmHttp {
                         });
                     }),
                 retryCount
-            );
+            ))!;
             if (sizeResponse.status !== 206 && sizeResponse.status !== 200) {
                 throw new Error(`请求文件大小失败，状态码: ${sizeResponse.status}`);
             }
@@ -194,8 +194,8 @@ export class GmHttp {
                     `[${filename}] 文件总大小：${(fileSize / 1024 / 1024).toFixed(2)} MB, MIME 类型: ${mimeType || '未知'}`
                 );
             }
-        } catch (err: any) {
-            clog.error(`[${filename}] 获取文件大小失败:`, err.message);
+        } catch (err: unknown) {
+            clog.error(`[${filename}] 获取文件大小失败:`, err instanceof Error ? err.message : String(err));
             throw err;
         }
         if (!fileSize || fileSize <= 0) {
@@ -211,7 +211,7 @@ export class GmHttp {
         for (let index = 0; index < chunkCount; index++) {
             const start = index * chunkSize;
             const rangeHeader = `bytes=${start}-${Math.min(start + chunkSize - 1, fileSize - 1)}`;
-            const promise = await utils.retry(
+            await utils.retry(
                 () =>
                     new Promise<void>((resolve, reject) => {
                         const requestHeaders: HttpHeaders = {
@@ -256,13 +256,13 @@ export class GmHttp {
                     }),
                 retryCount
             );
-            promises.push(promise);
+            promises.push(Promise.resolve());
         }
         try {
             await Promise.all(promises);
             clog.log(`[${filename}] 所有分块下载完成，开始合并...`);
-        } catch (err: any) {
-            clog.error(`[${filename}] 分块下载过程中发生错误:`, err.message);
+        } catch (err: unknown) {
+            clog.error(`[${filename}] 分块下载过程中发生错误:`, err instanceof Error ? err.message : String(err));
             throw err;
         }
         const blob = new Blob(chunks);
@@ -296,7 +296,7 @@ export class GmHttp {
         queryParams: StringRecord | null = {},
         headers: HttpHeaders = {},
         followRedirect: boolean = false
-    ): Promise<any> {
+    ): Promise<unknown> {
         let requestUrl = url;
         if (queryParams && Object.keys(queryParams).length) {
             const queryString = new URLSearchParams(
@@ -309,7 +309,7 @@ export class GmHttp {
         const requestData = data || undefined;
         return await utils.retry(
             () =>
-                new Promise<any>((resolve, reject) => {
+                new Promise<unknown>((resolve, reject) => {
                     GM_xmlhttpRequest({
                         method: method,
                         url: requestUrl,

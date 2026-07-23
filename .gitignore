@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 archetype/javdb-lists-server/vlt-migration-data.json
+
+# Stale lint output dumps
+lint.txt
+lint-output.json
+
+# Static visual preview pages (not shipped)
+preview/

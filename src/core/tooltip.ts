@@ -11,8 +11,8 @@
  * 全局 $/layer/utils 由 src/types/globals.d.ts 声明为 any。
  */
 
-import tooltipCssRaw from '../styles/tooltip.css?raw';
 import { injectCss as H } from './style-injector';
+import tooltipCssRaw from '../styles/tooltip.css?raw';
 
 /** 触发 tooltip 的元素，运行时挂载 tooltipElement 与 hoverTimeout。 */
 interface TooltipableElement extends HTMLElement {

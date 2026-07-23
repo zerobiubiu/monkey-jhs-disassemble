@@ -28,6 +28,7 @@
  * 3. tryDisable 查找容器并执行禁用
  * 4. MutationObserver 监听 body subtree（模态框动态插入 + 内容异步加载）
  */
+import { TaskSupervisor } from '../core/task-supervisor';
 import { BasePlugin } from './base-plugin';
 
 /** 日志前缀。 */
@@ -47,8 +48,8 @@ const CONTAINER_SELECTOR =
  * 此处转为类私有字段。
  */
 export class ModalListDisablerPlugin extends BasePlugin {
-    /** MutationObserver 实例。 */
-    private observer: MutationObserver | null = null;
+    /** 任务生命周期管理器。 */
+    private supervisor = new TaskSupervisor();
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -78,10 +79,16 @@ export class ModalListDisablerPlugin extends BasePlugin {
         this.tryDisable();
 
         // MutationObserver：模态框动态插入 + 内容异步加载
-        this.observer = new MutationObserver(() => {
+        this.supervisor.observe(document.body, () => {
             this.tryDisable();
-        });
-        this.observer.observe(document.body, { childList: true, subtree: true });
+        }, { childList: true, subtree: true });
+    }
+
+    /**
+     * 销毁插件，中止所有异步任务。
+     */
+    destroy(): void {
+        this.supervisor.abort();
     }
 
     /**

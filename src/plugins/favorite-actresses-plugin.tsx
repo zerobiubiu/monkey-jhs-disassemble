@@ -13,7 +13,7 @@
  *   actressData / favoriteActressList / matchedActress / cssUrl / $avatar /
  *   avatarColumnHtml。
  * 布尔标识 _ 改由 ../constants/status 引入（YES，对应原 "yes" 默认值）；
- * 运行时挂载到 window 的 isDetailPage，以此处 (window as any).isDetailPage 访问，
+ * 运行时挂载到 window 的 isDetailPage，以此处 window.isDetailPage 访问，
  * 保持原逻辑并满足 strict 类型检查。
  * $ / storageManager / clog 已由 ../types/globals.d.ts 声明为 any；
  * jQuery .each 回调按本仓库既有约定改写为 (_index, element) 箭头形式，规避 noImplicitThis；
@@ -24,9 +24,13 @@
  * jsxToString(<Comp />)；本文件因含 JSX 重命名为 .tsx。
  */
 import { YES } from '../constants/status';
-import { BasePlugin } from './base-plugin';
-import { FavoriteActressAvatarColumn } from '../components/favorite-actress-avatar-column';
+
+import type { PageType } from '../core/page-context';
 import { jsxToString } from '../core/jsx-to-string';
+
+import { BasePlugin } from './base-plugin';
+
+import { FavoriteActressAvatarColumn } from '../components/actress/favorite-actress-avatar-column';
 
 /**
  * 收藏演员记录结构。
@@ -41,12 +45,18 @@ interface FavoriteActress {
     allName: string[];
     /** 头像 URL（从 .avatar background-image 提取） */
     avatar: string;
+    [key: string]: unknown;
 }
 
 export class FavoriteActressesPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L10697-10699。 */
     getName(): string {
         return 'FavoriteActressesPlugin';
+    }
+
+    /** 仅在详情页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['detail'];
     }
 
     /**
@@ -65,18 +75,18 @@ export class FavoriteActressesPlugin extends BasePlugin {
      * 详情页高亮已收藏女演员：读取收藏列表 → 提取 starId 集合 → 遍历 .female 前置链接，
      * 比对链接末段 starId 命中则加 highlighted 类并设 title 提示。
      * 对应原 L10705-10754。
-     * 仅当 (window as any).isDetailPage 为真、且设置项 enableFavoriteActresses === YES
+     * 仅当 window.isDetailPage 为真、且设置项 enableFavoriteActresses === YES
      * 时执行；收藏列表为空或 starId 集合为空时短路返回。
      * 无参数；返回 Promise<void>；不抛出异常。
      */
     async highlightActress(): Promise<void> {
-        if (!(window as any).isDetailPage) {
+        if (!window.isDetailPage) {
             return;
         }
         if ((await storageManager.getSetting('enableFavoriteActresses', YES)) !== YES) {
             return;
         }
-        const favoriteActresses: FavoriteActress[] = await storageManager.getFavoriteActressList();
+        const favoriteActresses: FavoriteActress[] = await storageManager.getFavoriteActressList() as FavoriteActress[];
         if (!favoriteActresses || favoriteActresses.length === 0) {
             return;
         }
@@ -89,7 +99,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
         if (starIdSet.size !== 0) {
             $('.female')
                 .prev()
-                .each((_index: number, element: any) => {
+                .each((_index: number, element: HTMLElement) => {
                     const $link = $(element);
                     const href: string | undefined = $link.attr('href');
                     let urlStarId: string | null = null;
@@ -135,20 +145,20 @@ export class FavoriteActressesPlugin extends BasePlugin {
         $(document).on(
             'confirm:complete',
             'a[href*="/actors/"][href*="/uncollect"]',
-            async (event: any) => {
+            async (event: CustomEvent) => {
                 const [confirmResult] = event.detail;
                 if (!confirmResult) {
                     return;
                 }
-                const match = $(event.currentTarget).attr('href').match(actorIdRegex);
+                const match = $(event.currentTarget).attr('href')?.match(actorIdRegex);
                 const actorId: string | null = match ? match[1] : null;
                 if (actorId) {
                     await this.removeActorFromStorage(actorId);
                 }
             }
         );
-        $('#button-collect-actor').click(async (_event: any) => {
-            const match = $('#button-collect-actor').attr('href').match(actorIdRegex);
+        $('#button-collect-actor').click(async (_event: unknown) => {
+            const match = $('#button-collect-actor').attr('href')?.match(actorIdRegex);
             const actorId: string | null = match ? match[1] : null;
             const actressNames: string[] = [];
             const $nameSection = $('.actor-section-name');
@@ -196,8 +206,8 @@ export class FavoriteActressesPlugin extends BasePlugin {
                 clog.log(`收藏演员失败: ${firstName} (ID: ${actorId})`);
             }
         });
-        $('#button-uncollect-actor').click(async (_event: any) => {
-            const match = $('#button-uncollect-actor').attr('href').match(actorIdRegex);
+        $('#button-uncollect-actor').click(async (_event: unknown) => {
+            const match = $('#button-uncollect-actor').attr('href')?.match(actorIdRegex);
             const actorId: string | null = match ? match[1] : null;
             if (actorId) {
                 await this.removeActorFromStorage(actorId);
@@ -220,7 +230,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
             return;
         }
         const favoriteActressList: FavoriteActress[] =
-            await storageManager.getFavoriteActressList();
+            await storageManager.getFavoriteActressList() as FavoriteActress[];
         const matchedActress = favoriteActressList.find((actress) => actress.starId === actressId);
         if (matchedActress && matchedActress.avatar) {
             const cssUrl: string = `url('${matchedActress.avatar}')`;

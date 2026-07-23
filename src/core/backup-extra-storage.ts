@@ -81,34 +81,65 @@ export function collectGmStorageBackup(): Record<string, unknown> {
     return out;
 }
 
+/** 允许从备份恢复的 localStorage 键（白名单，与 BACKUP_LOCAL_STORAGE_KEYS 保持同步）。 */
+const ALLOWED_LOCALSTORAGE_KEYS = new Set<string>(BACKUP_LOCAL_STORAGE_KEYS);
+
+/** 允许从备份恢复的 GM 存储键（白名单，与 BACKUP_GM_KEYS 保持同步）。 */
+const ALLOWED_GM_KEYS = new Set<string>(BACKUP_GM_KEYS);
+
+/** stripBackupExtras 的返回值：从备份数据中剥离的附加存储。 */
+export interface BackupExtras {
+    ls?: Record<string, unknown>;
+    gm?: Record<string, unknown>;
+}
+
 /**
- * 从备份恢复 localStorage + GM，并从 data 剥离 `__localStorage` / `__gmStorage`。
- * 覆盖策略：备份中有非空值则覆盖本地；缺失则不动（兼容旧备份）。
+ * 从备份数据中剥离 `__localStorage` / `__gmStorage` 并返回。
+ * 必须在 importData 之前调用，防止这两个键被写入 IndexedDB。
  */
-export function applyBackupExtras(data: Record<string, any>): void {
+export function stripBackupExtras(data: Record<string, unknown>): BackupExtras {
     const ls = data.__localStorage;
-    if (ls && typeof ls === 'object') {
-        for (const key of Object.keys(ls)) {
-            const raw = ls[key];
+    const gm = data.__gmStorage;
+    delete data.__localStorage;
+    delete data.__gmStorage;
+    return {
+        ls: ls && typeof ls === 'object' ? (ls as Record<string, unknown>) : undefined,
+        gm: gm && typeof gm === 'object' ? (gm as Record<string, unknown>) : undefined
+    };
+}
+
+/**
+ * 将剥离的备份附加数据写回 localStorage + GM（仅允许白名单键）。
+ * 应在 importData 成功后调用，确保主数据导入失败时不写入附加存储。
+ */
+export function applyBackupExtras(extras: BackupExtras): void {
+    if (extras.ls) {
+        for (const key of Object.keys(extras.ls)) {
+            if (!ALLOWED_LOCALSTORAGE_KEYS.has(key)) {
+                console.warn(`[JHS 备份] 跳过未授权的 localStorage 键: ${key}`);
+                continue;
+            }
+            const raw = extras.ls[key];
             if (raw == null || raw === '') continue;
             try {
                 localStorage.setItem(key, typeof raw === 'string' ? raw : JSON.stringify(raw));
-            } catch (err: any) {
-                console.warn(`[JHS 备份] 恢复 localStorage.${key} 失败:`, err?.message || err);
+            } catch (err: unknown) {
+                console.warn(`[JHS 备份] 恢复 localStorage.${key} 失败:`, err instanceof Error ? err.message : err);
             }
         }
     }
-    delete data.__localStorage;
 
-    const gm = data.__gmStorage;
-    if (gm && typeof gm === 'object') {
-        for (const key of Object.keys(gm)) {
+    if (extras.gm) {
+        for (const key of Object.keys(extras.gm)) {
+            if (!ALLOWED_GM_KEYS.has(key)) {
+                console.warn(`[JHS 备份] 跳过未授权的 GM 键: ${key}`);
+                continue;
+            }
             try {
-                GM_setValue(key, gm[key]);
-            } catch (err: any) {
-                console.warn(`[JHS 备份] 恢复 GM.${key} 失败:`, err?.message || err);
+                GM_setValue(key, extras.gm[key] as string | number | boolean | object);
+            } catch (err: unknown) {
+                console.warn(`[JHS 备份] 恢复 GM.${key} 失败:`, err instanceof Error ? err.message : err);
             }
         }
     }
-    delete data.__gmStorage;
 }

@@ -1,8 +1,24 @@
 /**
  * 以图识图 ImageRecognitionPlugin（Google / Lens / Yandex）。
+ *
+ * 内联 HTML 字面量已全部组件化（doc/16-jsx-to-string.md 零 HTML 字符串
+ * 硬编码要求）：renderSiteButtons 的站点按钮模板 → ImageRecognitionSiteButton，
+ * 公网 URL 缺失提示 → ImageRecognitionHint，均经 jsxToString 转 HTML 字符串
+ * 后供 `$container.append()` 消费。initCss 原返回的 `<style>` 字符串已提取
+ * 为 src/styles/image-recognition-plugin.css（?raw 导入）：utils.insertStyle
+ * 对不含 `<style>` 的文本自动包裹注入 head，注入目标与原实现同为 head
+ * （全局作用域），渲染等价。
  */
 import { featureFlags } from '../core/feature-flags';
+import { jsxToString } from '../core/jsx-to-string';
+
 import { BasePlugin } from './base-plugin';
+
+import { ImageRecognitionDialog } from '../components/image-recognition/image-recognition-dialog';
+import { ImageRecognitionHint } from '../components/image-recognition/image-recognition-hint';
+import { ImageRecognitionSiteButton } from '../components/image-recognition/image-recognition-site-button';
+
+import imageRecognitionCssRaw from '../styles/image-recognition-plugin.css?raw';
 
 interface SearchSite {
     name: string;
@@ -36,36 +52,7 @@ export class ImageRecognitionPlugin extends BasePlugin {
     }
 
     async initCss(): Promise<string> {
-        return `
-            <style>
-                #upload-area {
-                    border: 2px dashed #85af68; border-radius: 8px; padding: 40px;
-                    text-align: center; margin-bottom: 20px; transition: all 0.3s;
-                    background-color: #f9f9f9;
-                }
-                #upload-area:hover { border-color: #76b947; background-color: #f0f0f0; }
-                #upload-area.highlight { border-color: #2196F3; background-color: #e3f2fd; }
-                #select-image-btn {
-                    background-color: #4CAF50; color: white; border: none;
-                    padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px;
-                }
-                #handle-btn, #cancel-btn {
-                    padding: 8px 16px; border-radius: 4px; cursor: pointer;
-                    font-size: 14px; border: none;
-                }
-                #handle-btn { background-color: #2196F3; color: white; }
-                #cancel-btn { background-color: #f44336; color: white; }
-                .search-img-site-btns-container {
-                    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;
-                }
-                .search-img-site-btn {
-                    display: flex; align-items: center; padding: 8px 12px;
-                    background-color: #f5f5f5; border-radius: 4px; text-decoration: none;
-                    color: #333; font-size: 14px; border: 1px solid #ddd;
-                }
-                .search-img-site-btn img { width: 16px; height: 16px; margin-right: 6px; }
-            </style>
-        `;
+        return imageRecognitionCssRaw;
     }
 
     open(onOpenFun?: () => void): void {
@@ -73,29 +60,7 @@ export class ImageRecognitionPlugin extends BasePlugin {
         layer.open({
             type: 1,
             title: '以图识图',
-            content: `
-            <div style="padding: 20px">
-                <div id="upload-area">
-                    <div style="color: #555;margin-bottom: 15px;">
-                        <p>拖拽图片到此处 或 点击按钮选择图片</p>
-                        <p>也可以直接 Ctrl+V 粘贴图片 / 图片URL</p>
-                    </div>
-                    <button id="select-image-btn">选择图片</button>
-                    <input type="file" style="display: none" id="image-file" accept="image/*">
-                </div>
-                <div id="preview-area" style="margin-bottom: 20px; text-align: center; display: none;">
-                    <img id="preview-image" alt="" src="" style="max-width: 100%; max-height: 300px; border-radius: 4px;">
-                    <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;" id="action-btns">
-                        <button id="handle-btn">搜索图片</button>
-                        <button id="cancel-btn">取消</button>
-                    </div>
-                    <div id="search-results" style="display: none;">
-                        <p style="margin: 20px auto">请选择识图网站：<a id="openAll" style="cursor: pointer">全部打开</a></p>
-                        <div class="search-img-site-btns-container" id="search-img-site-btns-container"></div>
-                    </div>
-                </div>
-            </div>
-            `,
+            content: jsxToString(<ImageRecognitionDialog />),
             area: utils.isMobile() ? utils.getResponsiveArea() : ['40%', '80%'],
             success: async () => {
                 this.initEventListeners();
@@ -119,23 +84,29 @@ export class ImageRecognitionPlugin extends BasePlugin {
         const $siteBtnsContainer = $('#search-img-site-btns-container');
 
         $uploadArea
-            .on('dragover', (e: any) => {
+            .on('dragover', (e: Event) => {
                 e.preventDefault();
                 $uploadArea.addClass('highlight');
             })
             .on('dragleave', () => $uploadArea.removeClass('highlight'))
-            .on('drop', (e: any) => {
+            .on('drop', (e: Event) => {
                 e.preventDefault();
                 $uploadArea.removeClass('highlight');
-                const files = e.originalEvent?.dataTransfer?.files;
+                // jQuery wraps native events; originalEvent is always present on jQuery event objects
+                const jqDropEvent = e as unknown as { originalEvent?: DragEvent };
+                const files = jqDropEvent.originalEvent?.dataTransfer?.files;
                 if (files?.[0]) this.handleImageFile(files[0]);
             });
         $selectBtn.on('click', () => $fileInput.trigger('click'));
-        $fileInput.on('change', (e: any) => {
-            if (e.target.files?.[0]) this.handleImageFile(e.target.files[0]);
+        $fileInput.on('change', (e: Event) => {
+            const files = (e.target as HTMLInputElement).files;
+            if (files?.[0]) this.handleImageFile(files[0]);
         });
-        $(document).on('paste.searchImg', async (e: any) => {
-            const items = e.originalEvent?.clipboardData?.items;
+        $(document).on('paste.searchImg', async (e: Event) => {
+            // jQuery wraps native events; originalEvent is always present on jQuery event objects
+            const jqPasteEvent = e as unknown as { originalEvent?: ClipboardEvent };
+            const clipData = jqPasteEvent.originalEvent?.clipboardData;
+            const items = clipData?.items;
             if (!items) return;
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
@@ -144,7 +115,7 @@ export class ImageRecognitionPlugin extends BasePlugin {
                     return;
                 }
             }
-            const text = e.originalEvent?.clipboardData?.getData('text');
+            const text = clipData?.getData('text');
             if (text && /^https?:\/\//.test(text)) {
                 this.currentImageUrl = text;
                 $previewImage.attr('src', text);
@@ -182,8 +153,8 @@ export class ImageRecognitionPlugin extends BasePlugin {
 
     handleImageFile(file: File): void {
         const reader = new FileReader();
-        reader.onload = (e: any) => {
-            const dataUrl = e.target.result as string;
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+            const dataUrl = e.target!.result as string;
             this.currentImageUrl = dataUrl;
             $('#preview-image').attr('src', dataUrl);
             $('#upload-area').hide();
@@ -208,7 +179,7 @@ export class ImageRecognitionPlugin extends BasePlugin {
         try {
             // Imgur 匿名上传
             const base64 = imageSrc.replace(/^data:image\/\w+;base64,/, '');
-            const resp: any = await new Promise((resolve, reject) => {
+            const resp = await new Promise<{ data?: { link?: string } }>((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: 'POST',
                     url: 'https://api.imgur.com/3/image',
@@ -217,7 +188,7 @@ export class ImageRecognitionPlugin extends BasePlugin {
                         'Content-Type': 'application/json'
                     },
                     data: JSON.stringify({ image: base64, type: 'base64' }),
-                    onload: (r: any) => {
+                    onload: (r: { responseText: string }) => {
                         try {
                             resolve(JSON.parse(r.responseText));
                         } catch (err) {
@@ -233,17 +204,17 @@ export class ImageRecognitionPlugin extends BasePlugin {
                 show.error('图片上传失败');
             }
         } catch (e) {
-            console.error(e);
-            show.error('图片上传失败: ' + e);
+            clog.error(e);
+            show.error('图片上传失败: ' + (e instanceof Error ? e.message : String(e)));
         } finally {
             this.isUploading = false;
         }
     }
 
-    renderSiteButtons($container: any): void {
+    renderSiteButtons($container: JQuery): void {
         $container.empty();
         if (!this.currentImageUrl || this.currentImageUrl.startsWith('data:')) {
-            $container.append('<p style="color:#c00">图片尚未获得公网 URL，请重试搜索</p>');
+            $container.append(jsxToString(<ImageRecognitionHint />));
             return;
         }
         this.siteList.forEach((site) => {
@@ -251,11 +222,11 @@ export class ImageRecognitionPlugin extends BasePlugin {
                 '{placeholder}',
                 encodeURIComponent(this.currentImageUrl!)
             );
-            $container.append(`
-                <a class="search-img-site-btn" href="${href}" target="_blank">
-                    <img src="${site.ico}" alt=""><span>${site.name}</span>
-                </a>
-            `);
+            $container.append(
+                jsxToString(
+                    <ImageRecognitionSiteButton href={href} icon={site.ico} name={site.name} />
+                )
+            );
         });
     }
 }

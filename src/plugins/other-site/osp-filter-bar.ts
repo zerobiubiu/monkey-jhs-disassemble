@@ -160,6 +160,7 @@ function buildFilterBar(_plugin: OtherSitePlugin, mountTarget: Element): void {
         mountTarget.insertAdjacentElement('beforebegin', bar);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation
     (bar as any)._refreshChips = refreshChips;
 }
 
@@ -229,7 +230,9 @@ export function refreshFilterBar(plugin: OtherSitePlugin): void {
     clearTimeout(plugin.filterRefreshDebounce);
     plugin.filterRefreshDebounce = plugin.supervisor.setTimeout(() => {
         const bar = document.querySelector('.preload-filter-bar');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation
         if (bar && (bar as any)._refreshChips) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation
             (bar as any)._refreshChips();
             applyPreloadFilter();
         }

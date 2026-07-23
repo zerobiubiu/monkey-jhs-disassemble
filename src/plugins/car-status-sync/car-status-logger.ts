@@ -4,10 +4,10 @@
  */
 
 export interface CarStatusLogger {
-    info(step: string, ...args: any[]): void;
-    ok(step: string, ...args: any[]): void;
-    warn(step: string, ...args: any[]): void;
-    err(step: string, ...args: any[]): void;
+    info(step: string, ...args: unknown[]): void;
+    ok(step: string, ...args: unknown[]): void;
+    warn(step: string, ...args: unknown[]): void;
+    err(step: string, ...args: unknown[]): void;
 }
 
 export function createLogger(prefix: string): CarStatusLogger {

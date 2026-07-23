@@ -19,33 +19,39 @@
     margin-top: 4px;
     line-height: 1.2;
 }
+
 .jhs-preload-status {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 1px 7px;
     border-radius: 9px;
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgb(0, 0, 0, 0.05);
     font-size: 11px;
     line-height: 1.5;
     white-space: nowrap;
 }
+
 .jhs-ps-name {
     font-weight: 600;
     color: #9b9b9b;
 }
+
 .jhs-ps-badge {
     display: inline-flex;
     align-items: center;
     gap: 3px;
     font-weight: 600;
 }
+
 .jhs-ps-queued {
     color: #8a8a8a;
 }
+
 .jhs-ps-requesting {
     color: #d97706;
 }
+
 .jhs-ps-requesting::before {
     content: '';
     width: 6px;
@@ -54,25 +60,31 @@
     background-color: #d97706;
     animation: jhs-ps-pulse 1s ease-in-out infinite;
 }
+
 .jhs-ps-success {
     color: #198754;
 }
+
 .jhs-ps-success::before {
     content: '\2713';
     font-weight: 700;
 }
+
 .jhs-ps-failed {
     color: #dc2626;
 }
+
 .jhs-ps-failed::before {
     content: '\2715';
     font-weight: 700;
 }
+
 @keyframes jhs-ps-pulse {
     0%,
     100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.2;
     }
@@ -86,6 +98,7 @@
     padding: 8px 0 12px 0;
     border-bottom: 1px solid #e9ecef;
 }
+
 .preload-filter-label {
     flex-shrink: 0;
     font-size: 0.8em;
@@ -94,11 +107,13 @@
     line-height: 1.8;
     margin-right: 4px;
 }
+
 .preload-filter-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
 }
+
 .preload-filter-chip {
     display: inline-flex;
     align-items: center;
@@ -112,12 +127,14 @@
     border: 1.5px solid #dee2e6;
     background: #fff;
     color: #495057;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
+
 .preload-filter-chip:hover {
     border-color: #adb5bd;
     background: #f8f9fa;
 }
+
 .preload-filter-chip .pf-dot {
     display: inline-block;
     width: 7px;
@@ -125,33 +142,41 @@
     border-radius: 50%;
     margin-right: 5px;
 }
+
 .preload-filter-chip[data-value='queued'] .pf-dot {
     background-color: #8a8a8a;
 }
+
 .preload-filter-chip[data-value='requesting'] .pf-dot {
     background-color: #d97706;
 }
+
 .preload-filter-chip[data-value='success'] .pf-dot {
     background-color: #198754;
 }
+
 .preload-filter-chip[data-value='failed'] .pf-dot {
     background-color: #dc2626;
 }
+
 .preload-filter-chip.active[data-value='queued'] {
     background: #8a8a8a;
     border-color: #8a8a8a;
     color: #fff;
 }
+
 .preload-filter-chip.active[data-value='requesting'] {
     background: #d97706;
     border-color: #d97706;
     color: #fff;
 }
+
 .preload-filter-chip.active[data-value='success'] {
     background: #198754;
     border-color: #198754;
     color: #fff;
 }
+
 .preload-filter-chip.active[data-value='failed'] {
     background: #dc2626;
     border-color: #dc2626;

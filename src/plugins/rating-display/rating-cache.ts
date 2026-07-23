@@ -21,7 +21,7 @@ import { RatingUtils } from './rating-utils';
 interface WatchedCarItem {
     carNum?: string;
     status?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 /** 单条评分缓存条目。 */

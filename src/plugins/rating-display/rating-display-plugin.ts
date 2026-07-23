@@ -41,7 +41,7 @@ interface SyncPayload {
 /** 评分显示插件主类（承载原脚本 Core 主流程）。 */
 export class RatingDisplayPlugin extends BasePlugin {
     /** 已看番号集合（规范化番号 → 原始记录）。原 Core.watchedMap。 */
-    watchedMap: Map<string, any> = new Map();
+    watchedMap: Map<string, unknown> = new Map();
 
     /** 跨标签页同步脏标记（visibilitychange 兜底全量刷新用）。原 Core._dirty。 */
     _dirty = false;

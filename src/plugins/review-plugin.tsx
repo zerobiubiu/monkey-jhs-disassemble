@@ -10,26 +10,31 @@
  *   配合 tsconfig useDefineForClassFields:true，[[Define]] 语义一致。
  * - 单字母局部变量（原 e/t/n/a/i/s/r 等）已语义化命名为 movieId/container/reviews 等。
  * - 站点布尔 r、评论请求 R、布尔标识 _/C 改由 ../constants 引入。
- * - window.isDetailPage 为运行时挂载到 window 的全局，以 (window as any).isDetailPage 访问。
+ * - window.isDetailPage 为运行时挂载到 window 的全局，以 window.isDetailPage 访问。
  * - 内联 HTML 已提取为组件（ReviewHeader / ReviewContainers / ReviewLoading /
  *   ReviewError / ReviewEmpty / ReviewLoadMore / ReviewEnd / ReviewItem / ReviewLinkContent），
  *   仅替换其中的模板插值变量名。
  * - 控制流（分支、for 循环、IIFE、try/catch/finally、fire-and-forget .then()）与原脚本一致。
  */
-import { BasePlugin } from './base-plugin';
 import { isJavdbSite } from '../constants/site';
-import { fetchMovieReviews } from '../constants/api';
+import { fetchMovieReviews, type MovieReview } from '../constants/api';
 import { YES, NO } from '../constants/status';
-import { ReviewContainers } from '../components/review-containers';
-import { ReviewEmpty } from '../components/review-empty';
-import { ReviewEnd } from '../components/review-end';
-import { ReviewError } from '../components/review-error';
-import { ReviewHeader } from '../components/review-header';
-import { ReviewItem } from '../components/review-item';
-import { ReviewLinkContent } from '../components/review-link-content';
-import { ReviewLoadMore } from '../components/review-load-more';
-import { ReviewLoading } from '../components/review-loading';
+
+import type { PageType } from '../core/page-context';
 import { jsxToString } from '../core/jsx-to-string';
+
+import { BasePlugin } from './base-plugin';
+
+import { ReviewItem } from '../components/review/review-item';
+import { ReviewLinkContent } from '../components/review/review-link-content';
+import { ReviewStarIcon } from '../components/review/review-star-icon';
+
+import { SectionContainers } from '../components/shared/section-containers';
+import { SectionEndMessage } from '../components/shared/section-end-message';
+import { SectionErrorMessage } from '../components/shared/section-error-message';
+import { SectionHeader } from '../components/shared/section-header';
+import { SectionLoadMore } from '../components/shared/section-load-more';
+import { SectionStatusMessage } from '../components/shared/section-status-message';
 
 export class ReviewPlugin extends BasePlugin {
     /** 评论楼层序号（渲染时自增） */
@@ -47,6 +52,11 @@ export class ReviewPlugin extends BasePlugin {
         return 'ReviewPlugin';
     }
 
+    /** 仅在详情页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['detail'];
+    }
+
     /**
      * 详情页主处理：拉取并展示评论。对应原 L7090-7132。
      *
@@ -55,7 +65,7 @@ export class ReviewPlugin extends BasePlugin {
      * @returns 无返回值；内部异步拉取失败由各子方法自行 catch 处理。
      */
     async handle(): Promise<void> {
-        if ((window as any).isDetailPage) {
+        if (window.isDetailPage) {
             if (isJavdbSite) {
                 const movieId = this.parseMovieId(window.location.href);
                 await this.showReview(movieId);
@@ -72,18 +82,23 @@ export class ReviewPlugin extends BasePlugin {
      * @param container 评论区块挂载点；不传则取 #magnets-content
      * @returns 无返回值；首次展开或设置已展开时会异步触发 fetchAndDisplayReviews
      */
-    async showReview(movieId: any, container?: any): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery container
+    async showReview(movieId: string, container?: any): Promise<void> {
         const isExpanded = await storageManager.getSetting('enableLoadReview', YES);
         const target = container || $('#magnets-content');
         target.append(
             jsxToString(
-                <ReviewHeader
+                <SectionHeader
+                    title="❓ 评论区"
+                    foldId="reviewsFold"
+                    linkColor="#1890ff"
+                    tooltip="想要发表评论? 滑上去, 点击上面的按钮-看过"
                     foldText={isExpanded === YES ? '折叠' : '展开'}
                     iconText={isExpanded === YES ? '▲' : '▼'}
                 />
             )
         );
-        $('#reviewsFold').on('click', (event: any) => {
+        $('#reviewsFold').on('click', (event: Event) => {
             event.preventDefault();
             event.stopPropagation();
             const toggleText = $('#reviewsFold .toggle-text');
@@ -105,7 +120,7 @@ export class ReviewPlugin extends BasePlugin {
                 storageManager.saveSettingItem('enableLoadReview', NO);
             }
         });
-        target.append(jsxToString(<ReviewContainers />));
+        target.append(jsxToString(<SectionContainers containerId="reviewsContainer" footerId="reviewsFooter" />));
         if (isExpanded === YES) {
             await this.fetchAndDisplayReviews(movieId);
         }
@@ -117,25 +132,24 @@ export class ReviewPlugin extends BasePlugin {
      * @param movieId 影片 ID
      * @returns 无返回值；签名过期等异常会被 catch 并提示，不会向外抛出
      */
-    async fetchAndDisplayReviews(movieId: any): Promise<void> {
+    async fetchAndDisplayReviews(movieId: string): Promise<void> {
         const container = $('#reviewsContainer');
         const footer = $('#reviewsFooter');
-        container.append(jsxToString(<ReviewLoading />));
+        container.append(jsxToString(<SectionStatusMessage text="获取评论中..." id="reviewsLoading" />));
         const limit: number = await storageManager.getSetting('reviewCount', 20);
-        let reviews: any = null;
+        let reviews: MovieReview[] | null = null;
         try {
             reviews = await fetchMovieReviews(movieId, 1, limit);
-        } catch (err: any) {
-            if (err.toString().includes('簽名已過期')) {
+        } catch (err: unknown) {
+            if (String(err).includes('簽名已過期')) {
                 show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
             clog.error('获取评论失败:', err);
-            console.error('获取评论失败:', err);
         } finally {
             $('#reviewsLoading').remove();
         }
         if (!reviews) {
-            container.append(jsxToString(<ReviewError />));
+            container.append(jsxToString(<SectionErrorMessage text="获取评论失败" retryId="retryFetchReviews" linkColor="#1890ff" />));
             $('#retryFetchReviews').on('click', async () => {
                 $('#retryFetchReviews').parent().remove();
                 await this.fetchAndDisplayReviews(movieId);
@@ -143,22 +157,22 @@ export class ReviewPlugin extends BasePlugin {
             return;
         }
         if (reviews.length === 0) {
-            container.append(jsxToString(<ReviewEmpty />));
+            container.append(jsxToString(<SectionStatusMessage text="无评论" />));
             return;
         }
         this.displayReviews(reviews, container);
         if (reviews.length === limit) {
-            footer.html(jsxToString(<ReviewLoadMore />));
+            footer.html(jsxToString(<SectionLoadMore loadMoreId="loadMoreReviews" endId="reviewsEnd" text="加载更多评论" endText="已加载全部评论" />));
             let page = 1;
             const loadMoreBtn = $('#loadMoreReviews');
             loadMoreBtn.on('click', async () => {
-                let moreReviews: any;
+                let moreReviews: MovieReview[] | undefined;
                 loadMoreBtn.text('加载中...').prop('disabled', true);
                 page++;
                 try {
                     moreReviews = await fetchMovieReviews(movieId, page, limit);
-                } catch (err: any) {
-                    console.error('加载更多评论失败:', err);
+                } catch (err: unknown) {
+                    clog.error('加载更多评论失败:', err);
                 } finally {
                     loadMoreBtn.text('加载失败, 请点击重试').prop('disabled', false);
                 }
@@ -173,7 +187,7 @@ export class ReviewPlugin extends BasePlugin {
                 }
             });
         } else {
-            footer.html(jsxToString(<ReviewEnd />));
+            footer.html(jsxToString(<SectionEndMessage text="已加载全部评论" />));
         }
     }
 
@@ -181,13 +195,14 @@ export class ReviewPlugin extends BasePlugin {
      * 将评论数组渲染为 DOM 追加到容器，并转换正文内的 ed2k/磁力/HTTP 链接。
      * 对应原 L7237-7263。
      */
-    displayReviews(reviews: any, container: any): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery container
+    displayReviews(reviews: MovieReview[], container: any): void {
         if (reviews.length) {
-            reviews.forEach((review: any) => {
-                const stars = Array(review.score).fill('<i class="icon-star"></i>').join('');
+            reviews.forEach((review) => {
+                const stars = Array(review.score).fill(jsxToString(<ReviewStarIcon />)).join('');
                 const content = review.content.replace(
                     /ed2k:\/\/\|file\|[^|]+\|\d+\|[a-fA-F0-9]{32}\|\/|magnet:\?[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+|https?:\/\/[^\s"'<>`\u4e00-\u9fa5，。？！（）【】]+/g,
-                    (match: any) => jsxToString(<ReviewLinkContent match={match} />)
+                    (match: string) => jsxToString(<ReviewLinkContent match={match} />)
                 );
                 const html = jsxToString(
                     <ReviewItem

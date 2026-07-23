@@ -29,9 +29,14 @@ import {
     WATCHED_TEXT,
     FAVORITE_ACTION
 } from '../constants/status';
-import { BasePlugin } from './base-plugin';
-import { MenuButtonBoxHtml } from '../components/menu-button-box-html';
+
+import type { PageType } from '../core/page-context';
+import type { BlacklistItem } from '../core/storage-manager';
 import { jsxToString } from '../core/jsx-to-string';
+
+import { BasePlugin } from './base-plugin';
+
+import { MenuButtonBoxHtml } from '../components/misc/menu-button-box-html';
 
 /** 「已下载」状态标签文本（原顶层常量 y；已下载功能删除后残留引用的还原值）。 */
 const HAS_DOWN_TEXT = '📥️ 已下载';
@@ -42,6 +47,11 @@ export class ListPageButtonPlugin extends BasePlugin {
         return 'ListPageButtonPlugin';
     }
 
+    /** 仅在列表页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list'];
+    }
+
     /**
      * 列表页主处理：创建按钮组 + 绑定事件 + 依 autoPage 设置决定是否排序。
      * 对应原 L7956-7967。仅当 window.isListPage 时执行。
@@ -49,7 +59,7 @@ export class ListPageButtonPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if (!(window as any).isListPage) {
+        if (!window.isListPage) {
             return;
         }
         await this.createMenuBtn();
@@ -68,12 +78,12 @@ export class ListPageButtonPlugin extends BasePlugin {
     async createMenuBtn(): Promise<void> {
         if (isJavdbSite) {
             let containerEl = $('.main-tabs, .tabs');
-            let blacklistLabel = '加入黑名单';
-            let blacklistColor = '#d22020';
-            let tagBlacklistEntry: any = null;
+            const blacklistLabel = '加入黑名单';
+            const blacklistColor = '#d22020';
+            let tagBlacklistEntry: BlacklistItem | null | undefined = null;
             if (currentHref.includes('/tags')) {
                 utils.loopDetector(
-                    () => $('#jhs-check-tag').text().trim(),
+                    () => $('#jhs-check-tag').text().trim() !== '',
                     async () => {
                         const addBlacklistBtnEl = $('#addBlacklistBtn');
                         addBlacklistBtnEl.attr(
@@ -87,7 +97,7 @@ export class ListPageButtonPlugin extends BasePlugin {
                         const tagStarId = 'no-' + tagName;
                         const blacklist = await storageManager.getBlacklist();
                         tagBlacklistEntry = blacklist.find(
-                            (entry: any) => entry.starId === tagStarId
+                            (entry) => entry.starId === tagStarId
                         );
                         if (tagBlacklistEntry) {
                             addBlacklistBtnEl.css('backgroundColor', '#885d5d');
@@ -136,7 +146,7 @@ export class ListPageButtonPlugin extends BasePlugin {
         $('#blacklistBtn').on('click', () => {
             this.getBean('BlacklistPlugin').openBlacklistDialog();
         });
-        $('#sort-toggle-btn').on('click', (event: any) => {
+        $('#sort-toggle-btn').on('click', (event: Event) => {
             const currentMethod = localStorage.getItem('jhs_sortMethod');
             const nextMethod: string =
                 currentMethod && currentMethod !== 'default'
@@ -154,8 +164,8 @@ export class ListPageButtonPlugin extends BasePlugin {
             this.sortItems().then();
         });
         const blacklistPlugin = this.getBean('BlacklistPlugin');
-        $('#addBlacklistBtn').on('click', async (event: any) => {
-            await blacklistPlugin.addBlacklist(event);
+        $('#addBlacklistBtn').on('click', async (event: Event) => {
+            await blacklistPlugin.addBlacklist(event as MouseEvent);
         });
     }
 
@@ -178,7 +188,7 @@ export class ListPageButtonPlugin extends BasePlugin {
         if (!sortMethod) {
             return;
         }
-        $('.movie-list .item').each((index: number, element: any) => {
+        $('.movie-list .item').each((index: number, element: HTMLElement) => {
             if (!$(element).attr('data-original-index')) {
                 $(element).attr('data-original-index', index);
             }
@@ -187,16 +197,17 @@ export class ListPageButtonPlugin extends BasePlugin {
         const itemEls = $('.item', listEl);
         if (sortMethod === 'default') {
             itemEls
+                .get()
                 .sort(
-                    (itemA: any, itemB: any) =>
+                    (itemA: HTMLElement, itemB: HTMLElement) =>
                         $(itemA).data('original-index') - $(itemB).data('original-index')
                 )
-                .appendTo(listEl);
+                .forEach((el: HTMLElement) => listEl.append(el));
         } else {
             const items = itemEls.get();
-            items.sort((itemA: any, itemB: any) => {
+            items.sort((itemA: HTMLElement, itemB: HTMLElement) => {
                 if (sortMethod === 'rateCount') {
-                    const getRateCount = (el: any): number => {
+                    const getRateCount = (el: HTMLElement): number => {
                         const match = $(el)
                             .find('.score .value')
                             .text()
@@ -211,7 +222,7 @@ export class ListPageButtonPlugin extends BasePlugin {
                 } else {
                     // 原 return new Date(t)；Date-Date 隐式 valueOf 减法在 TS 下不合法，
                     // 改返回 .getTime()（数值结果等价）。
-                    const getDate = (el: any): number => {
+                    const getDate = (el: HTMLElement): number => {
                         const dateStr = $(el).find('.meta').text().trim();
                         return new Date(dateStr).getTime();
                     };
@@ -234,7 +245,7 @@ export class ListPageButtonPlugin extends BasePlugin {
         const maxCount = await storageManager.getSetting('waitCheckCount', 5);
         const skipTags = [BLOCKED_TEXT, FAVORITED_TEXT, HAS_DOWN_TEXT, WATCHED_TEXT];
         let openedCount = 0;
-        $(`${selectorConfig.itemSelector}:visible`).each((_index: number, element: any) => {
+        $(`${selectorConfig.itemSelector}:visible`).each((_index: number, element: HTMLElement) => {
             if (openedCount >= maxCount) {
                 return false;
             }
@@ -271,15 +282,15 @@ export class ListPageButtonPlugin extends BasePlugin {
     async openFavorite(): Promise<void> {
         const maxCount = await storageManager.getSetting('waitCheckCount', 5);
         const favoriteList = (await storageManager.getCarList())
-            .filter((item: any) => item.status === FAVORITE_ACTION)
-            .sort((a: any, b: any) => b.createDate - a.createDate);
+            .filter((item) => item.status === FAVORITE_ACTION)
+            .sort((a, b) => Number(b.createDate) - Number(a.createDate));
         for (let i = 0; i < maxCount; i++) {
             if (i >= favoriteList.length) {
                 return;
             }
             const carInfo = favoriteList[i];
             const carNum = carInfo.carNum;
-            const url = carInfo.url;
+            const url = carInfo.url!;
             if (carNum.includes('FC2-')) {
                 const movieId = this.parseMovieId(url);
                 await this.getBean('Fc2Plugin')?.openFc2Page(movieId, carNum, url);

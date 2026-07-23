@@ -27,6 +27,8 @@ monkey-jhs-disassemble/
 │   ├── core/               # 核心模块（含 feature-flags）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
+│   │   ├── fc2/            # FC2 专属组件（6 个）
+│   │   └── setting-panels/ # 设置面板子组件（9 个 + hr-style 辅助）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）
 │   ├── styles/             # CSS 文件（?raw import via initCss）
@@ -53,24 +55,30 @@ monkey-jhs-disassemble/
 
 **执行流程**：
 1. `import './core/libs'` — 加载第三方库（jquery/tabulator/layer/toastify/localforage/viewer/md5）并挂全局
-2. CSS 注入（javdb-site/common-toolbar/a-normal-buttons/loading/viewer/logger）
+2. CSS 注入（javdb-site/a-normal-buttons/common-toolbar/accessibility/design-tokens/loading/viewer/logger）
 3. 全局挂载（utils/gmHttp/storageManager/loadGfriends/filetreeDb/WebDavClient/refresh/cleanCache）
 4. BroadcastChannel('channel-refresh') 跨标签页刷新
 5. loading/show/showImageViewer 挂载
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册插件**（javdb 站点 33 插件在 `if (isJavdbSite)` 块内；missav 站点 1 插件在 `if (isMissavSite)` 块内）
-10. `await processCss()` — 并发执行所有插件 initCss，完成后再进入页面逻辑
-11. 页面判定（isDetailPage/isListPage/isFc2Page）
-12. storageManager 合并/清理
-13. `await processPlugins()` — 并发执行所有插件 handle
-14. `SettingPlugin.autoBackup()` — 自动备份（每天第一次打开/每次打开，javdb only）
+9. **PluginManager 实例化 + 注册 40 插件**（javdb 38 + missav 2，在 `if (isJavdbSite)` / `if (isMissavSite)` 块内）
+10. **页面判定**（`initPageContext()` → `window.isDetailPage/isListPage/isFc2Page`）— **先于 CSS**
+11. `await processCss()` — 并发执行所有插件 initCss（按 `pageTypes` 过滤不匹配插件）
+12. `await storageManager.runMigrations()` — 版本化数据迁移（javdb only，后续启动仅读版本号 ~1ms）
+13. `storageRevision.init()` + `onRemoteChange()` — 跨标签页缓存失效回调
+14. `await processPlugins()` — 并发执行所有插件 handle（按 `pageTypes` 过滤）
+15. `SettingPlugin.autoBackup()` — 自动备份（javdb only）
+16. `registerDiagnosticsMenu()` — 插件诊断 Tampermonkey 菜单
+17. `beforeunload` → `pluginManager.destroyAll()` — 销毁所有插件资源（TaskSupervisor.abort）
 
 **关键点**：
-- 所有插件在 `if (isJavdbSite)` 块内注册（非 javdb 站点不注册）
-- `processCss()` 在 `processPlugins()` 之前 await 完成（CSS 先于逻辑注入）
-- `isDetailPage`/`isListPage`/`isFc2Page` 在 `window` 上全局挂载，插件以 `(window as any).isDetailPage` 访问
+- 页面判定先于 `processCss()`（doc/139：PluginManager 按 `pageTypes` 过滤）
+- `window.isDetailPage` 等直接访问（doc/134：不再需要 `(window as any)`）
+- 19 个插件声明 `pageTypes`，不匹配插件不注入 CSS、不执行 handle
+- 9 个资源密集型插件使用 TaskSupervisor 管理定时器/Observer/事件监听器
+- 版本化迁移（doc/135）：6 步映射为版本 0→6，后续启动仅 1 次 IDB 读取
+- StorageRevision（doc/144）：16 个写入方法递增修订号 + BroadcastChannel 广播
 
 ### 3.2 插件系统
 
@@ -78,14 +86,23 @@ monkey-jhs-disassemble/
 - `getName(): string` — 插件名（注册去重用）
 - `async initCss(): Promise<string>` — 返回 CSS 字符串（由 PluginManager.utils.insertStyle 注入）
 - `async handle(): Promise<void>` — 主逻辑
-- `getBean(name): BasePlugin` — 按名获取其他插件实例（跨插件调用）
+- `getBean<K>(name): PluginMap[K]` — 按名获取其他插件实例（泛型，已知名称返回精确类型）
+- `get sites(): SiteType[]` — 适用站点（空 = 所有，doc/139）
+- `get pageTypes(): PageType[]` — 适用页面类型（空 = 所有，doc/139/140）
+- `destroy(): void` — 销毁钩子（TaskSupervisor.abort，doc/139）
 - `getPageInfo()/getActressPageInfo()/getSelector()/getBoxCarInfo()` 等 — 列表页/详情页辅助
 
 **`src/plugins/plugin-manager.ts`** — PluginManager：
 - `register(pluginClass)` — 实例化 + 注入 pluginManager + 按 getName() 去重
-- `getBean(name)` — 按名获取插件实例
-- `processCss()` — 并发执行所有插件 initCss，返回结构化结果并汇总失败项
-- `processPlugins()` — 并发执行所有插件 handle，返回结构化结果并汇总失败项
+- `getBean<K>(name): PluginMap[K] | undefined` — 按名获取插件实例（泛型类型安全）
+- `processCss(): Promise<Plugin[]>` — 并发执行所有插件 initCss（按 pageTypes 过滤）
+- `processPlugins(): Promise<Plugin[]>` — 并发执行所有插件 handle（按 pageTypes 过滤）
+- `getDiagnostics()` — 获取插件诊断信息（注册数 + CSS/handle 执行结果 + 耗时）
+- `destroyAll()` — 调用所有插件的 destroy()（beforeunload 时触发）
+
+**`src/plugins/plugin-registry.ts`** — PluginMap 类型映射（doc/132）：
+- 40 个插件名 → 具体类的 `import type` 映射，零运行时开销
+- 新增插件时在此添加一行映射即可
 
 ### 3.3 插件清单
 
@@ -114,7 +131,7 @@ monkey-jhs-disassemble/
 | BlacklistPlugin | blacklist-plugin.tsx | 黑名单 |
 | FavoriteActressesPlugin | favorite-actresses-plugin.tsx | 收藏演员 |
 | NewVideoPlugin | new-video-plugin.tsx | 新作品检测 |
-| Fc2Plugin | fc2-plugin.ts | FC2 |
+| Fc2Plugin | fc2-plugin.tsx | FC2 |
 
 **独立脚本集成插件（12 个）**：来自 `archetype/*.user.js`
 
@@ -138,9 +155,9 @@ monkey-jhs-disassemble/
 |------|------|------|------|
 | TranslatePlugin | translate-plugin.ts | translatePlugin | 详情页标题翻译 |
 | ScreenShotPlugin | screenshot-plugin.ts | screenShotPlugin | javstore 截图墙 |
-| MagnetHubPlugin | magnet-hub-plugin.ts | magnetHubPlugin | 多引擎磁链 |
+| MagnetHubPlugin | magnet-hub-plugin.tsx | magnetHubPlugin | 多引擎磁链 |
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
-| Fc2By123AvPlugin | fc2-by-123av-plugin.ts | fc2By123AvPlugin | 123Av FC2 浏览 |
+| Fc2By123AvPlugin | fc2-by-123av-plugin.tsx | fc2By123AvPlugin | 123Av FC2 浏览 |
 
 **新增功能插件（1 个）**：本项目自创（非 archetype 拆分/集成/升级）
 
@@ -173,8 +190,14 @@ monkey-jhs-disassemble/
 | jsx-to-string.ts | 轻量 JSX→HTML 字符串渲染器（替代 react-dom/server） |
 | async-task-queue.ts | 异步任务队列 |
 | auto-backup.ts | 自动备份（凭证 ID 管理 + 触发判断 + 增量滚动文件名） |
+| plugin-diagnostics.tsx | 插件诊断（渲染状态表格 + 纯文本报告 + GM 菜单注册） |
+| page-context.ts | 集中式页面类型检测（detectPageContext + pageContext 单例） |
+| task-supervisor.ts | AbortSignal 统一生命周期管理（定时器/Observer/事件监听器） |
+| list-dom-bus.ts | 列表页 DOM 变更总线（单 Observer + rAF 批量分发 .item 新增） |
+| pagination-state.ts | 瀑布流分页状态机（idle/loading/error/exhausted + retry） |
+| storage-revision.ts | 跨标签页存储修订号追踪（BroadcastChannel 广播 + 缓存失效回调） |
 
-### 3.5 组件 `src/components/`
+### 3.5 组件 `src/components/`（135 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。
@@ -184,14 +207,25 @@ monkey-jhs-disassemble/
 
 CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 `PluginManager.processCss()` → `utils.insertStyle()` 注入。
-顶层 CSS 由 `main.tsx` 的 `injectCss()` 直接注入。
+顶层 CSS 由 `main.tsx` 的 `injectCss()` 直接注入（最先注入
+`design-tokens.css` 设计令牌，再注入 `accessibility.css` 无障碍样式）。
+所有 CSS 已清理 `transition: all` 反模式（doc/147），使用具体过渡属性。
 
 ### 3.7 全局类型 `src/types/globals.d.ts`
 
-声明 Tampermonkey Grant API（GM_xmlhttpRequest 等）和运行时全局
-（$/layer/Tabulator/utils/gmHttp/storageManager/clog/show 等）为 `any` 类型。
+声明 Tampermonkey Grant API（`GMXmlHttpRequestDetails` 接口 + 精确函数签名，
+doc/145 类型化）和运行时全局（$/layer/Tabulator/utils/gmHttp/storageManager/
+clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 
-### 3.8 产品设计上下文 `PRODUCT.md`
+### 3.8 工具链
+
+- **构建**：`bun run build` = `tsc -b && vite build`
+- **ESLint**：`bun run lint`（`eslint.config.js`，TypeScript recommended +
+  `prefer-const`/`no-useless-escape` error 门禁，`no-explicit-any` warn，
+  基线 0 errors / 764 warnings）
+- **Stylelint**：`bun run lint:css`（`.stylelintrc.json`，CSS 一致性检查）
+
+### 3.9 产品设计上下文 `PRODUCT.md`
 
 记录 JavDB Power Tools 的目标用户、产品用途、品牌个性、反例、设计原则与无障碍基线。
 涉及界面新增或改版时以此约束视觉语言和交互反馈，保持增强功能与 JavDB/Bulma 原站
@@ -216,6 +250,7 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
     <div class="side-menu-item" data-panel="vlt-panel">📋 收藏清单关系</div>  ← doc/45 新增
     <div class="side-menu-item" data-panel="missav-panel">🎬 MissAV 同步</div>
     <div class="side-menu-item" data-panel="preload-panel">⚡ 预加载配置</div>  ← doc/110 新增
+    <div class="side-menu-item" data-panel="diagnostics-panel">📊 插件诊断</div>  ← doc/133 新增
   </div>
   <div style="flex:1">  ← 内容区
     <div id="backup-panel" class="content-panel">...</div>
@@ -223,6 +258,7 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
     ... 各面板 ...
     <div id="vlt-panel" class="content-panel">...</div>  ← doc/45 新增
     <div id="preload-panel" class="content-panel">...</div>  ← doc/110 新增
+    <div id="diagnostics-panel" class="content-panel">...</div>  ← doc/133 新增
   </div>
 </div>
 ```
@@ -240,6 +276,7 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 - 隐藏所有 `.content-panel`，显示选中的
 - cache-panel 隐藏 saveBtn + 显示 clean-all
 - vlt-panel 隐藏 saveBtn + 隐藏 clean-all
+- diagnostics-panel 隐藏 saveBtn + 隐藏 clean-all
 - 其他面板显示 saveBtn + 隐藏 clean-all
 
 ### 4.4 添加新面板的正确方式
@@ -294,6 +331,43 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 - `target: ES2020` + `lib: ES2020`（注意：`Array.prototype.at` 需 ES2022，用 `[length-1]` 替代）
 - `include: ["src"]`（.agents/ 不在 include 内，但 Zed TS 语言服务会扫描 .tsx）
 
+### 6.3 测试运行器（Vitest）
+
+- 命令：`bun run test` = `vitest run`（一次性运行，非 watch）。
+- 配置：`vitest.config.ts`，**与 `vite.config.ts` 分离**——不引入 react/monkey 插件。
+  `environment: 'node'`（Node 18+ 全局提供 `crypto.subtle`/`atob`/`btoa`，满足
+  AES-GCM 路径）；`include: ['tests/**/*.test.ts']`。
+- 测试目录 `tests/` **在 `src/` 之外**，故 `tsc -b`（app 仅 include src、node 仅
+  include vite.config.ts）、`eslint src/`、`vite build` **均不覆盖** `tests/`——测试
+  代码不影响用户脚本构建门禁，新增/修改测试不改变产物字节。
+- 被测模块为纯函数，用 `react.createElement` 构造节点（非 JSX），无需 JSX 转换或 DOM。
+- 当前套件（3 个）：`tests/jsx-to-string.test.ts`（doc/151 XSS 转义 + 协议白名单）、
+  `tests/backup-crypto.test.ts`（doc/137 AES-GCM 往返 + 错口令/篡改拒绝，node 环境）、
+  `tests/storage-migration.test.ts`（doc/135/162/163：第一组 `runMigrations` 集成契约
+  幂等/门控/全量/缓存失效/失败重试 5 用例 + 第二组附件分析路径正向回归
+  `clean_no_url_blacklist` 跨清单过滤/recordTime→createTime 与 `async_merge_other`
+  废弃键删除 2 用例，共 7 用例）。迁移套件因 `constants/site.ts` 模块加载期读
+  `window.location.href` 而用文件级 `// @vitest-environment jsdom` 指令，并以手写
+  in-memory `FakeForage`（`Map` 后端）替代 IndexedDB，无 fake-indexeddb 依赖；
+  `beforeEach` 注入 `globalThis.clog`/`globalThis.utils`/`window.clean_cacheSettingObj`
+  noop 替身（后者供 `async_merge_other`→`saveSetting` 路径）。
+- 可测试性 seam：`StorageManager` 构造函数 `constructor(forageInstance?: unknown)` 允许
+  注入存储替身（生产无参调用行为不变），`static __resetForTesting()` 重置单例供用例隔离。
+  参数用 `unknown` 而非 `any`，遵守「触及文件时消除新增 any」。
+- devDependencies：`vitest` + `jsdom`（jsdom 预留给未来需 DOM 的套件；当前套件用 node）。
+- **版本规则交互**：仅新增/修改测试（`tests/`、`vitest.config.ts`、`package.json` 的
+  scripts/deps/version 字段）不改变用户脚本逻辑，**不递增 `userscript.version`**；
+  `package.json` 的 `version` 字段与 `userscript.version` 同步属元数据修正（§6 批次 6）。
+- 增量 any 消除示范（doc/164）：对**已触及文件**按批次 6「触及即消除」，将
+  `storage-manager` 四个迁移方法的 `any[]` 收紧为 `CarRecord[]`/`BlacklistItem[]`/
+  `FavoriteActress[]`（接口含旧迁移字段可选属性 + `[key:string]:any` 索引签名，回调改
+  由上下文推断，零 `as any` 回填、无隐式 any）；eslint `no-explicit-any` 实测
+  805→786（−19）。残留 any（字段 `forage: any`、`getSetting`/`saveSetting` 的 any、
+  各接口索引签名、`merge_table_name`/`async_merge_other`/`getBlacklistCarList` 原始读）
+  属多会话 backlog——big-bang 消除需先补 jQuery/layer/Tabulator 类型声明（doc/165 已核实
+  `package.json` devDependencies 确无 `@types/jquery`/`@types/tabulator-tables`/
+  `@types/layui-layer`，此即 786 警告主体来源），不在单轮内强推。
+
 ## 7. 文档规范
 
 - `doc/NN-描述.md`，编号递增
@@ -324,3 +398,161 @@ CSS 文件通过 `?raw` import 为字符串，由 `initCss()` 返回 →
 - 新增/移除第三方库
 - 修改构建配置（vite.config/tsconfig）
 - 每次集成新独立脚本后
+
+## 9. 代码风格与一致性约定（强制）
+
+以下约定由 doc/153–156 确立，所有 agent 编辑 `src/` 时必须遵守；违反即视为缺陷。
+
+### 9.1 导入顺序（六组，组间空行）
+
+每个模块顶部 import 按下列顺序分组，组与组之间空一行；副作用导入
+（`import './x'` 无绑定，如 `import './core/libs'`）若有则**恒居首位**：
+
+1. 外部类型导入：`import type { ... } from 'react'` 等
+2. 常量：`../constants/*`
+3. 核心：`../core/*`，**含核心类型导入**（如 `import type { PageType } from '../core/page-context'`）
+4. 本地插件：`./base-plugin` 及 `./<同级模块>`
+5. 组件：`../components/*`
+6. 样式：`*.css?raw` **恒居末位**
+
+重排导入时**只改行序与空行分组，绝不增删/改名/改路径**；tsc 的 `noUnusedLocals`
+与未定义名检查是导入完整性的硬安全网。
+
+### 9.2 日志分层：clog vs console（含 devtools 跟踪例外）
+
+`src/core/logger.tsx` 的 `addLog` **从不写 console**，仅推入页内面板；**只有
+`error()` 额外 `console.error(...)`**。即 `clog.log`/`clog.warn`/`clog.debug`
+**仅面板可见**——这是有意设计，且与原始 `jhs.user.js` 日志器一致，**不得**为
+「表面一致」给 `log()`/`warn()` 加 console 转发（否则 60+ 处既有 `clog.log/warn`
+会刷屏 devtools，制造原始从未产生的噪声）。`clog` **没有 `.info()` 方法**
+（仅 log/error/warn/debug），禁止写 `clog.info(...)`。
+
+项目自有代码的错误/恢复路径用 `clog.error`（同步转发 console.error，devtools 仍可见）。
+
+**例外——集成本地脚本的 devtools 跟踪体系保留 `console.*`**：源自独立油猴脚本
+（doc/45/126 等）的模块使用有意的 `${LOG}` / `${LOG_PREFIX}` / 方括号前缀模板字面量
+`console.log/warn`，以及 `%c` 着色日志工厂（如 `car-status-sync/car-status-logger.ts`、
+`rating-display/rating-utils.ts`）。把这些改成 `clog.log/warn` 会**静默丢失 devtools
+同步诊断输出**，违反「与原始脚本零偏差」，且 `tsc`/`vite build` **无法捕获**。
+因此：集成脚本的跟踪日志**保留 `console.log/warn`**；`%c` 工厂按 archetype 原样用
+`console.*`。结论是**有意分层**——集成脚本保留原生 devtools 跟踪，项目自有代码用
+面板 `clog`（沿用 doc/154 先例：彼时也只把 `console.error`→`clog.error`）。
+
+### 9.3 toast 安全：show.error 必须传字符串
+
+`show.error`/`show.ok`/`show.success`/`show.info` 期望字符串。禁止直传 Error 对象
+或使用不安全的 `e.message || e`（非 Error 拒绝值会渲染为 `[object Object]`）。
+统一写法：`show.error('描述: ' + (e instanceof Error ? e.message : String(e)))`。
+
+### 9.4 z-index 层级（设计令牌）
+
+layer.js 的 z-index **无上限递增**（每次开弹窗 +1、mousedown +1），故 above-layer
+元素需 genuinely large 常量。`src/styles/design-tokens.css` 定义两级，**禁止**再出现
+散落的 `9999`/`99999999`/`9999999999` 字面量：
+
+- `--jhs-z-page: 9999`：页面内元素（back-to-top / load-all / 瀑布流按钮 / tag 下拉）
+- `--jhs-z-top: 999999999`：above-layer 层（tooltip / loading / logger / fc2 / visit-history）
+
+`image-preview.css` 的 `/* __Z_INDEX__ */` 为运行时占位符，**不得**替换为 `var()`。
+
+### 9.5 CSS 类名前缀
+
+插件专属类必须加 `jhs-` 或插件专属前缀（如 video-lists-tag 用 `jhs-vlt-`），避免与
+站点/框架/其他插件冲突。同一通用名（如 `.menu-btn`）**不得**在多个注入同一 head 的
+样式表中以冲突声明重复定义——按上下文拆为不同前缀名（见 doc/154 的
+`.jhs-toolbar-menu-btn` / `.jhs-setting-menu-btn`）。
+
+### 9.6 审计方法论
+
+对全树做一致性审计时**禁止静默截断**（如「每维最多 20 条」会在命中上限时停扫，掩盖
+真实表面）；必须无上限扫描，完整发现持久化到 `local://` 后再按发现数装箱为互不相交
+的并行编辑组。审计→执行链路引入的任何 `console.log/warn`→`clog.log/warn` 转换，
+须先用 §9.2 的跟踪例外复核，必要时窄范围回退（见 doc/155）。
+
+### 9.7 零硬编码 HTML 边界（强制）
+
+`src/` 内禁止以字符串字面量编写 **UI 模板**（按钮/弹窗/卡片/表格/列表项等多元素结构）；
+此类 UI 必须为 `src/components/*.tsx` 的 React 组件，经 `jsxToString` 渲染为 HTML 字符串
+（`.ts` 调用方用 `*Html()` 便捷辅助，如 `logColoredHtml`/`styleBlockHtml`/`scrollTopIconHtml`）。
+判定与豁免：
+
+- **违规**：字符串字面量被解析进 DOM——`innerHTML =`、jQuery `.html()/.append()/.prepend()/
+  .after()/.before()`、jQuery HTML 片段选择器 `$( '<...>' )`、或拼接进上述——且非 sanctioned
+  常量。
+- **豁免（搜索/比较 needle）**：对 DOM 派生文本做 `.indexOf/.includes/.startsWith/.match/.test`
+  的字面量（不生成元素），如 `css.indexOf('<style>')`、`.includes('<span>1005</span>')`。
+- **不在本规则范围**：jQuery `$( '<tag>' )` / `$( '<tag class=...>' )` 元素构造（createElement
+  等价 API，空容器/带属性句柄）；非「拼字符串编写 UI 模板」，不作违规、不强制改写。
+- **sanctioned 数据常量**：经 `dangerouslySetInnerHTML` 在组件内注入的 SVG/CSS 命名常量
+  （元素本身仍由组件生成）。
+
+审计时按上述四类（违规 / needle 豁免 / jQuery 构造 idiom / sanctioned 常量）逐条 triage，
+**禁止**把 jQuery 元素构造 idiom 计为违规而空转改写。
+
+## 10. 大文件拆分与代码复用规则（强制）
+
+以下规则对所有 agent 编辑 `src/` 时强制生效；违反即视为缺陷。
+
+### 10.1 单文件行数上限
+
+- **硬上限**：单个 `.ts`/`.tsx` 文件不得超过 **800 行**（含注释与空行）。
+- **软上限**：超过 **500 行** 的文件必须在下次触及该文件时评估拆分可行性，
+  并在 doc 中记录评估结论（拆分 or 不拆 + 理由）。
+- 新增代码时，若添加后文件将超过 500 行，**必须先拆分再添加**，不得先添加后补拆。
+
+### 10.2 拆分原则
+
+- **单一职责**：每个文件/模块只承担一个明确职责。若一个文件包含 2 个以上
+  不相关的职责（如「数据获取 + UI 渲染 + 事件绑定 + 状态管理」），必须拆分。
+- **按职责边界切分**：优先按「数据层 / 逻辑层 / 视图层 / 事件层」切分，
+  而非按行数机械切割。
+- **提取共享逻辑**：若两个文件存在相似逻辑（>10 行重复），必须提取为
+  `src/core/` 或同目录下的共享模块，禁止 copy-paste 式重复。
+- **组件原子化**：`src/components/` 下的组件应尽可能原子化——一个组件
+  只做一件事。若组件内包含多个独立 UI 区块（如 9 个面板），必须拆为子组件。
+
+### 10.3 代码复用规则
+
+- **禁止重复实现**：若 `src/` 中已存在功能相同或高度相似的函数/组件，
+  必须复用，不得新建。新建前必须 grep 全 `src/` 确认无重复。
+- **相似功能合并**：若发现两个函数/组件功能相似但实现不同（如
+  `markDataListHtml` vs `HitShowMovieItem`），必须合并为唯一实现，
+  删除冗余方。
+- **共享常量/类型**：跨文件使用的常量、接口、类型必须放在
+  `src/constants/` 或 `src/types/` 中，不得在多个文件内重复定义。
+
+### 10.4 拆分验证门禁
+
+每次拆分操作必须满足：
+1. `tsc -b && vite build` 通过
+2. `bun run test` 全绿
+3. 拆分前后 `jsxToString` 输出 DOM 等价（若涉及 UI）
+4. 无循环导入
+5. 导入顺序符合 §9.1
+6. `bun run check:structure` 通过——大文件行数 / 目录扁平度的机械门禁（scripts/check-structure.ts）。超限文件须在 FILE_CEILINGS 中且不得抬高 ceiling；拆分后下调 ceiling 或删除条目；新文件 >800 行直接失败。
+
+## 11. 目录规划规则（强制）
+
+### 11.1 扁平度上限
+
+- 单个目录下的**直接子文件**（不含子目录）不得超过 **20 个**。
+- 超过 20 个时，必须按功能域/职责创建子目录归类。
+- `src/components/` 当前 ~120 个直接文件已超限——后续新增组件必须按插件域
+  归入子目录（如 `components/setting-panels/`、`components/fc2/`、
+  `components/review/` 等），不得继续平铺。fc2/（6 组件）和 setting-panels/（9 面板 + 辅助）已建立。
+- 机械执行：`bun run check:structure` 对每个目录的直接子文件数做门禁（DIR_CEILINGS 棘轮），超 20 的新增直接失败。
+
+### 11.2 子目录划分原则
+
+- **按插件域**：每个插件若有 3 个以上专属组件，应创建
+  `components/<plugin-name>/` 子目录。
+- **按功能层**：`core/` 下若某类模块超过 5 个（如网络请求相关：
+  gm-http/webdav/webdav-crypto/gm-http-retry），应归入子目录。
+- **按页面类型**：若组件仅服务于特定页面（列表页/详情页/FC2 页），
+  可归入 `components/list-page/`、`components/detail-page/` 等。
+- **子目录命名**：kebab-case，语义化，与插件 `getName()` 或功能域对应。
+
+### 11.3 目录变更同步
+
+- 新增/删除/移动子目录时，必须同步更新 AGENTS.md §2 目录结构总览。
+- 移动文件后必须确认所有导入路径已更新（优先使用 `lsp rename_file`）。

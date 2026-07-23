@@ -19,8 +19,7 @@ import { BasePanel } from '.././setting-panels/base-panel';
 import { FilterPanel } from '.././setting-panels/filter-panel';
 import { DomainPanel } from '.././setting-panels/domain-panel';
 import { CachePanel } from '.././setting-panels/cache-panel';
-import { VltPanel } from '.././setting-panels/vlt-panel';
-import { MissavPanel } from '.././setting-panels/missav-panel';
+import { SyncPanel } from '.././setting-panels/sync-panel';
 import { PreloadPanel } from '.././setting-panels/preload-panel';
 import { DiagnosticsPanel } from '.././setting-panels/diagnostics-panel';
 
@@ -142,8 +141,54 @@ export function SettingDialog({
                     <FilterPanel panelName={panelName} />
                     <DomainPanel panelName={panelName} />
                     <CachePanel panelName={panelName} cacheItemsHtml={cacheItemsHtml} />
-                    <VltPanel panelName={panelName} />
-                    <MissavPanel panelName={panelName} />
+                    <SyncPanel
+                        panelId="vlt-panel"
+                        panelName={panelName}
+                        title="收藏清单关系"
+                        icon="📋"
+                        description={
+                            <>
+                                管理影片与清单的关联数据（本地 IndexedDB，随 WebDav 备份）。
+                                <br />
+                                <strong>导入</strong>：从 JSON 文件导入数据（如 PostgreSQL 迁移数据）。
+                                <br />
+                                <strong>导出</strong>：将当前数据导出为 JSON 文件（备份/迁移）。
+                            </>
+                        }
+                        buttons={[
+                            { id: 'vlt-import-btn', text: '导入数据', color: 'primary' },
+                            { id: 'vlt-export-btn', text: '导出数据', color: 'success' }
+                        ]}
+                        statusId="vlt-status"
+                        fileInputId="vlt-file-input"
+                    />
+                    <SyncPanel
+                        panelId="missav-panel"
+                        panelName={panelName}
+                        title="MissAV 状态标签同步"
+                        icon="🎬"
+                        description={
+                            <>
+                                在 MissAV 站点显示 JHS 鉴定状态标签（已收藏/已观看/已屏蔽/已下载）。
+                                <br />
+                                数据通过油猴 GM 存储跨域同步，无需后端服务器。
+                                <br />
+                                <strong>立即同步</strong>：读取当前 car_list 并推送到 GM 存储。
+                                <br />
+                                <strong>导入</strong>：从后端服务器导出的 JSON 导入历史数据。
+                                <br />
+                                <strong>导出</strong>：将 MissAV 本地 IndexedDB 数据导出为 JSON（可走
+                                WebDav 备份）。
+                            </>
+                        }
+                        buttons={[
+                            { id: 'missav-sync-btn', text: '立即同步', color: 'primary' },
+                            { id: 'missav-import-btn', text: '导入数据', color: 'primary' },
+                            { id: 'missav-export-btn', text: '导出数据', color: 'success' }
+                        ]}
+                        statusId="missav-status"
+                        fileInputId="missav-file-input"
+                    />
                     <PreloadPanel panelName={panelName} />
                 </div>
                 <DiagnosticsPanel panelName={panelName} />

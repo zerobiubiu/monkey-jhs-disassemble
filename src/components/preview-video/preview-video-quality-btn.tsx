@@ -18,12 +18,13 @@
  * react-dom/server）。属性值不做转义。
  */
 
-/** PreviewVideoQualityBtn 的属性（opt 为画质选项常量，字段为 any）。 */
+import type { VideoQualityOption } from '../../constants/video-quality';
+
+/** PreviewVideoQualityBtn 的属性（opt 为画质选项常量，类型为 VideoQualityOption）。 */
  
 export interface PreviewVideoQualityBtnProps {
     /** 画质选项（含 id/quality/text 字段）。 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    opt: any;
+    opt: VideoQualityOption;
     /** 该画质对应的视频源 URL。 */
     src: string;
     /** 是否当前选中（active 态蓝底白字）。 */

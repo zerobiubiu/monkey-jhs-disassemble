@@ -9,17 +9,17 @@
  * @param ms 超时毫秒
  * @returns 变化后的元素或 null
  */
-export function waitForDomChange(selector: string, ms: number): Promise<any> {
+export function waitForDomChange(selector: string, ms: number): Promise<Element | null> {
     return new Promise((resolve) => {
         const start = Date.now();
-        const el: any = document.querySelector(selector);
+        const el = document.querySelector(selector);
         if (!el) {
             resolve(null);
             return;
         }
         const before = el.innerHTML;
         const check = () => {
-            const cur: any = document.querySelector(selector);
+            const cur = document.querySelector(selector);
             if (!cur) {
                 resolve(null);
                 return;
@@ -44,7 +44,7 @@ export function waitForDomChange(selector: string, ms: number): Promise<any> {
  * @param ms 超时毫秒
  * @returns 找到的元素或 null
  */
-export function waitForEl(fn: () => any, ms: number): Promise<any> {
+export function waitForEl(fn: () => unknown, ms: number): Promise<unknown> {
     return new Promise((resolve) => {
         const start = Date.now();
         const check = () => {

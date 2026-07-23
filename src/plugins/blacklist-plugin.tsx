@@ -46,17 +46,6 @@
  *   插值变量名；控制流（分支/for/try-catch-finally/IIFE/fire-and-forget .then()）
  *   与原脚本一致。
  */
-import { BasePlugin, ActressInfo } from './base-plugin';
-import { BlacklistDialog } from '../components/blacklist-dialog';
-import { BlacklistConfirmMessage } from '../components/blacklist-confirm-message';
-import { BlacklistDataTypeOptions } from '../components/blacklist-data-type-options';
-import { BlacklistNameCell } from '../components/blacklist-name-cell';
-import { BlacklistUrlTypeCell } from '../components/blacklist-url-type-cell';
-import { BlacklistStatusCell } from '../components/blacklist-status-cell';
-import { BlacklistActionCell } from '../components/blacklist-action-cell';
-import { MovieListWrapper } from '../components/movie-list-wrapper';
-import { BlacklistPaginationCounter } from '../components/blacklist-pagination-counter';
-import { jsxToString } from '../core/jsx-to-string';
 import {
     currentHref,
     isJavdbSite,
@@ -68,15 +57,32 @@ import {
 } from '../constants/site';
 import { FILTER_ACTION } from '../constants/status';
 
+import { jsxToString } from '../core/jsx-to-string';
+
+import type { CarRecord, CarSaveInput } from '../core/storage-manager';
+import type { ActressInfo } from './base-plugin';
+import { BasePlugin } from './base-plugin';
+
+import { BlacklistDialog } from '../components/blacklist/blacklist-dialog';
+import { BlacklistConfirmMessage } from '../components/blacklist/blacklist-confirm-message';
+import { BlacklistDataTypeOptions } from '../components/blacklist/blacklist-data-type-options';
+import { BlacklistNameCell } from '../components/blacklist/blacklist-name-cell';
+import { BlacklistUrlTypeCell } from '../components/blacklist/blacklist-url-type-cell';
+import { BlacklistStatusCell } from '../components/blacklist/blacklist-status-cell';
+import { BlacklistActionCell } from '../components/blacklist/blacklist-action-cell';
+import { MovieListWrapper } from '../components/movie/movie-list-wrapper';
+import { BlacklistPaginationCounter } from '../components/blacklist/blacklist-pagination-counter';
+
 export class BlacklistPlugin extends BasePlugin {
     /** 全屏 loading 句柄（addBlacklist 执行期间显示，结束/出错时关闭）。 */
-    loadObj: any;
+    loadObj: { close: () => void } | null = null;
     /** Tabulator 表格实例（黑名单弹层内，弹层关闭时 destroy 并置空）。 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
     tableObj: any;
     /** 解析过程中最新一页的"下一页"链接（出错时点击跳转用）。 */
-    nextPageLink: any;
+    nextPageLink: string | undefined;
     /** 解析过程中到达的最后一页链接（成功结束时点击跳转用）。 */
-    lastPageLink: any;
+    lastPageLink: string | undefined;
     /** 黑名单检测间隔（小时），超过该时长未更新则停止检测；默认 8760（≈1 年）。 */
     checkBlacklist_ruleTime: number = 8760;
     /** 当前黑名单涉及的番号总数（paginationCounter 展示用）。 */
@@ -92,7 +98,7 @@ export class BlacklistPlugin extends BasePlugin {
      * 对应原 L7327-7439。
      * @param event 触发点击的 jQuery 事件（取 clientX/clientY 定位确认弹窗）
      */
-    async addBlacklist(event: any): Promise<void> {
+    async addBlacklist(event: MouseEvent): Promise<void> {
         const position = {
             clientX: event.clientX,
             clientY: event.clientY + 80
@@ -129,25 +135,25 @@ export class BlacklistPlugin extends BasePlugin {
                 notFirstPageByQuery={notFirstPageByQuery}
             />
         );
-        utils.q(position, confirmMessage, async () => {
+        utils.q(position as unknown as MouseEvent, confirmMessage, async () => {
             navigator.locks
                 .request(
                     'checkNewActressActorFilterCar',
                     {
                         ifAvailable: true
                     },
-                    async (lock: any) => {
+                    async (lock: unknown) => {
                         clog.debug('获取锁', lock);
                         if (lock) {
                             this.loadObj = loading();
                             try {
                                 await storageManager.addBlacklistItem({
-                                    starId,
+                                    starId: starId ?? undefined,
                                     name,
                                     allName,
                                     role,
                                     movieType,
-                                    url: blacklistUrl
+                                    url: blacklistUrl ?? undefined
                                 });
                                 await this.filterActorVideo(name, starId);
                                 const okShow = show.ok(
@@ -156,12 +162,12 @@ export class BlacklistPlugin extends BasePlugin {
                                         duration: -1,
                                         close: true,
                                         onClick: () => {
-                                            okShow.closeShow();
-                                            window.location.href = this.lastPageLink;
+                                            okShow.closeShow?.();
+                                            window.location.href = this.lastPageLink!;
                                         }
                                     }
                                 );
-                            } catch (error: any) {
+                            } catch (error: unknown) {
                                 clog.error(error);
                                 const errorShow = show.error(
                                     '发生错误, 是否填转到解析失败的那一页? (点击并跳转)',
@@ -169,21 +175,20 @@ export class BlacklistPlugin extends BasePlugin {
                                         duration: -1,
                                         close: true,
                                         onClick: () => {
-                                            errorShow.closeShow();
-                                            window.location.href = this.nextPageLink;
+                                            errorShow.closeShow?.();
+                                            window.location.href = this.nextPageLink!;
                                         }
                                     }
                                 );
                             } finally {
-                                this.loadObj.close();
+                                this.loadObj!.close();
                             }
                         } else {
                             show.error('当前有定时任务在后台执行中, 无法发起此操作');
                         }
                     }
                 )
-                .catch((lockError: any) => {
-                    console.error('锁任务出现错误:', lockError);
+                .catch((lockError: unknown) => {
                     clog.error('锁任务出现错误:', lockError);
                 });
         });
@@ -213,21 +218,21 @@ export class BlacklistPlugin extends BasePlugin {
             scrollbar: false,
             area: utils.getResponsiveArea(['80%', '90%']),
             anim: -1,
-            success: async (_layerEl: any) => {
+            success: async (_layerEl: unknown) => {
                 await this.loadTableData();
                 $('.layui-layer-content')
-                    .on('click', '#cleanQueryBtn', async (_event: any) => {
+                    .on('click', '#cleanQueryBtn', async (_event: unknown) => {
                         $('#searchValue').val('');
                         $('#dataType').val('');
                         $('#statusType').val('');
                         await this.reloadTable();
                     })
-                    .on('focusout keydown', '#searchValue', async (event: any) => {
-                        if (event.type === 'focusout' || event.key === 'Enter') {
-                            if (event.key === 'Enter') {
+                    .on('focusout keydown', '#searchValue', async (event: Event) => {
+                        if (event.type === 'focusout' || (event as KeyboardEvent).key === 'Enter') {
+                            if ((event as KeyboardEvent).key === 'Enter') {
                                 event.preventDefault();
                             }
-                            if (event.type === 'keydown' && event.key !== 'Enter') {
+                            if (event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter') {
                                 return;
                             }
                             $('#dataType').val('');
@@ -244,12 +249,12 @@ export class BlacklistPlugin extends BasePlugin {
                     .on('change', '#urlType', async () => {
                         await this.reloadTable();
                     })
-                    .on('click', '.open-url', (event: any) => {
+                    .on('click', '.open-url', (event: Event) => {
                         event.preventDefault();
                         const $link = $(event.currentTarget);
                         const url = $link.attr('data-url');
                         const name = $link.attr('data-name');
-                        utils.openPage(url, name, true, event);
+                        utils.openPage(url ?? '', name ?? '', true, event as MouseEvent);
                     });
             },
             end: () => {
@@ -279,9 +284,9 @@ export class BlacklistPlugin extends BasePlugin {
      * 对应原 L7510-7573。
      * @returns 过滤后的行数据数组（每行含 carList/count）
      */
-    async getTableData(): Promise<any[]> {
-        const blacklist: any[] = await storageManager.getBlacklist();
-        const blacklistCars: any[] = await storageManager.getBlacklistCarList();
+    async getTableData() {
+        const blacklist = await storageManager.getBlacklist();
+        const blacklistCars = await storageManager.getBlacklistCarList();
         const searchValue = $('#searchValue').val();
         const statusType = $('#statusType').val();
         const $dataTypeSelect = $('#dataType');
@@ -291,7 +296,7 @@ export class BlacklistPlugin extends BasePlugin {
         let actorCount = 0;
         let actressCount = 0;
         const enrichedList = blacklist
-            .map((item: any) => {
+            .map((item) => {
                 if (item.role === ACTOR) {
                     actorCount++;
                 } else if (item.role === ACTRESS) {
@@ -310,14 +315,14 @@ export class BlacklistPlugin extends BasePlugin {
                 };
             })
             .filter(
-                (item: any) =>
-                    (!searchValue || !!item.name.includes(searchValue)) &&
+                (item) =>
+                    (!searchValue || !!item.name!.includes(searchValue)) &&
                     (statusType !== 'normal' || !item.isUnCheck) &&
                     (statusType !== 'stop' || !!item.isUnCheck) &&
                     (dataType
                         ? item.role === dataType
-                        : (urlType !== 'hasT' || !!item.url.includes('t=')) &&
-                          (urlType !== 'noT' || !item.url.includes('t=')))
+                        : (urlType !== 'hasT' || !!item.url!.includes('t=')) &&
+                          (urlType !== 'noT' || !item.url!.includes('t=')))
             );
         $dataTypeSelect.html(
             jsxToString(
@@ -328,16 +333,16 @@ export class BlacklistPlugin extends BasePlugin {
                 />
             )
         );
-        $dataTypeSelect.val(dataType);
-        const carsByStarId = new Map<any, any>();
+        $dataTypeSelect.val(dataType as string);
+        const carsByStarId = new Map<string | undefined, CarRecord[]>();
         for (const carItem of blacklistCars) {
             const starId = carItem.starId;
             if (!carsByStarId.has(starId)) {
                 carsByStarId.set(starId, []);
             }
-            carsByStarId.get(starId).push(carItem);
+            carsByStarId.get(starId)!.push(carItem);
         }
-        const finalData = enrichedList.map((item: any) => {
+        const finalData = enrichedList.map((item) => {
             const starId = item.starId;
             const cars = carsByStarId.get(starId) || [];
             return {
@@ -347,7 +352,7 @@ export class BlacklistPlugin extends BasePlugin {
             };
         });
         this.currentCarCount = finalData.reduce(
-            (sum: number, row: any) => sum + (row.count || 0),
+            (sum: number, row) => sum + (row.count || 0),
             0
         );
         return finalData;
@@ -371,11 +376,11 @@ export class BlacklistPlugin extends BasePlugin {
             paginationSize: 20,
             paginationSizeSelector: [20, 50, 100, 1000, 99999],
             paginationCounter: (
-                _pageSize: any,
-                _pageNo: any,
-                _maxPage: any,
-                actorCount: any,
-                _pages: any
+                _pageSize: unknown,
+                _pageNo: unknown,
+                _maxPage: unknown,
+                actorCount: number,
+                _pages: unknown
             ) =>
                 jsxToString(
                     <BlacklistPaginationCounter
@@ -398,7 +403,8 @@ export class BlacklistPlugin extends BasePlugin {
                     minWidth: 100,
                     responsive: 0,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const rowData = cell.getData();
                         return jsxToString(
                             <BlacklistNameCell url={rowData.url} name={rowData.name} />
@@ -411,7 +417,8 @@ export class BlacklistPlugin extends BasePlugin {
                     sorter: 'string',
                     width: 120,
                     responsive: 5,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const role = cell.getData().role;
                         let roleText = role;
                         if (role === ACTOR) {
@@ -428,7 +435,8 @@ export class BlacklistPlugin extends BasePlugin {
                     sorter: 'string',
                     width: 120,
                     responsive: 5,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const movieType = cell.getData().movieType;
                         let movieTypeText = movieType;
                         if (movieType === CENSORED) {
@@ -446,7 +454,8 @@ export class BlacklistPlugin extends BasePlugin {
                     minWidth: 120,
                     responsive: 4,
                     visible: isJavdbSite,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         const hasTag = cell.getData().url.includes('t=');
                         return jsxToString(<BlacklistUrlTypeCell hasTag={hasTag} />);
                     }
@@ -478,7 +487,8 @@ export class BlacklistPlugin extends BasePlugin {
                     sorter: 'string',
                     width: 120,
                     responsive: 1,
-                    formatter: (cell: any, _formatterParams: any, _onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                         let tipText = '';
                         let statusText = '正常检测';
                         if (cell.getData().isUnCheck) {
@@ -497,12 +507,13 @@ export class BlacklistPlugin extends BasePlugin {
                     minWidth: 150,
                     responsive: 0,
                     headerSort: false,
-                    formatter: (cell: any, _formatterParams: any, onRendered: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
+                    formatter: (cell: any, _formatterParams: unknown, onRendered: (callback: () => void) => void) => {
                         const rowData = cell.getData();
                         onRendered(() => {
-                            const deleteBtn: any = cell.getElement().querySelector('.delete-btn');
+                            const deleteBtn = cell.getElement().querySelector('.delete-btn');
                             if (deleteBtn != null) {
-                                deleteBtn.addEventListener('click', (event: any) => {
+                                deleteBtn.addEventListener('click', (event: MouseEvent) => {
                                     const name = rowData.name;
                                     const starId = rowData.starId;
                                     if (name) {
@@ -529,11 +540,11 @@ export class BlacklistPlugin extends BasePlugin {
                                     }
                                 });
                             }
-                            const keywordBtn: any = cell.getElement().querySelector('.keyword-btn');
+                            const keywordBtn = cell.getElement().querySelector('.keyword-btn');
                             if (keywordBtn != null) {
                                 keywordBtn.addEventListener('click', () => {
-                                    const prefixCounts: any = rowData.carList.reduce(
-                                        (acc: any, carItem: any) => {
+                                    const prefixCounts: Record<string, number> = rowData.carList.reduce(
+                                        (acc: Record<string, number>, carItem: { carNum: string }) => {
                                             const prefix = carItem.carNum.split('-')[0] + '-';
                                             acc[prefix] = (acc[prefix] || 0) + 1;
                                             return acc;
@@ -541,11 +552,11 @@ export class BlacklistPlugin extends BasePlugin {
                                         {}
                                     );
                                     const sortedPrefixes = Object.entries(prefixCounts)
-                                        .map(([prefix, count]: [string, any]) => ({
+                                        .map(([prefix, count]: [string, number]) => ({
                                             prefix,
                                             count
                                         }))
-                                        .sort((a: any, b: any) => b.count - a.count);
+                                        .sort((a: { count: number }, b: { count: number }) => b.count - a.count);
                                     console.log(sortedPrefixes);
                                 });
                             }
@@ -621,9 +632,9 @@ export class BlacklistPlugin extends BasePlugin {
      * @param names 演员名（写入 saveCar.names）
      * @param $dom 可选的已解析页 DOM；缺省时从当前页选择器取
      */
-    async filterAllVideo(names: any, $dom?: any): Promise<void> {
-        let items: any[];
-        let nextPageHref: any;
+    async filterAllVideo(names: string, $dom?: JQuery): Promise<void> {
+        let items: JQuery;
+        let nextPageHref: string | undefined;
         if ($dom) {
             items = $dom.find(this.getSelector().requestDomItemSelector);
             nextPageHref = $dom.find(this.getSelector().nextPageSelector).attr('href');
@@ -652,8 +663,8 @@ export class BlacklistPlugin extends BasePlugin {
                         publishTime
                     });
                     clog.log('屏蔽演员番号', names, carNum);
-                } catch (error: any) {
-                    console.error(`保存失败 [${carNum}]:`, error);
+                } catch (error: unknown) {
+                    clog.error(`保存失败 [${carNum}]:`, error);
                 }
             }
         }
@@ -662,7 +673,7 @@ export class BlacklistPlugin extends BasePlugin {
             await new Promise<void>((resolve) => setTimeout(resolve, 500));
             const pageHtml = await gmHttp.get(nextPageHref);
             const domParser = new DOMParser();
-            const $parsed = $(domParser.parseFromString(pageHtml, 'text/html'));
+            const $parsed = $(domParser.parseFromString(String(pageHtml), 'text/html'));
             await this.filterAllVideo(names, $parsed);
         } else {
             show.ok('执行结束!');
@@ -677,16 +688,19 @@ export class BlacklistPlugin extends BasePlugin {
      * @param starId 演员 starId
      * @param $dom 可选的已解析页 DOM；缺省时从当前页选择器取
      */
-    async filterActorVideo(name: any, starId: any, $dom?: any): Promise<void> {
+    async filterActorVideo(name: string, starId: string | null, $dom?: JQuery): Promise<void> {
         const { nextPageLink } = await this.parseAndSaveFilterInfo($dom, name, starId);
         this.nextPageLink = nextPageLink;
         if (nextPageLink) {
-            let nextDom: any;
+            let nextDom: JQuery;
             this.lastPageLink = nextPageLink;
             show.info('请不要关闭窗口, 正在解析下一页:' + nextPageLink);
             const pageNum = utils.getUrlParam(nextPageLink, 'page') || 0;
-            const beyond60Plugin = this.getBean('Beyond60Plugin');
-            if (isJavdbSite && beyond60Plugin && pageNum > 60) {
+            // Beyond60Plugin 从未注册（忠实死路径），类型仅为编译通过
+            const beyond60Plugin = this.getBean('Beyond60Plugin') as (BasePlugin & {
+                handleBeyond60(url: string): Promise<{ html: string; nextUrl: string; hasMore: boolean }>;
+            }) | undefined;
+            if (isJavdbSite && beyond60Plugin && Number(pageNum) > 60) {
                 const {
                     html,
                     nextUrl,
@@ -697,7 +711,7 @@ export class BlacklistPlugin extends BasePlugin {
             } else {
                 clog.log('正在请求下一页内容:', nextPageLink);
                 const pageHtml = await gmHttp.get(nextPageLink);
-                nextDom = utils.htmlTo$dom(pageHtml);
+                nextDom = utils.htmlTo$dom(String(pageHtml));
             }
             await this.filterActorVideo(name, starId, nextDom);
         } else {
@@ -715,14 +729,14 @@ export class BlacklistPlugin extends BasePlugin {
      * @returns nextPageLink 下一页 href（无则为 null）；lastPublishTime 首条发行时间
      */
     async parseAndSaveFilterInfo(
-        $dom: any,
-        names: any,
-        starId: any
-    ): Promise<{ nextPageLink: any; lastPublishTime: any }> {
-        let items: any[];
-        let nextPageHref: any;
+        $dom: JQuery | undefined,
+        names: string,
+        starId: string | null
+    ): Promise<{ nextPageLink: string | undefined; lastPublishTime: string | null }> {
+        let items: JQuery;
+        let nextPageHref: string | undefined;
         if ($dom) {
-            let siteType = JAVDB;
+            const siteType = JAVDB;
             items = $dom.find(this.getSelector(siteType).requestDomItemSelector);
             nextPageHref = $dom.find(this.getSelector(siteType).nextPageSelector).attr('href');
         } else {
@@ -731,12 +745,12 @@ export class BlacklistPlugin extends BasePlugin {
         }
         if (nextPageHref && items.length === 0) {
             return {
-                nextPageLink: null,
+                nextPageLink: undefined,
                 lastPublishTime: null
             };
         }
-        let carList: any[] = [];
-        let lastPublishTime: any = null;
+        const carList: CarSaveInput[] = [];
+        let lastPublishTime: string | null = null;
         for (const itemEl of items) {
             const $item = $(itemEl);
             const { carNum, url, publishTime } =
@@ -748,16 +762,15 @@ export class BlacklistPlugin extends BasePlugin {
                     url,
                     names,
                     actionType: FILTER_ACTION,
-                    starId,
+                    starId: starId ?? undefined,
                     publishTime
                 });
             }
         }
         try {
             await storageManager.batchSaveBlacklistCarList(carList);
-        } catch (error: any) {
+        } catch (error: unknown) {
             clog.error('保存失败:', error);
-            console.error('保存失败:', error);
         }
         return {
             nextPageLink: nextPageHref,

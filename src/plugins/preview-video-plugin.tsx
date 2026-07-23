@@ -44,10 +44,10 @@ import { currentHref } from '../constants/site';
 import { YES, NO } from '../constants/status';
 import { VIDEO_QUALITY_LIST } from '../constants/video-quality';
 import { BasePlugin } from './base-plugin';
-import { PreviewVideoActionBtn } from '../components/preview-video-action-btn';
-import { PreviewVideoQualityBtn } from '../components/preview-video-quality-btn';
-import { PreviewVideoContainer } from '../components/preview-video-container';
-import { SiteResultTag } from '../components/site-result-tag';
+import { PreviewVideoActionBtn } from '../components/preview-video/preview-video-action-btn';
+import { PreviewVideoQualityBtn } from '../components/preview-video/preview-video-quality-btn';
+import { PreviewVideoContainer } from '../components/preview-video/preview-video-container';
+import { SiteResultTag } from '../components/other-site/site-result-tag';
 import { jsxToString } from '../core/jsx-to-string';
 import previewVideoCssRaw from '../styles/preview-video-plugin.css?raw';
 
@@ -195,9 +195,9 @@ class DmmPreviewVideoResolver {
                 sort: 'match',
                 keyword: keyword
             }).toString()}`;
-            let response: any;
+            let response: { result: { result_count: number; items: Array<{ content_id?: string; maker_product?: string; service_code?: string; floor_code?: string; URL?: string }> } } | undefined;
             try {
-                response = await gmHttp.get(apiUrl);
+                response = (await gmHttp.get(apiUrl)) as typeof response;
             } catch (err) {
                 clog.error(`API 请求失败，跳过 ${name}:`, err);
                 continue;
@@ -219,10 +219,10 @@ class DmmPreviewVideoResolver {
                     contentId.includes(noHyphen.toLowerCase())
                 ) {
                     matched.push({
-                        serviceCode: item.service_code,
-                        floorCode: item.floor_code,
+                        serviceCode: item.service_code || '',
+                        floorCode: item.floor_code || '',
                         contentId: contentId,
-                        pageUrl: item.URL
+                        pageUrl: item.URL || ''
                     });
                     clog.debug(`[${name}] cid|makerProduct 匹配成功:`, contentId, makerProduct);
                 }
@@ -282,7 +282,7 @@ class DmmPreviewVideoResolver {
         floorCode
     }: DmmContentId): Promise<QualityVideoMap> {
         const playerUrl = `https://www.dmm.co.jp/service/digitalapi/-/html5_player/=/cid=${contentId}/mtype=AhRVShI_/service=${serviceCode}/floor=${floorCode}/mode=/`;
-        const html = await gmHttp.get(playerUrl, null, {
+        const html = await gmHttp.get(playerUrl, undefined, {
             'accept-language': 'ja-JP,ja;q=0.9',
             Cookie: 'age_check_done=1'
         });
@@ -297,7 +297,7 @@ class DmmPreviewVideoResolver {
         if (!argsMatch) {
             throw new Error('未在脚本中找到 const args = ... 变量');
         }
-        let bitrates: any;
+        let bitrates: unknown;
         try {
             ({ bitrates } = JSON.parse(argsMatch[1]));
         } catch (err) {
@@ -372,19 +372,24 @@ class DmmPreviewVideoResolver {
         }
         try {
             // Promise.any 为 ES2021 API，tsconfig lib 为 ES2020，以 as any 规避类型检查。
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const videoMap = await (Promise as any).any(
                 contentIds.map((id) => this._extractTrailerLinks(id))
             );
             this._updateCache(videoMap);
             return videoMap;
         } catch (err) {
-            const errors = (err as any).errors || [err];
-            if (errors.some((e: Error) => e.message.includes('节点不可用'))) {
+            const errors: unknown[] =
+                err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors)
+                    ? err.errors
+                    : [err];
+            if (errors.some((e) => e instanceof Error && e.message.includes('节点不可用'))) {
                 if (this.showErrorMessages) {
                     show.error('节点不可用，请将DMM域名分流到日本ip');
                 }
             } else {
-                const firstMsg = errors[0].message || errors[0];
+                const first = errors[0];
+                const firstMsg = first instanceof Error && first.message ? first.message : first;
                 clog.error(`解析失败: ${firstMsg}`, errors);
                 if (this.showErrorMessages) {
                     show.error(`解析失败: ${firstMsg}`);
@@ -443,7 +448,7 @@ export class PreviewVideoPlugin extends BasePlugin {
      * @returns Promise<void>；不抛出异常（内部错误均被 catch 或 .then() 吞掉）。
      */
     async handle(): Promise<void> {
-        if (!(window as any).isDetailPage) {
+        if (!(window as unknown as Record<string, unknown>).isDetailPage) {
             return;
         }
         const $container = $('.preview-video-container');
@@ -497,7 +502,7 @@ export class PreviewVideoPlugin extends BasePlugin {
                 ];
             clog.log('切换其它画质预览视频: ', videoUrl);
             const $video = $('#preview-video');
-            const videoEl = $video.length ? $video[0] : null;
+            const videoEl = $video.length ? ($video[0] as HTMLVideoElement) : null;
             const isHidden = !videoEl || utils.isHidden($video);
             if ($video.length) {
                 if (videoEl) {
@@ -513,7 +518,7 @@ export class PreviewVideoPlugin extends BasePlugin {
                 clog.debug('JavDB没有视频播放元素, 开始创建...');
                 const coverSrc = $('.column-video-cover img').attr('src');
                 $('.preview-images').prepend(
-                    jsxToString(<PreviewVideoContainer coverSrc={coverSrc} />)
+                    jsxToString(<PreviewVideoContainer coverSrc={coverSrc ?? ''} />)
                 );
                 $('.preview-video-container').on('click', () => {
                     utils.loopDetector(
@@ -547,7 +552,7 @@ export class PreviewVideoPlugin extends BasePlugin {
         }
         const $videoWrap = $video.parent();
         $videoWrap.css('position', 'relative');
-        const videoEl = $video[0];
+        const videoEl = $video[0] as HTMLVideoElement;
         const mutedStored = localStorage.getItem(VIDEO_MUTED_KEY);
         if (mutedStored) {
             videoEl.muted = mutedStored === YES;
@@ -617,7 +622,7 @@ export class PreviewVideoPlugin extends BasePlugin {
         $actionGroup.append($speedBtn);
         $toolbar.append($actionGroup);
         $videoWrap.append($toolbar);
-        $toolbar.on('click', '.video-control-btn', async (event: any) => {
+        $toolbar.on('click', '.video-control-btn', async (event: Event) => {
             const $btn = $(event.currentTarget);
             const src = $btn.data('video-src');
             if (!$btn.hasClass('active')) {
@@ -643,14 +648,14 @@ export class PreviewVideoPlugin extends BasePlugin {
         $('#speed-btn').on('click', () => {
             this.getBean('DetailPageButtonPlugin').speedVideo();
         });
-        utils.rightClick(document.body, '#speed-btn', (event: any) => {
+        utils.rightClick(document.body, '#speed-btn', (event: MouseEvent) => {
             this.getBean('DetailPageButtonPlugin').filterOne(event);
         });
-        $('#video-filterBtn').on('click', (event: any) => {
-            this.getBean('DetailPageButtonPlugin').filterOne(event);
+        $('#video-filterBtn').on('click', (event: Event) => {
+            this.getBean('DetailPageButtonPlugin').filterOne(event as MouseEvent);
         });
-        $('#video-favoriteBtn').on('click', (event: any) => {
-            this.getBean('DetailPageButtonPlugin').favoriteOne(event);
+        $('#video-favoriteBtn').on('click', () => {
+            this.getBean('DetailPageButtonPlugin').favoriteOne();
         });
     }
 }

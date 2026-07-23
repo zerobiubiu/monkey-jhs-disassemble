@@ -14,12 +14,12 @@
  *   （BLOCK_TEXT/FAVORITE_TEXT/WATCHED_TEXT/YES/NO）；
  *   画质列表 L 改由 ../constants/video-quality 引入（VIDEO_QUALITY_LIST）。
  * - 原顶层 ImageHoverPreview 改用 ../core/image-preview 的 ImagePreview（同名重构）。
- * - window.isDetailPage 为运行时挂载全局，以 (window as any).isDetailPage 访问；
+ * - window.isDetailPage 为运行时挂载全局，以 window.isDetailPage 访问；
  *   window.refresh() 以全局 refresh() 调用（src/types/globals.d.ts 已声明）；
- *   window.imageHoverPreviewObj 以 (window as any).imageHoverPreviewObj 访问。
+ *   window.imageHoverPreviewObj 以 window.imageHoverPreviewObj 访问。
  * - WebDav 加密/解密/客户端（原 Me/Ne/De）已提取至 core/webdav-crypto
  *   （encryptCredential/decryptCredential）与 core/webdav（WebDavClient），
- *   经 (window as any).encryptCredential / .decryptCredential / .WebDavClient 访问。
+ *   经 window.encryptCredential / .decryptCredential / .WebDavClient 访问。
  * - 原构造函数 i(this,"field",val)（Object.defineProperty，[[Define]] 语义）
  *   改为 class 字段语法（useDefineForClassFields:true，语义一致）。
  * - $ / layer / utils / storageManager / show / clog / Tabulator / loading 已由
@@ -39,34 +39,9 @@
 import { isJavdbSite } from '../constants/site';
 import { YES, NO } from '../constants/status';
 import { VIDEO_QUALITY_LIST } from '../constants/video-quality';
-import { BasePlugin } from './base-plugin';
 
-import settingCssRaw from '../styles/setting-plugin.css?raw';
-import helpDialogCssRaw from '../styles/help-dialog.css?raw';
-import backToTopCssRaw from '../styles/back-to-top-button.css?raw';
-
-import horizontalImgCssRaw from '../styles/setting-image-mode-horizontal.css?raw';
 import { jsxToString } from '../core/jsx-to-string';
-import { SettingDialog } from '../components/setting-dialog';
-import { HelpDialog } from '../components/help-dialog';
-import { BackupFileDialog } from '../components/backup-file-dialog';
-import { BackToTopButton } from '../components/back-to-top-button';
-import { CacheItemHtml } from '../components/cache-item-html';
-import { SettingMountBox } from '../components/setting-mount-box';
-import { SimpleSettingPanel } from '../components/simple-setting-panel';
-import { VideoQualityOption } from '../components/video-quality-option';
-import { KeywordLabel } from '../components/keyword-label';
-import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
-import { showToast } from './video-lists-tag/vlt-toast';
-import { GM_KEY_CAR_STATUS_DATA } from './car-status-sync/car-status-config';
-import {
-    toColumnar,
-    gzipToBase64,
-    countColumnar,
-    columnarToFlat,
-    buildJavdbUrl
-} from './car-status-sync/car-status-columnar';
-import { importLocalDB, exportLocalDB } from './car-status-sync/car-status-db';
+import { renderDiagnosticsHtml, renderDiagnosticsText } from '../core/plugin-diagnostics';
 import {
     getCredentialId,
     DEFAULT_AUTO_BACKUP_CONFIG,
@@ -79,8 +54,47 @@ import {
 import {
     collectLocalStorageBackup,
     collectGmStorageBackup,
+    stripBackupExtras,
     applyBackupExtras
 } from '../core/backup-extra-storage';
+import { encryptBackupV2, decryptBackupV2, isBackupV2 } from '../core/backup-crypto';
+
+import { BasePlugin } from './base-plugin';
+import { VltDb, type MigrationData } from './video-lists-tag/vlt-db';
+import { showToast } from './video-lists-tag/vlt-toast';
+import { GM_KEY_CAR_STATUS_DATA } from './car-status-sync/car-status-config';
+import {
+    toColumnar,
+    gzipToBase64,
+    countColumnar,
+    columnarToFlat,
+    buildJavdbUrl
+} from './car-status-sync/car-status-columnar';
+import { importLocalDB, exportLocalDB } from './car-status-sync/car-status-db';
+
+import { BackupActionCell } from '../components/misc/backup-action-cell';
+import { SettingDialog } from '../components/setting/setting-dialog';
+import { HelpDialog } from '../components/dialogs/help-dialog';
+import { BackupFileDialog } from '../components/dialogs/backup-file-dialog';
+import { BackToTopButton } from '../components/misc/back-to-top-button';
+import { PreloadCacheStatsText } from '../components/misc/preload-cache-stats-text';
+import { CacheItemHtml } from '../components/setting/cache-item-html';
+import { SettingMountBox } from '../components/setting/setting-mount-box';
+import { SimpleSettingPanel } from '../components/setting/simple-setting-panel';
+import { VideoQualityOption } from '../components/setting/video-quality-option';
+import { KeywordLabel } from '../components/misc/keyword-label';
+import { StyleBlock } from '../components/misc/style-block';
+
+import settingCssRaw from '../styles/setting-plugin.css?raw';
+import helpDialogCssRaw from '../styles/help-dialog.css?raw';
+import backToTopCssRaw from '../styles/back-to-top-button.css?raw';
+import horizontalImgCssRaw from '../styles/setting-image-mode-horizontal.css?raw';
+
+/** WebDAV 凭据 GM 私有存储键。 */
+const GM_KEY_WEBDAV_URL = 'jhs_webdav_url';
+const GM_KEY_WEBDAV_USERNAME = 'jhs_webdav_username';
+const GM_KEY_WEBDAV_PASSWORD = 'jhs_webdav_password';
+const GM_KEY_BACKUP_PASSWORD = 'jhs_backup_password';
 
 /** 缓存项配置（localStorage 键 + 展示文本 + 说明）。 */
 interface CacheItem {
@@ -197,7 +211,7 @@ export class SettingPlugin extends BasePlugin {
                 ? 1
                 : ((settings == null ? undefined : settings.containerColumns) ?? 4);
         this.applyImageMode().then();
-        let cssText = `\n            section .container{\n                max-width: 1000px !important;\n                min-width: ${containerWidth}%;\n            }\n            .movie-list, .movie-list.v{\n                grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n            }\n        `;
+        const cssText = `\n            section .container{\n                max-width: 1000px !important;\n                min-width: ${containerWidth}%;\n            }\n            .movie-list, .movie-list.v{\n                grid-template-columns: repeat(${containerColumns}, minmax(0, 1fr));\n            }\n        `;
         return settingCssRaw.replace('__CSS_TEXT__', cssText);
     }
 
@@ -288,7 +302,7 @@ export class SettingPlugin extends BasePlugin {
         $(window).on('scroll', () => {
             if (!ticking) {
                 window.requestAnimationFrame(() => {
-                    if ($(window).scrollTop() > 300) {
+                    if (($(window).scrollTop() ?? 0) > 300) {
                         btn.addClass('show');
                     } else {
                         btn.removeClass('show');
@@ -375,9 +389,19 @@ export class SettingPlugin extends BasePlugin {
         $('#clogMsgCount').val(settings.clogMsgCount || 2000);
         $('#httpTimeout').val(settings.httpTimeout || 5000);
         $('#httpRetryCount').val(settings.httpRetryCount || 3);
-        $('#webDavUrl').val(settings.webDavUrl || '');
-        $('#webDavUsername').val(settings.webDavUsername || '');
-        $('#webDavPassword').val(settings.webDavPassword || '');
+        // WebDAV 凭据：优先 GM 新格式，回退 settings 旧格式并迁移
+        const webDavUrl = GM_getValue(GM_KEY_WEBDAV_URL, '') || settings.webDavUrl || '';
+        const webDavUsername = GM_getValue(GM_KEY_WEBDAV_USERNAME, '') || settings.webDavUsername || '';
+        const webDavPassword = GM_getValue(GM_KEY_WEBDAV_PASSWORD, '') || settings.webDavPassword || '';
+        const backupPwd = GM_getValue(GM_KEY_BACKUP_PASSWORD, '') || settings.backupPassword || '';
+        if (webDavUrl && !GM_getValue(GM_KEY_WEBDAV_URL, '')) GM_setValue(GM_KEY_WEBDAV_URL, webDavUrl);
+        if (webDavUsername && !GM_getValue(GM_KEY_WEBDAV_USERNAME, '')) GM_setValue(GM_KEY_WEBDAV_USERNAME, webDavUsername);
+        if (webDavPassword && !GM_getValue(GM_KEY_WEBDAV_PASSWORD, '')) GM_setValue(GM_KEY_WEBDAV_PASSWORD, webDavPassword);
+        if (backupPwd && !GM_getValue(GM_KEY_BACKUP_PASSWORD, '')) GM_setValue(GM_KEY_BACKUP_PASSWORD, backupPwd);
+        $('#webDavUrl').val(webDavUrl);
+        $('#webDavUsername').val(webDavUsername);
+        $('#webDavPassword').val(webDavPassword);
+        $('#backupPassword').val(backupPwd);
         // 自动备份配置
         const autoBackupConfig: AutoBackupConfig =
             settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
@@ -468,9 +492,10 @@ export class SettingPlugin extends BasePlugin {
             .off(`input${ns}`)
             .on(`input${ns}`, async () => {
                 const columns = $('#containerColumns').val();
-                $('#showContainerColumns').text(columns);
+                $('#showContainerColumns').text(String(columns ?? ''));
                 if (isJavdbSite) {
-                    (document.querySelector('.movie-list') as any).style.gridTemplateColumns =
+                    const movieListEl = document.querySelector('.movie-list') as HTMLElement | null;
+                    if (movieListEl) movieListEl.style.gridTemplateColumns =
                         `repeat(${columns}, minmax(0, 1fr))`;
                 }
                 await storageManager.saveSettingItem('containerColumns', columns);
@@ -479,11 +504,12 @@ export class SettingPlugin extends BasePlugin {
         $('#containerWidth')
             .off(`input${ns}`)
             .on(`input${ns}`, async (event: any) => {
-                const rangeValue = parseInt($(event.target).val());
+                const rangeValue = parseInt(String($(event.target).val()), 10) || 0;
                 const widthPercent = rangeValue + 70 + '%';
                 $('#showContainerWidth').text(widthPercent);
                 if (isJavdbSite) {
-                    (document.querySelector('section .container') as any).style.minWidth =
+                    const containerEl = document.querySelector('section .container') as HTMLElement | null;
+                    if (containerEl) containerEl.style.minWidth =
                         widthPercent;
                 }
                 storageManager.saveSettingItem('containerWidth', rangeValue + 70);
@@ -647,7 +673,8 @@ export class SettingPlugin extends BasePlugin {
                     shadeClose: true,
                     scrollbar: false,
                     content:
-                        '<style>' + helpDialogCssRaw + '</style>' + jsxToString(<HelpDialog />),
+                        jsxToString(<StyleBlock css={helpDialogCssRaw} />) +
+                        jsxToString(<HelpDialog />),
                     area: utils.getResponsiveArea(['50%', '90%'])
                 });
             });
@@ -656,7 +683,7 @@ export class SettingPlugin extends BasePlugin {
     /** 注入横图模式 CSS（竖图设置项已移除，固定横图）。对应原 L10045-10065。 */
     async applyImageMode(): Promise<void> {
         $('#verticalImgStyle').remove();
-        $('<style>').attr('id', 'verticalImgStyle').text(horizontalImgCssRaw).appendTo('head');
+        $(jsxToString(<StyleBlock id="verticalImgStyle" css={horizontalImgCssRaw} />)).appendTo('head');
     }
 
     /** 绑定设置弹层内各按钮/输入的点击/输入事件。对应原 L10066-10131。 */
@@ -681,6 +708,10 @@ export class SettingPlugin extends BasePlugin {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
                 this.refreshPreloadCacheStats();
+            } else if (panelName === 'diagnostics-panel') {
+                $('#saveBtn').hide();
+                $('#clean-all').hide();
+                this.refreshDiagnostics();
             } else {
                 $('#saveBtn').show();
                 $('#clean-all').hide();
@@ -691,6 +722,18 @@ export class SettingPlugin extends BasePlugin {
         $('#webdavBackupBtn').on('click', () => this.backupDataByWebDav());
         $('#webdavBackupListBtn').on('click', () => this.backupListBtnByWebDav());
         $('#saveBtn').on('click', () => this.saveForm());
+        // ===== 插件诊断面板事件绑定 =====
+        $('#copy-diagnostics-btn').on('click', () => {
+            const text = renderDiagnosticsText(this.pluginManager);
+            navigator.clipboard.writeText(text).then(
+                () => show.ok('诊断报告已复制到剪贴板'),
+                () => show.error('复制失败，请手动选择文本复制')
+            );
+        });
+        $('#refresh-diagnostics-btn').on('click', () => {
+            this.refreshDiagnostics();
+            show.ok('诊断报告已刷新');
+        });
         // ===== 缓存管理面板事件绑定 =====
         // 初始化总量显示
         this.refreshAllCacheStats();
@@ -943,8 +986,20 @@ export class SettingPlugin extends BasePlugin {
             }
         }
         $('#preload-cache-stats').html(
-            `共 <b>${stats.count}</b> 条（MissAv ${missAv} / SupJav ${supJav}）｜占用 ${formatSize(stats.size)}`
+            jsxToString(
+                <PreloadCacheStatsText
+                    count={stats.count}
+                    missAv={missAv}
+                    supJav={supJav}
+                    size={formatSize(stats.size)}
+                />
+            )
         );
+    }
+
+    /** 刷新插件诊断面板内容（renderDiagnosticsHtml 内部已改读聚合诊断 plugins）。 */
+    refreshDiagnostics(): void {
+        $('#diagnostics-content').html(renderDiagnosticsHtml(this.pluginManager));
     }
 
     /**
@@ -983,16 +1038,22 @@ export class SettingPlugin extends BasePlugin {
             clog.hide();
         }
         settings.clogMsgCount = $('#clogMsgCount').val();
-        settings.webDavUrl = $('#webDavUrl').val();
-        settings.webDavUsername = $('#webDavUsername').val();
-        settings.webDavPassword = $('#webDavPassword').val();
+        // WebDAV 凭据写入 GM 私有存储（不再存入 settings）
+        GM_setValue(GM_KEY_WEBDAV_URL, $('#webDavUrl').val() || '');
+        GM_setValue(GM_KEY_WEBDAV_USERNAME, $('#webDavUsername').val() || '');
+        GM_setValue(GM_KEY_WEBDAV_PASSWORD, $('#webDavPassword').val() || '');
+        GM_setValue(GM_KEY_BACKUP_PASSWORD, $('#backupPassword').val() || '');
+        // 清除旧凭据字段（一次性迁移）
+        delete settings.webDavUrl;
+        delete settings.webDavUsername;
+        delete settings.webDavPassword;
         // 自动备份配置（随备份文件保存）
         settings.autoBackupConfig = {
             enabled: $('#enableAutoBackup').is(':checked'),
             frequency: $('#autoBackupFrequency').val() as AutoBackupFrequency
         };
-        settings.missAvUrl = $('#missAvUrl').val().replace(/\/$/, '');
-        settings.supJavUrl = $('#supJavUrl').val().replace(/\/$/, '');
+        settings.missAvUrl = String($('#missAvUrl').val() ?? '').replace(/\/$/, '');
+        settings.supJavUrl = String($('#supJavUrl').val() ?? '').replace(/\/$/, '');
         // 预加载配置
         settings.enablePreload = $('#enablePreload').is(':checked') ? YES : NO;
         settings.enablePreloadStatus = $('#enablePreloadStatus').is(':checked') ? YES : NO;
@@ -1068,9 +1129,9 @@ export class SettingPlugin extends BasePlugin {
             event.stopPropagation();
             event.preventDefault();
             const $removeBtn = $(event.currentTarget);
-            const removeKeyword = $removeBtn
+            const removeKeyword = ($removeBtn
                 .closest('.keyword-label')
-                .attr('data-keyword')
+                .attr('data-keyword') ?? '')
                 .split(' ')[0];
             utils.q(event, `是否移除屏蔽词  ${removeKeyword}?`, async () => {
                 $removeBtn.parent().remove();
@@ -1082,7 +1143,7 @@ export class SettingPlugin extends BasePlugin {
     /** 从输入框读取关键词并添加为标签。 */
     addKeyword(containerSelector: string): void {
         const $input = $(`${containerSelector} .keyword-input`);
-        const keyword = $input.val().trim();
+        const keyword = String($input.val() ?? '').trim();
         if (keyword) {
             this.addLabelTag(containerSelector, keyword);
             $input.val('');
@@ -1101,10 +1162,24 @@ export class SettingPlugin extends BasePlugin {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (loadEvent: any) => {
+                reader.onload = async (loadEvent: any) => {
                     try {
-                        const resultText = loadEvent.target.result.toString();
-                        const parsedData = JSON.parse(resultText);
+                        let fileContent = loadEvent.target.result.toString();
+                        // V2 加密备份检测与解密
+                        if (isBackupV2(fileContent)) {
+                            const backupPassword = GM_getValue(GM_KEY_BACKUP_PASSWORD, '');
+                            if (!backupPassword) {
+                                show.error('该备份使用 V2 加密，请先在备份面板设置备份口令');
+                                return;
+                            }
+                            try {
+                                fileContent = await decryptBackupV2(fileContent, backupPassword);
+                            } catch {
+                                show.error('备份口令错误或文件已损坏');
+                                return;
+                            }
+                        }
+                        const parsedData = JSON.parse(fileContent);
                         layer.confirm(
                             '确定是否要覆盖导入？',
                             {
@@ -1113,8 +1188,9 @@ export class SettingPlugin extends BasePlugin {
                                 btn: ['确定', '取消']
                             },
                             async (layerIndex: any) => {
-                                applyBackupExtras(parsedData);
+                                const extras = stripBackupExtras(parsedData);
                                 await storageManager.importData(parsedData);
+                                applyBackupExtras(extras);
                                 show.ok('数据导入成功');
                                 layer.close(layerIndex);
                                 location.reload();
@@ -1139,30 +1215,29 @@ export class SettingPlugin extends BasePlugin {
         }
     }
 
-    /** 通过 WebDav 备份数据（加密后上传）。对应原 L10292-10323。 */
+    /** 通过 WebDav 备份数据（明文上传）。对应原 L10292-10323。 */
     async backupDataByWebDav(): Promise<void> {
         const settings = await storageManager.getSetting();
-        const webDavUrl = settings.webDavUrl;
+        const webDavUrl = ($('#webDavUrl').val() as string) || GM_getValue(GM_KEY_WEBDAV_URL, '');
+        const webDavUsername = ($('#webDavUsername').val() as string) || GM_getValue(GM_KEY_WEBDAV_USERNAME, '');
+        const webDavPassword = ($('#webDavPassword').val() as string) || GM_getValue(GM_KEY_WEBDAV_PASSWORD, '');
         if (!webDavUrl) {
             show.error('请填写webDav服务地址并保存后, 再试此功能');
             return;
         }
-        const webDavUsername = settings.webDavUsername;
         if (!webDavUsername) {
             show.error('请填写webDav用户名并保存后, 再试此功能');
             return;
         }
-        const webDavPassword = settings.webDavPassword;
         if (!webDavPassword) {
             show.error('请填写webDav密码并保存后, 再试此功能');
             return;
         }
         const fileName = utils.getNowStr('_', '_') + '.json';
-        let exportText = JSON.stringify(await this.buildBackupPayload(settings));
-        exportText = (window as any).encryptCredential(exportText);
+        const exportText = JSON.stringify(await this.buildBackupPayload(settings));
         const loadingHandle = loading();
         try {
-            const webdavClient = new (window as any).WebDavClient(
+            const webdavClient = new window.WebDavClient(
                 webDavUrl,
                 webDavUsername,
                 webDavPassword
@@ -1187,7 +1262,7 @@ export class SettingPlugin extends BasePlugin {
         exportData.__meta = {
             credentialId: getCredentialId(),
             autoBackupConfig: settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG,
-            backupTime: utils.getNowStr('_', '_', '_')
+            backupTime: utils.getNowStr('_', '_')
         };
         exportData.__localStorage = collectLocalStorageBackup();
         exportData.__gmStorage = collectGmStorageBackup();
@@ -1207,15 +1282,14 @@ export class SettingPlugin extends BasePlugin {
         const settings = await storageManager.getSetting();
         const config: AutoBackupConfig = settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
         if (!shouldAutoBackup(config)) return;
-        const webDavUrl = settings.webDavUrl;
+        const webDavUrl = GM_getValue(GM_KEY_WEBDAV_URL, '');
         if (!webDavUrl) return; // 未配置 WebDav，静默跳过
-        const webDavUsername = settings.webDavUsername;
-        const webDavPassword = settings.webDavPassword;
+        const webDavUsername = GM_getValue(GM_KEY_WEBDAV_USERNAME, '');
+        const webDavPassword = GM_getValue(GM_KEY_WEBDAV_PASSWORD, '');
         if (!webDavUsername || !webDavPassword) return;
         try {
-            let exportText = JSON.stringify(await this.buildBackupPayload(settings));
-            exportText = (window as any).encryptCredential(exportText);
-            const webdavClient = new (window as any).WebDavClient(
+            const exportText = JSON.stringify(await this.buildBackupPayload(settings));
+            const webdavClient = new window.WebDavClient(
                 webDavUrl,
                 webDavUsername,
                 webDavPassword
@@ -1230,25 +1304,24 @@ export class SettingPlugin extends BasePlugin {
 
     /** 通过 WebDav 查看备份文件列表。对应原 L10324-10352。 */
     async backupListBtnByWebDav(): Promise<void> {
-        const settings = await storageManager.getSetting();
-        const webDavUrl = settings.webDavUrl;
+        const webDavUrl = ($('#webDavUrl').val() as string) || GM_getValue(GM_KEY_WEBDAV_URL, '');
+        const webDavUsername = ($('#webDavUsername').val() as string) || GM_getValue(GM_KEY_WEBDAV_USERNAME, '');
+        const webDavPassword = ($('#webDavPassword').val() as string) || GM_getValue(GM_KEY_WEBDAV_PASSWORD, '');
         if (!webDavUrl) {
             show.error('请填写webDav服务地址并保存后, 再试此功能');
             return;
         }
-        const webDavUsername = settings.webDavUsername;
         if (!webDavUsername) {
             show.error('请填写webDav用户名并保存后, 再试此功能');
             return;
         }
-        const webDavPassword = settings.webDavPassword;
         if (!webDavPassword) {
             show.error('请填写webDav密码并保存后, 再试此功能');
             return;
         }
         const loadingHandle = loading();
         try {
-            const webdavClient = new (window as any).WebDavClient(
+            const webdavClient = new window.WebDavClient(
                 webDavUrl,
                 webDavUsername,
                 webDavPassword
@@ -1343,12 +1416,12 @@ export class SettingPlugin extends BasePlugin {
                                                 },
                                                 async (layerIndex: any) => {
                                                     layer.close(layerIndex);
-                                                    let loadingHandle = loading();
+                                                    const loadingHandle = loading();
                                                     try {
                                                         await webdavClient.deleteFile(
                                                             rowData.fileId
                                                         );
-                                                        let newList =
+                                                        const newList =
                                                             await webdavClient.getBackupList(
                                                                 this.folderName
                                                             );
@@ -1370,15 +1443,23 @@ export class SettingPlugin extends BasePlugin {
                                         $primaryBtn.addEventListener(
                                             'click',
                                             async (_event: any) => {
-                                                let loadingHandle = loading();
+                                                const loadingHandle = loading();
                                                 try {
-                                                    const decrypted = (
-                                                        window as any
-                                                    ).decryptCredential(
-                                                        await webdavClient.getFileContent(
-                                                            rowData.fileId
-                                                        )
+                                                    const fileContent = await webdavClient.getFileContent(
+                                                        rowData.fileId
                                                     );
+                                                    const backupPassword = GM_getValue(GM_KEY_BACKUP_PASSWORD, '');
+                                                    let decrypted: string;
+                                                    if (isBackupV2(fileContent)) {
+                                                        if (!backupPassword) {
+                                                            show.error('该备份使用 V2 加密，请先设置备份口令');
+                                                            return;
+                                                        }
+                                                        decrypted = await decryptBackupV2(fileContent, backupPassword);
+                                                    } else {
+                                                        // V1 兼容：旧 Caesar 格式
+                                                        decrypted = window.decryptCredential(fileContent);
+                                                    }
                                                     utils.download(decrypted, rowData.name);
                                                 } catch (err: any) {
                                                     clog.error(err);
@@ -1400,20 +1481,29 @@ export class SettingPlugin extends BasePlugin {
                                                 },
                                                 async (layerIndex: any) => {
                                                     layer.close(layerIndex);
-                                                    let loadingHandle = loading();
+                                                    const loadingHandle = loading();
                                                     try {
                                                         let fileContent =
                                                             await webdavClient.getFileContent(
                                                                 rowData.fileId
                                                             );
                                                         show.info('解密文件内容...');
-                                                        fileContent = (
-                                                            window as any
-                                                        ).decryptCredential(fileContent);
+                                                        const backupPassword = GM_getValue(GM_KEY_BACKUP_PASSWORD, '');
+                                                        if (isBackupV2(fileContent)) {
+                                                            if (!backupPassword) {
+                                                                show.error('该备份使用 V2 加密，请先设置备份口令');
+                                                                return;
+                                                            }
+                                                            fileContent = await decryptBackupV2(fileContent, backupPassword);
+                                                        } else {
+                                                            // V1 兼容：旧 Caesar 格式
+                                                            fileContent = window.decryptCredential(fileContent);
+                                                        }
                                                         show.info('解密完成, 开始导入...');
                                                         const parsedData = JSON.parse(fileContent);
-                                                        applyBackupExtras(parsedData);
+                                                        const extras = stripBackupExtras(parsedData);
                                                         await storageManager.importData(parsedData);
+                                                        applyBackupExtras(extras);
                                                         show.ok('导入成功!');
                                                         window.location.reload();
                                                     } catch (err: any) {
@@ -1427,7 +1517,7 @@ export class SettingPlugin extends BasePlugin {
                                         });
                                     }
                                 });
-                                return '\n                                    <a class="a-danger">删除</a>\n                                    <a class="a-primary">下载</a>\n                                    <a class="a-success">导入</a>\n                                ';
+                                return jsxToString(<BackupActionCell />);
                             }
                         }
                     ],
@@ -1457,7 +1547,16 @@ export class SettingPlugin extends BasePlugin {
     async exportData(): Promise<void> {
         try {
             const settings = await storageManager.getSetting();
-            const exportText = JSON.stringify(await this.buildBackupPayload(settings));
+            const backupPassword = GM_getValue(GM_KEY_BACKUP_PASSWORD, '');
+            let exportText: string;
+            if (backupPassword) {
+                exportText = await encryptBackupV2(
+                    JSON.stringify(await this.buildBackupPayload(settings)),
+                    backupPassword
+                );
+            } else {
+                exportText = JSON.stringify(await this.buildBackupPayload(settings));
+            }
             const fileName = `${utils.getNowStr('_', '_')}.json`;
             utils.download(exportText, fileName);
             show.ok('数据导出成功');

@@ -18,6 +18,7 @@
  */
 
 import { BasePlugin } from '../base-plugin';
+import type { CarListChangeEvent } from '../../core/storage-manager';
 import {
     GM_KEY_CAR_STATUS_DATA,
     GM_KEY_CAR_STATUS_DELTA,
@@ -26,33 +27,21 @@ import {
     type CarStatusDeltaPayload
 } from './car-status-config';
 import { toColumnar, gzipToBase64, countColumnar, normalizeUrl } from './car-status-columnar';
+import { createLogger } from './car-status-logger';
 
-/** 日志辅助。 */
-function logInfo(step: string, ...args: any[]): void {
-    console.log(
-        `%c${LOG_PREFIX_JHS} %c${step}`,
-        'color:#25b1dc;font-weight:bold;',
-        'color:inherit;font-weight:bold;',
-        ...args
-    );
-}
-function logOk(step: string, ...args: any[]): void {
-    console.log(
-        `%c${LOG_PREFIX_JHS} ✓ %c${step}`,
-        'color:#1f7a3d;font-weight:bold;',
-        'color:inherit;font-weight:bold;',
-        ...args
-    );
-}
-function logWarn(step: string, ...args: any[]): void {
-    console.warn(`%c${LOG_PREFIX_JHS} ⚠ ${step}`, 'color:#d7a80c;font-weight:bold;', ...args);
-}
-function logErr(step: string, ...args: any[]): void {
-    console.error(`%c${LOG_PREFIX_JHS} ✗ ${step}`, 'color:#de3333;font-weight:bold;', ...args);
-}
+const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_JHS);
 
 /** 全量同步锁，防止并发触发。 */
 let isFullSyncing = false;
+
+/** car_list 变更代号（每次增量推送时递增）。 */
+const GM_KEY_CAR_LIST_REV = 'jhs_car_list_rev';
+/** 上次全量同步时的变更代号。 */
+const GM_KEY_SYNCED_REV = 'jhs_car_status_synced_rev';
+/** 上次全量同步时间戳。 */
+const GM_KEY_LAST_SYNC_TIME = 'jhs_car_status_last_sync';
+/** 每日兜底同步间隔（24 小时）。 */
+const DAILY_SYNC_INTERVAL = 24 * 60 * 60 * 1000;
 
 export class CarListReaderPlugin extends BasePlugin {
     getName(): string {
@@ -78,13 +67,23 @@ export class CarListReaderPlugin extends BasePlugin {
 
         // 注入增量回调：storageManager 每次 saveCar/removeCar 等操作后实时触发
         storageManager.setCarListChangeCallback(
-            (event: { action: 'upsert' | 'delete'; upserts?: any[]; deletes?: string[] }) => {
+            (event: CarListChangeEvent) => {
                 this.pushDelta(event);
             }
         );
 
-        // 页面加载后延迟 2s 执行全量同步（等 jhs 初始化完成 + storageManager 数据就绪）
-        setTimeout(() => this.syncFullCarStatus(), 2000);
+        // 版本门控全量同步：仅在数据变更或每日兜底时执行（doc/138）
+        const currentRev: number = GM_getValue(GM_KEY_CAR_LIST_REV, 0);
+        const syncedRev: number = GM_getValue(GM_KEY_SYNCED_REV, -1);
+        const lastSyncTime: number = GM_getValue(GM_KEY_LAST_SYNC_TIME, 0);
+        const needsSync =
+            currentRev !== syncedRev || Date.now() - lastSyncTime > DAILY_SYNC_INTERVAL;
+        if (needsSync) {
+            logInfo('全量同步已调度', `rev=${currentRev}, synced=${syncedRev}`);
+            setTimeout(() => this.syncFullCarStatus(), 2000);
+        } else {
+            logInfo('跳过全量同步', `数据未变更 (rev=${currentRev})，上次同步 ${new Date(lastSyncTime).toLocaleString()}`);
+        }
     }
 
     /**
@@ -92,7 +91,7 @@ export class CarListReaderPlugin extends BasePlugin {
      * 不压缩（几条记录几十字节），不锁（处理极快），不冷却（实时）。
      * @param event storageManager 的变更事件
      */
-    pushDelta(event: { action: 'upsert' | 'delete'; upserts?: any[]; deletes?: string[] }): void {
+    pushDelta(event: CarListChangeEvent): void {
         try {
             if (event.action === 'upsert' && event.upserts) {
                 // 将完整 CarRecord 转为 missav 端需要的格式（url 转为 url_path 节省体积）
@@ -120,8 +119,10 @@ export class CarListReaderPlugin extends BasePlugin {
                 GM_setValue(GM_KEY_CAR_STATUS_DELTA, payload);
                 logInfo('增量推送', `delete ${event.deletes.length} 条`);
             }
-        } catch (err: any) {
-            logErr('增量推送失败', err.message || String(err));
+            // 递增变更代号（供下次页面加载判断是否需要全量同步）
+            GM_setValue(GM_KEY_CAR_LIST_REV, (GM_getValue(GM_KEY_CAR_LIST_REV, 0) as number) + 1);
+        } catch (err: unknown) {
+            logErr('增量推送失败', err instanceof Error ? err.message : String(err));
         }
     }
 
@@ -180,8 +181,11 @@ export class CarListReaderPlugin extends BasePlugin {
             GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
 
             logOk('4-完成', `已写入 GM 存储，count=${count}，hwm=${payload.hwm}`);
-        } catch (err: any) {
-            logErr('全量同步失败', err.message || String(err), err);
+            // 记录同步完成时的代号和时间（供下次页面加载跳过无变更同步）
+            GM_setValue(GM_KEY_SYNCED_REV, GM_getValue(GM_KEY_CAR_LIST_REV, 0));
+            GM_setValue(GM_KEY_LAST_SYNC_TIME, Date.now());
+        } catch (err: unknown) {
+            logErr('全量同步失败', err instanceof Error ? err.message : String(err), err);
         } finally {
             isFullSyncing = false;
         }

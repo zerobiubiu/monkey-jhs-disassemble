@@ -36,6 +36,7 @@ interface ViewerConfigContext {
      * 图片容器（原 a）。字符串 src 时为由 jQuery 创建并 appendTo("body") 的
      * 临时 div（display:none，内含 <img>）；否则为 $(t) 目标元素。
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from untyped $
     container: any;
     /** 是否为临时容器（原 i）。为 true 时 shown 后需从 DOM 移除。 */
     isTemporary: boolean;
@@ -49,6 +50,7 @@ interface ViewerConfigContext {
      * 才赋值，回调通过 viewerRef.current 惰性读取；调用方应在构造后立即
      * 赋值：viewerRef.current = new Viewer(el, VIEWER_CONFIG(ctx))。
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Viewer.js instance, untyped global
     viewerRef: { current: any };
 }
 
@@ -86,7 +88,7 @@ export interface ViewerOptions {
  * @returns Viewer 选项对象，传入 `new Viewer(el, config)`（类型 any，
  *          与原 @require 全局 Viewer 为 any 时不检查 config 一致）
  */
-export const VIEWER_CONFIG = (ctx: ViewerConfigContext): any => ({
+export const VIEWER_CONFIG = (ctx: ViewerConfigContext): ViewerOptions => ({
     zIndex: 999999990,
     navbar: false,
     zoomOnWheel: false,

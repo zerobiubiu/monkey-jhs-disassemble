@@ -279,7 +279,7 @@ async function performReconciliation(
         }
         throw new Error('本地清单持续变化，两次对账均发生冲突');
     } catch (error) {
-        console.error(`${LOG_PREFIX} 失败 listId=${listId}`, error);
+        clog.error(`${LOG_PREFIX} 失败 listId=${listId}`, error);
         if (!expectation.quiet) {
             const message = error instanceof Error ? error.message : String(error);
             showToast(`⚠ 清单自动校准失败：${message}`, 'warning');

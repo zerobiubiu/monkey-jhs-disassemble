@@ -18,7 +18,7 @@
  * `<label for="cdn-${index}">` 中的 `for` 是 JSX/JS 保留字，不能直接写为
  * JSX 属性名；jsxToString 不处理 `htmlFor`→`for`（仅处理 `className`→`class`），
  * 若用 `htmlFor` 会输出 `htmlFor="..."`，浏览器不认。故用 spread
- * `{...({ for: ... } as any)}` 绕过 JSX 解析与 TS 类型检查，jsxToString 直接
+ * `{...({ for: ... } as unknown as LabelHTMLAttributes<HTMLLabelElement>)}` 绕过 JSX 解析与 TS 类型检查，jsxToString 直接
  * 读 props key 输出 `for="cdn-0"`，与原 HTML 一致。
  *
  * 渲染方式：本组件返回 JSX（React 元素）。供 editActress 中 layer.open({ content })
@@ -32,6 +32,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。本弹窗含动态值（源列表/当前索引），故用 props。
  */
+import type { LabelHTMLAttributes } from 'react';
 
 /** CdnSelectDialog 的单个 CDN 源（结构兼容 ../resources/gfriends 的 GfriendsSource 子集）。 */
 export interface CdnSelectSource {
@@ -78,7 +79,7 @@ export function CdnSelectDialog({ sources, currentIndex }: CdnSelectDialogProps)
                         checked={index === currentIndex}
                         style={{ marginRight: '10px' }}
                     />
-                    <label {...({ for: `cdn-${index}` } as any)}>
+                    <label {...({ for: `cdn-${index}` } as unknown as LabelHTMLAttributes<HTMLLabelElement>)}>
                         {source.name} {source.json.includes('jsdelivr') ? '(推荐)' : ''}
                     </label>
                 </div>

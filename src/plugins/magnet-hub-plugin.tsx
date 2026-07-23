@@ -79,7 +79,7 @@ export class MagnetHubPlugin extends BasePlugin {
         return magnetHubCssRaw;
     }
 
-    createMagnetHub(keyword: string): any {
+    createMagnetHub(keyword: string) {
         if (!featureFlags.magnetHubPlugin) {
             return $(
                 jsxToString(<MagnetHubError message="磁力聚合未启用" />)
@@ -118,7 +118,7 @@ export class MagnetHubPlugin extends BasePlugin {
         $container.append($tabs);
         const $resultsContainer = $(jsxToString(<MagnetHubResults />));
         $container.append($resultsContainer);
-        $container.on('click', '.magnet-tab', (e: any) => {
+        $container.on('click', '.magnet-tab', (e: Event) => {
             const engineId = $(e.target).data('engine');
             this.currentEngine =
                 this.searchEngines.find((eng) => eng.id === engineId) || null;
@@ -144,6 +144,7 @@ export class MagnetHubPlugin extends BasePlugin {
         return $container;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object param
     searchEngine($container: any, engine: MagnetEngine, keyword: string): void {
         const seq = ++this._searchSeq;
         $container.html(
@@ -165,7 +166,7 @@ export class MagnetHubPlugin extends BasePlugin {
                 method: 'GET',
                 url,
                 timeout: 15000,
-                onload: (response: any) => {
+                onload: (response) => {
                     try {
                         const results = engine.parseHtml!.call(
                             this,
@@ -177,17 +178,17 @@ export class MagnetHubPlugin extends BasePlugin {
                         }
                         if (seq !== this._searchSeq) return;
                         this.displayResults($container, results, engine.name);
-                    } catch (e: any) {
+                    } catch (e) {
                         $container.html(
                             jsxToString(
                                 <MagnetHubError
-                                    message={`解析 ${engine.name} 结果失败: ${e.message}`}
+                                    message={`解析 ${engine.name} 结果失败: ${e instanceof Error ? e.message : String(e)}`}
                                 />
                             )
                         );
                     }
                 },
-                onerror: (error: any) => {
+                onerror: (error) => {
                     if (seq !== this._searchSeq) return;
                     $container.html(
                         jsxToString(
@@ -209,6 +210,7 @@ export class MagnetHubPlugin extends BasePlugin {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object param
     displayResults($container: any, results: MagnetResult[], _engineName: string): void {
         $container.empty();
         if (results.length === 0) {
@@ -228,7 +230,7 @@ export class MagnetHubPlugin extends BasePlugin {
             );
             $container.append($result);
         });
-        $container.on('click', '.copy-btn', function (this: any) {
+        $container.on('click', '.copy-btn', function (this: HTMLElement) {
             const $btn = $(this);
             const magnet = $btn.data('magnet');
             const showCopied = () => {
@@ -253,7 +255,7 @@ export class MagnetHubPlugin extends BasePlugin {
     parseU3C3(html: string, keyword: string): MagnetResult[] {
         const $dom = utils.htmlTo$dom(html);
         const results: MagnetResult[] = [];
-        $dom.find('.torrent-list tbody tr').each((_i: number, el: any) => {
+        $dom.find('.torrent-list tbody tr').each((_i: number, el: HTMLElement) => {
             const $el = $(el);
             if ($el.text().includes('置顶')) return;
             const title =

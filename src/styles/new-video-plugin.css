@@ -8,11 +8,12 @@
     border-radius: 5px;
     overflow-y: auto;
 }
+
 .actress-card {
     background: #fff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 8px rgb(0, 0, 0, 0.08);
     padding: 15px;
     text-align: center;
     display: flex;
@@ -21,15 +22,18 @@
     position: relative;
     overflow: hidden;
 }
+
 .actress-card:hover {
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 15px rgb(0, 0, 0, 0.15);
 }
+
 .actress-card-name {
     font-size: 1.2em;
     font-weight: bold;
     color: #007bff;
     margin-top: 10px;
 }
+
 .actress-card-allname {
     font-size: 0.9em;
     color: #999;
@@ -39,6 +43,7 @@
     white-space: nowrap; /* 防止文字换行 */
     text-overflow: ellipsis; /* 当文本溢出时，显示省略号 */
 }
+
 .actress-card-avatar {
     width: 100px;
     height: 100px;
@@ -46,18 +51,16 @@
     object-fit: contain;
     margin: 0 auto;
     border: 4px solid #f0f0f0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgb(0, 0, 0, 0.1);
 }
 
 .card-tag {
     position: absolute;
     top: 15px; /* 调整标签距离顶部的距离 */
     right: -50px; /* 调整标签距离右侧的距离，负值让它移到外面一点 */
-
     width: 150px; /* 标签的宽度，影响斜角长度 */
     padding: 5px 0; /* 上下内边距 */
     text-align: center;
-
     background-color: #ff4757; /* 标签颜色 */
     color: white; /* 文字颜色 */
     font-size: 14px;
@@ -68,7 +71,7 @@
     transform: rotate(45deg); /* 45度斜角 */
 
     /* 可选：添加一些阴影或边框效果 */
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 10px rgb(0, 0, 0, 0.3);
 }
 
 .card-new-count-tag {
@@ -85,7 +88,8 @@
     text-align: center;
     border-top: 1px solid #ddd;
 }
-@media (max-width: 600px) {
+
+@media (width <= 600px) {
     .page-number-btn {
         display: none !important;
     }
@@ -103,9 +107,12 @@
     cursor: pointer;
     background: linear-gradient(145deg, #e0e0e0 0%, #f7f7f7 100%);
     box-shadow:
-        8px 8px 16px rgba(0, 0, 0, 0.08),
-        -8px -8px 16px rgba(255, 255, 255, 1);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        8px 8px 16px rgb(0, 0, 0, 0.08),
+        -8px -8px 16px rgb(255, 255, 255, 1);
+    transition:
+        box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        background-color 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .card-btn svg,
@@ -115,8 +122,8 @@
 
 .card-btn:hover {
     box-shadow:
-        inset 5px 5px 10px rgba(0, 0, 0, 0.1),
-        inset -5px -5px 10px rgba(255, 255, 255, 0.9);
+        inset 5px 5px 10px rgb(0, 0, 0, 0.1),
+        inset -5px -5px 10px rgb(255, 255, 255, 0.9);
     transform: scale(0.97);
     background: #e0e0e0;
 }
@@ -124,6 +131,7 @@
 .btn-check-actress svg path {
     fill: #4caf50;
 }
+
 .btn-check-actress:hover svg path {
     fill: #388e3c;
 }
@@ -131,6 +139,7 @@
 .btn-edit-actress svg path {
     fill: #ffc107;
 }
+
 .btn-edit-actress:hover svg path {
     fill: #ffb300;
 }
@@ -138,6 +147,7 @@
 .btn-delete-actress svg path {
     fill: #f44336;
 }
+
 .btn-delete-actress:hover svg path {
     fill: #d32f2f;
 }

@@ -11,14 +11,14 @@ import { ListPanelSkeletonSpan } from '../../components/dpb/list-panel-skeleton-
 
 type DetailListSort = 'name-desc' | 'name-asc';
 
-interface DetailListPanelElement extends HTMLElement {
+export interface DetailListPanelElement extends HTMLElement {
     __jhsListControlsBound?: boolean;
     __jhsRefresh?: () => void;
     __jhsNotice?: string;
     __jhsNoticeTimer?: number;
 }
 
-interface DetailListEntry {
+export interface DetailListEntry {
     element: HTMLElement;
 }
 
@@ -35,7 +35,7 @@ const LIST_PANEL_MAX_PAGES = 50;
  * 对应原 L5637-5681，展示顺序只作用于克隆面板，服务端映射始终按 listId。
  * @param nav nav 容器
  */
-export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: any): void {
+export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: HTMLElement): void {
     if (plugin._listPanelEnsured) return;
     const otherSite = nav.querySelector('#otherSiteBox') as HTMLElement | null;
     if (!otherSite) {

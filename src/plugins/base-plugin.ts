@@ -15,19 +15,18 @@ import {
     UNCENSORED
 } from '../constants/site';
 import {
-    SETTING_SVG as settingSvg,
     EDIT_SVG as editSvg,
     DELETE_SVG as deleteSvg,
-    CHECK_SVG as checkSvg,
-    ACTRESS_SVG as actressSvg,
-    NEW_SVG as newSvg,
     REFRESH_SVG as refreshSvg,
-    BLACKLIST_SVG as blacklistSvg
 } from '../resources/icons';
 import { featureFlags } from '../core/feature-flags';
+import { failWithToast } from '../core/toast';
+import type { SiteType, PageType } from '../core/page-context';
+import type { PluginManager } from './plugin-manager';
+import type { PluginMap } from './plugin-registry';
 
 /** 番号/影片信息（getPageInfo / getBoxCarInfo 返回结构） */
-export interface CarInfo {
+interface CarInfo {
     carNum: string | null;
     url: string | null;
     title?: string;
@@ -37,7 +36,7 @@ export interface CarInfo {
 }
 
 /** 列表页选择器配置（getSelector 返回结构） */
-export interface SelectorConfig {
+interface SelectorConfig {
     boxSelector: string;
     itemSelector: string;
     coverImgSelector: string;
@@ -57,24 +56,44 @@ export interface ActressInfo {
 
 export class BasePlugin {
     /** 运行时由 PluginManager.register 注入 */
-    pluginManager: any = null;
+    pluginManager!: PluginManager;
+
+    /**
+     * 插件适用的站点列表（Runtime V2）。
+     * 空数组 = 所有站点（默认，向后兼容）。
+     * 子类覆写以声明站点约束，PluginManager 在注册时过滤。
+     */
+    get sites(): SiteType[] {
+        return [];
+    }
+
+    /**
+     * 插件适用的页面类型列表（Runtime V2）。
+     * 空数组 = 所有页面类型（默认，向后兼容）。
+     * 子类覆写以声明页面约束，PluginManager 在 processCss/processPlugins 时过滤。
+     */
+    get pageTypes(): PageType[] {
+        return [];
+    }
+
+    /**
+     * 插件销毁钩子（Runtime V2）。
+     * 子类覆写以清理资源（Observer、定时器、事件监听器）。
+     * PluginManager.destroyAll() 时调用。
+     */
+    destroy(): void {}
 
     // SVG 图标资源，原样保留自 archetype/jhs.user.js 构造函数 L3034-3071，已提取至 ../resources/icons
-    settingSvg = settingSvg;
     editSvg = editSvg;
     deleteSvg = deleteSvg;
-    checkSvg = checkSvg;
-    actressSvg = actressSvg;
-    newSvg = newSvg;
     refreshSvg = refreshSvg;
-    blacklistSvg = blacklistSvg;
     /** 子类必须覆写返回插件名，否则抛错。对应原 L3073-3075。 */
     getName(): string {
         throw new Error(`${this.constructor.name} 未显示getName()`);
     }
 
     /** 委托 PluginManager 按名获取其它插件实例。对应原 L3076-3078。 */
-    getBean(name: string): any {
+    getBean<K extends string>(name: K): K extends keyof PluginMap ? PluginMap[K] : BasePlugin | undefined {
         return this.pluginManager.getBean(name);
     }
 
@@ -95,16 +114,16 @@ export class BasePlugin {
         let publishTime: string | null = null;
         const href = window.location.href;
         if (isJavdbSite) {
-            carNum = $('a[title="複製番號"]').attr('data-clipboard-text');
+            carNum = $('a[title="複製番號"]').attr('data-clipboard-text') ?? null;
             url = href.split('?')[0].split('#')[0];
             actress = $('.female')
                 .prev()
-                .map((_index: number, el: any) => $(el).text())
+                .map((_index: number, el: HTMLElement) => $(el).text())
                 .get()
                 .join(' ');
             actors = $('.male')
                 .prev()
-                .map((_index: number, el: any) => $(el).text())
+                .map((_index: number, el: HTMLElement) => $(el).text())
                 .get()
                 .join(' ');
             publishTime = $('strong:contains("日期:")')
@@ -209,10 +228,10 @@ export class BasePlugin {
     }
 
     /** 从单个影片卡片元素提取番号信息；carNum 为空时抛错。对应原 L3228-3282。 */
-    getBoxCarInfo(boxEl: any): CarInfo {
-        let titleAttr: any;
-        let imgTitleAttr: any;
-        let dataTitleAttr: any;
+    getBoxCarInfo(boxEl: JQuery): CarInfo {
+        let titleAttr: string | undefined;
+        let imgTitleAttr: string | undefined;
+        let dataTitleAttr: string | undefined;
         const linkEl = boxEl.find('a');
         const url = linkEl.attr('href');
         let carNum: string | null = null;
@@ -244,7 +263,7 @@ export class BasePlugin {
             }
             const dates: string[] = boxEl
                 .find('date')
-                .map((_index: number, el: any) => $(el).text().trim())
+                .map((_index: number, el: HTMLElement) => $(el).text().trim())
                 .get();
             const isDate = (val: string) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(val);
             publishTime = dates.find(isDate) || null;
@@ -252,9 +271,8 @@ export class BasePlugin {
         }
         if (!carNum) {
             const msg = '提取番号信息失败: carNum 为空';
-            console.error('Error in getBoxCarInfo:', msg, 'Box Element:', boxEl.get(0));
-            show.error(msg);
-            throw new Error(msg);
+            clog.error('Error in getBoxCarInfo:', msg, 'Box Element:', boxEl.get(0));
+            failWithToast(msg);
         }
         if (featureFlags.westernCarFormat) {
             carNum = this._formatWesternCar(carNum, publishTime || '');
@@ -283,22 +301,22 @@ export class BasePlugin {
     }
 
     /** 提取当前列表页所有影片卡片的番号信息。对应原 L3283-3305。 */
-    getBoxCarInfoList(boxEls: any = null): CarInfo[] {
+    getBoxCarInfoList(boxEls: JQuery | null = null): CarInfo[] {
         boxEls ||= $(this.getSelector().itemSelector);
         if (boxEls.length === 0) {
             clog.error('获取当前列表页所有item的番号信息失败!');
             return [];
         }
         const list: CarInfo[] = [];
-        boxEls.each((index: number, element: any) => {
+        boxEls.each((index: number, element: HTMLElement) => {
             const itemEl = $(element);
             try {
                 const info = this.getBoxCarInfo(itemEl);
                 list.push(info);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 clog.error(
                     '[getBoxCarInfoList] 提取单个 boxCar 信息失败:',
-                    err.message,
+                    err instanceof Error ? err.message : String(err),
                     '元素索引:',
                     index
                 );

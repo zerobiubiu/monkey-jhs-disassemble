@@ -7,8 +7,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.1);
-    z-index: 99999999;
+    background-color: rgb(0, 0, 0, 0.1);
+    z-index: var(--jhs-z-top);
 }
 
 .loading-animation {
@@ -18,28 +18,28 @@
     background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
     border-radius: 6px;
     animation: loading-animate 1.8s ease-in-out infinite;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgb(0, 0, 0, 0.1);
 }
 
-.loading-animation:before,
-.loading-animation:after {
+.loading-animation::before,
+.loading-animation::after {
     position: absolute;
     display: block;
     content: '';
     animation: loading-animate 1.8s ease-in-out infinite;
     height: 12px;
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgb(0, 0, 0, 0.1);
 }
 
-.loading-animation:before {
+.loading-animation::before {
     top: -20px;
     left: 10px;
     width: 40px;
     background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%);
 }
 
-.loading-animation:after {
+.loading-animation::after {
     bottom: -20px;
     width: 35px;
     background: linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%);
@@ -49,9 +49,11 @@
     0% {
         transform: translateX(40px);
     }
+
     50% {
         transform: translateX(-30px);
     }
+
     100% {
         transform: translateX(40px);
     }

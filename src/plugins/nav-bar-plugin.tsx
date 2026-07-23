@@ -16,16 +16,19 @@
  * 原方法名 margeNav（"marge"为"merge"笔误）语义化为 mergeNav。
  * 该插件未引用顶层单字母常量（o/r/l/c/T/I/B/P/D/A），故无 ../constants 引入；
  * $ 已由 ../types/globals.d.ts 声明为 any；jQuery .each 回调依赖 this 指向触发
- * 元素，按 fold-category-plugin 既有约定以 (this: any) 显式标注，规避 noImplicitThis。
+ * 元素，以 (this: HTMLElement) 显式标注，规避 noImplicitThis。
  * handle 原为同步，此处声明 async 以匹配 BasePlugin.handle(): Promise<void>
  * 签名（行为等价，子任务均为同步调用）；内联 HTML 已提取为组件
  * （NavSearchBox / NavOtherDropdown）。
  */
 import { featureFlags } from '../core/feature-flags';
-import { BasePlugin } from './base-plugin';
-import { NavOtherDropdown } from '../components/nav-other-dropdown';
-import { NavSearchBox } from '../components/nav-search-box';
 import { jsxToString } from '../core/jsx-to-string';
+
+import { BasePlugin } from './base-plugin';
+
+import { NavOtherDropdown } from '../components/nav/nav-other-dropdown';
+import { NavSearchBox } from '../components/nav/nav-search-box';
+
 import navBarCssRaw from '../styles/nav-bar-plugin.css?raw';
 
 export class NavBarPlugin extends BasePlugin {
@@ -58,7 +61,7 @@ export class NavBarPlugin extends BasePlugin {
             const params = new URLSearchParams(window.location.search);
             const keyword: string | null = params.get('q');
             const searchType: string | null = params.get('f');
-            $('#search-keyword').val(keyword);
+            $('#search-keyword').val(keyword ?? '');
             if (searchType) {
                 $('#search-type').val(searchType);
             }
@@ -79,7 +82,7 @@ export class NavBarPlugin extends BasePlugin {
             return;
         }
         const lower: string = trimmed.toLowerCase();
-        $('.video-title strong, .actor-box strong').each(function (this: any) {
+        $('.video-title strong, .actor-box strong').each(function (this: HTMLElement) {
             const el = $(this);
             if (el.text().toLowerCase().includes(lower)) {
                 el.addClass('highlight-red');
@@ -96,8 +99,10 @@ export class NavBarPlugin extends BasePlugin {
         $('#navbar-menu-hero').after(jsxToString(<NavSearchBox />));
         const $keyword = $('#search-keyword');
         if (!featureFlags.navBarNoPaste) {
-            $keyword.on('paste', (event: any) => {
-                const items: any = event.originalEvent.clipboardData.items;
+            $keyword.on('paste', (event: Event) => {
+                // jQuery wraps the native event; originalEvent is the underlying ClipboardEvent
+                const clipEvent = event as unknown as { originalEvent: ClipboardEvent };
+                const items = clipEvent.originalEvent.clipboardData!.items;
                 for (let index = 0; index < items.length; index++) {
                     if (items[index].type.indexOf('image') !== -1) {
                         return;
@@ -108,16 +113,16 @@ export class NavBarPlugin extends BasePlugin {
                 }, 0);
             });
         }
-        $keyword.on('keypress', (event: any) => {
+        $keyword.on('keypress', (event: KeyboardEvent) => {
             if (event.key === 'Enter') {
                 setTimeout(() => {
                     $('#search-btn').click();
                 }, 0);
             }
         });
-        $('#search-btn').on('click', (_event: any) => {
-            const keyword: any = $('#search-keyword').val();
-            const searchType: any = $('#search-type option:selected').val();
+        $('#search-btn').on('click', (_event: Event) => {
+            const keyword = String($('#search-keyword').val() ?? '');
+            const searchType = String($('#search-type option:selected').val() ?? '');
             if (keyword !== '') {
                 if (window.location.href.includes('/search')) {
                     window.location.href = '/search?q=' + keyword + '&f=' + searchType;
@@ -128,7 +133,7 @@ export class NavBarPlugin extends BasePlugin {
         });
         // 自定义检索框内的「识图」按钮（NavSearchBox 内 #search-img-btn）
         if (featureFlags.imageRecognitionPlugin) {
-            $('#search-img-btn').on('click', (e: any) => {
+            $('#search-img-btn').on('click', (e: Event) => {
                 e.preventDefault();
                 this.getBean('ImageRecognitionPlugin')?.open?.();
             });
@@ -152,7 +157,7 @@ export class NavBarPlugin extends BasePlugin {
         searchImageEl.parentNode!.replaceChild(clonedEl, searchImageEl);
         $('#button-search-image').attr('data-tooltip', '以图识图');
         if (featureFlags.imageRecognitionPlugin) {
-            $('.search-image').on('click', (event: any) => {
+            $('.search-image').on('click', (event: Event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 this.getBean('ImageRecognitionPlugin')?.open?.();
@@ -174,19 +179,19 @@ export class NavBarPlugin extends BasePlugin {
     }
 
     /**
-     * 按窗口宽度在自定义检索框（#search-box）与原检索栏容器
-     * （#search-bar-container）间切换显隐：1023<width<1600 显原隐自，width>1600
-     * 显自隐原。对应原 L4818-4829。
+     * 桌面宽度（>1023）统一显示已绑定处理的自定义检索框 #search-box 并隐藏插件未绑定
+     * 的站点检索栏 #search-bar-container；≤1023 交给 Bulma 折叠导航，本方法不干预。
+     * 对应原 L4818-4829 的按宽度切换已废弃，因站点原检索栏在当前 javdb 已无可用绑定。
      * 无参数，无返回值；作为 resize 回调被调用时不依赖 this。
      */
     toggleOtherNavItem(): void {
-        const searchBox: any = $('#search-box');
-        const searchBarContainer: any = $('#search-bar-container');
-        if ($(window).width() < 1600 && $(window).width() > 1023) {
-            searchBox.hide();
-            searchBarContainer.show();
-        }
-        if ($(window).width() > 1600) {
+        const searchBox = $('#search-box');
+        const searchBarContainer = $('#search-bar-container');
+        // 自定义检索框 #search-box 是唯一绑定了 #search-btn 点击/粘贴/回车处理的
+        // 搜索 UI；站点原检索栏 #search-bar-container 插件从未绑定任何处理。原按宽度
+        // 在二者间切换显隐，会在 1024-1599px 显示未绑定的站点检索栏，用户看到的「检索」
+        // 按钮因此无响应。桌面宽度（>1023）统一显示已绑定的自定义检索框。
+        if (($(window).width() ?? 0) > 1023) {
             searchBox.show();
             searchBarContainer.hide();
         }

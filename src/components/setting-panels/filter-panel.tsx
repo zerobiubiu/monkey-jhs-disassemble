@@ -5,7 +5,6 @@
  * 原子组件构建。
  */
 
-import { SettingRow } from '../setting/setting-row';
 import { SettingSection } from '../setting/setting-section';
 
 /** FilterPanel 的属性。 */
@@ -27,23 +26,22 @@ export function FilterPanel({ panelName }: FilterPanelProps) {
                 display: panelName === 'filter-panel' ? 'block' : 'none'
             }}
         >
-            <div id="filterKeywordContainer">
-                <SettingSection title="屏蔽关键词" icon="🚫">
-                    <SettingRow label="视频标题屏蔽词:">
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <input
-                                type="text"
-                                className="keyword-input"
-                                placeholder="添加屏蔽词"
-                            />
-                            <button type="button" className="add-tag-btn">
-                                添加
-                            </button>
-                        </div>
-                    </SettingRow>
-                    <div className="tag-box"> </div>
-                </SettingSection>
-            </div>
+            <SettingSection title="屏蔽关键词" icon="🚫">
+                <div id="filterKeywordContainer" className="filter-keyword-container">
+                    <div className="tag-box"></div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <input
+                            type="text"
+                            className="keyword-input"
+                            placeholder="输入关键词后按回车添加"
+                            style={{ flex: 1 }}
+                        />
+                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                            添加
+                        </a>
+                    </div>
+                </div>
+            </SettingSection>
         </div>
     );
 }

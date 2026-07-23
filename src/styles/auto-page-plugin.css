@@ -3,21 +3,26 @@
     padding-top: 20px;
     font-size: 14px;
 }
+
 .jhs-scroll.waterfall-loading {
     color: #000;
 }
+
 .jhs-scroll.waterfall-error {
     color: #f44336;
     cursor: pointer;
 }
+
 .jhs-scroll.waterfall-no-more {
     color: #4caf50;
 }
+
 .jhs-scroll.waterfall-click {
     color: #1976d2;
     cursor: pointer;
     font-weight: 600;
 }
+
 .jhs-scroll.waterfall-click:hover {
     color: #0d47a1;
     text-decoration: underline;
@@ -27,25 +32,28 @@
     position: fixed;
     right: 20px;
     bottom: 80px;
-    z-index: 9999;
+    z-index: var(--jhs-z-page);
     padding: 10px 20px;
     background: linear-gradient(to right, #5d87c2, #4a90d9);
     color: #fff;
     border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.3);
     transition: opacity 0.5s, transform 0.2s;
     user-select: none;
 }
+
 .jhs-load-all-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px rgb(0, 0, 0, 0.4);
 }
+
 .jhs-load-all-btn.jhs-load-all-disabled {
     opacity: 0.6;
     cursor: wait;
 }
+
 .jhs-load-all-btn.jhs-load-all-fadeout {
     opacity: 0;
 }

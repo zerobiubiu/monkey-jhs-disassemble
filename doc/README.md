@@ -141,6 +141,27 @@
 | `127-fix-autopage-click-loader-state.md` | 🔧开发指导 | ✅已执行 | 修复瀑布流「点按钮」模式只能加载一次：普通分页与 Beyond60 成功后退出 waterfall-loading 回到空闲态，保留请求期防重入守卫；version 1.19.8→1.19.9 |
 | `128-detail-page-list-panel-ui-and-sorting.md` | 🔧开发指导 | ✅已执行 | 详情页清单面板结构化改版：默认名称降序/可切升序、搜索与选中汇总、完整分页聚合、响应式和无障碍状态；强化 listId 映射及新建清单权威确认；version 1.19.9→1.20.0 |
 | `129-fix-top250-cover-cdn-replace.md` | 🔧开发指导 | ✅已执行 | 修复 Top250/热播榜单封面图加载失败：HitShowMovieItem 硬编码 CDN 字面量替换改为域名无关正则 _updateImgServer，兼容 CDN 域名轮换；version 1.20.0→1.20.1 |
+| `130-architecture-audit-and-bugfix.md` | 🔧开发指导 | ✅已执行 | 六维度架构审计（并发竞态/DOM生命周期/数据完整性/网络错误/类型安全/死代码）+ 5 类正确性修复：StorageManager 缓存失效、MagnetHub 超时+竞态、JSON.parse 防护（10处）、Translate 超时、删除死亡组件 VideoTitleSpan；version 1.20.1→1.20.2 |
+| `131-round2-dead-code-log-factory-race-guard.md` | 🔧开发指导 | ✅已执行 | 第二轮深度优化：api.ts 死代码清理（删 4 函数+2 去 export+javDbApi 精简）、car-status-sync 日志工厂提取、Fc2By123Av 竞态守卫、base-plugin 类型收窄；version 1.20.2→1.20.3 |
+| `132-typed-plugin-registry-and-diagnostics.md` | 🔧开发指导 | ✅已执行 | 类型安全插件注册表（PluginMap 40 插件映射 + getBean 泛型 + registrationComplete 时序 + warn 诊断）+ 插件诊断菜单（GM_registerMenuCommand 弹窗展示执行状态）+ 6 个预存类型错误修复；version 1.20.3→1.21.0 |
+| `133-window-type-safety-and-diagnostics-panel.md` | 🔧开发指导 | ✅已执行 | (window as any) 类型安全清扫（40 处→typed window.*，56→16）+ 诊断模块提取至 core/plugin-diagnostics.ts + 设置面板「📊 插件诊断」面板（状态表格+复制报告）；version 1.21.0→1.21.1 |
+| `134-zero-window-as-any-and-diagnostics-timing.md` | 🔧开发指导 | ✅已执行 | (window as any) 完全消除（56→0，Window 接口扩展 8 库全局字段）+ 诊断耗时统计（durationMs + 耗时列 + 总耗时）+ 插件名 HTML 转义；version 1.21.1→1.21.2 |
+| `135-schema-versioning-migration.md` | 🔧开发指导 | ✅已执行 | 版本化数据迁移（6 步映射为版本 0→6，后续启动仅读版本号 ~1ms）+ navigator.locks 多标签互斥 + 迁移冻结对象修复（直接 forage.getItem 绕过 deepFreeze）+ 迁移缓存失效 + 首条记录启发式移除 + 15 处健壮性修复；version 1.21.2→1.22.0 |
+| `136-security-boundary-hardening.md` | 🔧开发指导 | ✅已执行 | 安全边界加固：unsafeWindow 权限收窄（移除 6 个敏感对象暴露）+ 站点匹配精确化（删 include + @noframes）+ 密码输入隐藏 + 备份导入原子性（暂存→切换）+ 附加存储白名单（strip/apply 分离）；version 1.22.0→1.23.0 |
+| `137-aes-gcm-backup-encryption.md` | 🔧开发指导 | ✅已执行 | AES-GCM 加密备份 V2（PBKDF2-SHA-256 100k 迭代 + 随机 salt/IV + 信封格式）+ WebDAV 凭据迁移到 GM 私有存储 + 备份口令字段（GM 存储，永不写入备份）+ V1 Caesar 导入兼容；version 1.23.0→1.24.0 |
+| `138-revision-gated-full-sync.md` | 🔧开发指导 | ✅已执行 | CarListReaderPlugin 全量同步版本门控（jhs_car_list_rev 变更代号 + 24h 每日兜底），无变更页面加载跳过 55k 记录全量同步；version 1.24.0→1.24.1 |
+| `139-runtime-v2-foundation.md` | 🔧开发指导 | ✅已执行 | Runtime V2 基础设施：page-context.ts 集中式页面检测 + task-supervisor.ts AbortSignal 生命周期管理 + BasePlugin sites/pageTypes/destroy + PluginManager 页面过滤 + 启动序列重排；version 1.24.1→1.25.0 |
+| `140-plugin-pagetypes-migration.md` | 🔧开发指导 | ✅已执行 | 19 个插件 pageTypes 声明迁移（9 详情页 + 6 列表页 + 3 混合 + 1 非详情页），PluginManager 按页面类型过滤不匹配插件；version 1.25.0→1.25.1 |
+| `141-task-supervisor-migration.md` | 🔧开发指导 | ✅已执行 | 5 个插件 TaskSupervisor 生命周期迁移（visit-history/auto-page/status-tag-filter/page-sort/other-site），原生定时器/Observer/事件监听器统一由 supervisor 管理 + destroy() 实现；version 1.25.1→1.25.2 |
+| `142-supervisor-completion-and-listdombus.md` | 🔧开发指导 | ✅已执行 | TaskSupervisor 全量迁移完成（累计 9 个插件）+ ListDomBus 列表页 DOM 变更总线（单 Observer + rAF 批量分发 + handler 异常隔离）；version 1.25.2→1.25.3 |
+| `143-pagination-state-machine-and-preload-dedup.md` | 🔧开发指导 | ✅已执行 | 批次 3 完成：PaginationStateMachine 瀑布流分页状态机（idle/loading/error/exhausted + retry）+ 外站预加载 keyed 去重（inflightPreloads Map）+ LRU 缓存淘汰（5000 条上限按 ts 淘汰）；version 1.25.3→1.26.0 |
+| `144-storage-revision-cross-tab.md` | 🔧开发指导 | ✅已执行 | Storage V2 基础：StorageRevision 跨标签页修订号追踪（16 个写入方法 increment + BroadcastChannel 广播 + 远程缓存失效回调）；version 1.26.0→1.27.0 |
+| `145-accessibility-gm-types-package-sync.md` | 🔧开发指导 | ✅已执行 | 无障碍基础样式（focus-visible + prefers-reduced-motion）+ GM API 类型化（6 个 Grant API 精确声明）+ StorageRevision 跨会话修复 + package.json 版本/描述同步；version 1.27.0→1.27.1 |
+| `146-agents-md-sync-and-consistency.md` | 🔧开发指导 | ✅已执行 | AGENTS.md 架构文档同步（§3.1 启动序列 17 步 + §3.2 Runtime V2 API）+ 代码一致性修复（Top250 getName 对齐 + 插件计数注释）+ 一致性审计（6 维度 15 条 findings）；version 1.27.1→1.27.2 |
+| `147-design-tokens-eslint-css-cleanup.md` | 🔧开发指导 | ✅已执行 | 设计令牌（design-tokens.css CSS 自定义属性，值与实际调色板一致）+ ESLint 工具链（eslint.config.js + lint 脚本）+ CSS transition:all 清理（12 文件 19 处替换为具体属性）；version 1.27.2→1.27.3 |
+| `148-stylelint-and-agents-md-tooling-sync.md` | 🔧开发指导 | ✅已执行 | Stylelint 工具链（.stylelintrc.json + lint:css 脚本 + --fix 442 处自动修复，基线 0 errors）+ AGENTS.md 工具链同步（§3.6 样式 + §3.7 类型 + §3.8 工具链 + §3.1 CSS 枚举）；version 1.27.4→1.27.5 |
+| `172-big-file-splits-and-components-reorg.md` | 🔧开发指导 | ✅已执行 | 5 个大文件职责拆分（detail-page-button 2043→413 / other-site 1178→510 / list-reading-status 1103→275 / common-util 1094→519 / vlt-sync 上轮已拆）+ src/components/ 120+ 平铺文件重组为 25 个子目录（直接文件数 0，144 处 import 更新）+ check-structure.ts 门禁更新；version 1.28.12→1.28.13 |
+| `173-settings-ui-overhaul-and-vlt-final-split.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 统一化（CSS Grid 表单布局 + 统一控件样式 + iOS toggle + 8 个原子表单组件 + 9 面板重构 + 120 选择器审计 + 独立预览页）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel + 5 新模块）；version 1.28.13→1.28.14 |
 
 ## 类型图例
 
@@ -220,22 +241,77 @@
 127. `127-fix-autopage-click-loader-state.md` — 修复瀑布流「点按钮」模式首轮成功后残留 loading、后续按钮永久消失
 128. `128-detail-page-list-panel-ui-and-sorting.md` — 优化详情页清单面板 UI、名称排序/搜索、完整分页展示及可靠交互
 129. `129-fix-top250-cover-cdn-replace.md` — 修复 Top250/热播榜单封面图 CDN 域名轮换导致加载失败
+130. `130-architecture-audit-and-bugfix.md` — 六维度架构审计（并发竞态/DOM生命周期/数据完整性/网络错误/类型安全/死代码）+ 5 类 critical bug 修复（StorageManager 缓存失效/MagnetHub 超时+竞态/JSON.parse 防护/Translate 超时/死组件删除）
+131. `131-round2-dead-code-log-factory-race-guard.md` — api.ts 死代码清理 + car-status-sync 日志工厂提取 + Fc2By123Av 竞态守卫 + base-plugin 类型收窄
+132. `132-typed-plugin-registry-and-diagnostics.md` — PluginMap 类型注册表（40 插件精确类型）+ 插件诊断菜单（GM_registerMenuCommand）+ 6 个预存类型错误修复
+133. `133-window-type-safety-and-diagnostics-panel.md` — `(window as any)` 56→16 + 诊断模块提取至 core/plugin-diagnostics.ts + 设置面板诊断面板
+134. `134-zero-window-as-any-and-diagnostics-timing.md` — `(window as any)` 16→0 + 诊断耗时统计（durationMs）+ escapeHtml 防护
+135. `135-schema-versioning-migration.md` — 版本化数据迁移（6 步→1 次 ~1ms）+ navigator.locks 多标签互斥 + 冻结对象修复 + 15 处健壮性修复
+136. `136-security-boundary-hardening.md` — unsafeWindow 权限收窄 + @noframes + 导入原子性（暂存→切换）+ applyBackupExtras 白名单
+137. `137-aes-gcm-backup-encryption.md` — AES-GCM 加密备份 V2（PBKDF2-SHA-256 100k 迭代）+ WebDAV 凭据 GM 迁移 + V1 Caesar 导入兼容
+138. `138-revision-gated-full-sync.md` — CarListReaderPlugin 全量同步版本门控（revision 比较 + 24h 每日兜底）
+139. `139-runtime-v2-foundation.md` — Runtime V2 基础设施：PageContext + TaskSupervisor + BasePlugin sites/pageTypes/destroy + PluginManager 页面过滤 + 启动序列重排
+140. `140-plugin-pagetypes-migration.md` — 19 个插件 pageTypes 声明迁移（9 详情页 + 6 列表页 + 3 混合 + 1 非详情页）
+141. `141-task-supervisor-migration.md` — 5 个插件 TaskSupervisor 迁移（visit-history/auto-page/status-tag-filter/page-sort/other-site）
+142. `142-supervisor-completion-and-listdombus.md` — TaskSupervisor 全量完成（9 插件）+ ListDomBus 列表页 DOM 变更总线
+143. `143-pagination-state-machine-and-preload-dedup.md` — PaginationStateMachine 瀑布流分页状态机 + 外站预加载 keyed 去重 + LRU 缓存淘汰
+144. `144-storage-revision-cross-tab.md` — StorageRevision 跨标签页修订号追踪（16 个写入方法 increment + BroadcastChannel 广播）
+145. `145-accessibility-gm-types-package-sync.md` — 无障碍 CSS（focus-visible + prefers-reduced-motion）+ GM API 类型化 + package.json 同步
+146. `146-agents-md-sync-and-consistency.md` — AGENTS.md 架构文档同步 + 代码一致性审计（6 维度 15 条 findings）+ Top250 getName 对齐
+147. `147-design-tokens-eslint-css-cleanup.md` — 设计令牌（design-tokens.css）+ ESLint 工具链 + CSS transition:all 清理（19→0）
+148. `148-stylelint-and-agents-md-tooling-sync.md` — Stylelint 工具链（0 errors）+ AGENTS.md 工具链同步（§3.8 工具链节）
+149. `149-pluginmanager-typing.md` — BasePlugin.pluginManager 类型化（any→PluginManager），消除核心字段 any，40 个插件继承精确类型
+150. `150-application-globals-typing.md` — 应用全局类型化（6 个全局 any→精确类型）+ 69 处隐藏类型错误修复（12 个文件，null→undefined/非空断言/Number()转换）；version 1.27.6→1.27.7
+151. `151-jsx-xss-hardening.md` — jsxToString XSS 加固（escapeAttr 属性值转义 + sanitizeUrl 协议校验，阻止 javascript:/data: 注入）；version 1.27.7→1.27.8
+152. `152-back-to-top-merge-and-consistency.md` — 合并两套返回顶部控件（ListWaterfall 复用 SettingPlugin 的 #jhs-back-to-top）+ package.json 版本同步；version 1.27.8→1.27.9
+153. `153-z-index-normalization.md` — z-index 统一化（9 个 CSS 文件超大 z-index → 设计令牌 --jhs-z-page/--jhs-z-top，layer.js 兼容）；version 1.27.9→1.28.0
+154. `154-code-consistency-round3.md` — 代码一致性第三轮：错误处理 clog 统一 + 导入六组约定（main + 5 插件）+ CSS 类名去冲突（.menu-btn 拆分 + video-lists-tag 加 jhs-vlt- 前缀）；version 1.28.0→1.28.1
+155. `155-code-consistency-round4-and-trace-preservation.md` — 第四轮一致性（39 文件 159 处：clog 错误统一 + 导入六组 + show.error instanceof 守卫）+ devtools 跟踪日志零偏差保留（集成脚本 console.* 跟踪 / %c 工厂恢复 / logger error-only 转发有意设计）；version 1.28.1→1.28.2
+156. `156-convention-codification-and-component-audit.md` — 将 doc/153–155 确立的风格约定（导入六组 / clog-vs-console 分层 + devtools 跟踪例外 / show.error instanceof 守卫 / z-index 令牌 / CSS 前缀 / 审计无截断）固化为 AGENTS.md §9 强制条款 + 组件目录三维审计全清洁；**无 src/ 变更，不递增版本号**（§6.1.1 纯文档轮次）
+157. `157-core-import-order-closure.md` — core 目录导入顺序闭合审计（28 文件）：image-preview.tsx + tooltip.ts CSS?raw 移至末位；console 维度全清洁；constants/types 全清洁；version 1.28.2→1.28.3
+158. `158-silent-catch-and-type-escape-audit.md` — 静默 catch / @ts-ignore / @ts-expect-error / eslint-disable 四维审计：17 空 catch（全部有意 best-effort 广播/清理，外层 clog.error 或 re-throw）/ 0 ts-ignore / 0 ts-expect-error / 0 block-level eslint-disable；7 处 eslint-disable-next-line 均为 no-explicit-any 已知 backlog；**无 src/ 变更，不递增版本号**（§6.1.1 纯文档轮次）
+159. `159-dead-code-todo-naming-audit.md` — 死代码/TODO/命名三维审计：TODO/FIXME/HACK = 0；snake_case 方法名 = 6 个遗留迁移方法（schema 版本化后为死代码但保留向后兼容）+ 3 个 API schema 字段名（有意保留）；**无 src/ 变更，不递增版本号**（§6.1.1 纯文档轮次）
+160. `160-lifecycle-and-getbean-reference-audit.md` — 生命周期（listener/timer/observer 零泄漏）+ getBean 引用有效性（40 注册插件全解析；Beyond60Plugin 为忠实死路径，可选链保护）；**无 src/ 变更，不递增版本号**（§6.1.1 纯文档轮次）
+161. `161-regression-test-infrastructure.md` — 落地批次 6 测试基建：Vitest+jsdom + vitest.config.ts + `bun run test`；首两回归套件（jsxToString XSS/doc/151 + BackupEnvelopeV2 往返/doc/137，21 用例全绿）；tests/ 在 src/ 外故 tsc/eslint/build 字节稳定，不递增 userscript 版本；schema 迁移幂等性列为下一测试目标；package.json version 字段同步 1.27.8→1.28.3（元数据）
+162. `162-migration-regression-test-and-seam.md` — 落地 doc/161 推迟的 schema 迁移回归测试：StorageManager 可注入 forage seam（`forageInstance?: unknown` + `__resetForTesting`）+ 5 用例幂等/门控/全量/缓存失效/失败重试套件（jsdom + 手写 fake forage，无新依赖）；§9.2 修正 merge_table_name 6 处裸 console.log→clog.debug；复核附件四缺陷均已被 doc/135 修复（无方法体改动）；version 1.28.3→1.28.4
+163. `163-migration-attachment-path-coverage.md` — 补全附件重点分析路径的正向回归测试：`clean_no_url_blacklist` 跨清单过滤+recordTime→createTime+冗余字段删除、`async_merge_other` 废弃设置键+downPath115 删除（迁移套件 5→7 用例，28/28 全绿）；tests/-only 无 src 变更，不递增版本号（§6.1.1）
+164. `164-storage-manager-incremental-any-elimination.md` — 按批次 6「触及即消除」对 storage-manager 4 个迁移方法做增量 any 消除（any[]→CarRecord[]/BlacklistItem[]/FavoriteActress[]，回调改推断，零 as any 回填）；tsc 严格通过、eslint no-explicit-any 805→786（−19）、28/28 测试不变；merge_table_name/async_merge_other/getBlacklistCarList 有意保留 backlog；version 1.28.4→1.28.5
+165. `165-iframe-regression-flags-convergence-structure-plan.md` — 修复 iframe 弹窗回归（移除 doc/136 误加 `@noframes`，恢复脚本注入同源 layer 详情 iframe；双触发复核全为每文档独立/幂等/门控/自守卫/跨 frame/原始同行为，唯一新 cosmetic nit=可能重复「📊 插件诊断」菜单项已记录 deferred；visit-history 守卫经路径键分析驳回；CSS R3/R4 改名核实未坏，弹窗 UI 乱真因为脚本未注入）+ feature-flags 强类型收敛（`Record<string,boolean>`→封闭 `interface FeatureFlags`+JSDoc，grep 证实零动态访问，键/默认/IIFE 不变，tsc 全码库零错误/28-28/786-0）+ AGENTS §6.3 顺序修正与 @types 已核实 + 结构/目录优化规划（核实布局已合 §2、无重组提案，真债为 vlt-sync/detail-page-button/setting-plugin 三超大文件，给出 vlt-sync 拆分大纲 deferred）+ 浏览器诚实声明（无头无 GM_* 宿主，弹窗修复需用户目视）；version 1.28.5→1.28.6
+166. `166-navbar-arrow-fix.md` — 修复导航栏「设置」「鉴定记录」按钮的多余 Bulma 下拉箭头（根因：setting-plugin.css L1 占位符 `__css_text__` 小写与 setting-plugin.tsx L212 的 `__CSS_TEXT__` 大写不匹配、且占位符融合进选择器，致 `.nav-btn::after { content: none !important; }` 压制规则被浏览器丢弃；修复为独立行大写占位符 + 独立规则，占位符行附 `selector-type-case` disable 注释且注释内不含占位符字面量以免抢占 `String.replace` 首次匹配）；version 1.28.6→1.28.7
+167. `167-inline-html-to-tsx-extraction.md` — 7 处 HIGH 内联 HTML 模板字面量提取为 TSX 组件（fc2-detail-dialog/fc2-browse-page/image-recognition-dialog/magnet-result-card/vlt-create-list-form/diagnostics-table + 复用 hit-show-movie-item 替代 markDataListHtml）；5 文件 .ts→.tsx 重命名；jsx-to-string 新增 htmlFor→for 映射消除 as any；组件 91→97；version 1.28.7→1.28.8
+168. `168-round2-extraction-and-import-order-fixes.md` — 二轮提取 4 处 HIGH 残留内联 HTML（fc2-movie-detail/fc2-magnet-item/fc2-123av-detail-dialog/fc2-123av-movie-info）+ 5 处 §9.1 导入顺序修复 + void YES 死代码删除；组件 97→101；version 1.28.8→1.28.9
+169. `169-zero-html-structure-gate-and-nav-search-fix.md` — 零硬编码 HTML（15 文件 LOW 全清，~25 新组件 + 3 CSS 提取 + 2 SVG 常量）+ setting-dialog 拆分（940→171 行 + 9 面板子组件）+ api.ts any 收窄（14→0）+ 机械结构门禁（check:structure 棘轮）+ AGENTS §10/§11 规则写死 + .tsx→.ts 重命名 + fc2 组件子目录重组 + 检索按钮修复；version 1.28.9→1.28.10
+170. `170-closing-inline-fixes-dead-icons-and-zero-html-boundary.md` — 收尾：4 处残留内联 UI 模板修复（common-util insertStyle / new-video 头像弹窗 / list-waterfall 回到顶部 SVG / review 星标）+ icons.ts 5 个死 SVG 常量清理（SETTING/CHECK/ACTRESS/NEW/BLACKLIST_SVG）+ 零硬编码 HTML 边界写死（AGENTS §9.7：违规/needle 豁免/jQuery 构造 idiom/sanctioned 常量四类 triage）；version 1.28.10→1.28.11
+171. `171-webdav-bugfixes-and-encryption-removal.md` — WebDAV 备份 bug 修复（401 凭据读输入框 + URL 旧格式迁移）+ 加密移除（明文 JSON 上传）+ 设置 UI 布局修复（max-width 移除 + 密码字段 flex）+ transition:all 窄化；version 1.28.11→1.28.12
+172. `172-big-file-splits-and-components-reorg.md` — 5 个大文件职责拆分（facade/delegate 模式）+ src/components/ 120+ 平铺文件重组为 25 个子目录 + 机械门禁更新；version 1.28.12→1.28.13
+173. `173-settings-ui-overhaul-and-vlt-final-split.md` — 设置面板 UI 统一化（CSS Grid + 原子组件 + 选择器审计）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel）；version 1.28.13→1.28.14
+174. `174-wave1-atomization-and-reuse-merge.md` — Wave 1 原子化拆分与复用合并（storage-manager 1321→415 / vlt-tags 1028→421 / review·related 七对组件合并为 shared 参数化组件 / 5 共享工具抽取接入 10 处）；version 1.28.14→1.28.15
 
 ## 当前进度概览
 
-- core：16 个模块全部提取（`common-util`/`storage-manager`/`gm-http`/`toast`/
-  `loading`/`logger`/`hotkey`/`image-preview`/`viewer`/`webdav`/`gfriends`/
-  `async-task-queue`/`layer-wrapper`/`tooltip`/`webdav-crypto`/`auto-backup`）
-- plugins：`base-plugin` + `plugin-manager` + 34 个插件模块全部外置（含 doc/25 集成的 RatingDisplayPlugin + doc/29 集成的 Fc2Plugin + doc/34 集成的 KeyPageTurningPlugin + doc/35 集成的 ModMyListOpenWayPlugin + doc/36 集成的 PageSortPlugin + doc/38 集成的 StatusTagFilterPlugin + doc/39 集成的 ListWaterfallPlugin + doc/40 集成的 ListReadingStatusPlugin + doc/42 集成的 ModalListDisablerPlugin + doc/43 集成的 ListParserPlugin + doc/45 集成的 VideoListsTagPlugin + doc/46 集成的 CarListReaderPlugin/MissavStatusTagPlugin）
+- core：28 个模块（`_jquery-global`/`async-task-queue`/`auto-backup`/
+  `backup-crypto`/`backup-extra-storage`/`common-util`/`feature-flags`/
+  `gfriends`/`gm-http`/`image-preview`/`jsx-to-string`/`layer-wrapper`/
+  `libs`/`list-dom-bus`/`loading`/`logger`/`page-context`/
+  `pagination-state`/`plugin-diagnostics`/`storage-manager`/
+  `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
+  `tooltip`/`viewer`/`webdav`/`webdav-crypto`）
+- plugins：`base-plugin` + `plugin-manager` + 40 个插件（javdb 38 + missav 2），
+  19 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
-- resources：`gfriends`
-- styles：21 个 CSS（4 顶层 + 9 插件 `initCss` + 1 弹窗内 `<style>` 提取 + doc/13 新增 5 个：`image-preview`/`tooltip`/`back-to-top-button`/`setting-image-mode-vertical`/`setting-image-mode-horizontal` + doc/107 新增 1 个：`preload-status-badge`）全部提取
-- components：`temporary-image-container`/`login-dialog`/`subtitle-table-dialog`/`subtitle-preview-dialog`/`history-dialog`/`edit-record-dialog`/`new-video-dialog`/`edit-actress-dialog`/`cdn-select-dialog`/`avatar-select-dialog`/`menu-button-box-html`/`status-tag-html`/`video-title-span`/`jump-page-control`/`page-count-table`/`blacklist-dialog`/`blacklist-confirm-message`/`blacklist-data-type-options`/`blacklist-name-cell`/`blacklist-url-type-cell`/`blacklist-status-cell`/`blacklist-action-cell`/`movie-list-wrapper`/`blacklist-pagination-counter` + doc/13 新增 26 个（`ranking-containers`/`hit-show-tool-bar`/`hit-show-movie-item`/`hit-show-score`/`top250-tool-bar`/`top250-year-button`/`top250-pagination`/`top250-error-message`/`top250-nav-link`/`nav-search-box`/`nav-other-dropdown`/`actress-card`/`actress-pagination`/`new-video-dialog-title`/`other-site-box`/`other-site-btn`/`other-site-checkbox`/`site-result-tag`/`preview-video-quality-btn`/`preview-video-action-btn`/`preview-video-container`/`review-header`/`review-containers`/`review-loading`/`review-error`/`review-empty`/`review-load-more`/`review-end`/`review-link-content`/`review-item`/`setting-mount-box`/`back-to-top-button`/`keyword-label`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`history-source-cell`/`history-status-cell`/`want-watched-hint-span`/`want-watched-import-button`/`logger-log-entry`/`image-preview-img`/`image-preview-error`）+ doc/20 转换 `detail-menu-buttons`/`rating-bar-html`/`list-panel`/`subtitle-action-cell`/`subtitle-line`/`subtitle-table-dialog`/`subtitle-preview-dialog` 7 个为 TSX + doc/21 转换 `setting-dialog`/`help-dialog`/`backup-file-dialog`/`setting-mount-box`/`simple-setting-panel`/`cache-item-html`/`video-quality-option`/`keyword-label`/`back-to-top-button` 9 个为 TSX + doc/22 转换 top250/nav/other-site/preview/want-watched 17 个为 TSX + doc/23 转换 logger-log-entry/image-preview-img/image-preview-error 3 个为 TSX + doc/107 新增 `preload-status-bar`/`preload-status-badge` 2 个（JSX 函数组件，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（`menu-button-box`/`rating-bar`/`status-tag`）已全部合并删除（doc/17 删 menu-button-box/status-tag，doc/20 删 rating-bar）
-- 入口：`src/main.tsx`（367 行，完整启动序列，强类型）；legacy 已废弃删除
-- 类型：全量去 `@ts-nocheck` 完成，工程内无任何 `@ts-nocheck`
-- build：`tsc -b && vite build` 通过，产物 1,809.45 kB（gzip 413.37 kB）；jsxToString 轻量渲染器（doc/16）已落地，`temporary-image-container` + 列表页 8（doc/17）+ 鉴定记录/演员 9（doc/18）+ 黑名单 9（doc/19）+ 详情页按钮 7（doc/20）+ 设置弹层 9（doc/21）+ top250/nav/other-site/preview/want-watched 17（doc/22）+ core 3（doc/23）共 63 个组件已转 TSX（返回 JSX，经 jsxToString 转 HTML 字符串）；原 3 个 React 示范（menu-button-box/rating-bar/status-tag）已全部合并删除；LoginDialog on* 内联 JS 丢失已由 top250-plugin success 回调 jQuery .on 补回（doc/23）；doc/25 集成 jhsRatingDisplay 评分显示独立脚本为 RatingDisplayPlugin（6 模块 + rating-display.css）；doc/26 单字母标识符语义化重命名（13 文件 + webdav-crypto 导出 Le/Me/Ne + window 全局属性 gt/lt/De/Me/Ne + 修正 main.tsx:13 isJavbusSite 导入笔误）；doc/27 清理全项目 javbus 死代码（删 javbus-masonry.css + 20 文件 javbus 分支/方法/variant + constants isJavbusSite/JAVBUS + vite description）；doc/28 清理其他死代码（删 tabulator-zh.ts + RatingNet + 123av 来源标签 + 去 4 处多余 export + 文案修正）；doc/29 迁移 Fc2Plugin 修复 FC2 点击失效（从未删减版迁移 + hasDown 常量 + 5 缺失依赖 ?. + 注册 24 插件）；doc/31 修复 Tabulator 模块缺失（libs.ts Tabulator→TabulatorFull，恢复 formatter 等列选项，迅雷字幕下载/预览按钮重新渲染）；doc/32 修复 CSS 布局问题（toast 超宽 lightningcss 删 fit-content 加 !important 覆盖 + 设置面板按钮贴连 jsxToString 丢空白加 {" "} 恢复间距）；doc/33 修复收藏状态下评分星星被禁用（want 分支 add→remove is-disabled，星星保持可点击）；doc/34 集成 keyPageTurning 键盘翻页独立脚本为 KeyPageTurningPlugin（60 行单文件 + handle 内详情页守卫 + isTyping/safeClick/lockLeft/lockRight 原样保留，注册 25 插件）；doc/35 集成 modMyListOpenWay 修改我的清单打开方式独立脚本为 ModMyListOpenWayPlugin（37 行单文件 + handle 内路径守卫 + target=_blank + href RESTful 改写 + at(-1) 改 [length-1] 等价，注册 26 插件）；doc/36 集成 pageSort 内容排序独立脚本为 PageSortPlugin（190 行单文件 + CSS + @require jquery 改复用全局 $ + IIFE 闭包转类字段 + jQuery 事件回调改箭头函数 + 4 排序方式 + MutationObserver 排序守卫，注册 27 插件）；doc/37 PageSort 与 jhs 排序系统协调优化（autoPage/isListPage 守卫 + 复用 data-original-index + 排序互斥 + sortGuard disconnect/reconnect，零侵入 jhs 排序系统）；doc/38 集成 statusTagFilter 状态标签筛选独立脚本为 StatusTagFilterPlugin（280 行单文件 + CSS + GM_addStyle 改走 initCss + IIFE 闭包转类字段 + 天然兼容 jhs + isListPage 守卫 + 6 级挂载目标优先级 + 10s 超时兜底，注册 28 插件）；doc/39 集成 listWaterfall 清单瀑布流独立脚本为 ListWaterfallPlugin（510 行单文件 + CSS + GM_getValue 补 grant + ALLOWED_PATHS 路径守卫 + GM_xmlhttpRequest 直接用全局 + ListWaterfall 类转 BasePlugin 子类 + 与 ModMyListOpenWay 不冲突，注册 29 插件）；doc/40 集成 listReadingStatus 清单阅读进度独立脚本为 ListReadingStatusPlugin（1391 行单文件 + CSS + 寄生 jhs IndexedDB + GM_addValueChangeListener 跨标签页同步 5 键 + 10 种排序 + data-lrs-hidden 协同安全 + 天然兼容 ListWaterfall/ModMyListOpenWay/StatusTagFilter，注册 30 插件）；doc/47 完成运行时调度与依赖清理优化（PluginManager 失败汇总、await CSS、StorageManager 缓存接口、去重 layer.css、移除 react-dom）
-
-- 外部库：7 库（jquery/tabulator-tables/toastify-js/localforage/viewerjs/blueimp-md5/layui-layer）已 ESM import 打包进产物（src/core/libs.ts 集中 import + 挂全局，版本与原 @require 一致），qrcodejs 移除（全项目未使用），parallel_GM_xmlhttpRequest 的 @require 已移除（GreasyFork URL 410 Gone，原生 GM_xmlhttpRequest 已足够，doc/41）；layer+jquery 耦合由 _jquery-global.ts 副作用模块保证 ESM 求值顺序（window.jQuery 先于 layer ready.run），layer.css 由 layui-layer 自身带入、不再显式重复 import；卸载 @types/jquery（污染全局 $）改 declare module，viewer.ts 返回 any，tabulator 命名导入，vite.config 加 lightningcss errorRecovery；react-dom/@types/react-dom 已移除（doc/47）；userscript `@require` 全部移除（doc/41）
+- resources：`gfriends`/`icons`
+- styles：37 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
+  无障碍样式），全部清理 `transition: all` 反模式
+- components：137 个 React 函数组件（JSX → jsxToString → HTML 字符串），
+  重组为 25 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels），直接文件数 0
+- 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）
+- 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
+- 工具链：`tsc -b`（零错误）+ ESLint（0 errors, 764 warnings）+
+  Stylelint（0 errors）三重门禁
+- build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
+- 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
+  blueimp-md5/layui-layer），`@require` 全部移除
+- 文档：doc/001-doc/174（175 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

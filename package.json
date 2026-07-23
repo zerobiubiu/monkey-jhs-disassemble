@@ -1,14 +1,18 @@
 {
     "name": "monkey-jhs-disassemble",
     "private": true,
-    "version": "1.0.0",
+    "version": "1.28.15",
     "license": "MIT",
     "type": "module",
-    "description": "Jav-鉴黄师 收藏、屏蔽; 屏蔽标签、屏蔽演员、同步收藏演员、新作品检测; 免VIP查看热播、Top250排行榜、Fc2ppv、可查看所有评论信息、相关清单; 支持云盘备份; 以图识图; 字幕搜索; JavDb|JavBus",
+    "description": "JavDB Power Tools — JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav云备份、演员信息、清单管理、截图墙、磁链聚合、以图识图等功能插件",
     "scripts": {
         "dev": "vite",
         "build": "tsc -b && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "lint": "eslint src/",
+        "lint:css": "stylelint \"src/styles/**/*.css\"",
+        "test": "vitest run",
+        "check:structure": "bun run scripts/check-structure.ts"
     },
     "dependencies": {
         "blueimp-md5": "2.19.0",
@@ -21,14 +25,24 @@
         "viewerjs": "1.11.1"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@types/blueimp-md5": "^2.18.2",
+        "@types/jquery": "^4.0.1",
+        "@types/layui-layer": "^1.0.5",
         "@types/localforage": "^0.0.34",
         "@types/react": "^19.2.14",
+        "@types/tabulator-tables": "^6.3.6",
         "@types/toastify-js": "^1.12.4",
         "@types/viewerjs": "^1.0.2",
         "@vitejs/plugin-react": "^6.0.3",
+        "eslint": "^10.7.0",
+        "jsdom": "^29.1.1",
+        "stylelint": "^17.14.1",
+        "stylelint-config-standard": "^40.0.0",
         "typescript": "^6.0.3",
+        "typescript-eslint": "^8.65.0",
         "vite": "^8.0.11",
-        "vite-plugin-monkey": "^8.0.0"
+        "vite-plugin-monkey": "^8.0.0",
+        "vitest": "^4.1.10"
     }
 }

@@ -18,7 +18,7 @@
 import $ from 'jquery';
 
 // 挂全局：供 layui-layer（ready.run(jQuery)）及历史全局 $/jQuery 引用使用
-(window as any).jQuery = $;
-(window as any).$ = $;
+window.jQuery = $;
+window.$ = $;
 
 export { $ };

@@ -9,18 +9,18 @@
     font-size: 14px;
     line-height: 1.5;
     font-weight: 600;
-    z-index: 9999999999;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    z-index: var(--jhs-z-top);
+    box-shadow: 0 6px 20px rgb(0, 0, 0, 0.22);
     display: none;
     border: 1px solid transparent;
 }
 
 /* 无访问记录：白底灰字 */
 .jhs-visit-tooltip--none {
-    background: #ffffff;
+    background: #fff;
     color: #64748b;
     border-color: #e2e8f0;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 4px 14px rgb(15, 23, 42, 0.12);
     font-weight: 500;
 }
 

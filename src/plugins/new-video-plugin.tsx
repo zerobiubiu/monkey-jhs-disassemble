@@ -25,7 +25,7 @@
  * Gfriends 运行时能力（原 gt/at/it/st/ct/dt）改由 ../core/gfriends 正式导入：
  *   loadGfriends（搜索头像）、getCurrentCdnSource（读当前 CDN 源 {json,base,index}）、
  *   clearCache（清内存缓存）。切换 CDN 源时写 localStorage + clearCache() 即生效。
- * IndexedDB 缓存清理（原 lt.set）经 (window as any).filetreeDb 访问（filetreeDb 已导出，
+ * IndexedDB 缓存清理（原 lt.set）经 window.filetreeDb 访问（filetreeDb 已导出，
  *   挂载于 window.filetreeDb）。
  * $ / layer / utils / storageManager / show / clog / gmHttp / loading 已由
  * ../types/globals.d.ts 声明（loading 实际接收消息参数，调用处以类型断言补全签名）；
@@ -44,15 +44,17 @@ import { GFRIENDS_SOURCES, GFRIENDS_CDN_INDEX_KEY, FILETREE_DATA_KEY } from '../
 import { clearCache, getCurrentCdnSource, loadGfriends } from '../core/gfriends';
 import { jsxToString } from '../core/jsx-to-string';
 import { BasePlugin } from './base-plugin';
+import { NewVideoDialog } from '../components/dialogs/new-video-dialog';
+import { EditActressDialog } from '../components/dialogs/edit-actress-dialog';
+import { CdnSelectDialog } from '../components/dialogs/cdn-select-dialog';
+import { AvatarSelectDialog } from '../components/dialogs/avatar-select-dialog';
+import { ActressCard } from '../components/actress/actress-card';
+import { ActressPagination } from '../components/actress/actress-pagination';
+import { NewVideoDialogTitle } from '../components/misc/new-video-dialog-title';
+import { StyleBlock } from '../components/misc/style-block';
+
 import newVideoCssRaw from '../styles/new-video-plugin.css?raw';
 import avatarSelectDialogCssRaw from '../styles/avatar-select-dialog.css?raw';
-import { NewVideoDialog } from '../components/new-video-dialog';
-import { EditActressDialog } from '../components/edit-actress-dialog';
-import { CdnSelectDialog } from '../components/cdn-select-dialog';
-import { AvatarSelectDialog } from '../components/avatar-select-dialog';
-import { ActressCard } from '../components/actress-card';
-import { ActressPagination } from '../components/actress-pagination';
-import { NewVideoDialogTitle } from '../components/new-video-dialog-title';
 
 /**
  * 收藏女优记录结构（storageManager.getFavoriteActressList() 返回元素）。
@@ -114,7 +116,7 @@ export class NewVideoPlugin extends BasePlugin {
      * 对应原 L11050-11062。无参数；返回 Promise<void>；不抛出异常。
      */
     async showNewVideoCount(): Promise<void> {
-        const totalCount: number = (await storageManager.getFavoriteActressList()).reduce(
+        const totalCount: number = ((await storageManager.getFavoriteActressList()) as FavoriteActressRecord[]).reduce(
             (total: number, actress: FavoriteActressRecord) => {
                 return total + (actress.newVideoList?.length ?? 0);
             },
@@ -143,7 +145,7 @@ export class NewVideoPlugin extends BasePlugin {
             scrollbar: false,
             area: utils.getResponsiveArea(['80%', '90%']),
             anim: -1,
-            success: async (_layerEl: any, layerIndex: any) => {
+            success: async (_layerEl: HTMLElement, layerIndex: number) => {
                 this.loadData();
                 this.bindClick();
                 utils.setupEscClose(layerIndex);
@@ -156,11 +158,11 @@ export class NewVideoPlugin extends BasePlugin {
      * 无参数；无返回值；不抛出异常。
      */
     bindClick(): void {
-        $('#reLoad').on('click', (_event: any) => {
+        $('#reLoad').on('click', (_event: Event) => {
             this.loadData();
             $('#checkNewVideoMsg').text('');
         });
-        $('#paramActressType').on('change', (_event: any) => {
+        $('#paramActressType').on('change', (_event: Event) => {
             this.loadData();
         });
     }
@@ -181,13 +183,13 @@ export class NewVideoPlugin extends BasePlugin {
      *（容器不存在时短路返回；移除失败仅 show.error/clog.error）。
      */
     async renderActressCards(): Promise<void> {
-        const $container: any = $('#actress-card-container');
+        const $container = $('#actress-card-container');
         if (!$container.length) {
             return;
         }
         let favoriteActresses: FavoriteActressRecord[] =
-            await storageManager.getFavoriteActressList();
-        const typeFilter: any = $('#paramActressType').val();
+            (await storageManager.getFavoriteActressList()) as FavoriteActressRecord[];
+        const typeFilter = String($('#paramActressType').val() ?? '');
         if (typeFilter !== 'all') {
             favoriteActresses = favoriteActresses.filter(
                 (actress) => actress.actressType === typeFilter
@@ -268,19 +270,20 @@ export class NewVideoPlugin extends BasePlugin {
         $container.html(cardsHtml);
         $('.btn-delete-actress')
             .off('click')
-            .on('click', (event: any) => {
+            .on('click', (event: Event) => {
                 event.preventDefault();
-                const starId: string = $(event.currentTarget).attr('data-starId');
+                const starId: string = $(event.currentTarget).attr('data-starId') ?? '';
                 const actress = sortedActresses.find((item) => item.starId === starId);
-                utils.q(event, `是否取消收藏 ${actress!.name}?`, async () => {
+                if (!actress) return;
+                utils.q(event as MouseEvent, `是否取消收藏 ${actress.name}?`, async () => {
                     const uncollectUrl: string = `${await this.getBean('OtherSitePlugin').getJavDbUrl()}/actors/${starId}/uncollect`;
                     const csrfToken: string =
                         document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ??
                         '';
-                    const response: any = await gmHttp.post(uncollectUrl, null, {
+                    const response = await gmHttp.post(uncollectUrl, undefined, {
                         'x-csrf-token': csrfToken
                     });
-                    if (response.includes('removeClass')) {
+                    if ((response as string).includes('removeClass')) {
                         await storageManager.removeFavoriteActress(starId);
                         this.loadData();
                     } else {
@@ -291,9 +294,9 @@ export class NewVideoPlugin extends BasePlugin {
             });
         $('.btn-edit-actress')
             .off('click')
-            .on('click', (event: any) => {
+            .on('click', (event: Event) => {
                 event.preventDefault();
-                const starId: string = $(event.currentTarget).attr('data-starId');
+                const starId: string = $(event.currentTarget).attr('data-starId') ?? '';
                 const actress = sortedActresses.find((item) => item.starId === starId);
                 if (actress) {
                     this.editActress(actress);
@@ -349,22 +352,23 @@ export class NewVideoPlugin extends BasePlugin {
             area: ['500px', '750px'],
             content: dialogContent,
             btn: ['保存', '取消'],
-            success: (_layerEl: any, layerIndex: any) => {
+            success: (_layerEl: HTMLElement, layerIndex: number) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object used with .css() and [0].scrollHeight
                 const autoHeight = ($textarea: any) => {
                     $textarea.css('height', 'auto');
                     $textarea.css('height', $textarea[0].scrollHeight + 15 + 'px');
                 };
-                $('#edit-actress-avatar').on('input', (event: any) => {
+                $('#edit-actress-avatar').on('input', (event: Event) => {
                     const val: string = $(event.currentTarget).val();
                     $('#edit-avatar-preview').attr('src', val);
                 });
-                const $allNameArea: any = $('#edit-actress-allname');
-                $allNameArea.on('input', (event: any) => {
+                const $allNameArea = $('#edit-actress-allname');
+                $allNameArea.on('input', (event: Event) => {
                     autoHeight($(event.currentTarget));
                 });
                 autoHeight($allNameArea);
-                const $newVideoArea: any = $('#edit-actress-newvideolist');
-                $newVideoArea.on('input', (event: any) => {
+                const $newVideoArea = $('#edit-actress-newvideolist');
+                $newVideoArea.on('input', (event: Event) => {
                     autoHeight($(event.currentTarget));
                 });
                 autoHeight($newVideoArea);
@@ -382,11 +386,11 @@ export class NewVideoPlugin extends BasePlugin {
                         area: ['400px', 'auto'],
                         content: cdnDialogContent,
                         btn: ['确定', '取消'],
-                        success: (_cdnLayerEl: any, cdnLayerIndex: any) => {
+                        success: (_cdnLayerEl: HTMLElement, cdnLayerIndex: number) => {
                             utils.setupEscClose(cdnLayerIndex);
                         },
-                        yes: async (cdnLayerIndex: any) => {
-                            const selectedValue: any = $('input[name="cdn-source"]:checked').val();
+                        yes: async (cdnLayerIndex: number) => {
+                            const selectedValue = String($('input[name="cdn-source"]:checked').val() ?? '');
                             const selectedIndex: number = parseInt(selectedValue, 10);
                             if (selectedIndex !== currentIndex) {
                                 localStorage.setItem(
@@ -395,8 +399,8 @@ export class NewVideoPlugin extends BasePlugin {
                                 );
                                 clearCache();
                                 try {
-                                    await (window as any).filetreeDb.set(FILETREE_DATA_KEY, null);
-                                } catch (error: any) {
+                                    await window.filetreeDb.set(FILETREE_DATA_KEY, null);
+                                } catch (error: unknown) {
                                     clog.error('清除 IndexedDB 缓存失败:', error);
                                 }
                                 show.ok(`CDN 源已切换为: ${GFRIENDS_SOURCES[selectedIndex].name}`);
@@ -409,13 +413,13 @@ export class NewVideoPlugin extends BasePlugin {
                 });
                 utils.setupEscClose(layerIndex);
             },
-            yes: async (layerIndex: any) => {
-                const avatar: string = $('#edit-actress-avatar').val().trim();
-                const name: string = $('#edit-actress-name').val().trim();
-                const allNameText: string = $('#edit-actress-allname').val().trim();
-                const newVideoText: string = $('#edit-actress-newvideolist').val().trim();
-                const remark: string = $('#edit-remark').val().trim();
-                const actressType: string = $('#actressType').val();
+            yes: async (layerIndex: number) => {
+                const avatar: string = String($('#edit-actress-avatar').val() ?? '').trim();
+                const name: string = String($('#edit-actress-name').val() ?? '').trim();
+                const allNameText: string = String($('#edit-actress-allname').val() ?? '').trim();
+                const newVideoText: string = String($('#edit-actress-newvideolist').val() ?? '').trim();
+                const remark: string = String($('#edit-remark').val() ?? '').trim();
+                const actressType: string = String($('#actressType').val() ?? '');
                 if (!name) {
                     show.error('主名称不能为空');
                     return false;
@@ -434,7 +438,7 @@ export class NewVideoPlugin extends BasePlugin {
                 actress.newVideoList = newVideoArray;
                 actress.actressType = actressType;
                 actress.remark = remark;
-                if (await storageManager.updateFavoriteActress(actress)) {
+                if (await storageManager.updateFavoriteActress(actress as unknown as import('../core/storage-manager').FavoriteActress)) {
                     show.error('修改失败');
                 } else {
                     this.renderActressCards().then();
@@ -454,7 +458,7 @@ export class NewVideoPlugin extends BasePlugin {
      */
     renderPagination(totalCount: number, totalPages: number): void {
         const page: number = this.currentPage;
-        const $pagination: any = $('#actress-pagination');
+        const $pagination = $('#actress-pagination');
         $pagination.html(
             jsxToString(
                 <ActressPagination totalCount={totalCount} totalPages={totalPages} page={page} />
@@ -462,7 +466,7 @@ export class NewVideoPlugin extends BasePlugin {
         );
         $('.pagination-btn')
             .off('click')
-            .on('click', (event: any) => {
+            .on('click', (event: Event) => {
                 if ($(event.currentTarget).is('[disabled]')) {
                     return;
                 }
@@ -485,15 +489,15 @@ export class NewVideoPlugin extends BasePlugin {
      *（搜索失败/无结果/链接全失效均仅 show.error 后返回）。
      */
     async searchAvatar(): Promise<void> {
-        const $nameInput: any = $('#edit-actress-name');
-        const $allNameInput: any = $('#edit-actress-allname');
+        const $nameInput = $('#edit-actress-name');
+        const $allNameInput = $('#edit-actress-allname');
         const nameText: string = $nameInput.val().trim();
         const searchNames: string[] = $allNameInput
             .val()
             .trim()
             .split(/[\uff0c,]/)
-            .map((name: any) => name.trim())
-            .filter((name: any) => name.length > 0);
+            .map((name: string) => name.trim())
+            .filter((name: string) => name.length > 0);
         if (nameText) {
             searchNames.unshift(nameText);
         }
@@ -509,8 +513,8 @@ export class NewVideoPlugin extends BasePlugin {
         let avatarUrls: string[] = [];
         try {
             avatarUrls = await loadGfriends(searchNames);
-        } catch (error: any) {
-            show.error(`头像数据加载或搜索失败: ${error.message || error}`);
+        } catch (error: unknown) {
+            show.error(`头像数据加载或搜索失败: ${error instanceof Error ? error.message : String(error)}`);
             return;
         } finally {
             loader.close();
@@ -522,9 +526,7 @@ export class NewVideoPlugin extends BasePlugin {
         // content = 原 searchAvatar 的 r 模板：<style> 块（avatar-select-dialog.css）
         // + HTML（AvatarSelectDialog），与原 content 字符级一致。
         const dialogContent: string =
-            '<style>' +
-            avatarSelectDialogCssRaw +
-            '</style>' +
+            jsxToString(<StyleBlock css={avatarSelectDialogCssRaw} />) +
             jsxToString(<AvatarSelectDialog avatarUrls={avatarUrls} />);
         let errorCount: number = 0;
         layer.open({
@@ -533,15 +535,15 @@ export class NewVideoPlugin extends BasePlugin {
             area: utils.getResponsiveArea(['900px', '85%']),
             content: dialogContent,
             btn: ['关闭'],
-            success: (layerEl: any, layerIndex: any) => {
-                const $layer: any = $(layerEl);
-                const $images: any = $layer.find('.gfriends-selectable-img');
-                const $prompt: any = $layer.find('#gfriends-prompt');
-                $images.each((_index: number, element: any) => {
-                    const $img: any = $(element);
-                    const wrapperId: any = $img.data('wrapper-id');
-                    const $wrapper: any = $layer.find(`#${wrapperId}`);
-                    const $sizeTag: any = $layer.find(
+            success: (layerEl: HTMLElement, layerIndex: number) => {
+                const $layer = $(layerEl);
+                const $images = $layer.find('.gfriends-selectable-img');
+                const $prompt = $layer.find('#gfriends-prompt');
+                $images.each((_index: number, element: HTMLImageElement) => {
+                    const $img = $(element);
+                    const wrapperId = String($img.data('wrapper-id') ?? '');
+                    const $wrapper = $layer.find(`#${wrapperId}`);
+                    const $sizeTag = $layer.find(
                         `.gfriends-size-tag[data-size-for="${wrapperId}"]`
                     );
                     $img.on('load', () => {
@@ -569,9 +571,9 @@ export class NewVideoPlugin extends BasePlugin {
                         }
                     }
                 });
-                $images.on('click', (event: any) => {
-                    const $img: any = $(event.currentTarget);
-                    const url: any = $img.data('url');
+                $images.on('click', (event: Event) => {
+                    const $img = $(event.currentTarget);
+                    const url = String($img.data('url') ?? '');
                     $('#edit-actress-avatar').val(url);
                     $('#edit-avatar-preview').attr('src', url);
                     $images.removeClass('is-selected');

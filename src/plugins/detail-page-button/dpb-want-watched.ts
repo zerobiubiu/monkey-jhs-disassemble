@@ -19,9 +19,9 @@ export function hookWantAndWatchedButtons(plugin: DetailPageButtonPlugin): void 
     const self = plugin;
     // 等待 .review-buttons 出现
     const ensure = () => {
-        const container: any = document.querySelector(
+        const container = document.querySelector(
             'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav > div.review-buttons'
-        );
+        ) as (Element & { __jhsObserved?: boolean }) | null;
         if (!container) {
             setTimeout(ensure, 200);
             return;
@@ -34,7 +34,7 @@ export function hookWantAndWatchedButtons(plugin: DetailPageButtonPlugin): void 
         const observer = new MutationObserver(() => {
             if (self._wantWatchedSyncing) return;
             // 防抖：连续多次变化合并
-            clearTimeout(self._wantWatchedDebounce);
+            clearTimeout(self._wantWatchedDebounce ?? undefined);
             self._wantWatchedDebounce = setTimeout(() => {
                 self._wantWatchedSyncing = true;
                 try {
@@ -68,7 +68,7 @@ export function hookWantAndWatchedButtons(plugin: DetailPageButtonPlugin): void 
  * @param container .review-buttons 容器
  * @returns 状态推断结果
  */
-export function detectWantWatchedState(container: any): WantWatchedState {
+export function detectWantWatchedState(container: Element): WantWatchedState {
     // is-info is-light tag = 我想看
     // is-success is-light tag = 我看過
     // 它们的 parent a[href] 指向 /users/want_watch_videos 或 /users/watched_videos
@@ -104,16 +104,16 @@ export async function onWantAdded(plugin: DetailPageButtonPlugin): Promise<void>
                 publishTime: pageInfo.publishTime ?? undefined
             });
             plugin.broadcastWantWatchedSync({
-                carNum: pageInfo.carNum,
+                carNum: pageInfo.carNum!,
                 status: FAVORITE_ACTION,
                 op: 'add'
             });
             show.ok(`${pageInfo.carNum} 已收藏`);
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-想看自动同步] 写入失败', err);
     }
-    plugin.showStatus(pageInfo.carNum).then();
+    plugin.showStatus(pageInfo.carNum!).then();
 }
 
 /**
@@ -123,19 +123,19 @@ export async function onWantAdded(plugin: DetailPageButtonPlugin): Promise<void>
 export async function onWantRemoved(plugin: DetailPageButtonPlugin): Promise<void> {
     const pageInfo = plugin.getPageInfo();
     try {
-        const removed = await plugin.removeCarIfStatus(pageInfo.carNum, FAVORITE_ACTION);
+        const removed = await plugin.removeCarIfStatus(pageInfo.carNum!, FAVORITE_ACTION);
         if (removed) {
             plugin.broadcastWantWatchedSync({
-                carNum: pageInfo.carNum,
+                carNum: pageInfo.carNum!,
                 status: FAVORITE_ACTION,
                 op: 'remove'
             });
             show.ok(`${pageInfo.carNum} 已取消收藏`);
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-想看自动同步] 移除失败', err);
     }
-    plugin.showStatus(pageInfo.carNum).then();
+    plugin.showStatus(pageInfo.carNum!).then();
 }
 
 /**
@@ -157,16 +157,16 @@ export async function onWatchedAdded(plugin: DetailPageButtonPlugin): Promise<vo
                 publishTime: pageInfo.publishTime ?? undefined
             });
             plugin.broadcastWantWatchedSync({
-                carNum: pageInfo.carNum,
+                carNum: pageInfo.carNum!,
                 status: HAS_WATCH_ACTION,
                 op: 'add'
             });
             show.ok(`${pageInfo.carNum} 已标记看过`);
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-观看自动同步] 写入失败', err);
     }
-    plugin.showStatus(pageInfo.carNum).then();
+    plugin.showStatus(pageInfo.carNum!).then();
 }
 
 /**
@@ -176,19 +176,19 @@ export async function onWatchedAdded(plugin: DetailPageButtonPlugin): Promise<vo
 export async function onWatchedRemoved(plugin: DetailPageButtonPlugin): Promise<void> {
     const pageInfo = plugin.getPageInfo();
     try {
-        const removed = await plugin.removeCarIfStatus(pageInfo.carNum, HAS_WATCH_ACTION);
+        const removed = await plugin.removeCarIfStatus(pageInfo.carNum!, HAS_WATCH_ACTION);
         if (removed) {
             plugin.broadcastWantWatchedSync({
-                carNum: pageInfo.carNum,
+                carNum: pageInfo.carNum!,
                 status: HAS_WATCH_ACTION,
                 op: 'remove'
             });
             show.ok(`${pageInfo.carNum} 已取消看过`);
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-观看自动同步] 移除失败', err);
     }
-    plugin.showStatus(pageInfo.carNum).then();
+    plugin.showStatus(pageInfo.carNum!).then();
 }
 
 /**
@@ -198,7 +198,7 @@ export async function onWatchedRemoved(plugin: DetailPageButtonPlugin): Promise<
  * @param status 目标状态（FAVORITE_ACTION=想看 / HAS_WATCH_ACTION=已观看）
  * @returns 是否执行了移除
  */
-export async function removeCarIfStatus(carNum: any, status: any): Promise<boolean> {
+export async function removeCarIfStatus(carNum: string, status: string): Promise<boolean> {
     const carRecord = await storageManager.getCar(carNum);
     if (!carRecord) return false;
     if (carRecord.status !== status) return false;
@@ -229,7 +229,7 @@ export function broadcastWantWatchedSync(payload: WantWatchedSyncPayload): void 
                 })
             );
         } catch {}
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-想看/观看同步] 广播失败', err);
     }
 }
@@ -244,12 +244,13 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
     if (plugin._wantWatchedListenerInstalled) return;
     plugin._wantWatchedListenerInstalled = true;
     const self = plugin;
-    const handleSync = (rawData: any) => {
-        const payload: any =
-            (rawData && rawData.detail) ||
+    const handleSync = (rawData: unknown) => {
+        const rawDetail = rawData as { detail?: WantWatchedSyncPayload } | null;
+        const payload: WantWatchedSyncPayload | null =
+            rawDetail?.detail ||
             (() => {
                 try {
-                    return JSON.parse(rawData);
+                    return JSON.parse(rawData as string) as WantWatchedSyncPayload;
                 } catch {
                     return null;
                 }
@@ -272,8 +273,8 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
         self.refreshItemStatusTag(payload.carNum);
     };
     // 1) 同页面 CustomEvent
-    document.addEventListener('jdb:want-watched-sync', (event: any) =>
-        handleSync(event.detail)
+    document.addEventListener('jdb:want-watched-sync', (event: Event) =>
+        handleSync((event as CustomEvent).detail)
     );
     // 2) localStorage（跨标签页 / 跨 iframe）
     window.addEventListener('storage', (event: StorageEvent) => {
@@ -284,7 +285,7 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
     try {
         GM_addValueChangeListener(
             'jdb:want-watched-sync',
-            (_name: any, _oldValue: any, newValue: any) => {
+            (_name: string, _oldValue: unknown, newValue: unknown) => {
                 if (!newValue) return;
                 handleSync(newValue);
             }
@@ -298,20 +299,20 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
  * 对应原 L5485-5501。
  * @param carNum 要刷新的番号
  */
-export function refreshItemStatusTag(plugin: DetailPageButtonPlugin, carNum: any): void {
+export function refreshItemStatusTag(plugin: DetailPageButtonPlugin, carNum: string): void {
     try {
         const selectorConfig = plugin.getSelector();
         const itemSelector = selectorConfig.itemSelector;
-        const items: any = document.querySelectorAll(itemSelector);
+        const items = document.querySelectorAll(itemSelector);
         for (const item of items) {
-            const strongEl: any = item.querySelector('a > div.video-title > strong');
+            const strongEl = item.querySelector('a > div.video-title > strong');
             if (!strongEl || strongEl.innerHTML !== carNum) continue;
             // 找到匹配的卡片，交给 ListPagePlugin 重跑单卡片
             const listPagePlugin = plugin.getBean('ListPagePlugin');
             if (!listPagePlugin) continue;
-            listPagePlugin.renderItemStatusTag(item, carNum);
+            listPagePlugin.renderItemStatusTag(item as HTMLElement, carNum);
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-想看/观看] 刷新列表项 status-tag 失败', err);
     }
 }

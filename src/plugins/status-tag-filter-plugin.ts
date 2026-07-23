@@ -48,11 +48,15 @@
  * 3. applyFilter 协同安全：被其他脚本隐藏的卡片不纳入管理；OR 逻辑筛选
  * 4. createFilterChip 创建芯片（标签名+计数，点击 toggle active + applyFilter）
  * 5. doBuild 构建筛选栏（refreshChips 保留已激活状态）
- * 6. findMountTarget 按优先级查找挂载目标（tag-filter-bar → tabs → section）
+ * 6. findMountTarget 按优先级查找挂载目标（jhs-vlt-filter-bar → tabs → section）
  * 7. MutationObserver 监听新增 .item/status-tag（防抖 150ms 刷新）
  * 8. init 等待 document.body + tryBuild + startObserving（含 10s 超时兜底）
  */
+import type { PageType } from '../core/page-context';
+import { TaskSupervisor } from '../core/task-supervisor';
+
 import { BasePlugin } from './base-plugin';
+
 import statusTagFilterCssRaw from '../styles/status-tag-filter-plugin.css?raw';
 
 /** 日志前缀。 */
@@ -127,9 +131,9 @@ function countNoStatusItems(): number {
  */
 export class StatusTagFilterPlugin extends BasePlugin {
     /** MutationObserver 防抖计时器（监听 .item/status-tag 新增时防抖刷新）。 */
-    private observerDebounce: ReturnType<typeof setTimeout> | null = null;
-    /** 内容 MutationObserver（监听 .item/status-tag 新增）。 */
-    private observer: MutationObserver | null = null;
+    private observerDebounce = 0;
+    /** 统一生命周期管理器。 */
+    private supervisor = new TaskSupervisor();
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -138,6 +142,11 @@ export class StatusTagFilterPlugin extends BasePlugin {
      */
     getName(): string {
         return 'StatusTagFilterPlugin';
+    }
+
+    /** 仅在列表页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list'];
     }
 
     /**
@@ -159,7 +168,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if (!(window as any).isListPage) return;
+        if (!window.isListPage) return;
         this.init();
     }
 
@@ -172,7 +181,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
 
         if (!document.body) {
             console.warn(`${LOG} document.body 不存在，延后初始化`);
-            setTimeout(() => this.init(), 100);
+            this.supervisor.setTimeout(() => this.init(), 100);
             return;
         }
 
@@ -185,22 +194,21 @@ export class StatusTagFilterPlugin extends BasePlugin {
         console.log(`${LOG} 未找到挂载目标，开始 MutationObserver 等待`);
 
         // 若挂载目标尚未渲染，通过防抖 MutationObserver 持续等待 DOM 变化
-        let mountDebounce: ReturnType<typeof setTimeout> | null = null;
-        const mountObserver = new MutationObserver(() => {
-            if (mountDebounce) clearTimeout(mountDebounce);
-            mountDebounce = setTimeout(() => {
+        let mountDebounce = 0;
+        const mountObserver = this.supervisor.observe(document.body, () => {
+            clearTimeout(mountDebounce);
+            mountDebounce = this.supervisor.setTimeout(() => {
                 if (this.tryBuild()) {
                     console.log(`${LOG} MutationObserver 挂载成功`);
                     mountObserver.disconnect();
                     this.startObserving();
-                    if (mountTimeout) clearTimeout(mountTimeout);
+                    clearTimeout(mountTimeout);
                 }
             }, 100);
-        });
-        mountObserver.observe(document.body, { childList: true, subtree: true });
+        }, { childList: true, subtree: true });
 
         // 超时兜底（10 秒后强制结束等待，用最终回退位置强行挂载）
-        const mountTimeout = setTimeout(() => {
+        const mountTimeout = this.supervisor.setTimeout(() => {
             mountObserver.disconnect();
             if (!document.querySelector('.status-tag-filter-bar')) {
                 const fallback = this.findMountTarget() || document.body.firstElementChild;
@@ -236,8 +244,8 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * @returns 挂载目标元素或 null
      */
     private findMountTarget(): Element | null {
-        // 1) 优先挂在 videoListsTag 的 .tag-filter-bar 之后
-        const tagFilterBar = document.querySelector('.tag-filter-bar');
+        // 1) 优先挂在 videoListsTag 的 .jhs-vlt-filter-bar 之后
+        const tagFilterBar = document.querySelector('.jhs-vlt-filter-bar');
         if (tagFilterBar) return tagFilterBar;
 
         // 2) 挂在页面默认 tabs 容器之后
@@ -253,7 +261,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         // 3) 回退：挂在 section 容器的第一个子元素之前
         const section = document.querySelector('body > section > div > div');
         if (section && section.firstElementChild) {
-            if (!section.firstElementChild.matches('.tag-filter-bar, .status-tag-filter-bar')) {
+            if (!section.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
                 return section.firstElementChild;
             }
         }
@@ -261,7 +269,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         // 4) 最终回退：挂在 body > section > div 的第一个子元素之前
         const container = document.querySelector('body > section > div');
         if (container && container.firstElementChild) {
-            if (!container.firstElementChild.matches('.tag-filter-bar, .status-tag-filter-bar')) {
+            if (!container.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
                 return container.firstElementChild;
             }
         }
@@ -328,13 +336,14 @@ export class StatusTagFilterPlugin extends BasePlugin {
         refreshChips();
 
         // 插入到 DOM
-        if (mountTarget.matches('.tag-filter-bar, .actor-tags.tags, .tabs.is-boxed')) {
+        if (mountTarget.matches('.jhs-vlt-filter-bar, .actor-tags.tags, .tabs.is-boxed')) {
             mountTarget.insertAdjacentElement('afterend', filterBar);
         } else {
             mountTarget.insertAdjacentElement('beforebegin', filterBar);
         }
 
         // 保存 refreshChips 引用以便后续更新（与原脚本 filterBar._refreshChips 一致）
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: storing function ref on element
         (filterBar as any)._refreshChips = refreshChips;
 
         console.log(`${LOG} 筛选栏已挂载`);
@@ -450,7 +459,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
      */
     private updateFilterBar(): void {
         const filterBar = document.querySelector('.status-tag-filter-bar');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: reading stored function ref
         if (filterBar && (filterBar as any)._refreshChips) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: calling stored function ref
             (filterBar as any)._refreshChips();
             this.applyFilter();
         }
@@ -461,7 +472,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * 对应原 L243-261。防抖 150ms 后刷新筛选器。
      */
     private startObserving(): void {
-        this.observer = new MutationObserver((mutations: MutationRecord[]) => {
+        this.supervisor.observe(document.body, (mutations: MutationRecord[]) => {
             let shouldRefresh = false;
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
@@ -481,12 +492,16 @@ export class StatusTagFilterPlugin extends BasePlugin {
             }
 
             if (shouldRefresh) {
-                if (this.observerDebounce) clearTimeout(this.observerDebounce);
-                this.observerDebounce = setTimeout(() => {
+                clearTimeout(this.observerDebounce);
+                this.observerDebounce = this.supervisor.setTimeout(() => {
                     this.updateFilterBar();
                 }, 150);
             }
-        });
-        this.observer.observe(document.body, { childList: true, subtree: true });
+        }, { childList: true, subtree: true });
+    }
+
+    /** 销毁插件：一次性清理所有 supervisor 管理的资源。 */
+    destroy(): void {
+        this.supervisor.abort();
     }
 }

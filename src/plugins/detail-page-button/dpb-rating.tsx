@@ -26,7 +26,7 @@ export function addQuickActionButtons(plugin: DetailPageButtonPlugin): void {
     const self = plugin;
     plugin._injectRatingStyles();
     const ensure = () => {
-        const nav: any = document.querySelector(
+        const nav = document.querySelector<HTMLElement>(
             'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav'
         );
         if (!nav) {
@@ -39,12 +39,12 @@ export function addQuickActionButtons(plugin: DetailPageButtonPlugin): void {
         // 清单面板独立等待 #otherSiteBox 出现（OtherSitePlugin 异步注入）
         self._ensureListPanel(nav);
         // 监听 .review-buttons 变化（Rails ajax 替换 innerHTML 会销毁组件 → 重建 + 状态刷新）
-        const rb: any = nav.querySelector('.review-buttons');
+        const rb = nav.querySelector('.review-buttons') as (Element & { __jhsRatingObserved?: boolean }) | null;
         if (rb && !rb.__jhsRatingObserved) {
             rb.__jhsRatingObserved = true;
             new MutationObserver(() => {
                 if (self._wantWatchedSyncing) return;
-                clearTimeout(self._ratingSyncDebounce);
+                clearTimeout(self._ratingSyncDebounce ?? undefined);
                 self._ratingSyncDebounce = setTimeout(() => {
                     self._buildRatingBar(nav);
                     self._syncRatingBar();
@@ -60,34 +60,35 @@ export function addQuickActionButtons(plugin: DetailPageButtonPlugin): void {
  * 对应原 L5548-5631。
  * @param nav nav 容器
  */
-export function buildRatingBar(plugin: DetailPageButtonPlugin, nav: any): void {
-    const column: any = nav.querySelector('div.review-buttons > div:nth-child(1) > div > div');
+export function buildRatingBar(plugin: DetailPageButtonPlugin, nav: Element): void {
+    const column = nav.querySelector('div.review-buttons > div:nth-child(1) > div > div');
     if (!column) return;
     if (column.querySelector('.jhs-rating-bar')) return; // 已存在
     const self = plugin;
     const bar = document.createElement('div');
     bar.className = 'jhs-rating-bar';
     bar.innerHTML = jsxToString(<RatingBarHtml />);
-    const starsEl: any = bar.querySelector('.jhs-stars');
-    const stars: any = bar.querySelectorAll('.jhs-star');
-    const readBtn: any = bar.querySelector('.jhs-read-btn');
-    const favBtn: any = bar.querySelector('.jhs-fav-btn');
-    const blockBtn: any = bar.querySelector('.jhs-block-btn');
+    const starsEl = bar.querySelector('.jhs-stars');
+    const stars = bar.querySelectorAll<HTMLElement>('.jhs-star');
+    const readBtn = bar.querySelector('.jhs-read-btn');
+    const favBtn = bar.querySelector('.jhs-fav-btn');
+    const blockBtn = bar.querySelector('.jhs-block-btn');
+    if (!starsEl || !readBtn || !favBtn || !blockBtn) return;
     // hover 预览
-    starsEl.addEventListener('pointerover', (e: any) => {
-        const star = e.target.closest('.jhs-star');
+    starsEl.addEventListener('pointerover', (e: Event) => {
+        const star = (e.target as HTMLElement).closest<HTMLElement>('.jhs-star');
         if (!star) return;
-        const score = +star.dataset.score;
-        stars.forEach((s: any, i: number) => s.classList.toggle('is-preview', i < score));
+        const score = +star.dataset.score!;
+        stars.forEach((s: HTMLElement, i: number) => s.classList.toggle('is-preview', i < score));
     });
     starsEl.addEventListener('pointerleave', () =>
-        stars.forEach((s: any) => s.classList.remove('is-preview'))
+        stars.forEach((s: HTMLElement) => s.classList.remove('is-preview'))
     );
     // 点击星星 → 已观看 + N星
-    stars.forEach((star: any) => {
-        star.addEventListener('click', async (e: any) => {
+    stars.forEach((star: HTMLElement) => {
+        star.addEventListener('click', async (e: Event) => {
             e.preventDefault();
-            const score = +star.dataset.score;
+            const score = +star.dataset.score!;
             star.classList.add('is-popping');
             setTimeout(() => star.classList.remove('is-popping'), 300);
             self._setRatingBusy(true);
@@ -95,12 +96,12 @@ export function buildRatingBar(plugin: DetailPageButtonPlugin, nav: any): void {
                 await self.quickSetHasWatch(score);
             } finally {
                 self._setRatingBusy(false);
-                self.showStatus(self.getPageInfo().carNum).then();
+                self.showStatus(self.getPageInfo().carNum!).then();
             }
         });
     });
     // 已读 → 已观看 + 0星
-    readBtn.addEventListener('click', async (e: any) => {
+    readBtn.addEventListener('click', async (e: Event) => {
         e.preventDefault();
         readBtn.classList.add('is-popping');
         setTimeout(() => readBtn.classList.remove('is-popping'), 300);
@@ -109,11 +110,11 @@ export function buildRatingBar(plugin: DetailPageButtonPlugin, nav: any): void {
             await self.quickSetHasWatch(0);
         } finally {
             self._setRatingBusy(false);
-            self.showStatus(self.getPageInfo().carNum).then();
+            self.showStatus(self.getPageInfo().carNum!).then();
         }
     });
     // 收藏 → 想看
-    favBtn.addEventListener('click', async (e: any) => {
+    favBtn.addEventListener('click', async (e: Event) => {
         e.preventDefault();
         favBtn.classList.add('is-popping');
         setTimeout(() => favBtn.classList.remove('is-popping'), 300);
@@ -122,11 +123,11 @@ export function buildRatingBar(plugin: DetailPageButtonPlugin, nav: any): void {
             await self.quickConvertToFav();
         } finally {
             self._setRatingBusy(false);
-            self.showStatus(self.getPageInfo().carNum).then();
+            self.showStatus(self.getPageInfo().carNum!).then();
         }
     });
     // 拉黑 → 屏蔽 + 设为已读0星 + 关闭页面（需确认）
-    blockBtn.addEventListener('click', async (e: any) => {
+    blockBtn.addEventListener('click', async (e: Event) => {
         e.preventDefault();
         blockBtn.classList.add('is-popping');
         setTimeout(() => blockBtn.classList.remove('is-popping'), 300);
@@ -153,33 +154,34 @@ export function injectRatingStyles(): void {
  * 对应原 L5784-5832。
  */
 export function syncRatingBar(plugin: DetailPageButtonPlugin): void {
-    let bar: any = document.querySelector('.jhs-rating-bar');
+    let bar = document.querySelector('.jhs-rating-bar');
     // 组件被 Rails ajax innerHTML 替换销毁 → 重建
     if (!bar) {
-        const nav: any = document.querySelector(
+        const nav = document.querySelector(
             'body > section > div > div.video-detail > div.video-meta-panel > div > div:nth-child(2) > nav'
         );
         if (nav) plugin._buildRatingBar(nav);
         bar = document.querySelector('.jhs-rating-bar');
     }
     if (!bar) return;
-    const rb: any = document.querySelector('.review-buttons');
+    const rb = document.querySelector('.review-buttons');
     if (!rb) return;
     const want = !!rb.querySelector("a[href='/users/want_watch_videos'] .tag.is-info.is-light");
     const watched = !!rb.querySelector(
         "a[href='/users/watched_videos'] .tag.is-success.is-light"
     );
-    const checked: any = rb.querySelector('input[name="video_review[score]"][checked]');
+    const checked = rb.querySelector('input[name="video_review[score]"][checked]') as HTMLInputElement | null;
     const score = checked ? +checked.value : 0;
 
-    const stars: any = bar.querySelectorAll('.jhs-star');
-    const starsEl: any = bar.querySelector('.jhs-stars');
-    const readBtn: any = bar.querySelector('.jhs-read-btn');
-    const favBtn: any = bar.querySelector('.jhs-fav-btn');
-    const blockBtn: any = bar.querySelector('.jhs-block-btn');
+    const stars = bar.querySelectorAll<HTMLElement>('.jhs-star');
+    const starsEl = bar.querySelector('.jhs-stars');
+    const readBtn = bar.querySelector('.jhs-read-btn');
+    const favBtn = bar.querySelector('.jhs-fav-btn');
+    const blockBtn = bar.querySelector('.jhs-block-btn');
+    if (!starsEl || !readBtn || !favBtn || !blockBtn) return;
 
     // 先清除所有状态类
-    stars.forEach((s: any) => s.classList.remove('is-active'));
+    stars.forEach((s: HTMLElement) => s.classList.remove('is-active'));
     starsEl.classList.remove('is-disabled');
     readBtn.classList.remove('is-active');
     favBtn.classList.remove('is-active');
@@ -190,7 +192,7 @@ export function syncRatingBar(plugin: DetailPageButtonPlugin): void {
         favBtn.classList.add('is-active');
     } else if (watched) {
         // 已观看：前 N 星高亮，已读看 N 是否 0
-        stars.forEach((s: any, i: number) => s.classList.toggle('is-active', i < score));
+        stars.forEach((s: HTMLElement, i: number) => s.classList.toggle('is-active', i < score));
         readBtn.classList.toggle('is-active', score === 0);
     } else {
         // 未评价
@@ -199,7 +201,7 @@ export function syncRatingBar(plugin: DetailPageButtonPlugin): void {
     // 额外检查 JHS 是否已拉黑（filter 状态是 JHS 独有，javdb 原生无屏蔽概念）
     const carNum = plugin.getPageInfo().carNum;
     if (carNum) {
-        storageManager.getCar(carNum).then((carRecord: any) => {
+        storageManager.getCar(carNum).then((carRecord) => {
             if (carRecord && carRecord.status === FILTER_ACTION) {
                 blockBtn.classList.add('is-active');
             }
@@ -212,7 +214,7 @@ export function syncRatingBar(plugin: DetailPageButtonPlugin): void {
  * @param busy 是否忙碌
  */
 export function setRatingBusy(busy: boolean): void {
-    const bar: any = document.querySelector('.jhs-rating-bar');
+    const bar = document.querySelector('.jhs-rating-bar');
     if (bar) bar.classList.toggle('is-busy', busy);
 }
 
@@ -254,9 +256,9 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
         );
         // 已读/评分后：若在「等待更新」清单中则自动移出（不在则 noop）
         autoRemoveFromPendingUpdateOnWatch().then();
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-快键] 设为已观看失败', err);
-        show.error('操作失败: ' + err.message);
+        show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
         return;
     }
     // 串行化 javdb 原生端操作，避免连续点击并发冲突；
@@ -307,14 +309,14 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                 });
                 // 2) 广播 filter+add（列表页实时隐藏该卡片）
                 plugin.broadcastWantWatchedSync({
-                    carNum: pageInfo.carNum,
+                    carNum: pageInfo.carNum!,
                     status: FILTER_ACTION,
                     op: 'add'
                 });
                 show.ok(`${pageInfo.carNum} 已拉黑`);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 clog.error('[JHS-快键] 拉黑失败', err);
-                show.error('操作失败: ' + err.message);
+                show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
                 return;
             }
             // 3) javdb 原生端：设为已读0星（串行 + 阻断 observer）
@@ -330,7 +332,7 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                 })
                 .catch(() => {});
             // 4) 关闭页面 + 刷新
-            plugin.showStatus(pageInfo.carNum).then();
+            plugin.showStatus(pageInfo.carNum!).then();
             refresh();
             utils.closePage();
         }
@@ -363,9 +365,9 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
             op: 'add'
         });
         show.ok(pageInfo.carNum + ' \u5df2\u8f6c\u4e3a\u6536\u85cf');
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-快键] 转为已收藏失败', err);
-        show.error('操作失败: ' + err.message);
+        show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
         return;
     }
     plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
@@ -403,7 +405,7 @@ export function getVideoId(): string | null {
  * @returns reviewId 或 null
  */
 export function getReviewId(): string | null {
-    const del: any = document.querySelector(
+    const del = document.querySelector(
         ".review-buttons a[data-method='delete'][href*='/reviews/']"
     );
     if (!del) return null;
@@ -422,7 +424,7 @@ export function execRailsJs(jsText: string): void {
         script.textContent = jsText;
         document.head?.appendChild(script);
         script.remove();
-    } catch (err: any) {
+    } catch (err: unknown) {
         clog.error('[JHS-快键] 执行 Rails JS 失败', err);
     }
 }
@@ -483,7 +485,7 @@ export async function javdbReviewApi(plugin: DetailPageButtonPlugin, action: 'wa
     }
 
     // 同步 _lastWantState 防止 MutationObserver 误触发
-    const rb: any = document.querySelector('.review-buttons');
+    const rb = document.querySelector('.review-buttons');
     if (rb && plugin._wantWatchedObserved) {
         plugin._lastWantState = plugin.detectWantWatchedState(rb);
     }

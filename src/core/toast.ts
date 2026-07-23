@@ -25,14 +25,21 @@
  * @param onClick   兜底选项对象
  * @returns Toastify 实例（any），已调用 showToast，并附加 closeShow 方法
  */
+/** Toastify 实例最小接口（全局 Toastify 无类型声明） */
+interface ToastInstance {
+    showToast(): void;
+    closeShow?: () => void;
+    toastElement: HTMLElement;
+}
+
 const createToast = (
     message: string,
     type: 'info' | 'success' | 'error',
-    position: any,
-    duration: any,
-    onClick: any
-): any => {
-    let userOptions: any;
+    position: string | Record<string, unknown>,
+    duration: string | number | Record<string, unknown> | undefined,
+    onClick: Record<string, unknown> | undefined
+): ToastInstance => {
+    let userOptions: Record<string, unknown>;
     if (typeof position == 'object') {
         userOptions = position;
     } else {
@@ -87,7 +94,7 @@ const createToast = (
     if (toastOptions.duration === -1) {
         toastOptions.close = true;
     }
-    const toast = Toastify(toastOptions);
+    const toast = Toastify(toastOptions) as ToastInstance;
     toast.showToast();
     toast.closeShow = () => {
         toast.toastElement.remove();
@@ -109,16 +116,26 @@ export const show = {
      * @param duration 水平 position 或选项对象
      * @param onClick  兜底选项对象
      */
-    ok: (message: string, position: any = 'center', duration?: any, onClick?: any) =>
+    ok: (message: string, position: string | Record<string, unknown> = 'center', duration?: string | number | Record<string, unknown>, onClick?: Record<string, unknown>) =>
         createToast(message, 'success', position, duration, onClick),
     /**
      * 显示 error 样式 toast。参数同 ok。
      */
-    error: (message: string, position: any = 'center', duration?: any, onClick?: any) =>
+    error: (message: string, position: string | Record<string, unknown> = 'center', duration?: string | number | Record<string, unknown>, onClick?: Record<string, unknown>) =>
         createToast(message, 'error', position, duration, onClick),
     /**
      * 显示 info 样式 toast。参数同 ok。
      */
-    info: (message: string, position: any = 'center', duration?: any, onClick?: any) =>
+    info: (message: string, position: string | Record<string, unknown> = 'center', duration?: string | number | Record<string, unknown>, onClick?: Record<string, unknown>) =>
         createToast(message, 'info', position, duration, onClick)
 };
+
+/**
+ * 显示 error toast 并抛出 Error（合并 show.error + throw 的常见模式）。
+ * @param msg 错误信息（同时用于 toast 与 Error message）
+ * @returns never（始终抛出）
+ */
+export function failWithToast(msg: string): never {
+    show.error(msg);
+    throw new Error(msg);
+}

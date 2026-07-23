@@ -9,6 +9,690 @@
 
 ---
 
+## v1.28.15
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **Wave 1 原子化拆分**（doc/174）：storage-manager.ts 1321→415（6 仓储模块）；vlt-tags.ts 1028→421（3 模块）。
+- **组件复用合并**（doc/174）：review/related 七对组件合并为 shared/ 参数化组件，vlt/missav 面板合并为 sync-panel，删除 16 冗余组件。
+- **共享工具抽取**（doc/174）：util-translate / util-async(withLoading) / tabulator-factory / back-to-top / failWithToast，接入 10 处调用点。
+
+---
+
+## v1.28.14
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **设置面板 UI 统一化**（doc/173）：CSS Grid 表单布局（180px 标签 + 撑满输入框）；统一控件样式（36px 高/6px 圆角/focus 蓝色光环）；移除 emoji 密码切换按钮（依赖浏览器原生）；iOS 风格 toggle 开关；分区标题+分隔线；统一按钮色系；颜色选择器样式化。8 个原子表单组件（SettingRow/Input/Select/Toggle/Checkbox/Section/Button/ColorRow）；9 面板全部重构；120 个 jQuery 选择器审计全通过。独立预览页 preview/settings-preview.html。
+
+### 重构
+
+- **vlt-sync.tsx 最终拆分**（doc/173）：2259→27 行 barrel + 5 新模块（helpers 338 / checkbox 288 / server 484 / create-list 687 / list-mgmt 340）。
+
+---
+
+## v1.28.13
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **5 个大文件职责拆分**（doc/172）：detail-page-button-plugin 2043→413（+6 模块）、other-site-plugin 1178→510（+5 模块）、list-reading-status-plugin 1103→275（+4 模块）、common-util 1094→519（+10 模块 facade 模式）；vlt-sync 上轮已拆 2425→2259（+3 模块）。
+- **组件目录重组**（doc/172）：src/components/ 从 120+ 平铺文件重组为 25 个子目录（review/related/blacklist/dialogs/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc 等），直接文件数 0，144 处 import 路径更新。
+- **机械门禁更新**：check-structure.ts 移除 4 个 FILE_CEILINGS + 1 个 DIR_CEILINGS 条目。
+
+---
+
+## v1.28.12
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **设置面板 UI 布局修复**（doc/171）：移除 `.form-content` 的 max-width/min-width 限制；密码字段用 flex 容器包裹防止切换按钮换行。
+- **WebDAV 401 修复**（doc/171）：备份/查看操作优先从输入框读取凭据（未保存的编辑即时生效），回退 GM 存储。
+- **WebDAV URL 丢失修复**（doc/171）：loadForm 增加旧格式 `settings.*` 回退 + 首次加载自动迁移到 GM 新格式。
+
+### 优化
+
+- **WebDAV 备份移除加密**（doc/171）：WebDAV 备份改为明文 JSON 上传（私有服务器无需加密）；移除 backupPassword 检查和 encryptBackupV2 调用；保留 importData 解密路径兼容旧加密备份；保留 exportData 本地加密。WebDAV 凭据不在备份 payload 中（BACKUP_GM_KEYS 不含 jhs_webdav_* 键）。
+- **transition:all 反模式窄化**（doc/171）：image-recognition-plugin.css `#upload-area` 的 `transition: all` 窄化为具体属性。
+
+---
+
+## v1.28.11
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **4 处残留内联 UI 模板修复**（doc/170）：common-util insertStyle / new-video 头像弹窗的
+  `<style>` 拼接改走 StyleBlock/styleBlockHtml；list-waterfall 回到顶部 SVG、review 星标
+  改走新组件 scroll-top-icon / review-star-icon。
+
+### 重构
+
+- **死 SVG 常量清理**（doc/170）：删除 icons.ts 5 个零读取 SVG 常量及 base-plugin 对应
+  import/字段（SETTING/CHECK/ACTRESS/NEW/BLACKLIST_SVG）；3 个在用常量经 DSI 组件消费保留。
+- **零硬编码 HTML 边界写死**（doc/170 / AGENTS §9.7）：明确违规/needle 豁免/jQuery 构造
+  idiom/sanctioned 常量四类，禁止把 `$('&lt;tag&gt;')` 元素构造误判为违规。
+
+---
+
+## v1.28.10
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **标题栏检索按钮无响应**（doc/169）：toggleOtherNavItem 在 1024-1599px 显示未绑定的站点检索栏，改为桌面宽度统一显示已绑定的自定义检索框。
+
+### 重构
+
+- **零硬编码 HTML**（doc/169）：15 文件全部内联 HTML 字符串字面量提取为 ~25 个新 React 组件 + 3 个 CSS 提取 + 2 个 SVG dangerouslySetInnerHTML 常量；src/ 全树零内联 HTML。
+- **setting-dialog 拆分**（doc/169）：940 行 → 171 行 + 9 面板子组件（setting-panels/ 子目录）。
+- **api.ts any 收窄**（doc/169）：14 any → 0；eslint warnings −19。
+- **机械结构门禁**（doc/169）：scripts/check-structure.ts 独立命令，800 行/20 文件棘轮。
+- **AGENTS §10/§11**（doc/169）：大文件拆分 + 目录规划规则写死。
+- **.tsx→.ts 重命名**（doc/169）：vlt-plugin + rating-display-plugin（无 JSX）。
+- **fc2 组件子目录**（doc/169）：6 组件移入 components/fc2/。
+
+---
+
+## v1.28.9
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **二轮内联 HTML 提取**（doc/168）：提取 fc2-plugin.tsx 和 fc2-by-123av-plugin.tsx 中 4 处 HIGH 残留动态内容模板为 4 个新 TSX 组件（fc2-movie-detail/fc2-magnet-item/fc2-123av-detail-dialog/fc2-123av-movie-info）；HIGH 内联 HTML 从 4→0。
+- **§9.1 导入顺序修复**（doc/168）：5 个重命名插件文件的六组导入顺序违规修正。
+- **死代码清理**：删除 fc2-by-123av-plugin.tsx 的 `void YES;` hack 及未使用导入。
+
+---
+
+## v1.28.8
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **内联 HTML 模板字面量提取为 TSX 组件**（doc/167）：将 7 处 HIGH 级别内联 HTML（~135 行）从插件/核心/常量文件提取为 6 个新 TSX 组件 + 复用 1 个已有组件；删除 `constants/api.ts` 的 `markDataListHtml()` 重复函数与 `javDbApi` 聚合对象；5 个文件因 JSX 语法从 `.ts` 重命名为 `.tsx`；`jsx-to-string.ts` 新增 `htmlFor`→`for` 属性映射消除 `as any` hack；组件总数 91→97；eslint warnings −1。
+
+---
+
+## v1.28.7
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **导航栏「设置」「鉴定记录」按钮多余下拉箭头**（doc/166）：修复 javdb.com
+  顶部导航栏插件注入的「设置」「鉴定记录」按钮显示 Bulma `.navbar-link::after`
+  边框三角箭头（「设▼」）的问题。根因为 CSS 提取重构遗留缺陷：
+  `src/styles/setting-plugin.css` L1 的动态占位符为小写 `__css_text__`，与
+  `setting-plugin.tsx` `initCss()` 中 `.replace('__CSS_TEXT__', cssText)` 的大写
+  形式不匹配，且占位符与选择器融合在同一行，致使原本用于压制站点继承箭头的
+  `.nav-btn::after { content: none !important; }` 规则变成无效选择器
+  `__css_text__ .nav-btn::after` 而被浏览器丢弃。修复：将占位符改为独立行的大写
+  `__CSS_TEXT__`（与运行时替换精确匹配，动态容器宽度 CSS 正常落地），
+  `.nav-btn::after` 恢复为有效独立规则，压制全部四个携带 `nav-btn` 类的注入按钮
+  （setting-btn / mini-setting-btn / historyBtn / miniHistoryBtn，桌面与 mini 变体）
+  的箭头；占位符行附 `stylelint-disable-next-line selector-type-case` 注释（占位符
+  须保持大写），注释文案刻意不含占位符字面量以免抢占 `String.replace` 的首次匹配。
+  未改动 `setting-plugin.tsx` 及任何组件（按钮 `nav-btn` 类与原始 userscript 字符级
+  一致）。`tsc -b && vite build` 通过、28/28 测试全绿、ESLint 0 errors（786 基线
+  警告无新增）、Stylelint 0 errors。
+
+---
+
+## v1.28.6
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **iframe 弹窗回归修复**（doc/165）：移除 doc/136 误加的 `@noframes`（vite.config `noframes: true`），恢复脚本注入同源 layer 详情 iframe——原始 archetype 头部无此指令，且 `utils.openPage`/跨 frame ESC 闸门/`car-list-reader` 自守卫均预设 in-iframe 执行；`@noframes` 同时导致弹窗「不加载脚本信息」与「UI 错乱」（脚本未跑故样式未注入），顶层标签页非 iframe 故不受影响。保留 doc/136 收窄后的 3 个官方 `@match`（真实安全意图不变）。双触发复核：全部启动期副作用均为每文档独立/幂等/页型门控/自守卫/跨 frame 设计/与原始同行为，无数据/功能双触发回归；唯一新 cosmetic nit 为真实 Tampermonkey 下弹窗 iframe 可能重复登记「📊 插件诊断」菜单项（已记录、deferred，非用户报告的页面坏损）。visit-history 守卫经路径键分析**驳回**（顶层=列表、弹窗=详情为两条正确不同记录，加守卫反致覆盖回归）。
+
+### 重构
+
+- **feature-flags 强类型收敛**（doc/165）：`Record<string,boolean>` → 封闭 `interface FeatureFlags`（无索引签名）+ 逐键 JSDoc，使键集合成为编译期可校验契约，与项目强类型风格统一；grep 全 src 证实 `featureFlags` 零动态访问（全按名），故封闭接口不破坏任何调用点；16 键/默认值/localStorage 覆盖 IIFE 逐字节保留，行为不变；tsc 全码库编译零错误、28/28 测试不变、eslint 786/0 未增警告。
+
+### 文档
+
+- **AGENTS §6.3 顺序修正 + @types 已核实**（doc/165）：将 doc/164 误插于 seam 与 devDependencies 之间的「增量 any 消除」bullet 移至版本规则 bullet 之后；并在 backlog 行补注 `package.json` devDependencies 确无 `@types/jquery`/`@types/tabulator-tables`/`@types/layui-layer`（已核实，即 786 警告主体来源）。
+- **结构/目录优化规划**（doc/165，deferred）：核实当前 `src/` 布局已符合 AGENTS §2、无 doc 提议重组 `core/`/移动 feature-flags（其「不统一」实为弱类型，已修复）；真正的结构债为 `vlt-sync.ts`(2428)/`detail-page-button-plugin.tsx`(2041)/`setting-plugin.tsx`(1571)，给出 `vlt-sync` 按广播/远程同步/锁队列/编排的拆分大纲，待单独立项，本轮不做无依据目录搬迁。
+- **浏览器验证诚实声明**（doc/165）：无头 Chromium 无 `GM_*` 宿主，无法忠实运行 userscript；@noframes 回归静态可证，弹窗修复效果需用户在自有 Tampermonkey 目视确认。
+
+---
+
+## v1.28.5
+
+**发布日期**：2026-07-23
+
+### 类型
+
+- **storage-manager 迁移方法增量 any 消除**（doc/164）：对已触及文件按批次 6
+  「触及即消除」规则，将 `clean_no_url_blacklist` / `merge_blacklist` /
+  `merge_favoriteActress` / `merge_tow_car_list_table` 四个迁移方法的 `any[]`
+  重类型为既有接口 `CarRecord[]` / `BlacklistItem[]` / `FavoriteActress[]`，回调参数
+  改由上下文推断（接口含旧迁移字段可选属性 + `[key:string]:any` 索引签名，故
+  `delete item.actress` / `item.role = …` / 展开赋值仍合法，零 `as any` 回填、无隐式
+  any）。`tsc -b` 严格编译通过；eslint `no-explicit-any` 警告实测 **805→786（−19）**；
+  行为不变，28/28 测试全绿。`merge_table_name`（混合形状旧键数组）、
+  `async_merge_other`（`Setting` 类型）、`getBlacklistCarList` 原始读（经 any 型
+  copyObj/deepFreeze 无下游收益）三项有意保留为 backlog，见 doc/164。
+
+## v1.28.4
+
+**发布日期**：2026-07-23
+
+### 正确性
+
+- **schema 迁移回归测试 + 可注入存储 seam**（doc/162）：为 `StorageManager` 增加
+  构造函数 `forageInstance?: unknown` 注入点与 `__resetForTesting()` 单例重置
+  （仅测试），落地 doc/161 推迟的迁移幂等性回归套件（5 用例：version=6 幂等 /
+  version=3 门控仅跑 4-6 / 全量 0→6 旧键迁移+删除 / 迁移后缓存失效 / 失败步骤保留
+  版本号下次重试）；`tests/storage-migration.test.ts` 用 jsdom 环境 + 手写
+  in-memory fake forage，无新依赖。
+- **§9.2 违规修正**（doc/162）：`merge_table_name` 6 处裸
+  `console.log('更正', oldKey)` → `clog.debug`（storage-manager 属项目核心基础
+  设施，不适用集成脚本跟踪例外）。
+- **附件四缺陷复核**（doc/162）：附件列举的 stale-cache / 冻结对象 TypeError /
+  无错误隔离 / 首记录当版本号四项**均已被 doc/135 修复**（`runMigrations` 后置
+  缓存全清、迁移直读 forage 绕过 deepFreeze、逐步 try/catch + 版本保留重试 +
+  navigator.locks、`clean_no_url_blacklist` 已全量 `.filter/.map` 扫描无 `[0]`
+  启发式）；本轮无对应方法体改动。
+
+
+## v1.28.3
+
+**发布日期**：2026-07-23
+
+### 一致性
+
+- **core 模块导入顺序修正**（doc/157）：`image-preview.tsx` 和 `tooltip.ts` 的
+  CSS?raw 导入从首位移至末位，符合 AGENTS.md §9.1 六组约定。core 目录其余
+  26 个文件导入顺序已合规；console 维度全清洁（仅 clog.*/show.*，无裸 console.*）。
+
+## v1.28.2
+
+**发布日期**：2026-07-23
+
+### 一致性
+
+- **剩余插件错误处理 / 导入 / toast 一致性**（doc/155）：39 个插件文件 159 处
+  修复——catch 块 `console.error`→`clog.error`、`show.error` 直传 Error / 不安全
+  `e.message || e` 改为 `instanceof` 守卫、导入按六组约定重排、移除死调试日志与
+  重复 `console.error`。
+- **devtools 跟踪日志保留（零偏差修正）**（doc/155）：集成脚本的
+  `${LOG}`/`${LOG_PREFIX}`/方括号前缀跟踪体系（vlt-sync/vlt-tags/vlt-reconcile/
+  list-reading-status/page-sort/status-tag-filter/list-waterfall/modal-list-disabler/
+  other-site 预加载/missav-quick-copy）回退为 `console.log/warn`——`clog.log/warn`
+ 仅写面板不打 devtools，转换会静默丢失同步诊断输出；`%c` 着色日志工厂
+  （car-status-logger、rating-utils）按 archetype 原样恢复；`logger.tsx` 的
+  error-only 转发为有意设计，未改动。项目自有代码继续用 `clog`，集成本地脚本保留
+  原生 devtools 跟踪——这是有意的分层（沿用第三轮先例）。
+
+## v1.28.1
+
+**发布日期**：2026-07-23
+
+### 一致性
+
+- **错误处理统一化**（doc/154）：detail-page-button-plugin（13 处）、history-plugin、
+  blacklist-plugin 的 catch 块由 `console.error` 改为 `clog.error`，写入类失败补
+  `show.error` 用户反馈；修复 `show.error(err)` 直传 Error 对象渲染为
+  `[object Object]` 的问题（字幕搜索）。
+- **导入顺序统一化**（doc/154）：main.tsx + 5 个插件按六组约定重排（外部类型 →
+  常量 → 核心 → 本地插件 → 组件 → CSS?raw 最后）；入口文件 CSS?raw 由中段移至末尾。
+- **CSS 类名去冲突**（doc/154）：`.menu-btn` 在 common-toolbar 与 setting-plugin
+ 重名冲突，拆为 `.jhs-toolbar-menu-btn` / `.jhs-setting-menu-btn`（13 文件 68 处
+  调用点同步）；video-lists-tag.css 前半段无缀类名统一加 `jhs-vlt-` 前缀
+  （23 个类 + 1 个 keyframes，跨 4 文件调用点同步）。
+
+## v1.28.0
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **z-index 统一化**（doc/153）：9 个 CSS 文件的超大 z-index（9999~9999999999）
+  统一为设计令牌变量：`--jhs-z-page: 9999`（页面内元素：back-to-top/load-all/
+  瀑布流按钮/tag 下拉）和 `--jhs-z-top: 999999999`（above-layer 层：tooltip/
+  loading/logger/fc2/visit-history-tooltip）。layer.js z-index 无上限递增，
+  above-layer 层需 genuinely large 常量保证始终在弹窗之上。
+  image-preview.css 的 `/* __Z_INDEX__ */` 占位符保留（运行时动态替换）。
+
+## v1.27.9
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **合并两套返回顶部控件**（doc/152）：ListWaterfallPlugin 的 `#jdb-wf-back-to-top`
+  在 SettingPlugin 的 `#jhs-back-to-top` 已存在时跳过创建（`/users/lists` 页面
+  SettingPlugin 已注入返回顶部按钮，避免重复）。
+- **package.json 版本同步**（doc/152）：`1.27.5` → `1.27.8`（与 vite.config.ts 同步）。
+
+## v1.27.8
+
+**发布日期**：2026-07-23
+
+### 安全
+
+- **jsxToString XSS 加固**（doc/151）：`renderAttrs` 所有属性值添加
+  `escapeAttr()` 转义（`&`/`<`/`>`/`"`），阻止通过 `"` 闭合属性注入
+  新属性；`href`/`src` 属性添加 `sanitizeUrl()` 协议校验，阻止
+  `javascript:`/`data:`/`vbscript:` 危险协议（返回 `#`）。
+  文本节点 `escapeText()` 已有（`&`/`<`/`>`），属性值此前未转义。
+
+## v1.27.7
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **应用全局类型化**（doc/150）：globals.d.ts 中 6 个应用全局从 `any` 升级为
+  精确类型（`utils: CommonUtil`、`storageManager: StorageManager`、
+  `gmHttp: GmHttp`、`show: typeof show`、`clog: Logger`、
+  `pluginManager: PluginManager`），消除数百处调用点的 `any` 传播。
+- **69 处隐藏类型错误修复**（doc/150）：类型化暴露的被 `any` 掩盖的
+  类型不匹配，涉及 12 个文件（api.ts/gm-http.ts/storage-manager.ts/
+  gfriends.ts/detail-page-button-plugin.tsx/auto-page-plugin.ts/
+  blacklist-plugin.tsx/new-video-plugin.tsx/other-site-plugin.tsx/
+  fc2-plugin.ts/fc2-by-123av-plugin.ts/history-plugin.tsx/
+  list-page-plugin.tsx/list-page-button-plugin.tsx/
+  favorite-actresses-plugin.tsx/want-and-watched-videos-plugin.tsx/
+  top250-plugin.tsx/setting-plugin.tsx/preview-video-plugin.tsx）。
+  修复模式：`null`→`undefined`、`!` 非空断言、`?? undefined`、
+  `Number()` 转换、`RequestHeaders` 索引签名。
+
+## v1.27.6
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **BasePlugin.pluginManager 类型化**（doc/149）：`pluginManager: any` →
+  `pluginManager!: PluginManager`，消除 BasePlugin 核心字段的 `any` 类型，
+  所有 40 个插件继承精确类型。ESLint 警告 806→805。
+
+## v1.27.5
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **Stylelint 工具链**（doc/148）：新增 `.stylelintrc.json`
+  （stylelint-config-standard + 项目规则覆盖），`bun run lint:css` 脚本。
+  `--fix` 自动修复 442 处（`rgba()`→`rgb()` CSS Color L4 + 格式化），
+  基线 0 errors。全部 CSS 文件（含 layer-fix.css）均通过 lint。
+
+### 优化
+
+- **AGENTS.md 工具链同步**（doc/148）：§3.6 样式节补充 design-tokens/
+  accessibility 注入说明 + transition:all 清理记录；§3.7 全局类型节
+  补充 GM API 类型化说明；新增 §3.8 工具链节（build/lint/lint:css）；
+  §3.1 CSS 注入枚举补充 design-tokens。
+
+## v1.27.4
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **ESLint 基线归零**（doc/147 补充）：手动修复 15 个 error 级违规
+  （storage-manager.ts 3 处解构 `let`→`const` 拆分、logger.tsx 正则
+  字符类内 2 处多余 `\/` 转义），`prefer-const`/`no-useless-escape`
+  保持 error 门禁。`bun run lint` 输出 0 errors, 806 warnings。
+
+## v1.27.3
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **设计令牌**（doc/147）：新增 `src/styles/design-tokens.css`，
+  `:root` 定义 CSS 自定义属性（主色/语义色/中性色/间距/圆角/字体/
+  阴影/z-index 层级/过渡/触控目标），令牌值与实际调色板一致
+  （`--jhs-color-primary: #5d87c2`）。main.tsx 全局注入。
+- **ESLint 工具链**（doc/147）：新增 `eslint.config.js`
+  （TypeScript，`no-explicit-any`/`consistent-type-imports`/`no-unused-vars`
+  均为 warn），`bun run lint` 脚本。
+  基线：806 warnings（0 errors），`prefer-const`/`no-useless-escape` 保持 error 门禁。
+
+### 优化
+
+- **CSS `transition: all` 清理**（doc/147）：12 个 CSS 文件中 19 处
+  `transition: all` 替换为具体过渡属性（color/background-color/opacity/
+  transform/box-shadow/border-color），消除全属性过渡反模式，
+  保留原有 duration 和 timing-function。
+
+## v1.27.2
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **AGENTS.md 架构文档同步**（doc/146）：§3.1 启动序列更新为 17 步
+  （initPageContext → processCss 页面过滤 → runMigrations →
+  storageRevision → processPlugins → destroyAll）；§3.2 BasePlugin
+  新增 sites/pageTypes/destroy，PluginManager 新增 matchesPage/destroyAll。
+- **代码一致性修复**（doc/146）：Top250Plugin getName() 对齐 PluginMap
+  键名（'TOP250Plugin' → 'Top250Plugin'）；main.tsx 插件计数注释
+  更新为 40（38 javdb + 2 missav）。
+
+## v1.27.1
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **无障碍基础样式**（doc/145）：新增 `src/styles/accessibility.css`，
+  全局 `:focus-visible` 焦点环（键盘导航可见，鼠标点击不显示）+
+  `@media (prefers-reduced-motion: reduce)` 禁用动画/过渡。
+- **GM API 类型化**（doc/145）：`globals.d.ts` 中 6 个 Tampermonkey
+  Grant API 从 `any` 升级为精确类型声明（`GMXmlHttpRequestDetails` 接口 +
+  函数签名），消除 GM 调用处的类型盲区。
+
+### 修复
+
+- **StorageRevision 跨会话失效**（doc/144 补充）：修订号每会话从 0 开始，
+  不跨会话单调递增。修复为任何远程消息都触发缓存失效（senderId 排除自身），
+  修订号仅作元数据。
+
+### 优化
+
+- **package.json 同步**（doc/145）：version 同步为 1.27.0，
+  description 更新为 JavDB Power Tools 品牌名。
+
+## v1.27.0
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **StorageRevision 跨标签页缓存失效**（doc/144）：新增
+  `src/core/storage-revision.ts`，StorageManager 的 16 个写入方法
+  在 `forage.setItem` 成功后调用 `storageRevision.increment()`，
+  通过 BroadcastChannel 广播修订号到其他标签页。
+  其他标签页收到广播后自动失效 carList/setting/blacklistCarList 缓存，
+  解决多标签页同时操作时缓存不一致问题。
+  main.tsx 启动时 `storageRevision.init()` + `onRemoteChange()` 注册回调。
+
+## v1.26.0
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **瀑布流分页状态机**（doc/143）：新增 `src/core/pagination-state.ts`，
+  `PaginationStateMachine` 将 auto/click 两种加载模式统一为明确的状态转换
+  （idle/loading/error/exhausted），保证有下一页时按钮持续存在。
+  `auto-page-plugin` 移除散落的 `hasMore`/`isLoading` 布尔标志，
+  14 处引用替换为状态机调用，错误状态支持 retry 恢复。
+- **外站预加载 keyed 去重 + LRU 淘汰**（doc/143）：
+  `other-site-plugin` 新增 `inflightPreloads` Map，同一 carNum+site
+  并发请求复用 in-flight Promise；缓存超过 5000 条时按 ts 淘汰最旧条目
+  （无 ts 旧格式优先淘汰）。
+
+## v1.25.3
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **TaskSupervisor 全量迁移完成**（doc/142）：剩余 4 个插件迁移到
+  TaskSupervisor 统一生命周期管理，累计 9 个插件完成迁移：
+  - `list-page-plugin`：checkDom MutationObserver → supervisor
+  - `list-reading-status-plugin`：MutationObserver + 7 个 addEventListener → supervisor
+  - `modal-list-disabler-plugin`：body MutationObserver → supervisor
+  - `list-waterfall-plugin`：scroll/click addEventListener + setTimeout → supervisor
+
+### 新增
+
+- **ListDomBus 列表页 DOM 变更总线**（doc/142）：新增
+  `src/core/list-dom-bus.ts`，集中管理 .movie-list 容器的
+  MutationObserver，将新增 .item 元素在 requestAnimationFrame
+  内批量分发给注册的处理器。替代各插件各自创建独立 Observer
+  的模式，减少 Observer 数量、避免重复遍历、保证单帧内一次性处理。
+
+## v1.25.2
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **TaskSupervisor 生命周期迁移**（doc/141）：5 个插件从原始
+  setTimeout/MutationObserver/addEventListener 迁移到 TaskSupervisor 统一管理：
+  - `visit-history-plugin`：setInterval + 4 个 addEventListener → supervisor
+  - `auto-page-plugin`：scroll/click addEventListener + 3 个 setTimeout → supervisor
+  - `status-tag-filter-plugin`：2 个 MutationObserver + 3 个 setTimeout → supervisor
+  - `page-sort-plugin`：waitForContainer MutationObserver → supervisor
+    （sortGuard 保留原有 disconnect/reconnect 模式）
+  - `other-site-plugin`：2 个 MutationObserver + 2 个 setTimeout → supervisor
+  - 所有 5 个插件实现 `destroy()` → `supervisor.abort()`，
+    页面卸载时一次性清理全部资源
+
+## v1.25.1
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **19 个插件 pageTypes 声明**（doc/140）：为所有页面特定插件添加
+  `pageTypes` getter，PluginManager 在 processCss/processPlugins 时
+  按页面类型过滤，不匹配的插件不注入 CSS、不执行 handle：
+  - 详情页（9 个）：detail-page/detail-page-button/favorite-actresses/
+    highlight-magnet/preview-video/review/screenshot/translate/visit-history
+  - 列表页（6 个）：auto-page/fold-category/list-page-button/list-page/
+    page-sort/status-tag-filter
+  - 混合（3 个）：other-site/list-reading-status/vlt → `['detail', 'list']`
+  - 非详情页（1 个）：key-page-turning → `['list', 'fc2', 'unknown']`
+  - 其余 21 个插件保持空 pageTypes（匹配所有页面）
+
+## v1.25.0
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **Runtime V2 基础设施**（doc/139）：
+  - `src/core/page-context.ts`：集中式页面类型检测（`detectPageContext()`），
+    将原 main.tsx 散落的 isDetailPage/isListPage/isFc2Page 判定提取为独立模块，
+    在 processCss 之前执行，插件可通过 `pageContext` 单例获取检测结果。
+  - `src/core/task-supervisor.ts`：AbortSignal 统一生命周期管理，
+    提供 `setTimeout`/`setInterval`/`observe`/`addEventListener` 注册方法，
+    `abort()` 一次性清理所有资源，防止内存泄漏和幽灵回调。
+  - `BasePlugin` 新增 `sites`/`pageTypes` getter（空数组 = 匹配所有，向后兼容）
+    和 `destroy()` 钩子。
+  - `PluginManager` 新增 `matchesPage()` 过滤（processCss/processPlugins 时
+    按 pageType 跳过不匹配的插件）和 `destroyAll()` 方法。
+  - main.tsx 启动序列重排：页面判定 → processCss → 迁移 → processPlugins，
+    页面卸载时调用 `destroyAll()`。
+
+## v1.24.1
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **全量同步版本门控**（doc/138）：`CarListReaderPlugin` 不再每次页面加载都
+  执行全量 55k 记录同步。新增 `jhs_car_list_rev`（变更代号，每次增量推送递增）
+  和 `jhs_car_status_synced_rev`（上次同步代号），仅在数据变更或超过 24 小时
+  兜底间隔时执行全量同步。无变更页面加载跳过读取+深拷贝+列存+gzip+GM 写入
+  全流程，控制台输出「跳过全量同步」日志。
+
+## v1.24.0
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **AES-GCM 加密备份 V2**（doc/137）：新增 `src/core/backup-crypto.ts`，
+  使用 AES-GCM + PBKDF2-SHA-256（100,000 次迭代）替代原 Caesar 位移混淆。
+  每次加密使用独立随机 salt（16 字节）和 IV（12 字节），信封包含格式版本、
+  算法标识和创建时间。旧 V1 格式仅保留导入兼容。
+- **备份口令字段**（doc/137）：设置面板「数据备份」新增「备份口令」输入框
+  （`type="password"` + 👁 切换），口令存储在 GM 私有存储，永不写入备份文件。
+
+### 安全
+
+- **WebDAV 凭据迁移到 GM 私有存储**（doc/137）：`webDavUrl`/`webDavUsername`/
+  `webDavPassword` 从 settings 对象（明文 IndexedDB）迁移到 `GM_setValue`
+  （油猴私有存储），保存时自动清除旧字段。页面脚本无法通过 storageManager 读取。
+- **备份口令仅本机存储**（doc/137）：`jhs_backup_password` 存储在 GM 私有存储，
+  不随备份文件导出。新设备恢复时需重新输入口令。
+
+## v1.23.0
+
+**发布日期**：2026-07-23
+
+### 安全
+
+- **权限边界收窄**（doc/136）：移除 `unsafeWindow` 上的 `gmHttp`/`storageManager`/
+  `WebDavClient`/`encryptCredential`/`decryptCredential`/`pluginManager` 暴露，
+  页面脚本不再能访问 HTTP 客户端、存储管理器、加密函数和插件管理器。
+  仅保留 `utils`/`loadGfriends`/`filetreeDb`（页面功能依赖）。
+- **站点匹配精确化**（doc/136）：删除宽泛 `include`（`javdb*.com`/`missav*.ws`/
+  `missav*.live`），保留 3 个官方 `match`；新增 `@noframes` 禁止 iframe 内执行。
+- **密码输入隐藏**（doc/136）：WebDAV 密码输入框改为 `type="password"` +
+  👁 显示/隐藏切换按钮。
+- **备份导入原子性**（doc/136）：`importData` 改为「验证→暂存→切换」三阶段，
+  使用临时 localforage 实例（`appData_import_staging`），失败时主数据库不变。
+  导入成功后自动执行 `runMigrations()` 迁移老备份。
+- **备份附加存储白名单**（doc/136）：`applyBackupExtras` 新增
+  `ALLOWED_LOCALSTORAGE_KEYS`（17 键）/ `ALLOWED_GM_KEYS`（7 键）白名单，
+  白名单外的键跳过并 warn；拆分为 `stripBackupExtras`（导入前剥离）+
+  `applyBackupExtras`（导入成功后写回），确保主数据失败时不写入附加存储。
+
+## v1.22.0
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **版本化数据迁移**（doc/135）：6 个历史迁移方法改为版本化一次性执行。
+  新增 `__jhs_schema_version` 键（当前版本 6），后续启动仅读取版本号（~1ms），
+  不再每次页面打开都执行 12 次 IndexedDB 旧键检查 + 5.5 万条番号全量扫描。
+  使用 `navigator.locks` 防止多标签页并发迁移；每步成功后才写入版本号，
+  失败保留当前版本下次重试。
+- **迁移冻结对象修复**（doc/135）：`merge_blacklist`/`merge_favoriteActress`/
+  `merge_tow_car_list_table`/`clean_no_url_blacklist` 改为直接 `forage.getItem()`
+  读取原始数据，绕过 `deepFreeze`（原代码修改冻结对象会抛 TypeError）。
+- **迁移缓存失效修复**（doc/135）：迁移写入 IDB 后统一清理受影响的运行时缓存
+  （`cacheCarList`/`cacheFavoriteActressList`/`cache_filter_actor_actress_car_list`/
+  `cacheSettingObj`），避免迁移后当前页面继续读取旧缓存。
+- **首条记录启发式移除**（doc/135）：`clean_no_url_blacklist` 不再用第一条记录
+  判断迁移状态（混合数据会错误跳过），改为版本门控。
+
+### 修复
+
+- **健壮性修复 15 处**（doc/135）：4 处 JSON.parse 无 try-catch（preview-video 3 处、
+  screenshot 1 处）、3 处 querySelector/parseInt null 安全（setting-plugin）、
+  1 处 actress 非空断言（new-video）、7 处异步/NaN/null 防护
+  （common-util/logger/main/api/fc2-by-123av）。
+
+## v1.21.2
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **`(window as any)` 完全消除**（doc/134）：globals.d.ts 新增 Window 接口
+  扩展（8 个第三方库全局字段），libs.ts / _jquery-global.ts / layer-wrapper.ts /
+  setting-plugin.tsx 全部 `(window as any)` 替换为类型安全访问，
+  代码中 `(window as any)` 从 56 处降至 **0 处**。
+- **诊断增强**（doc/134）：Plugin 接口新增 `durationMs` 字段，processPlugins
+  记录每个插件 handle() 执行耗时；诊断表格新增「耗时」列 + 总耗时统计；
+  插件名 HTML 转义防护。
+
+## v1.21.1
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **`(window as any)` 类型安全清扫**（doc/133）：将 40 处
+  `(window as any).isDetailPage/isListPage/isFc2Page/cleanCache_*/filetreeDb/showImageViewer`
+  替换为类型安全的 `window.*` 访问（Window 接口已在 main.tsx 声明），
+  `(window as any)` 从 56 处降至 16 处。
+- **诊断模块提取**（doc/133）：main.tsx 内联的 25 行诊断 UI 提取至
+  `src/core/plugin-diagnostics.ts`（`renderDiagnosticsHtml` /
+  `renderDiagnosticsText` / `registerDiagnosticsMenu`），入口文件减至一行调用。
+
+### 新增
+
+- **设置面板「📊 插件诊断」**（doc/133）：设置弹窗新增侧栏菜单项 +
+  诊断面板，展示 40 个插件的 CSS/handle 执行状态表格 +
+  「📋 复制诊断报告」按钮（纯文本格式，便于反馈问题）。
+
+## v1.21.0
+
+**发布日期**：2026-07-23
+
+### 新增
+
+- **插件诊断菜单**（doc/132）：Tampermonkey 菜单新增「📊 插件诊断」命令，
+  弹窗展示 40 个插件的 CSS/handle 执行状态（✅/❌/⏭️），快速定位启动失败插件。
+
+### 优化
+
+- **类型安全插件注册表**（doc/132）：新增 `plugin-registry.ts` 的 `PluginMap`
+  接口，将 40 个插件名映射到具体类。`PluginManager.getBean` / `BasePlugin.getBean`
+  改为泛型签名，已知插件名返回精确类型（非 `any`），消除 66 处 getBean 调用的
+  类型盲区。新增 `registrationComplete` 时序标记 + 未注册插件 `console.warn` 诊断。
+- **预存类型错误修复**（doc/132）：修复 6 个被 `any` 掩盖的预存类型错误：
+  Beyond60Plugin 死路径类型断言（2 处）、`carNum` null 安全（1 处）、
+  不存在的 `getAv123Url` 方法调用（1 处）、`favoriteOne` 多余参数（1 处）、
+  `carNum` null 传递（1 处）。
+
+## v1.20.3
+
+**发布日期**：2026-07-23
+
+### 优化
+
+- **api.ts 死代码清理**（doc/131）：删除 4 个零引用导出函数（`removeSignature`/
+  `searchMovie`/`getMagnets`/`login`）、2 个去 export（`RequestHeaders`/
+  `DEFAULT_REQUEST_HEADERS`）、`javDbApi` 聚合对象从 12 属性精简为仅
+  `markDataListHtml`。
+- **car-status-sync 日志工厂**（doc/131）：提取 `createLogger(prefix)` 共享工厂，
+  消除 car-list-reader/missav-status-tag 的 4×2 重复日志函数。
+- **Fc2By123Av 竞态守卫**（doc/131）：`_querySeq` 序列号守卫，防止快速搜索/排序/
+  分页操作的后发先至覆盖。
+- **base-plugin 类型收窄**（doc/131）：`CarInfo`/`SelectorConfig` 接口去 export。
+
+## v1.20.2
+
+**发布日期**：2026-07-23
+
+### 修复
+
+- **StorageManager 缓存失效缺失**（doc/130）：`removeCar`/`batchRemoveCars`/
+  `removeFavoriteActress` 写入 IDB 后未同步运行时缓存字段，`storageCacheDeepCopy`
+  开启时后续 `getCarList()` 返回已删除的幽灵记录。
+- **MagnetHub 请求无超时 + 竞态**（doc/130）：`GM_xmlhttpRequest` 添加 15s 超时 +
+  序列号守卫，修复服务器无响应时永久挂起及快速切换引擎 tab 时旧响应覆盖新结果。
+- **JSON.parse 无 try-catch 防护**（doc/130）：`list-page-plugin`（1 处）、
+  `other-site-plugin`（7 处）、`actress-info-plugin`（2 处）的
+  `JSON.parse(localStorage.getItem(...))` 添加 try-catch，损坏缓存回退空对象
+  而非崩溃。
+- **Translate 翻译无超时**（doc/130）：裸 `fetch()` 添加 `AbortController` + 10s
+  超时，API 无响应时显示「翻译超时」而非永久挂起。
+
+### 移除
+
+- **VideoTitleSpan 死亡组件**（doc/130）：删除零 import、零引用的
+  `src/components/video-title-span.tsx`。
+
+---
+
 ## v1.20.1
 
 **发布日期**：2026-07-22

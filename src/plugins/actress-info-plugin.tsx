@@ -22,14 +22,18 @@
  * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string 标注意图，不做窄化。
  */
 import { YES } from '../constants/status';
+
+import { jsxToString } from '../core/jsx-to-string';
+
 import { BasePlugin } from './base-plugin';
-import actressInfoCssRaw from '../styles/actress-info-plugin.css?raw';
+
 import {
     ActressInfoDetailSegment,
     type ActressWikiInfo
-} from '../components/actress-info-detail-segment';
-import { ActressInfoStarPageHtml } from '../components/actress-info-star-page-html';
-import { jsxToString } from '../core/jsx-to-string';
+} from '../components/actress/actress-info-detail-segment';
+import { ActressInfoStarPageHtml } from '../components/actress/actress-info-star-page-html';
+
+import actressInfoCssRaw from '../styles/actress-info-plugin.css?raw';
 
 /** 演员信息缓存：演员名 → 维基详情（localStorage jhs_actress_info 的解析结构） */
 type ActressInfoCache = Record<string, ActressWikiInfo | undefined>;
@@ -85,14 +89,17 @@ export class ActressInfoPlugin extends BasePlugin {
         }
         const actressNames: string[] = $('.female')
             .prev()
-            .map((_index: number, element: any) => $(element).text().trim())
+            .map((_index: number, element: HTMLElement) => $(element).text().trim())
             .get();
         if (!actressNames.length) {
             return;
         }
         const storageKey = 'jhs_actress_info';
         const rawCache: string | null = localStorage.getItem(storageKey);
-        const cache: ActressInfoCache = rawCache ? JSON.parse(rawCache) : {};
+        let cache: ActressInfoCache = {};
+        try {
+            if (rawCache) cache = JSON.parse(rawCache);
+        } catch { /* 缓存损坏，回退空对象 */ }
         let info: ActressWikiInfo | null | undefined = null;
         let html = '';
         for (const actressName of actressNames) {
@@ -104,7 +111,7 @@ export class ActressInfoPlugin extends BasePlugin {
                         cache[actressName] = info;
                     }
                 } catch {
-                    console.error('该名称查询失败,尝试其它名称');
+                    clog.error('该名称查询失败,尝试其它名称');
                 }
             }
             const segment: string = jsxToString(
@@ -132,7 +139,7 @@ export class ActressInfoPlugin extends BasePlugin {
         if ($('.actress-info').length > 0) {
             return;
         }
-        let names: string[] = [];
+        const names: string[] = [];
         const nameSectionEl = $('.actor-section-name');
         if (nameSectionEl.length) {
             nameSectionEl
@@ -158,7 +165,10 @@ export class ActressInfoPlugin extends BasePlugin {
         }
         const storageKey = 'jhs_actress_info';
         const rawCache: string | null = localStorage.getItem(storageKey);
-        const cache: ActressInfoCache = rawCache ? JSON.parse(rawCache) : {};
+        let cache: ActressInfoCache = {};
+        try {
+            if (rawCache) cache = JSON.parse(rawCache);
+        } catch { /* 缓存损坏，回退空对象 */ }
         let info: ActressWikiInfo | null | undefined = null;
         for (const actressName of names) {
             info = cache[actressName];
@@ -168,7 +178,7 @@ export class ActressInfoPlugin extends BasePlugin {
             try {
                 info = await this.searchInfo(actressName);
             } catch {
-                console.error('该名称查询失败,尝试其它名称');
+                clog.error('该名称查询失败,尝试其它名称');
             }
             if (info) {
                 break;
@@ -197,7 +207,7 @@ export class ActressInfoPlugin extends BasePlugin {
             actressName = '三上悠亜';
         }
         const url = this.apiUrl + actressName;
-        const responseHtml: string = await gmHttp.get(url);
+        const responseHtml = String(await gmHttp.get(url));
         const domParser = new DOMParser();
         const $parsed = $(domParser.parseFromString(responseHtml, 'text/html'));
         const birthday: string = $parsed

@@ -21,11 +21,11 @@
  *   （与原脚本一致：移除的引用与 bindEvents 中箭头包装的监听器不匹配，此处保持原行为）
  */
 
-import imagePreviewCssRaw from '../styles/image-preview.css?raw';
 import { injectCss as H } from './style-injector';
 import { jsxToString } from './jsx-to-string';
-import { ImagePreviewError } from '../components/image-preview-error';
-import { ImagePreviewImg } from '../components/image-preview-img';
+import { ImagePreviewError } from '../components/image-preview/image-preview-error';
+import { ImagePreviewImg } from '../components/image-preview/image-preview-img';
+import imagePreviewCssRaw from '../styles/image-preview.css?raw';
 
 interface ImagePreviewConfig {
     selector: string;
@@ -155,7 +155,7 @@ class ImagePreview {
         if (!this.currentTarget || !preview.classList.contains('active')) {
             return;
         }
-        let { offsetX, offsetY } = this.config;
+        const { offsetX, offsetY } = this.config;
         let left = event.clientX + offsetX;
         let top = event.clientY + offsetY;
         if (this.config.autoAdjustPosition) {

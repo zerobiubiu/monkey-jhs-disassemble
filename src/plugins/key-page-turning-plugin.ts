@@ -17,6 +17,7 @@
  * 2. safeClick() 优先原生 click()，兜底派发 MouseEvent（isTrusted 无法伪造）
  * 3. lockLeft/lockRight 防长按方向键连发（需 keyup 解锁才接受下一次）
  */
+import type { PageType } from '../core/page-context';
 import { BasePlugin } from './base-plugin';
 
 /** 上一页链接选择器（原脚本顶层 SELECTOR_LEFT）。 */
@@ -44,6 +45,11 @@ export class KeyPageTurningPlugin extends BasePlugin {
         return 'KeyPageTurningPlugin';
     }
 
+    /** 非详情页激活（等价原 @exclude /v/*，doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list', 'fc2', 'unknown'];
+    }
+
     /**
      * 注入插件 CSS。原脚本无 CSS（无 GM_addStyle），返回空串。
      *
@@ -62,7 +68,7 @@ export class KeyPageTurningPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if ((window as any).isDetailPage) return;
+        if (window.isDetailPage) return;
         window.addEventListener(
             'keydown',
             (e: KeyboardEvent) => {

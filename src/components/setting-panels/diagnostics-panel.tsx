@@ -33,6 +33,9 @@ export function DiagnosticsPanel({ panelName }: DiagnosticsPanelProps) {
                     <button id="copy-diagnostics-btn" className="jhs-setting-btn jhs-setting-btn--primary" type="button">
                         📋 复制诊断报告
                     </button>
+                    <button id="refresh-diagnostics-btn" className="jhs-setting-btn" type="button" style={{ marginLeft: '8px' }}>
+                        🔄 刷新诊断
+                    </button>
                 </div>
             </SettingSection>
         </div>

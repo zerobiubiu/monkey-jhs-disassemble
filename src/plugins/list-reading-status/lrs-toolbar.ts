@@ -264,6 +264,13 @@ export function createFilterChip(
     return chip;
 }
 
+/** 工具栏元素扩展属性（buildToolbar 挂载，refreshChips/restoreToolbarUI 读取）。 */
+interface ToolbarWithHosts extends HTMLElement {
+    _readHost?: HTMLElement;
+    _ratingHost?: HTMLElement;
+    _sortSelect?: HTMLSelectElement;
+}
+
 /** 构建/刷新工具栏：挂载到 #lists 之前。对应原 L1097-1206。 */
 export function buildToolbar(plugin: ListReadingStatusPlugin): HTMLElement | null {
     if (plugin.isDetailPage) return null;
@@ -360,9 +367,9 @@ export function buildToolbar(plugin: ListReadingStatusPlugin): HTMLElement | nul
 
     lists.insertAdjacentElement('beforebegin', toolbar);
 
-    (toolbar as any)._readHost = readChipsHost;
-    (toolbar as any)._ratingHost = ratingChipsHost;
-    (toolbar as any)._sortSelect = sortSelect;
+    (toolbar as ToolbarWithHosts)._readHost = readChipsHost;
+    (toolbar as ToolbarWithHosts)._ratingHost = ratingChipsHost;
+    (toolbar as ToolbarWithHosts)._sortSelect = sortSelect;
 
     refreshChips(plugin, toolbar);
     console.log(`${LOG_PREFIX} 排序与筛选工具栏已挂载`);
@@ -373,7 +380,7 @@ export function buildToolbar(plugin: ListReadingStatusPlugin): HTMLElement | nul
 export function refreshChips(plugin: ListReadingStatusPlugin, toolbar: HTMLElement): void {
     const stats = countFilterStats();
 
-    const readHost: HTMLElement | undefined = (toolbar as any)._readHost;
+    const readHost: HTMLElement | undefined = (toolbar as ToolbarWithHosts)._readHost;
     if (readHost) {
         readHost.innerHTML = '';
         const readChip = createFilterChip(plugin, '已读完', 'read', stats.read);
@@ -384,7 +391,7 @@ export function refreshChips(plugin: ListReadingStatusPlugin, toolbar: HTMLEleme
         readHost.appendChild(unreadChip);
     }
 
-    const ratingHost: HTMLElement | undefined = (toolbar as any)._ratingHost;
+    const ratingHost: HTMLElement | undefined = (toolbar as ToolbarWithHosts)._ratingHost;
     if (ratingHost) {
         ratingHost.innerHTML = '';
         const ratedChip = createFilterChip(plugin, '有评分', 'rated', stats.rated);
@@ -415,7 +422,7 @@ export function tryBuildToolbar(plugin: ListReadingStatusPlugin): boolean {
 export function restoreToolbarUI(plugin: ListReadingStatusPlugin): void {
     const toolbar = document.querySelector('.list-toolbar') as HTMLElement | null;
     if (!toolbar) return;
-    const sortSelect: HTMLSelectElement | undefined = (toolbar as any)._sortSelect;
+    const sortSelect: HTMLSelectElement | undefined = (toolbar as ToolbarWithHosts)._sortSelect;
     if (sortSelect) sortSelect.value = plugin.currentSort;
     refreshChips(plugin, toolbar);
 }

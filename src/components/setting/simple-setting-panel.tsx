@@ -5,6 +5,8 @@
  * 表单 id 与 setting-plugin.initSimpleSettingForm 绑定保持一致。
  */
 
+import type { ReactNode } from 'react';
+
 /** SimpleSettingPanel 的属性。 */
 export interface SimpleSettingPanelProps {
     /** 是否 JavDb 站点（决定「加载女优信息」是否渲染）。 */
@@ -20,7 +22,7 @@ function Row({
 }: {
     label: string;
     tip?: string;
-    children: any;
+    children: ReactNode;
     stacked?: boolean;
 }) {
     return (

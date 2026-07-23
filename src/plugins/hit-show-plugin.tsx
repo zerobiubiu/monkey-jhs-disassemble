@@ -19,17 +19,21 @@
  * 保留 finally 关闭 loading 覆盖层、try 内拉取数据的原始控制流；内联 CSS/HTML 已提取为
  * 组件（HitShowToolBar / HitShowMovieItem / HitShowScore / RankingContainers）。
  */
-import { fetchPlaybackRanking, fetchMovieDetail } from '../constants/api';
-import { BasePlugin } from './base-plugin';
-import { HitShowMovieItem } from '../components/hit-show-movie-item';
-import { HitShowScore } from '../components/hit-show-score';
-import { HitShowToolBar } from '../components/hit-show-tool-bar';
-import { RankingContainers } from '../components/ranking-containers';
+import { fetchPlaybackRanking, fetchMovieDetail, type RankingMovie } from '../constants/api';
+
 import { jsxToString } from '../core/jsx-to-string';
+import { withLoading } from '../core/util/util-async';
+
+import { BasePlugin } from './base-plugin';
+
+import { HitShowMovieItem } from '../components/hit-show/hit-show-movie-item';
+import { HitShowScore } from '../components/hit-show/hit-show-score';
+import { HitShowToolBar } from '../components/hit-show/hit-show-tool-bar';
+import { RankingContainers } from '../components/movie/ranking-containers';
 
 export class HitShowPlugin extends BasePlugin {
     /** 内容容器 jQuery 对象，热播榜单与工具栏挂载点。对应原 L4331。 */
-    contentBox: any = $('.section .container');
+    contentBox: JQuery = $('.section .container');
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4333-4335。 */
     getName(): string {
@@ -43,7 +47,7 @@ export class HitShowPlugin extends BasePlugin {
      * 无参数，返回 Promise<void>，不会抛出异常。
      */
     async handle(): Promise<void> {
-        $('a[href*="rankings/playback"]').on('click', (event: any) => {
+        $('a[href*="rankings/playback"]').on('click', (event: Event) => {
             event.preventDefault();
             event.stopPropagation();
             window.location.href = '/advanced_search?handlePlayback=1&period=daily';
@@ -81,28 +85,25 @@ export class HitShowPlugin extends BasePlugin {
         this.hookPage();
         const movieListEl = $('.movie-list');
         movieListEl.html('');
-        const loadingOverlay = loading();
-        let success = false;
-        for (let attempt = 1; attempt <= 3 && !success; attempt++) {
-            try {
-                const movies = await fetchPlaybackRanking(period ?? 'daily');
-                const html = this.markDataListHtml(movies);
-                movieListEl.html(html);
-                this.loadScore(movies);
-                success = true;
-            } catch (error) {
-                if (attempt < 3) {
-                    clog.error(`获取热播数据失败 (第 ${attempt} 次重试)`, error);
-                    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-                } else {
-                    clog.error('所有重试尝试均失败，无法获取数据。', error);
-                }
-            } finally {
-                if (success || attempt === 3) {
-                    loadingOverlay.close();
+        await withLoading(async () => {
+            let success = false;
+            for (let attempt = 1; attempt <= 3 && !success; attempt++) {
+                try {
+                    const movies = await fetchPlaybackRanking(period ?? 'daily');
+                    const html = this.markDataListHtml(movies);
+                    movieListEl.html(html);
+                    this.loadScore(movies);
+                    success = true;
+                } catch (error) {
+                    if (attempt < 3) {
+                        clog.error(`获取热播数据失败 (第 ${attempt} 次重试)`, error);
+                        await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+                    } else {
+                        clog.error('所有重试尝试均失败，无法获取数据。', error);
+                    }
                 }
             }
-        }
+        });
     }
 
     /**
@@ -124,7 +125,7 @@ export class HitShowPlugin extends BasePlugin {
      * 评分星级 HTML 由 HitShowScore 组件产出（含原 getStarRating 的满星/空星逻辑，
      * 已合并至组件内部，本类不再保留 getStarRating 方法）。
      */
-    loadScore(movies: any[]): void {
+    loadScore(movies: RankingMovie[]): void {
         if (movies.length === 0) {
             return;
         }
@@ -161,11 +162,11 @@ export class HitShowPlugin extends BasePlugin {
                     cache[movieId] = scoreHtml;
                     localStorage.setItem(storageKey, JSON.stringify(cache));
                     await new Promise<void>((resolve) => setTimeout(resolve, 500));
-                } catch (error: any) {
+                } catch (error: unknown) {
                     clog.error(
                         `🚨 解析评分数据失败 | 编号: ${movie.number}\n`,
-                        `错误详情: ${error.message}\n`,
-                        error.stack ? `调用栈:\n${error.stack}` : ''
+                        `错误详情: ${error instanceof Error ? error.message : String(error)}\n`,
+                        error instanceof Error && error.stack ? `调用栈:\n${error.stack}` : ''
                     );
                 }
             }
@@ -178,10 +179,10 @@ export class HitShowPlugin extends BasePlugin {
      * @param movieId 影片 ID。
      * @param html 评分 HTML。
      */
-    appendScoreHtml(movieId: any, html: string): void {
+    appendScoreHtml(movieId: string | number, html: string): void {
         const scoreEl = $(`#score_${movieId}`);
         if (scoreEl.length && scoreEl.html().trim() === '') {
-            scoreEl.slideUp(0, function (this: any) {
+            scoreEl.slideUp(0, function (this: HTMLElement) {
                 $(this).html(html).slideDown(500);
             });
         }
@@ -193,9 +194,9 @@ export class HitShowPlugin extends BasePlugin {
      * @param movies 热播影片数组。
      * @returns 列表 HTML 字符串。
      */
-    markDataListHtml(movies: any[]): string {
+    markDataListHtml(movies: RankingMovie[]): string {
         let html = '';
-        movies.forEach((movie: any) => {
+        movies.forEach((movie: RankingMovie) => {
             html += jsxToString(<HitShowMovieItem movie={movie} />);
         });
         return html;

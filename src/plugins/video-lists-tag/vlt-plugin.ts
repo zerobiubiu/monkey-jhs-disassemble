@@ -121,7 +121,7 @@ export class VideoListsTagPlugin extends BasePlugin {
         );
 
         // 自动刷新监听（跨标签页同步事件）
-        this.vltTags.setupAutoRefreshListener((payload: any) => {
+        this.vltTags.setupAutoRefreshListener((payload) => {
             // 收到同步事件后，精准刷新对应番号的标签
             if (payload?.designation) {
                 this.vltTags?.refreshDesignation(payload.designation).then();

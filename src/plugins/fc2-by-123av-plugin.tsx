@@ -6,6 +6,7 @@ import {
     FILTER_ACTION,
     HAS_WATCH_ACTION
 } from '../constants/status';
+import type { RankingMovie } from '../constants/api';
 
 import { featureFlags } from '../core/feature-flags';
 import { jsxToString } from '../core/jsx-to-string';
@@ -22,7 +23,7 @@ import { ScreenLoadingPlaceholder } from '../components/screen/screen-loading-pl
 const HAS_DOWN_STATUS = 'hasDown';
 
 export class Fc2By123AvPlugin extends BasePlugin {
-    $contentBox: any = null;
+    $contentBox: JQuery | null = null;
     urlParams = new URLSearchParams(window.location.search);
     sortVal: string = 'release_date';
     currentPage = 1;
@@ -160,7 +161,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
             last = p;
         }
         $pg.html(html);
-        $pg.find('a[data-page]').on('click', (e: any) => {
+        $pg.find('a[data-page]').on('click', (e: Event) => {
             e.preventDefault();
             this.currentPage = parseInt($(e.currentTarget).attr('data-page') || '1', 10);
             this.handleQuery();
@@ -179,7 +180,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
                 url = `${base}/makers/fc2?page=${page}&sort=${this.sortVal}`;
             }
             const html = await gmHttp.get(url);
-            return utils.htmlTo$dom(html);
+            return utils.htmlTo$dom(String(html));
         };
         try {
             show.info('正在加载 123Av FC2...');
@@ -201,11 +202,11 @@ export class Fc2By123AvPlugin extends BasePlugin {
             const rawMax = parseInt(lastPageText, 10) || 1;
             this.maxPage = Math.max(1, Math.ceil(rawMax / 2));
             const html = movies
-                .map((movie: any) => jsxToString(<HitShowMovieItem movie={movie} />))
+                .map((movie: RankingMovie) => jsxToString(<HitShowMovieItem movie={movie} />))
                 .join('');
             $('#fc2-123av-list').html(html || jsxToString(<p>无结果</p>));
             this.renderPagination();
-            $('#fc2-123av-list .item a.box').on('click', (e: any) => {
+            $('#fc2-123av-list .item a.box').on('click', (e: Event) => {
                 e.preventDefault();
                 const href = $(e.currentTarget).attr('href') || '';
                 const carNum =
@@ -214,15 +215,15 @@ export class Fc2By123AvPlugin extends BasePlugin {
                     '';
                 this.open123AvFc2Dialog(carNum, href.startsWith('http') ? href : base + href);
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             clog.error(e);
             show.error('加载 123Av FC2 失败: ' + (e instanceof Error ? e.message : String(e)));
         }
     }
 
-    parseCards($dom: any): any[] {
-        const list: any[] = [];
-        $dom.find('.card, .movie-list .item, .box').each((_i: number, el: any) => {
+    parseCards($dom: JQuery): RankingMovie[] {
+        const list: RankingMovie[] = [];
+        $dom.find('.card, .movie-list .item, .box').each((_i: number, el: HTMLElement) => {
             const $el = $(el);
             const $a = $el.find('a').first();
             const href = $a.attr('href') || '';
@@ -251,7 +252,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
                     magnets_count: 0,
                     new_magnets: false,
                     _href: href
-                });
+                } as RankingMovie);
             }
         });
         return list;
@@ -332,10 +333,10 @@ export class Fc2By123AvPlugin extends BasePlugin {
             );
             $('.movie-gallery .image-list').html(imagesHtml);
             this.getBean('TranslatePlugin')?.translate?.(carNum, false)?.then?.();
-        } catch (e: any) {
+        } catch (e: unknown) {
             clog.error(e);
             $('.movie-info-container').html(
-                jsxToString(<MovieError message={String(e.message || e)} />)
+                jsxToString(<MovieError message={e instanceof Error ? e.message : String(e)} />)
             );
         }
     }
@@ -369,7 +370,7 @@ export class Fc2By123AvPlugin extends BasePlugin {
             ? href
             : (await this.getBaseUrl()) + href;
         const html = await gmHttp.get(fullHref);
-        const $dom = utils.htmlTo$dom(html);
+        const $dom = utils.htmlTo$dom(String(html));
         const title =
             $dom.find('h1').first().text().trim() ||
             $dom.find('.title').first().text().trim() ||
@@ -402,10 +403,10 @@ export class Fc2By123AvPlugin extends BasePlugin {
             const html = await gmHttp.get(
                 `https://fc2ppvdb.com/articles/${fc2Num}`
             );
-            const $dom = utils.htmlTo$dom(html);
+            const $dom = utils.htmlTo$dom(String(html));
             const actors: string[] = [];
             $dom.find('a[href*="/actress"], .actress a, .actors a').each(
-                (_i: number, el: any) => {
+                (_i: number, el: HTMLElement) => {
                     const name = $(el).text().trim();
                     if (name) actors.push(name);
                 }
@@ -421,9 +422,9 @@ export class Fc2By123AvPlugin extends BasePlugin {
             const html = await gmHttp.get(
                 `https://adult.contents.fc2.com/article/${fc2Num}/`
             );
-            const $dom = utils.htmlTo$dom(html);
+            const $dom = utils.htmlTo$dom(String(html));
             const imgs: string[] = [];
-            $dom.find('img').each((_i: number, el: any) => {
+            $dom.find('img').each((_i: number, el: HTMLElement) => {
                 const src = $(el).attr('src') || $(el).attr('data-src') || '';
                 if (src && /sample|preview|main/i.test(src)) imgs.push(src);
             });

@@ -22,40 +22,15 @@ import {
     GM_KEY_CAR_STATUS_DELTA,
     LOG_PREFIX_MISSAV,
     type CarStatusPayload,
-    type CarStatusDeltaPayload
+    type CarStatusDeltaPayload,
+    type StatusColumn
 } from './car-status-config';
 import { gunzipFromBase64, columnarToFlat } from './car-status-columnar';
 import { upsertLocalCars, queryLocalCars, deleteLocalCars } from './car-status-db';
 import { normalizeCarNum, renderBadges, isVideoPage } from './missav-renderer';
+import { createLogger } from './car-status-logger';
 
-/** 日志辅助。 */
-function logInfo(msg: string, ...args: any[]): void {
-    console.log(`%c${LOG_PREFIX_MISSAV} %c${msg}`, 'color:#25b1dc;font-weight:bold;', '', ...args);
-}
-function logOk(msg: string, ...args: any[]): void {
-    console.log(
-        `%c${LOG_PREFIX_MISSAV} ✓%c ${msg}`,
-        'color:#1f7a3d;font-weight:bold;',
-        '',
-        ...args
-    );
-}
-function logWarn(msg: string, ...args: any[]): void {
-    console.warn(
-        `%c${LOG_PREFIX_MISSAV} ⚠%c ${msg}`,
-        'color:#d7a80c;font-weight:bold;',
-        '',
-        ...args
-    );
-}
-function logErr(msg: string, ...args: any[]): void {
-    console.error(
-        `%c${LOG_PREFIX_MISSAV} ✗%c ${msg}`,
-        'color:#de3333;font-weight:bold;',
-        '',
-        ...args
-    );
-}
+const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
 
 /** 全量消费锁（增量不锁，因为处理极快）。 */
 let isFullConsuming = false;
@@ -85,7 +60,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
         try {
             GM_addValueChangeListener(
                 GM_KEY_CAR_STATUS_DELTA,
-                (_key: string, _oldValue: any, newValue: any, remote: boolean) => {
+                (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
                         this.consumeDelta(newValue as CarStatusDeltaPayload);
                     }
@@ -100,7 +75,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
         try {
             GM_addValueChangeListener(
                 GM_KEY_CAR_STATUS_DATA,
-                (_key: string, _oldValue: any, newValue: any, remote: boolean) => {
+                (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
                         logInfo('收到 javdb 端全量数据通知');
                         this.consumeFull(newValue as CarStatusPayload);
@@ -140,8 +115,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
             }
             // 刷新页面标签
             await this.processAll();
-        } catch (err: any) {
-            logErr('增量消费失败', err.message || String(err));
+        } catch (err: unknown) {
+            logErr('增量消费失败', err instanceof Error ? err.message : String(err));
         }
     }
 
@@ -168,7 +143,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
             logInfo('全量消费开始', `count=${data.count} hwm=${data.hwm}`);
 
             // 1) 解压 base64 + gzip
-            const store = await gunzipFromBase64<Record<string, any>>(data.data);
+            const store = await gunzipFromBase64<Record<string, StatusColumn>>(data.data);
             if (!store) {
                 logErr('解压失败（DecompressionStream 不可用？数据损坏？）');
                 return;
@@ -187,8 +162,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
 
             // 3) 刷新页面标签
             await this.processAll();
-        } catch (err: any) {
-            logErr('全量消费失败', err.message || String(err));
+        } catch (err: unknown) {
+            logErr('全量消费失败', err instanceof Error ? err.message : String(err));
         } finally {
             isFullConsuming = false;
         }
@@ -219,8 +194,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
             if (carMap.size === 0) return;
 
             this.processPage(carMap);
-        } catch (err: any) {
-            logErr('处理页面失败', err.message || String(err));
+        } catch (err: unknown) {
+            logErr('处理页面失败', err instanceof Error ? err.message : String(err));
         }
     }
 

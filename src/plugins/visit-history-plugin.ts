@@ -14,7 +14,12 @@
  * `__localStorage.jhs_visit_history` 随 WebDav/本地 JSON 导出；导入时写回 localStorage。
  */
 import { isJavdbSite } from '../constants/site';
+
+import { TaskSupervisor } from '../core/task-supervisor';
+import type { PageType } from '../core/page-context';
+
 import { BasePlugin } from './base-plugin';
+
 import visitHistoryCssRaw from '../styles/visit-history-tooltip.css?raw';
 
 /** localStorage 键：path(pathname+search) → 访问时间戳(ms)。随 WebDav/JSON 备份。 */
@@ -39,8 +44,9 @@ const TIER_CLASS: Record<VisitTier, string> = {
 const ALL_TIER_CLASSES = Object.values(TIER_CLASS).join(' ');
 
 export class VisitHistoryPlugin extends BasePlugin {
+    private supervisor = new TaskSupervisor();
     private tooltipEl: HTMLElement | null = null;
-    private tooltipTimer: ReturnType<typeof setInterval> | null = null;
+    private tooltipTimer: number | null = null;
     /** 当前悬浮的 path（定时器内重读 history 用）。 */
     private activePath: string | null = null;
     private dismissListenerBound = false;
@@ -48,6 +54,11 @@ export class VisitHistoryPlugin extends BasePlugin {
 
     getName(): string {
         return 'VisitHistoryPlugin';
+    }
+
+    /** 仅在详情页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['detail'];
     }
 
     async initCss(): Promise<string> {
@@ -58,7 +69,7 @@ export class VisitHistoryPlugin extends BasePlugin {
         if (!isJavdbSite) return;
         this.recordVisit();
         this.bindPageshow();
-        if ((window as any).isDetailPage) {
+        if (window.isDetailPage) {
             this.injectMetaLinkTooltips();
         }
     }
@@ -69,10 +80,10 @@ export class VisitHistoryPlugin extends BasePlugin {
     private bindPageshow(): void {
         if (this.pageshowBound) return;
         this.pageshowBound = true;
-        window.addEventListener('pageshow', (event: PageTransitionEvent) => {
+        this.supervisor.addEventListener(window, 'pageshow', (event: Event) => {
             if (!isJavdbSite) return;
             this.recordVisit();
-            if (event.persisted && (window as any).isDetailPage) {
+            if ((event as PageTransitionEvent).persisted && window.isDetailPage) {
                 this.injectMetaLinkTooltips(true);
             }
         });
@@ -143,8 +154,8 @@ export class VisitHistoryPlugin extends BasePlugin {
             };
             el.__jhsVisitEnter = onEnter;
             el.__jhsVisitLeave = onLeave;
-            el.addEventListener('mouseenter', onEnter);
-            el.addEventListener('mouseleave', onLeave);
+            this.supervisor.addEventListener(el, 'mouseenter', onEnter);
+            this.supervisor.addEventListener(el, 'mouseleave', onLeave);
         });
     }
 
@@ -168,8 +179,8 @@ export class VisitHistoryPlugin extends BasePlugin {
         }
         if (!this.dismissListenerBound) {
             this.dismissListenerBound = true;
-            window.addEventListener('scroll', () => this.hideVisitTooltip(), true);
-            window.addEventListener('resize', () => this.hideVisitTooltip(), true);
+            this.supervisor.addEventListener(window, 'scroll', () => this.hideVisitTooltip(), { capture: true });
+            this.supervisor.addEventListener(window, 'resize', () => this.hideVisitTooltip(), { capture: true });
         }
         return this.tooltipEl;
     }
@@ -216,7 +227,7 @@ export class VisitHistoryPlugin extends BasePlugin {
         // 首帧量宽后再夹紧水平（update 已设 left，文案变长时定时器会再调）
         update();
         if (this.tooltipTimer) clearInterval(this.tooltipTimer);
-        this.tooltipTimer = setInterval(update, TICK_MS);
+        this.tooltipTimer = this.supervisor.setInterval(update, TICK_MS);
     }
 
     private hideVisitTooltip(): void {
@@ -230,6 +241,10 @@ export class VisitHistoryPlugin extends BasePlugin {
             this.tooltipEl.textContent = '';
             this.tooltipEl.classList.remove(...ALL_TIER_CLASSES.split(' '));
         }
+    }
+
+    destroy(): void {
+        this.supervisor.abort();
     }
 
     /**

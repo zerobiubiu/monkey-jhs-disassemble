@@ -171,13 +171,21 @@ export function syncToIndexedDB(): void {
     }
 }
 
+/** IndexedDB 备份数据结构。 */
+interface BackupData {
+    readingStatus?: string[];
+    ratings?: Record<string, number>;
+    lastUris?: Record<string, { path: string; timestamp: number }>;
+    _updatedAt?: string;
+}
+
 /** 从 IndexedDB 合并恢复数据（逐字段合并策略）。对应原 L183-259。 */
 export async function restoreFromIndexedDB(): Promise<boolean> {
     try {
         const db = await openJhsDB();
         const tx = db.transaction(JHS_STORE_NAME, 'readonly');
         const store = tx.objectStore(JHS_STORE_NAME);
-        const data = await new Promise<any>((resolve, reject) => {
+        const data = await new Promise<BackupData | undefined>((resolve, reject) => {
             const req = store.get(BACKUP_KEY);
             req.onsuccess = () => resolve(req.result);
             req.onerror = reject;

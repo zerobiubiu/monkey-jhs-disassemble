@@ -10,13 +10,11 @@
 // 详见 doc/ 目录下的迁移文档。
 
 import './core/libs';
+
+// 常量
 import { isJavdbSite, isMissavSite } from './constants/site';
-import loadingCssRaw from './styles/loading.css?raw';
-import viewerCssRaw from './styles/viewer.css?raw';
-import loggerCssRaw from './styles/logger.css?raw';
-import javdbSiteCssRaw from './styles/javdb-site.css?raw';
-import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
-import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
+
+// 核心模块
 import { injectCss } from './core/style-injector';
 import { loadGfriends, filetreeDb } from './core/gfriends';
 import { WebDavClient } from './core/webdav';
@@ -24,7 +22,6 @@ import { createLoading } from './core/loading';
 import { show } from './core/toast';
 import { VIEWER_CONFIG } from './core/viewer';
 import { jsxToString } from './core/jsx-to-string';
-import { TemporaryImageContainer } from './components/temporary-image-container';
 import { Logger } from './core/logger';
 import { StorageManager } from './core/storage-manager';
 import { CommonUtil } from './core/common-util';
@@ -32,6 +29,15 @@ import { GmHttp } from './core/gm-http';
 import { setupLayerWrapper } from './core/layer-wrapper';
 import { setupTooltip } from './core/tooltip';
 import { encryptCredential, decryptCredential } from './core/webdav-crypto';
+import { featureFlags } from './core/feature-flags';
+import { registerDiagnosticsMenu } from './core/plugin-diagnostics';
+import { initPageContext } from './core/page-context';
+import { storageRevision } from './core/storage-revision';
+
+// 组件
+import { TemporaryImageContainer } from './components/image-preview/temporary-image-container';
+
+// 插件
 import { PluginManager } from './plugins/plugin-manager';
 import { DetailPagePlugin } from './plugins/detail-page-plugin';
 import { HighlightMagnetPlugin } from './plugins/highlight-magnet-plugin';
@@ -68,12 +74,21 @@ import { CarListReaderPlugin } from './plugins/car-status-sync/car-list-reader-p
 import { VisitHistoryPlugin } from './plugins/visit-history-plugin';
 import { MissavStatusTagPlugin } from './plugins/car-status-sync/missav-status-tag-plugin';
 import { MissavQuickCopyPlugin } from './plugins/missav-quick-copy-plugin';
-import { featureFlags } from './core/feature-flags';
 import { TranslatePlugin } from './plugins/translate-plugin';
 import { ScreenShotPlugin } from './plugins/screenshot-plugin';
 import { MagnetHubPlugin } from './plugins/magnet-hub-plugin';
 import { ImageRecognitionPlugin } from './plugins/image-recognition-plugin';
 import { Fc2By123AvPlugin } from './plugins/fc2-by-123av-plugin';
+
+// 样式（最后注入）
+import loadingCssRaw from './styles/loading.css?raw';
+import viewerCssRaw from './styles/viewer.css?raw';
+import loggerCssRaw from './styles/logger.css?raw';
+import javdbSiteCssRaw from './styles/javdb-site.css?raw';
+import commonToolbarCssRaw from './styles/common-toolbar.css?raw';
+import aNormalButtonsCssRaw from './styles/a-normal-buttons.css?raw';
+import accessibilityCssRaw from './styles/accessibility.css?raw';
+import designTokensCssRaw from './styles/design-tokens.css?raw';
 
 // ===== 全局 Window 接口扩展 =====
 // 声明启动序列挂载到 window 的运行时属性类型。
@@ -91,7 +106,7 @@ declare global {
         clean_cacheSettingObj: () => void;
         loading: typeof createLoading;
         show: typeof show;
-        showImageViewer: (src: any, alt?: string) => void;
+        showImageViewer: (src: string | Element, alt?: string) => void;
         clog: Logger;
         encryptCredential: typeof encryptCredential;
         decryptCredential: typeof decryptCredential;
@@ -131,14 +146,19 @@ if (isJavdbSite) {
 }
 injectCss(aNormalButtonsCssRaw);
 injectCss(commonToolbarCss);
+injectCss(accessibilityCssRaw);
+injectCss(designTokensCssRaw);
 
 // ===== 运行时全局挂载（utils/gmHttp/storageManager/gt/lt/De） =====
-unsafeWindow.utils = window.utils = new CommonUtil();
-unsafeWindow.gmHttp = window.gmHttp = new GmHttp();
-unsafeWindow.storageManager = window.storageManager = new StorageManager();
-unsafeWindow.loadGfriends = window.loadGfriends = loadGfriends;
-unsafeWindow.filetreeDb = window.filetreeDb = filetreeDb;
-unsafeWindow.WebDavClient = window.WebDavClient = WebDavClient;
+window.utils = new CommonUtil();
+unsafeWindow.utils = window.utils;
+window.gmHttp = new GmHttp();
+window.storageManager = new StorageManager();
+window.loadGfriends = loadGfriends;
+unsafeWindow.loadGfriends = window.loadGfriends;
+window.filetreeDb = filetreeDb;
+unsafeWindow.filetreeDb = window.filetreeDb;
+window.WebDavClient = WebDavClient;
 
 // ===== BroadcastChannel 跨标签页刷新/清缓存（原 G → refreshChannel） =====
 const refreshChannel = new BroadcastChannel('channel-refresh');
@@ -172,7 +192,8 @@ unsafeWindow.show = window.show = show;
         }, delay);
     }
     injectCss(viewerCssRaw);
-    window.showImageViewer = function (src: any, alt: string = '') {
+    window.showImageViewer = function (src: string | Element, alt: string = '') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from untyped $
         let container: any = null;
         let isTemporary = false;
         if (typeof src == 'string' || src instanceof String) {
@@ -183,6 +204,7 @@ unsafeWindow.show = window.show = show;
         } else {
             container = $(src);
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Viewer.js instance, untyped global
         const viewerRef: { current: any } = { current: null };
         const viewerOptions = VIEWER_CONFIG({
             container,
@@ -190,7 +212,7 @@ unsafeWindow.show = window.show = show;
             resetOverflow,
             viewerRef
         });
-        viewerRef.current = new Viewer(container[0], viewerOptions);
+        viewerRef.current = new Viewer(container[0], viewerOptions as unknown as Viewer.Options);
         viewerRef.current.show();
     };
 })();
@@ -258,18 +280,18 @@ unsafeWindow.show = window.show = show;
 // ===== Tooltip =====
 setupTooltip();
 
-// WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 (window as any).encryptCredential / .decryptCredential 访问
-unsafeWindow.encryptCredential = window.encryptCredential = encryptCredential;
-unsafeWindow.decryptCredential = window.decryptCredential = decryptCredential;
+// WebDav 加密/解密辅助函数挂载到 window，供 setting-plugin 以 window.encryptCredential / .decryptCredential 访问
+window.encryptCredential = encryptCredential;
+window.decryptCredential = decryptCredential;
 setupLayerWrapper();
 
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 35 插件（javdb 33 + missav 2） =====
+// ===== 启动序列：PluginManager + 注册 40 插件（javdb 38 [33 常驻 + 5 feature-flagged] + missav 2） =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
-    unsafeWindow.pluginManager = manager;
+    // pluginManager 仅通过模块级 const + this.pluginManager 内部访问，不暴露到 unsafeWindow
     if (isJavdbSite) {
         manager.register(ListPagePlugin);
         manager.register(AutoPagePlugin);
@@ -305,11 +327,11 @@ const pluginManager: PluginManager = (function () {
         manager.register(CarListReaderPlugin);
         manager.register(VisitHistoryPlugin);
         // 升级新插件（feature flag 可插拔）
-        if (featureFlags.translatePlugin) manager.register(TranslatePlugin);
-        if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin);
-        if (featureFlags.magnetHubPlugin) manager.register(MagnetHubPlugin);
-        if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin);
-        if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin);
+        if (featureFlags.translatePlugin) manager.register(TranslatePlugin, 'translatePlugin');
+        if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin, 'screenShotPlugin');
+        if (featureFlags.magnetHubPlugin) manager.register(MagnetHubPlugin, 'magnetHubPlugin');
+        if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin, 'imageRecognitionPlugin');
+        if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin, 'fc2By123AvPlugin');
     }
     // MissAV 站点单独注册 missav 专属插件（不注册 javdb 的 33 个插件）
     if (isMissavSite) {
@@ -319,30 +341,25 @@ const pluginManager: PluginManager = (function () {
     return manager;
 })();
 
-// ===== 启动序列：页面判定 + storage 合并 + 插件执行 =====
+// ===== 启动序列：页面判定（先于 CSS/插件）+ storage 迁移 + 插件执行 =====
 (async function () {
+    // 页面判定先于 processCss（doc/139 Runtime V2：PluginManager 按 pageType 过滤）
+    const ctx = initPageContext();
+    window.isDetailPage = ctx.isDetailPage;
+    window.isListPage = ctx.isListPage;
+    window.isFc2Page = ctx.isFc2Page;
     await pluginManager.processCss();
-    window.isDetailPage = (function () {
-        const href = window.location.href;
-        return href.split('?')[0].includes('/v/');
-    })();
-    window.isListPage = (function () {
-        const href = window.location.href;
-        return $('.movie-list').length > 0 || href.includes('advanced_search');
-    })();
-    window.isFc2Page = (function () {
-        const href = window.location.href;
-        return href.includes('advanced_search?type=3') || href.includes('advanced_search?type=100');
-    })();
-    // storageManager 合并操作仅在 javdb 站点执行（missav 站点无 jhs 数据，跳过避免创建空库）
+    // 版本化数据迁移（doc/135）：首次升级执行全部迁移，后续启动仅读取版本号（~1ms）
     if (isJavdbSite) {
-        await storageManager.merge_table_name();
-        await storageManager.clean_no_url_blacklist();
-        await storageManager.async_merge_other();
-        await storageManager.merge_blacklist();
-        await storageManager.merge_favoriteActress();
-        await storageManager.merge_tow_car_list_table();
+        await storageManager.runMigrations();
     }
+    // 存储修订号追踪（doc/144 Storage V2：跨标签页缓存失效）
+    storageRevision.init();
+    storageRevision.onRemoteChange(() => {
+        storageManager.clearCarListCache();
+        storageManager.clearSettingCache();
+        storageManager.clearFilterActorActressCarListCache();
+    });
     if (isJavdbSite && /(^|;)\s*locale\s*=\s*en\s*($|;)/i.test(document.cookie)) {
         show.error('请切换到中文语言下才可正常使用本脚本', {
             duration: -1
@@ -351,9 +368,13 @@ const pluginManager: PluginManager = (function () {
     await pluginManager.processPlugins();
     // 自动备份：插件执行后触发（每天第一次打开 / 每次打开，由设置控制）
     if (isJavdbSite) {
-        const settingPlugin = pluginManager.getBean('SettingPlugin') as SettingPlugin;
+        const settingPlugin = pluginManager.getBean('SettingPlugin');
         if (settingPlugin) {
-            settingPlugin.autoBackup().then();
+            settingPlugin.autoBackup().catch((err: unknown) => window.clog.error('自动备份失败', err));
         }
     }
+    // 插件诊断菜单（doc/133 提取至 src/core/plugin-diagnostics.ts）
+    registerDiagnosticsMenu(pluginManager);
+    // 页面卸载时销毁所有插件资源（doc/139 Runtime V2）
+    window.addEventListener('beforeunload', () => pluginManager.destroyAll());
 })();

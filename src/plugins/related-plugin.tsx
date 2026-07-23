@@ -29,18 +29,21 @@
  * RelatedItem/RelatedLoadMore/RelatedLoading）已转 TSX 原生 React 组件，
  * 调用点改 jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
  */
-import { BasePlugin } from './base-plugin';
-import { fetchRelatedCollections as K } from '../constants/api';
+import { fetchRelatedCollections as K, type RelatedCollection } from '../constants/api';
 import { YES, NO } from '../constants/status';
+
 import { jsxToString } from '../core/jsx-to-string';
-import { RelatedContainers } from '../components/related-containers';
-import { RelatedEmpty } from '../components/related-empty';
-import { RelatedEnd } from '../components/related-end';
-import { RelatedError } from '../components/related-error';
-import { RelatedHeader } from '../components/related-header';
-import { RelatedItem } from '../components/related-item';
-import { RelatedLoadMore } from '../components/related-load-more';
-import { RelatedLoading } from '../components/related-loading';
+
+import { BasePlugin } from './base-plugin';
+
+import { RelatedItem } from '../components/related/related-item';
+
+import { SectionContainers } from '../components/shared/section-containers';
+import { SectionEndMessage } from '../components/shared/section-end-message';
+import { SectionErrorMessage } from '../components/shared/section-error-message';
+import { SectionHeader } from '../components/shared/section-header';
+import { SectionLoadMore } from '../components/shared/section-load-more';
+import { SectionStatusMessage } from '../components/shared/section-status-message';
 
 export class RelatedPlugin extends BasePlugin {
     /** 合集条目序号（渲染时自增）。 */
@@ -60,18 +63,22 @@ export class RelatedPlugin extends BasePlugin {
      * @param movieId 影片 ID（JavDb 为 URL 末段字符串）
      * @returns 无返回值；首次展开或设置已展开时会异步触发 fetchAndDisplayRelateds
      */
-    async showRelated(container: any, movieId: any): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from $()
+    async showRelated(container: any, movieId: string): Promise<void> {
         const isExpanded = await storageManager.getSetting('enableLoadRelated', NO);
         const target = container || $('#magnets-content');
         target.append(
             jsxToString(
-                <RelatedHeader
+                <SectionHeader
+                    title="相关清单"
+                    foldId="relatedFold"
+                    linkColor="#1897ff"
                     foldText={isExpanded === YES ? '折叠' : '展开'}
                     iconText={isExpanded === YES ? '▲' : '▼'}
                 />
             )
         );
-        $('#relatedFold').on('click', (event: any) => {
+        $('#relatedFold').on('click', (event: Event) => {
             event.preventDefault();
             event.stopPropagation();
             const toggleText = $('#relatedFold .toggle-text');
@@ -93,7 +100,7 @@ export class RelatedPlugin extends BasePlugin {
                 storageManager.saveSettingItem('enableLoadRelated', NO);
             }
         });
-        target.append(jsxToString(<RelatedContainers />));
+        target.append(jsxToString(<SectionContainers containerId="relatedContainer" footerId="relatedFooter" />));
         if (isExpanded === YES) {
             await this.fetchAndDisplayRelateds(movieId);
         }
@@ -105,25 +112,24 @@ export class RelatedPlugin extends BasePlugin {
      * @param movieId 影片 ID
      * @returns 无返回值；签名过期等异常会被 catch 并提示，不会向外抛出
      */
-    async fetchAndDisplayRelateds(movieId: any): Promise<void> {
+    async fetchAndDisplayRelateds(movieId: string): Promise<void> {
         const container = $('#relatedContainer');
         const footer = $('#relatedFooter');
-        container.append(jsxToString(<RelatedLoading />));
+        container.append(jsxToString(<SectionStatusMessage text="获取清单中..." id="relatedLoading" />));
         const limit = 20;
-        let list: any = null;
+        let list: RelatedCollection[] | null = null;
         try {
             list = await K(movieId, 1, limit);
-        } catch (err: any) {
-            if (err.toString().includes('簽名已過期')) {
+        } catch (err: unknown) {
+            if (String(err).includes('簽名已過期')) {
                 show.error('生成签名失败, 请检查系统时间及时区是否正确!');
             }
             clog.error('获取清单失败:', err);
-            console.error('获取清单失败:', err);
         } finally {
             $('#relatedLoading').remove();
         }
         if (!list) {
-            container.append(jsxToString(<RelatedError />));
+            container.append(jsxToString(<SectionErrorMessage text="获取清单失败" retryId="retryFetchRelateds" linkColor="#1897ff" />));
             $('#retryFetchRelateds').on('click', async () => {
                 $('#retryFetchRelateds').parent().remove();
                 await this.fetchAndDisplayRelateds(movieId);
@@ -131,22 +137,22 @@ export class RelatedPlugin extends BasePlugin {
             return;
         }
         if (list.length === 0) {
-            container.append(jsxToString(<RelatedEmpty />));
+            container.append(jsxToString(<SectionStatusMessage text="无清单" />));
             return;
         }
         this.displayRelateds(list, container);
         if (list.length === limit) {
-            footer.html(jsxToString(<RelatedLoadMore />));
+            footer.html(jsxToString(<SectionLoadMore loadMoreId="loadMoreRelateds" endId="relatedEnd" text="加载更多清单" endText="已加载全部清单" />));
             let page = 1;
             const loadMoreBtn = $('#loadMoreRelateds');
             loadMoreBtn.on('click', async () => {
-                let moreList: any;
+                let moreList: RelatedCollection[] | undefined;
                 loadMoreBtn.text('加载中...').prop('disabled', true);
                 page++;
                 try {
                     moreList = await K(movieId, page, limit);
-                } catch (err: any) {
-                    console.error('加载更多清单失败:', err);
+                } catch (err: unknown) {
+                    clog.error('加载更多清单失败:', err);
                 } finally {
                     loadMoreBtn.text('加载失败, 请点击重试').prop('disabled', false);
                 }
@@ -161,7 +167,7 @@ export class RelatedPlugin extends BasePlugin {
                 }
             });
         } else {
-            footer.html(jsxToString(<RelatedEnd />));
+            footer.html(jsxToString(<SectionEndMessage text="已加载全部清单" />));
         }
     }
 
@@ -171,9 +177,10 @@ export class RelatedPlugin extends BasePlugin {
      * @param list 清单数组（来自 fetchRelatedCollections，字段见 RelatedCollection）
      * @param container 清单挂载容器（#relatedContainer）
      */
-    displayRelateds(list: any, container: any): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from $()
+    displayRelateds(list: RelatedCollection[], container: any): void {
         if (list.length) {
-            list.forEach((item: any) => {
+            list.forEach((item) => {
                 const html = jsxToString(
                     <RelatedItem
                         index={this.floorIndex++}

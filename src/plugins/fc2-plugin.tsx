@@ -32,7 +32,7 @@ import { jsxToString } from '../core/jsx-to-string';
 import { BasePlugin } from './base-plugin';
 
 import { Fc2DetailDialog } from '../components/fc2/fc2-detail-dialog';
-import { Fc2MagnetItem } from '../components/fc2/fc2-magnet-item';
+import { Fc2MagnetItem, type Fc2MagnetData } from '../components/fc2/fc2-magnet-item';
 import { Fc2MovieDetail } from '../components/fc2/fc2-movie-detail';
 import { MovieError } from '../components/movie/movie-error';
 import { ScreenLoadingPlaceholder } from '../components/screen/screen-loading-placeholder';
@@ -104,7 +104,7 @@ export class Fc2Plugin extends BasePlugin {
             area: utils.getResponsiveArea(['70%', '90%']),
             skin: 'movie-detail-layer',
             scrollbar: false,
-            success: (_layerEl: any, layerIndex: number) => {
+            success: (_layerEl: unknown, layerIndex: number) => {
                 this.loadData(movieId, carNum);
                 $('#favoriteBtn').on('click', async () => {
                     const names = $('#data-actress').text();
@@ -119,8 +119,8 @@ export class Fc2Plugin extends BasePlugin {
                     window.refresh();
                     layer.closeAll();
                 });
-                $('#filterBtn').on('click', (event: any) => {
-                    utils.q(event, `是否屏蔽${carNum}?`, async () => {
+                $('#filterBtn').on('click', (event: Event) => {
+                    utils.q(event as MouseEvent, `是否屏蔽${carNum}?`, async () => {
                         const names = $('#data-actress').text();
                         const publishTime = $('#data-releaseDate').text();
                         await storageManager.saveCar({
@@ -163,12 +163,12 @@ export class Fc2Plugin extends BasePlugin {
                     window.refresh();
                     layer.closeAll();
                 });
-                $('#search-subtitle-btn').on('click', (event: any) =>
+                $('#search-subtitle-btn').on('click', (event: Event) =>
                     utils.openPage(
                         `https://subtitlecat.com/index.php?search=${carNum}`,
                         carNum,
                         false,
-                        event
+                        event as MouseEvent
                     )
                 );
                 $('#xunLeiSubtitleBtn').on('click', () =>
@@ -209,8 +209,8 @@ export class Fc2Plugin extends BasePlugin {
         this.handleMovieDetail(movieId);
         this.handleLongImg(carNumWithoutPrefix);
         this.handleMagnets(movieId);
-        this.getBean('ReviewPlugin')?.showReview(movieId, $('#reviews-content')).then();
-        this.getBean('RelatedPlugin')?.showRelated($('#related-content'), movieId).then();
+        this.getBean('ReviewPlugin')?.showReview(String(movieId), $('#reviews-content')).then();
+        this.getBean('RelatedPlugin')?.showRelated($('#related-content'), String(movieId)).then();
     }
 
     /**
@@ -218,7 +218,7 @@ export class Fc2Plugin extends BasePlugin {
      */
     handleMovieDetail(movieId: string | number): void {
         fetchMovieDetail(movieId)
-            .then((detail: any) => {
+            .then((detail) => {
                 const actors = detail.actors || [];
                 const imgList = detail.imgList || [];
                 let actressNames = '';
@@ -239,10 +239,10 @@ export class Fc2Plugin extends BasePlugin {
                 // TranslatePlugin 项目未迁移，缺失时静默失败
                 this.getBean('TranslatePlugin')?.translate(detail.carNum, false)?.then();
             })
-            .catch((err: any) => {
+            .catch((err: unknown) => {
                 clog.error(err);
                 $('.movie-info-container').html(
-                    jsxToString(<MovieError message={err.message} />)
+                    jsxToString(<MovieError message={err instanceof Error ? err.message : String(err)} />)
                 );
             });
     }
@@ -275,9 +275,9 @@ export class Fc2Plugin extends BasePlugin {
         (async () => {
             const url = `${API_BASE}/v1/movies/${movieId}/magnets`;
             const headers = { jdSignature: await reBuildSignature() };
-            return (await gmHttp.get(url, undefined, headers)).data.magnets;
+            return ((await gmHttp.get(url, undefined, headers)) as { data: { magnets: Fc2MagnetData[] } }).data.magnets;
         })()
-            .then((magnets: any[]) => {
+            .then((magnets: Fc2MagnetData[]) => {
                 let magnetsHtml = '';
                 if (magnets.length > 0) {
                     for (let i = 0; i < magnets.length; i++) {
@@ -295,10 +295,10 @@ export class Fc2Plugin extends BasePlugin {
                 }
                 $('#magnets-content').html(magnetsHtml);
             })
-            .catch((err: any) => {
+            .catch((err: unknown) => {
                 clog.error(err);
                 $('#magnets-content').html(
-                    jsxToString(<MovieError message={err.message} />)
+                    jsxToString(<MovieError message={err instanceof Error ? err.message : String(err)} />)
                 );
             });
     }

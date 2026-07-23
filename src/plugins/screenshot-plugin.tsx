@@ -79,7 +79,7 @@ export class ScreenShotPlugin extends BasePlugin {
         const url = `https://javstore.net/search?q=${carNum.toLowerCase().replace('fc2-', '')}`;
         clog.log('正在解析缩略图:', url);
         const html = await gmHttp.get(url);
-        const $dom = utils.htmlTo$dom(html);
+        const $dom = utils.htmlTo$dom(String(html));
         const tempCarNum = carNum
             .toLowerCase()
             .replace(/fc2-(ppv-)?/g, '')
@@ -104,7 +104,7 @@ export class ScreenShotPlugin extends BasePlugin {
             return null;
         }
         const detailPageHtml = await gmHttp.get(detailPageUrl);
-        const $detailPageDom = utils.htmlTo$dom(detailPageHtml);
+        const $detailPageDom = utils.htmlTo$dom(String(detailPageHtml));
         const imgUrl =
             $detailPageDom.find("a:contains('CLICK HERE')").attr('href') ||
             $detailPageDom.find("img[src*='_s.jpg']").attr('src');
@@ -120,24 +120,24 @@ export class ScreenShotPlugin extends BasePlugin {
             $('.screen-container').html(
                 jsxToString(<ScreenShotImage src={imgUrl} alt={title} />)
             );
-            $('.screen-container').on('click', (event: any) => {
+            $('.screen-container').on('click', (event: Event) => {
                 event.stopPropagation();
                 event.preventDefault();
-                window.showImageViewer(event.currentTarget);
+                window.showImageViewer(event.currentTarget as Element);
             });
         }
     }
 
-    showErrorFallback(carNum: string, error: any): void {
+    showErrorFallback(carNum: string, error: unknown): void {
         clog.error(
             '获取缩略图失败:',
-            error?.message?.substring?.(0, 100) ?? error
+            error instanceof Error ? error.message.substring(0, 100) : String(error)
         );
         $('.screen-container')
             .html(jsxToString(<ScreenShotFallback carNum={carNum} />))
             .off('click', '.retry-link')
             .off('click', '.check-link')
-            .on('click', '.retry-link', async (e: any) => {
+            .on('click', '.retry-link', async (e: Event) => {
                 e.stopPropagation();
                 e.preventDefault();
                 $('.screen-container').html(jsxToString(<ScreenReloading />));
@@ -148,7 +148,7 @@ export class ScreenShotPlugin extends BasePlugin {
                     this.showErrorFallback(carNum, err);
                 }
             })
-            .on('click', '.check-link', async (e: any) => {
+            .on('click', '.check-link', async (e: Event) => {
                 e.stopPropagation();
                 e.preventDefault();
                 window.open(`https://javstore.net/search?q=${carNum}`, '_blank');

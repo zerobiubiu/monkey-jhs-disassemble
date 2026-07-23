@@ -12,11 +12,17 @@
  * ../constants 引入（currentHref/isJavdbSite/YES/NO）。
  *
  * $ / utils / storageManager / clog / gmHttp 已由 ../types/globals.d.ts 声明为
- * any；运行时挂载到 window 的 isListPage 以 (window as any).isListPage 访问；
+ * any；运行时挂载到 window 的 isListPage 以 window.isListPage 访问；
  * 内联 CSS/HTML 模板字符串原样保留。
  */
 import { currentHref, isJavdbSite } from '../constants/site';
+
+import type { PageType } from '../core/page-context';
+import { TaskSupervisor } from '../core/task-supervisor';
+import { PaginationStateMachine } from '../core/pagination-state';
+
 import { BasePlugin } from './base-plugin';
+
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
 
 /** 单页元信息（滚动同步当前页码用）。 */
@@ -42,10 +48,8 @@ export class AutoPagePlugin extends BasePlugin {
     loader: HTMLDivElement | null = null;
     /** 下一页 URL；无更多时为 null/undefined。 */
     nextUrl: string | null | undefined = undefined;
-    /** 是否还有后续页可加载。 */
-    hasMore = false;
-    /** 是否正在请求下一页（防重入）。 */
-    isLoading = false;
+    /** 分页状态机：统一管理 hasMore/isLoading/phase 状态转换。 */
+    private pagination = new PaginationStateMachine();
     /** 「加载全部」浮动按钮节点（有下一页时始终显示）。 */
     loadAllBtn: HTMLDivElement | null = null;
     /** 是否正在自动加载全部后续页（防重入）。 */
@@ -55,6 +59,8 @@ export class AutoPagePlugin extends BasePlugin {
      * 设置项 autoPageLoadMode，缺省 auto。瀑布流本身常开。
      */
     loadMode: 'auto' | 'click' = 'auto';
+    /** 统一生命周期管理器：定时器、事件监听器、Observer 的注册与清理。 */
+    private supervisor = new TaskSupervisor();
 
     /**
      * 返回插件名，供 PluginManager 注册去重。对应原 L9077-9079。
@@ -63,6 +69,16 @@ export class AutoPagePlugin extends BasePlugin {
      */
     getName(): string {
         return 'AutoPagePlugin';
+    }
+
+    /** 销毁插件：中止所有注册的定时器与事件监听器。 */
+    destroy(): void {
+        this.supervisor.abort();
+    }
+
+    /** 仅在列表页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list'];
     }
 
     /**
@@ -114,7 +130,7 @@ export class AutoPagePlugin extends BasePlugin {
         const selectorConfig = this.getSelector();
         this.container = document.querySelector(selectorConfig.boxSelector);
         if (!this.container) {
-            console.error('没有找到容器节点,停止瀑布流!');
+            clog.error('没有找到容器节点,停止瀑布流!');
             return;
         }
         const container = this.container;
@@ -127,16 +143,17 @@ export class AutoPagePlugin extends BasePlugin {
             top: 0,
             url: window.location.href
         });
-        loader.addEventListener('click', () => {
+        this.supervisor.addEventListener(loader, 'click', () => {
             // 错误重试 / 点按钮加载下一页
             if (
                 loader.classList.contains('waterfall-error') ||
                 loader.classList.contains('waterfall-click')
             ) {
+                this.pagination.retry();
                 this.loadNextPage().then();
             }
         });
-        window.addEventListener('scroll', () => {
+        this.supervisor.addEventListener(window, 'scroll', () => {
             this.checkLoad();
             this.checkScrollPosition();
         });
@@ -144,14 +161,14 @@ export class AutoPagePlugin extends BasePlugin {
             selectorConfig.nextPageSelector
         );
         this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.href;
-        this.hasMore = !!this.nextUrl;
+        this.pagination.init(!!this.nextUrl);
         // 瀑布流常开；触底方式由 autoPageLoadMode 控制
         const mode = await storageManager.getSetting('autoPageLoadMode', 'auto');
         this.loadMode = mode === 'click' ? 'click' : 'auto';
-        setTimeout(() => {
+        this.supervisor.setTimeout(() => {
             this.checkLoad();
         }, 1000);
-        if (!this.hasMore) {
+        if (!this.pagination.hasMore) {
             this.setState('waterfall-no-more', '已经到底了');
         } else {
             // 有下一页时始终显示「加载全部」
@@ -166,10 +183,10 @@ export class AutoPagePlugin extends BasePlugin {
      * @returns Promise<void>；抓取失败时切换错误态，不抛出
      */
     async loadNextPage(): Promise<void> {
-        if (this.isLoading || !this.nextUrl) {
+        if (!this.pagination.canLoad || !this.nextUrl) {
             return;
         }
-        this.isLoading = true;
+        this.pagination.startLoading();
         this.setState('waterfall-loading', '加载中...');
         const selectorConfig = this.getSelector();
         try {
@@ -178,8 +195,12 @@ export class AutoPagePlugin extends BasePlugin {
             if (currentHref.includes('c11')) {
                 maxPage = 30;
             }
-            if ((isJavdbSite && pageNum > maxPage) || currentHref.includes('month')) {
-                const beyond60Plugin = this.getBean('Beyond60Plugin');
+            if ((isJavdbSite && Number(pageNum) > maxPage) || currentHref.includes('month')) {
+                // Beyond60Plugin 从未注册（忠实死路径），类型仅为编译通过
+                const beyond60Plugin = this.getBean('Beyond60Plugin') as (BasePlugin & {
+                    handleBeyond60(url: string): Promise<{ html: string; nextUrl: string; hasMore: boolean }>;
+                    createPagination(pageNum: number, hasMore: boolean): string;
+                }) | undefined;
                 if (beyond60Plugin) {
                     const {
                         html,
@@ -195,13 +216,13 @@ export class AutoPagePlugin extends BasePlugin {
                         });
                         $('.movie-list').append(html);
                     }
-                    this.hasMore = beyondHasMore;
+                    this.pagination.loadSuccess(beyondHasMore);
                     this.nextUrl = beyondNextUrl;
-                    const paginationHtml = beyond60Plugin.createPagination(pageNum, beyondHasMore);
+                    const paginationHtml = beyond60Plugin.createPagination(Number(pageNum), beyondHasMore);
                     $('.pagination').html(paginationHtml);
                     // 成功且仍可翻页时退出 loading，允许 click 模式下次触底重新显示按钮。
                     this.setState('', '');
-                    if (!this.hasMore) {
+                    if (!this.pagination.hasMore) {
                         this.setState('waterfall-no-more', '已经到底了');
                     }
                     return;
@@ -209,13 +230,13 @@ export class AutoPagePlugin extends BasePlugin {
             }
             const responseHtml = await gmHttp.get(this.nextUrl);
             clog.log('请求下一页内容:', this.nextUrl);
-            const $dom = utils.htmlTo$dom(responseHtml);
+            const $dom = utils.htmlTo$dom(String(responseHtml));
             const items = $dom.find(this.getSelector().requestDomItemSelector);
             const existingList = this.getBoxCarInfoList();
             const newList = this.getBoxCarInfoList(items);
             if (this.checkDuplicateCarNumbers(existingList, newList)) {
                 this.nextUrl = null;
-                this.hasMore = false;
+                this.pagination.loadError();
                 this.setState(
                     'waterfall-error',
                     '翻页内容出现重复数据, 页码受JavDB限制, 已停止瀑布流'
@@ -234,21 +255,21 @@ export class AutoPagePlugin extends BasePlugin {
             $(this.getSelector().boxSelector).append(items);
             const nextLinkEl = $dom.find(selectorConfig.nextPageSelector);
             this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.attr('href');
-            this.hasMore = !!this.nextUrl;
+            this.pagination.loadSuccess(!!this.nextUrl);
             const paginationEl = $dom.find('.pagination');
             $('.pagination').replaceWith(paginationEl);
             // 成功后回到空闲态；否则 waterfall-loading 会永久阻断后续 checkLoad。
             this.setState('', '');
-            if (!this.hasMore) {
+            if (!this.pagination.hasMore) {
                 this.setState('waterfall-no-more', '已经到底了');
             }
         } catch (err) {
             clog.error('加载失败:', err);
+            this.pagination.loadError();
             this.setState('waterfall-error', '加载失败，点击重试');
         } finally {
-            this.isLoading = false;
             // 点按钮模式：本页加载完若仍在底部，再次显示「点击加载下一页」
-            if (this.loadMode === 'click' && this.hasMore && this.nextUrl) {
+            if (this.loadMode === 'click' && this.pagination.hasMore && this.nextUrl) {
                 this.checkLoad();
             }
         }
@@ -283,8 +304,8 @@ export class AutoPagePlugin extends BasePlugin {
         if (this.loader.getBoundingClientRect().top < window.innerHeight + this.preloadDistance) {
             if (this.loadMode === 'click') {
                 if (
-                    this.isLoading ||
-                    !this.hasMore ||
+                    this.pagination.isLoading ||
+                    !this.pagination.hasMore ||
                     !this.nextUrl ||
                     this.loader.classList.contains('waterfall-error') ||
                     this.loader.classList.contains('waterfall-loading') ||
@@ -310,9 +331,9 @@ export class AutoPagePlugin extends BasePlugin {
             this.checkLoad();
         } else if (
             this.loader &&
-            this.hasMore &&
+            this.pagination.hasMore &&
             this.nextUrl &&
-            !this.isLoading &&
+            !this.pagination.isLoading &&
             !this.loader.classList.contains('waterfall-no-more')
         ) {
             // 切到点按钮：若已在底部则显示提示
@@ -332,7 +353,7 @@ export class AutoPagePlugin extends BasePlugin {
      * @returns Promise<boolean>，true 表示禁用
      */
     async shouldDisablePaging(): Promise<boolean> {
-        if (!(window as any).isListPage) {
+        if (!window.isListPage) {
             return true;
         }
         return [
@@ -368,7 +389,7 @@ export class AutoPagePlugin extends BasePlugin {
      */
     showLoadAllBtn(): void {
         if (this.loadAllBtn) return;
-        if (!this.container || !this.hasMore) return;
+        if (!this.container || !this.pagination.hasMore) return;
         this.createLoadAllBtn();
     }
 
@@ -390,7 +411,7 @@ export class AutoPagePlugin extends BasePlugin {
         const btn = document.createElement('div');
         btn.className = 'jhs-load-all-btn';
         btn.textContent = '加载全部';
-        btn.addEventListener('click', () => {
+        this.supervisor.addEventListener(btn, 'click', () => {
             if (!this.isLoadingAll) {
                 this.loadAllPages().then();
             }
@@ -406,11 +427,11 @@ export class AutoPagePlugin extends BasePlugin {
      * 区分"页码受限停止"/"加载失败"/"全部加载完"三种结果，同步按钮文案。
      */
     async loadAllPages(): Promise<void> {
-        if (this.isLoadingAll || !this.hasMore) return;
+        if (this.isLoadingAll || !this.pagination.hasMore) return;
         this.isLoadingAll = true;
         this.updateLoadAllBtn('加载中...', true);
         try {
-            while (this.hasMore && this.nextUrl) {
+            while (this.pagination.hasMore && this.nextUrl) {
                 const before = this.pageItems.length;
                 await this.loadNextPage();
                 if (this.pageItems.length === before) break;
@@ -426,9 +447,9 @@ export class AutoPagePlugin extends BasePlugin {
                 }
             } else {
                 this.updateLoadAllBtn('✓ 已全部加载', false);
-                setTimeout(() => {
+                this.supervisor.setTimeout(() => {
                     this.loadAllBtn?.classList.add('jhs-load-all-fadeout');
-                    setTimeout(() => {
+                    this.supervisor.setTimeout(() => {
                         this.loadAllBtn?.remove();
                         this.loadAllBtn = null;
                     }, 500);

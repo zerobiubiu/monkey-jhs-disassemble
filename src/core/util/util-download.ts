@@ -39,7 +39,7 @@ export const MIME_TYPES: Record<string, string> = {
  * @param data     数据源（Blob / ArrayBuffer / TypedArray / data:URL 字符串 / 普通字符串）
  * @param filename 下载文件名（用于推断 MIME 与 a.download）
  */
-export function download(data: any, filename: string): void {
+export function download(data: BlobPart, filename: string): void {
     show.info('开始请求下载...');
     const ext = filename.split('.').pop()!.toLowerCase();
     const mimeType = MIME_TYPES[ext] || 'application/octet-stream';

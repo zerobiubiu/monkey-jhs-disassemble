@@ -10,11 +10,13 @@ export interface SiteConfig {
     getBaseUrl: () => Promise<string>;
     itemSelector: string;
     searchPath: (baseUrl: string, carNum: string) => string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     getDetailPageHref: (item: any, baseUrl: string, carNum: string) => string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     findCarNumOrTitle: (item: any) => string;
-    sourceCarNum?: any;
-    condition?: (sourceCarNum: any) => boolean;
+    sourceCarNum?: unknown;
+    condition?: (sourceCarNum: unknown) => boolean;
     initUrl?: (carNum: string) => Promise<string> | string;
     noHandle?: boolean;
-    headers?: any;
+    headers?: Record<string, string>;
 }

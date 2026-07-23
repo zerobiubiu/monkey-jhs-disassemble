@@ -1,13 +1,13 @@
 .image-hover-preview {
     position: fixed;
     display: none;
-    z-index: 9999999999; /*__Z_INDEX__*/
+    z-index: 9999999999; /* __Z_INDEX__ */
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgb(0, 0, 0, 0.15);
     overflow: hidden;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s ease; /*__TRANSITION__*/
+    transition: opacity 0.2s ease; /* __TRANSITION__ */
     background-color: #fff;
 }
 
@@ -16,8 +16,8 @@
 }
 
 .image-hover-preview img {
-    max-width: 1000px; /*__MAX_WIDTH__*/
-    max-height: 1000px; /*__MAX_HEIGHT__*/
+    max-width: 1000px; /* __MAX_WIDTH__ */
+    max-height: 1000px; /* __MAX_HEIGHT__ */
     display: block;
     object-fit: contain;
 }
@@ -29,7 +29,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.03);
+    background: rgb(0, 0, 0, 0.03);
     pointer-events: none;
 }
 

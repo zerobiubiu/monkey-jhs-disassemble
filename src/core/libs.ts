@@ -47,13 +47,12 @@ import 'toastify-js/src/toastify.css';
 import 'viewerjs/dist/viewer.min.css';
 import 'tabulator-tables/dist/css/tabulator_semanticui.min.css';
 
-// 5. 挂全局（供历史全局引用；window 在 TS 中需 as any，因 Window 接口未列这些字段）
-const win = window as any;
-win.layer = layer;
-win.Tabulator = TabulatorFull;
-win.Toastify = Toastify;
-win.localforage = localforage;
-win.Viewer = Viewer;
-win.md5 = md5;
+// 5. 挂全局（供历史全局引用；Window 接口已在 globals.d.ts 声明这些字段）
+window.layer = layer;
+window.Tabulator = TabulatorFull;
+window.Toastify = Toastify;
+window.localforage = localforage;
+window.Viewer = Viewer;
+window.md5 = md5;
 
 export { layer, TabulatorFull as Tabulator, Toastify, localforage, Viewer, md5 };

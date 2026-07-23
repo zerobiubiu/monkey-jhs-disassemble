@@ -3,8 +3,9 @@
 }
 
 .viewer-close {
-    background: rgba(255, 0, 0, 0.6) !important;
+    background: rgb(255, 0, 0, 0.6) !important;
 }
+
 .viewer-close:hover {
-    background: rgba(255, 0, 0, 0.8) !important;
+    background: rgb(255, 0, 0, 0.8) !important;
 }

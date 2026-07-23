@@ -13,7 +13,7 @@
  *   label / iconClass / nextLabel / nextIconClass / tagsEl /
  *   selectedTagsText / sectionTitleEl / foldBtnEl / expandEl / event。
  * 顶层常量 o / _ / C 改由 ../constants 引入（currentHref / YES / NO）。
- * 运行时挂载到 window 的 isListPage，以此处 (window as any).isListPage 访问，
+ * 运行时挂载到 window 的 isListPage，以此处 window.isListPage 访问，
  * 保持原逻辑并满足 strict 类型检查。
  * $ / utils / storageManager 已由 ../types/globals.d.ts 声明为 any；
  * jQuery hover / click / .map 回调需依赖 this 指向触发元素，故保留 function 形式
@@ -24,17 +24,27 @@
  */
 import { currentHref } from '../constants/site';
 import { YES, NO } from '../constants/status';
-import { BasePlugin } from './base-plugin';
-import { FoldCategorySectionButton } from '../components/fold-category-section-button';
-import { FoldCategoryToolbar } from '../components/fold-category-toolbar';
-import { HighlightButton } from '../components/highlight-button';
+
+import type { PageType } from '../core/page-context';
 import { jsxToString } from '../core/jsx-to-string';
+
+import { BasePlugin } from './base-plugin';
+
+import { FoldCategorySectionButton } from '../components/nav/fold-category-section-button';
+import { FoldCategoryToolbar } from '../components/nav/fold-category-toolbar';
+import { HighlightButton } from '../components/misc/highlight-button';
+
 import foldCategoryCssRaw from '../styles/fold-category-plugin.css?raw';
 
 export class FoldCategoryPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4017-4019。 */
     getName(): string {
         return 'FoldCategoryPlugin';
+    }
+
+    /** 仅在列表页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['list'];
     }
 
     /**
@@ -59,13 +69,13 @@ export class FoldCategoryPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出，子任务异常由各自内部消化
      */
     async handle(): Promise<void> {
-        if ((window as any).isListPage) {
+        if (window.isListPage) {
             if (!currentHref.includes('advanced_search')) {
                 this.highlightTag();
                 utils.loopDetector(
                     () =>
                         currentHref.includes('/actors/') ||
-                        $('#waitCheckBtn').length,
+                        $('#waitCheckBtn').length > 0,
                     () => {
                         this.createFoldBtn();
                     },
@@ -73,7 +83,7 @@ export class FoldCategoryPlugin extends BasePlugin {
                     10000,
                     true
                 );
-                $('#tags .tag-category .tag-expand').each((_index: number, expandEl: any) => {
+                $('#tags .tag-category .tag-expand').each((_index: number, expandEl: HTMLElement) => {
                     if ($(expandEl).parent().hasClass('collapse')) {
                         expandEl.click();
                     }
@@ -92,28 +102,28 @@ export class FoldCategoryPlugin extends BasePlugin {
         (async () => {
             const highlightedTags = await storageManager.getHighlightedTags();
             if (highlightedTags) {
-                highlightedTags.forEach((tagName: any) => {
+                highlightedTags.forEach((tagName: string) => {
                     $(`#tags a.tag:contains(${tagName})`).addClass('highlighted');
                     $(`.tags a.tag:contains(${tagName})`).addClass('highlighted');
                 });
             }
         })().then();
         $('#tags a.tag, .tags a.tag').hover(
-            function (this: any) {
+            function (this: HTMLElement) {
                 const tagEl = $(this);
                 const btnEl = $(jsxToString(<HighlightButton />));
                 tagEl.append(btnEl);
                 btnEl.fadeIn(0);
             },
-            function (this: any) {
+            function (this: HTMLElement) {
                 $(this)
                     .find('.highlight-btn')
-                    .fadeOut(0, function (this: any) {
+                    .fadeOut(0, function (this: HTMLElement) {
                         $(this).remove();
                     });
             }
         );
-        $(document).on('click', '.highlight-btn', async function (this: any, event: any) {
+        $(document).on('click', '.highlight-btn', async function (this: HTMLElement, event: Event) {
             event.stopPropagation();
             event.preventDefault();
             const tagEl = $(this).closest('a.tag');
@@ -125,7 +135,7 @@ export class FoldCategoryPlugin extends BasePlugin {
                 .replace(/\s*\(\d+\)$/, '');
             let highlightedTags = await storageManager.getHighlightedTags();
             if (highlightedTags.includes(tagName)) {
-                highlightedTags = highlightedTags.filter((item: any) => item !== tagName);
+                highlightedTags = highlightedTags.filter((item: string) => item !== tagName);
                 tagEl.removeClass('highlighted');
             } else {
                 highlightedTags.push(tagName);
@@ -144,9 +154,9 @@ export class FoldCategoryPlugin extends BasePlugin {
      */
     async createFoldBtn(): Promise<void> {
         let tagsEl = $('#tags');
-        let selectedTagsText = $('#tags dl div.tag.is-info')
-            .map(function (this: any) {
-                return $(this).text().replaceAll('\n', '').replaceAll(' ', '');
+        const selectedTagsText = $('#tags dl div.tag.is-info')
+            .map(function (this: HTMLElement) {
+                return $(this).text().replace(/\n/g, '').replace(/ /g, '');
             })
             .get()
             .join(' ');
@@ -156,7 +166,7 @@ export class FoldCategoryPlugin extends BasePlugin {
         $('.tabs').append(
             jsxToString(<FoldCategoryToolbar selectedTagsText={selectedTagsText} />)
         );
-        let sectionTitleEl = $('h2.section-title');
+        const sectionTitleEl = $('h2.section-title');
         if (sectionTitleEl.length > 0) {
             sectionTitleEl.append(jsxToString(<FoldCategorySectionButton />));
             tagsEl = $('section > div > div.box');
@@ -166,14 +176,14 @@ export class FoldCategoryPlugin extends BasePlugin {
         }
         const foldBtnEl = $('#foldCategoryBtn');
         let isFolded: boolean = localStorage.getItem('jhs_foldCategory') === YES;
-        let [label, iconClass] = isFolded
+        const [label, iconClass] = isFolded
             ? ['展开', 'icon-angle-double-down']
             : ['折叠', 'icon-angle-double-up'];
         foldBtnEl.find('span').text(label).end().find('i').attr('class', iconClass);
         if (!window.location.href.includes('noFold=1')) {
             tagsEl[isFolded ? 'hide' : 'show']();
         }
-        foldBtnEl.on('click', async (event: any) => {
+        foldBtnEl.on('click', async (event: Event) => {
             event.preventDefault();
             isFolded = !isFolded;
             localStorage.setItem('jhs_foldCategory', isFolded ? YES : NO);

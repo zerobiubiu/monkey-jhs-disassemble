@@ -67,7 +67,7 @@ export async function upsertLocalCars(
                         count++;
                     };
                     req.onerror = () => {
-                        console.warn('[MissAV] 写入失败', rec.carNum, req.error);
+                        clog.warn('[MissAV] 写入失败', rec.carNum, req.error);
                     };
                 }
 

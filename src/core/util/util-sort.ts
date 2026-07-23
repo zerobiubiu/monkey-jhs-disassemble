@@ -4,8 +4,8 @@
  */
 
 /** genericSort 单条排序配置（原 genericSort 内 config s） */
-export interface SortConfig {
-    key: string | ((item: any) => any) | null;
+export interface SortConfig<T = unknown> {
+    key: string | ((item: T) => unknown) | null;
     order?: string;
 }
 
@@ -16,7 +16,7 @@ export interface SortConfig {
  * @param nullsFirst  空值处理开关，默认 true（保留原控制流）
  * @returns 排序后的新数组（不修改原数组）
  */
-export function genericSort(data: any[], sortConfigs: SortConfig[], nullsFirst: boolean = true): any[] {
+export function genericSort<T>(data: T[], sortConfigs: SortConfig<T>[], nullsFirst: boolean = true): T[] {
     if (!Array.isArray(data) || data.length === 0) {
         return [];
     }
@@ -24,7 +24,7 @@ export function genericSort(data: any[], sortConfigs: SortConfig[], nullsFirst: 
         return [...data];
     }
     const items = [...data];
-    const coerceDate = (value: any): any => {
+    const coerceDate = (value: unknown): unknown => {
         if (value instanceof Date) {
             return value;
         }
@@ -36,18 +36,18 @@ export function genericSort(data: any[], sortConfigs: SortConfig[], nullsFirst: 
         }
         return value;
     };
-    return items.sort((itemA: any, itemB: any) => {
+    return items.sort((itemA: unknown, itemB: unknown) => {
         for (const config of sortConfigs) {
             const { key, order = 'asc' } = config;
-            let valA: any = itemA;
-            let valB: any = itemB;
+            let valA: unknown = itemA;
+            let valB: unknown = itemB;
             if (key != null) {
                 if (typeof key === 'function') {
-                    valA = key(itemA);
-                    valB = key(itemB);
+                    valA = key(itemA as T);
+                    valB = key(itemB as T);
                 } else {
-                    valA = itemA && typeof itemA === 'object' ? itemA[key] : undefined;
-                    valB = itemB && typeof itemB === 'object' ? itemB[key] : undefined;
+                    valA = itemA && typeof itemA === 'object' ? (itemA as Record<string, unknown>)[key] : undefined;
+                    valB = itemB && typeof itemB === 'object' ? (itemB as Record<string, unknown>)[key] : undefined;
                 }
             }
             const coercedA = coerceDate(valA);

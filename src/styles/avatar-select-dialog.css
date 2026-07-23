@@ -5,24 +5,27 @@
     box-sizing: border-box;
     background-color: #f8f9fa;
 }
+
 #gfriends-prompt {
     color: #555;
     font-weight: 500;
     border-bottom: 1px solid #eee;
     padding-bottom: 10px;
 }
+
 #gfriends-image-list {
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
     justify-content: center;
 }
+
 .gfriends-image-item-wrapper {
     width: 160px;
     height: 225px; /* 增加高度以容纳尺寸标签 */
     overflow: hidden;
     border-radius: 6px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgb(0, 0, 0, 0.1);
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
@@ -30,6 +33,7 @@
     position: relative;
     padding-bottom: 25px; /* 为尺寸标签留出空间 */
 }
+
 .gfriends-selectable-img {
     width: 100%;
     height: 200px; /* 固定图片高度 */
@@ -38,14 +42,17 @@
     border-radius: 6px;
     transition: border 0.2s ease;
 }
+
 .gfriends-image-item-wrapper:hover {
     transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 16px rgb(0, 0, 0, 0.2);
 }
+
 .gfriends-selectable-img.is-selected {
     border-color: #ff6347;
     box-shadow: 0 0 0 3px #ff6347;
 }
+
 /* 新增：尺寸标签样式 */
 .gfriends-size-tag {
     position: absolute;
@@ -55,7 +62,7 @@
     height: 25px;
     line-height: 25px;
     text-align: center;
-    background-color: rgba(0, 0, 0, 0.7); /* 半透明背景 */
+    background-color: rgb(0, 0, 0, 0.7); /* 半透明背景 */
     color: #fff;
     font-size: 11px;
     font-weight: bold;

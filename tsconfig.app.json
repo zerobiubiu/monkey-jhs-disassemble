@@ -6,6 +6,11 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "types": ["react"],
+    "paths": {
+      "jquery": ["./src/types/jquery-shim.d.ts"],
+      "layui-layer": ["./src/types/layui-layer-shim.d.ts"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

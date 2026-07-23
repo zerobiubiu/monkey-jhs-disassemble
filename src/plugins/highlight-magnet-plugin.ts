@@ -8,18 +8,26 @@
  * 单字母局部变量（原 e/t/n/i/s/o/r/l/a）已语义化：
  *   nameEls / highQualityMarkers / hasHighQuality / nameEl / nameText / isHighQuality。
  * 站点标志 r 改由 ../constants/site 引入（isJavdbSite）。
- * 运行时挂载到 window 的 isDetailPage，以此处 (window as any).isDetailPage 访问，
+ * 运行时挂载到 window 的 isDetailPage，以此处 window.isDetailPage 访问，
  * 保持原逻辑并满足 strict 类型检查。
  * $ / utils 已由 ../types/globals.d.ts 声明为 any；jQuery .each 回调按本仓库既有
  * 约定改写为 (_index, element) 箭头形式，规避 noImplicitThis。
  */
 import { isJavdbSite } from '../constants/site';
+
+import type { PageType } from '../core/page-context';
+
 import { BasePlugin } from './base-plugin';
 
 export class HighlightMagnetPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L3928-3930。 */
     getName(): string {
         return 'HighlightMagnetPlugin';
+    }
+
+    /** 仅在详情页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['detail'];
     }
 
     /**
@@ -46,7 +54,7 @@ export class HighlightMagnetPlugin extends BasePlugin {
         }
         const highQualityMarkers: string[] = ['4k', '-c', '-u', '-uc'];
         let hasHighQuality = false;
-        nameEls.each((_index: number, element: any) => {
+        nameEls.each((_index: number, element: HTMLElement) => {
             const nameEl = $(element);
             const nameText: string = nameEl.text().toLowerCase();
             const isHighQuality: boolean = highQualityMarkers.some((marker) =>
@@ -76,7 +84,7 @@ export class HighlightMagnetPlugin extends BasePlugin {
         if (isJavdbSite) {
             $('#magnets-content .item')
                 .toArray()
-                .forEach((element: any) => $(element).show());
+                .forEach((element: HTMLElement) => $(element).show());
         }
     }
 }

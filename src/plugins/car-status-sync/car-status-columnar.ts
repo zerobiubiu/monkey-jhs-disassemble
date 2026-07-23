@@ -9,6 +9,7 @@
  * 远低于 GM 存储限制，适合跨域传递。
  */
 
+import type { CarRecord } from '../../core/storage-manager';
 import { VIDEO_ROUTE_PREFIX, type ColumnarStore, type StatusColumn } from './car-status-config';
 
 /**
@@ -73,7 +74,7 @@ export function buildJavdbUrl(urlPath: string): string {
  * @param carList 原始数据（storageManager.getCarList() 返回的 CarRecord[]）
  * @returns byStatus 列存分组；dropped 无效记录数；malformed url 异常数
  */
-export function toColumnar(carList: any[]): {
+export function toColumnar(carList: CarRecord[]): {
     byStatus: Record<string, { carNums: string[]; urls: string[]; update_date: string[] }>;
     dropped: number;
     malformed: number;
@@ -137,7 +138,7 @@ export function toColumnar(carList: any[]): {
  * @param store 列存数据（解压后的 ColumnarStore 或部分 status）
  * @returns 行式记录数组
  */
-export function columnarToFlat(store: Record<string, any>): Array<{
+export function columnarToFlat(store: Record<string, StatusColumn>): Array<{
     carNum: string;
     status: string;
     url_path: string;
@@ -163,7 +164,7 @@ export function columnarToFlat(store: Record<string, any>): Array<{
  * @param store 列存数据
  * @returns 总记录数
  */
-export function countColumnar(store: Record<string, any>): number {
+export function countColumnar(store: Record<string, StatusColumn>): number {
     let n = 0;
     for (const status of Object.keys(store)) {
         const col = store[status];
@@ -210,7 +211,7 @@ export async function gzipToBase64(value: unknown): Promise<string | null> {
  * @param base64 base64 编码的 gzip 字符串
  * @returns 解压后的对象；失败时返回 null
  */
-export async function gunzipFromBase64<T = any>(base64: string): Promise<T | null> {
+export async function gunzipFromBase64<T = unknown>(base64: string): Promise<T | null> {
     try {
         if (typeof DecompressionStream === 'undefined') return null;
         // base64 → Uint8Array

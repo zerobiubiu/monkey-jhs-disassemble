@@ -7,44 +7,13 @@ import { YES } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
 import { jsxToString } from '../core/jsx-to-string';
 import type { PageType } from '../core/page-context';
+import { translateText } from '../core/util/util-translate';
 
 import { BasePlugin } from './base-plugin';
 
 import { TranslatedTitle } from '../components/misc/translated-title';
 
 import translatePluginCssRaw from '../styles/translate-plugin.css?raw';
-
-async function translateText(
-    text: string,
-    sourceLang: string = 'ja',
-    targetLang: string = 'zh-CN'
-): Promise<string> {
-    if (!text) {
-        throw new Error('翻译文本不能为空');
-    }
-    const url =
-        'https://translate-pa.googleapis.com/v1/translate?' +
-        new URLSearchParams({
-            'params.client': 'gtx',
-            dataTypes: 'TRANSLATION',
-            key: 'AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA',
-            'query.sourceLanguage': sourceLang,
-            'query.targetLanguage': targetLang,
-            'query.text': text
-        });
-    // 超时保护：API 无响应时 10s 后中止请求，避免「翻译中...」永久挂起
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    try {
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) {
-            throw new Error(`${response.status} ${response.statusText}`);
-        }
-        return (await response.json()).translation;
-    } finally {
-        clearTimeout(timeoutId);
-    }
-}
 
 export class TranslatePlugin extends BasePlugin {
     getName(): string {

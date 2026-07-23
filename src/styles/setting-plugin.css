@@ -1,21 +1,25 @@
-__CSS_TEXT__ .nav-btn::after {
+/* stylelint-disable-next-line selector-type-case -- 运行时占位符（须保持大写），由 setting-plugin.tsx initCss() 的 replace 调用替换为动态容器宽度 CSS */
+__CSS_TEXT__
+
+.nav-btn::after {
     content: none !important;
 }
 
 #cache-data-display pre {
     font-family: Consolas, Monaco, 'Andale Mono', monospace;
     white-space: pre-wrap;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     line-height: 1.5;
     color: #333;
     border: 1px solid #ddd;
 }
 
 .cache-item {
-    transition: all 0.2s ease;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+
 .cache-item:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.1);
     transform: translateY(-2px);
 }
 
@@ -33,40 +37,257 @@ __CSS_TEXT__ .nav-btn::after {
     cursor: help;
 }
 
-/* ===== 设置项布局 ===== */
+/* ===== 设置项布局（统一表单网格）===== */
 .setting-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 180px 1fr;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding: 6px 8px;
+    gap: 12px;
+    padding: 8px 12px;
     border-radius: 6px;
     transition: background 0.15s ease;
 }
+
 .setting-item:hover {
-    background: rgba(93, 135, 194, 0.04);
+    background: rgb(93, 135, 194, 0.04);
 }
+
 .simple-setting .setting-item {
     align-items: center;
 }
+
 .setting-label {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
     font-size: 13px;
-    min-width: 130px;
     font-weight: 600;
     color: #475569;
-    margin-right: 10px;
-    flex-shrink: 0;
+    text-align: right;
+    min-width: 0;
 }
+
 .form-content {
-    max-width: 220px;
-    min-width: 180px;
-    flex: 1;
+    min-width: 0;
 }
-.form-content > *:not(.mini-switch):not(br) {
+
+/* form-content 内开关/颜色选择器宽度显式锁定，避免被通用控件规则拉宽 */
+.form-content .jhs-toggle {
+    width: 40px !important;
+    min-width: 40px;
+    padding: 0 !important;
+}
+
+.form-content input[type='color'] {
+    width: 36px !important;
+    min-width: 36px;
+    padding: 2px !important;
+}
+
+/* 统一表单控件（text/number/password/url/select/textarea） */
+.setting-item input[type='text'],
+.setting-item input[type='number'],
+.setting-item input[type='password'],
+.setting-item input[type='url'],
+.setting-item input:not([type]),
+.setting-item select,
+.setting-item textarea {
     width: 100%;
-    padding: 5px 8px;
-    text-align: left;
+    height: 36px;
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #fff;
     box-sizing: border-box;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
+    outline: none;
+}
+
+.setting-item textarea {
+    height: auto;
+    min-height: 72px;
+    resize: vertical;
+}
+
+.setting-item input:focus,
+.setting-item select:focus,
+.setting-item textarea:focus {
+    border-color: #5d87c2;
+    box-shadow: 0 0 0 2px rgb(93, 135, 194, 0.15);
+}
+
+.setting-item input[readonly] {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: default;
+    border-color: #e2e8f0;
+}
+
+/* 原生颜色选择器 */
+.setting-item input[type='color'] {
+    width: 36px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+/* 行内问号提示图标 */
+.jhs-tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #cbd5e1;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+}
+
+/* iOS 风格开关（设置面板内） */
+.jhs-toggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #d1d5db;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    outline: none;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    accent-color: unset;
+}
+
+.jhs-toggle:checked {
+    background: #22c55e;
+}
+
+.jhs-toggle::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgb(0, 0, 0, 0.15);
+}
+
+.jhs-toggle:checked::before {
+    transform: translateX(18px);
+}
+
+/* 面板分区（替代渐变 hr 分隔线） */
+.jhs-setting-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.jhs-setting-section:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.jhs-setting-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #5d87c2;
+    margin-bottom: 12px;
+}
+
+/* 面板操作按钮（语义色修饰符） */
+.jhs-setting-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        opacity 0.15s,
+        transform 0.1s;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.jhs-setting-btn:hover {
+    opacity: 0.9;
+}
+
+.jhs-setting-btn:active {
+    transform: scale(0.97);
+}
+
+.jhs-setting-btn--primary {
+    background: #5d87c2;
+}
+
+.jhs-setting-btn--success {
+    background: #22c55e;
+}
+
+.jhs-setting-btn--danger {
+    background: #ef4444;
+}
+
+.jhs-setting-btn--pink {
+    background: #d25a88;
+}
+
+.jhs-setting-btn--mint {
+    background: #85d0a3;
+}
+
+/* 复选框 + 文字标签 */
+.jhs-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #475569;
+}
+
+.jhs-checkbox-label input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    accent-color: #5d87c2;
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
 }
 
 .keyword-label {
@@ -79,12 +300,14 @@ __CSS_TEXT__ .nav-btn::after {
     margin-left: 8px;
     margin-bottom: 5px;
 }
+
 .keyword-remove {
     margin-left: 6px;
     cursor: pointer;
     font-size: 12px;
     line-height: 1;
 }
+
 .keyword-input {
     padding: 6px 12px;
     border: 1px solid #cbd5e1;
@@ -92,6 +315,7 @@ __CSS_TEXT__ .nav-btn::after {
     font-size: 14px;
     float: right;
 }
+
 .add-tag-btn {
     padding: 6px 12px;
     background-color: #e2e8f0;
@@ -103,15 +327,30 @@ __CSS_TEXT__ .nav-btn::after {
     margin-left: 8px;
     float: right;
 }
+
 .add-tag-btn:hover {
     background-color: #cbd5e1;
 }
+
 .tag-box {
     margin-top: 15px;
 }
 
-/* ===== 通用按钮（menu-btn 统一样式）===== */
-.menu-btn {
+/* 屏蔽关键词容器：标签流式换行 + 输入行自然布局 */
+.filter-keyword-container {
+    padding: 8px 0;
+}
+
+.filter-keyword-container .tag-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 32px;
+    margin-top: 0;
+}
+
+/* ===== 通用按钮（jhs-setting-menu-btn 统一样式）===== */
+.jhs-setting-menu-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -120,57 +359,31 @@ __CSS_TEXT__ .nav-btn::after {
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
     border: none;
     white-space: nowrap;
     color: #fff !important;
 }
-.menu-btn span {
+
+.jhs-setting-menu-btn span {
     color: #fff !important;
 }
-.menu-btn:hover {
+
+.jhs-setting-menu-btn:hover {
     opacity: 0.88;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.15);
 }
-.menu-btn:active {
+
+.jhs-setting-menu-btn:active {
     transform: translateY(0);
 }
 
-/* ===== 底部操作按钮 ===== */
+/* ===== 底部操作按钮（jhs-setting-btn 统一按钮系统）===== */
 #saveBtn,
-#moreBtn,
-#helpBtn,
 #clean-all {
-    padding: 8px 24px;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    margin-top: 10px;
-    transition: all 0.2s ease;
-}
-#saveBtn:hover {
-    background-color: #45a049;
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-}
-#moreBtn {
-    background-color: #5cb85c;
-    color: white;
-}
-#moreBtn:hover {
-    background-color: #4cae4c;
-}
-#helpBtn {
-    background-color: #e67e22;
-    color: white;
-}
-#helpBtn:hover {
-    background-color: #d35400;
+    margin-top: 0;
 }
 
 /* ===== 悬浮快捷设置面板 ===== */
@@ -191,10 +404,11 @@ __CSS_TEXT__ .nav-btn::after {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     box-shadow:
-        0 10px 40px rgba(15, 23, 42, 0.12),
-        0 2px 8px rgba(15, 23, 42, 0.06);
+        0 10px 40px rgb(15, 23, 42, 0.12),
+        0 2px 8px rgb(15, 23, 42, 0.06);
     overflow: hidden;
 }
+
 /* 与触发按钮之间的隐形热区，减少移入时误关 */
 .simple-setting::before,
 .mini-simple-setting::before {
@@ -205,6 +419,7 @@ __CSS_TEXT__ .nav-btn::after {
     right: 0;
     height: 10px;
 }
+
 .mini-simple-setting {
     right: 0;
     left: auto;
@@ -216,6 +431,7 @@ __CSS_TEXT__ .nav-btn::after {
     flex-direction: column;
     max-height: min(78vh, 560px);
 }
+
 .jhs-qs-header {
     display: flex;
     align-items: baseline;
@@ -225,23 +441,27 @@ __CSS_TEXT__ .nav-btn::after {
     border-bottom: 1px solid #f1f5f9;
     background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
 }
+
 .jhs-qs-title {
     font-size: 15px;
     font-weight: 700;
     color: #0f172a;
     letter-spacing: 0.02em;
 }
+
 .jhs-qs-sub {
     font-size: 11px;
     color: #94a3b8;
     font-weight: 500;
 }
+
 .jhs-qs-body {
     flex: 1;
     overflow-x: hidden;
     overflow-y: auto;
     padding: 8px 10px 12px;
 }
+
 .jhs-qs-section {
     margin-bottom: 10px;
     padding: 8px 8px 4px;
@@ -249,9 +469,11 @@ __CSS_TEXT__ .nav-btn::after {
     border: 1px solid #f1f5f9;
     border-radius: 10px;
 }
+
 .jhs-qs-section:last-child {
     margin-bottom: 0;
 }
+
 .jhs-qs-section-title {
     font-size: 11px;
     font-weight: 700;
@@ -260,6 +482,7 @@ __CSS_TEXT__ .nav-btn::after {
     letter-spacing: 0.04em;
     padding: 2px 6px 8px;
 }
+
 .jhs-qs-row {
     display: flex;
     align-items: center;
@@ -271,9 +494,11 @@ __CSS_TEXT__ .nav-btn::after {
     border-radius: 8px;
     transition: background 0.12s ease;
 }
+
 .jhs-qs-row:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgb(255, 255, 255, 0.9);
 }
+
 .jhs-qs-row-stacked {
     flex-direction: column;
     align-items: stretch;
@@ -281,6 +506,7 @@ __CSS_TEXT__ .nav-btn::after {
     min-height: 0;
     padding-bottom: 10px;
 }
+
 .jhs-qs-label {
     display: inline-flex;
     align-items: center;
@@ -291,6 +517,7 @@ __CSS_TEXT__ .nav-btn::after {
     line-height: 1.35;
     min-width: 0;
 }
+
 .jhs-qs-tip {
     display: inline-flex;
     align-items: center;
@@ -306,15 +533,18 @@ __CSS_TEXT__ .nav-btn::after {
     cursor: help;
     line-height: 1;
 }
+
 .jhs-qs-control {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     flex-shrink: 0;
 }
+
 .jhs-qs-row-stacked .jhs-qs-control {
     justify-content: stretch;
 }
+
 .jhs-qs-subcard {
     margin: 2px 0 6px;
     padding: 4px;
@@ -322,19 +552,23 @@ __CSS_TEXT__ .nav-btn::after {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
 }
+
 .jhs-qs-subcard.is-disabled {
     opacity: 0.55;
     pointer-events: none;
 }
+
 .jhs-qs-subcard .jhs-qs-row {
     min-height: 32px;
     padding: 4px 8px;
 }
+
 .jhs-qs-subcard .jhs-qs-label {
     font-weight: 500;
     font-size: 12.5px;
     color: #475569;
 }
+
 /* 触底加载等二选一：分段按钮 */
 .jhs-qs-seg {
     display: inline-flex;
@@ -345,6 +579,7 @@ __CSS_TEXT__ .nav-btn::after {
     border-radius: 9px;
     box-sizing: border-box;
 }
+
 .jhs-qs-seg-btn {
     appearance: none;
     border: none;
@@ -364,25 +599,30 @@ __CSS_TEXT__ .nav-btn::after {
         box-shadow 0.15s ease;
     white-space: nowrap;
 }
+
 .jhs-qs-seg-btn:hover:not(.is-active) {
     color: #334155;
-    background: rgba(255, 255, 255, 0.55);
+    background: rgb(255, 255, 255, 0.55);
 }
+
 .jhs-qs-seg-btn.is-active {
     color: #fff;
     background: linear-gradient(135deg, #5d87c2, #4a90d9);
-    box-shadow: 0 1px 4px rgba(74, 144, 217, 0.35);
+    box-shadow: 0 1px 4px rgb(74, 144, 217, 0.35);
 }
+
 .jhs-qs-seg-btn:focus-visible {
     outline: 2px solid #5d87c2;
     outline-offset: 1px;
 }
+
 .jhs-qs-range {
     display: flex;
     align-items: center;
     gap: 10px;
     width: 100%;
 }
+
 .jhs-qs-range input[type='range'] {
     flex: 1;
     min-width: 0;
@@ -391,6 +631,7 @@ __CSS_TEXT__ .nav-btn::after {
     accent-color: #5d87c2;
     cursor: pointer;
 }
+
 .jhs-qs-range-val {
     min-width: 36px;
     text-align: right;
@@ -399,6 +640,7 @@ __CSS_TEXT__ .nav-btn::after {
     color: #5d87c2;
     font-variant-numeric: tabular-nums;
 }
+
 .jhs-qs-footer {
     display: flex;
     align-items: center;
@@ -408,6 +650,7 @@ __CSS_TEXT__ .nav-btn::after {
     border-top: 1px solid #f1f5f9;
     background: #fafbfc;
 }
+
 .jhs-qs-btn {
     flex: 1;
     padding: 8px 12px;
@@ -421,30 +664,37 @@ __CSS_TEXT__ .nav-btn::after {
         transform 0.12s ease,
         box-shadow 0.15s ease;
 }
+
 .jhs-qs-btn:hover {
     transform: translateY(-1px);
 }
+
 .jhs-qs-btn:active {
     transform: translateY(0);
 }
+
 .jhs-qs-btn-ghost {
     background: #fff;
     color: #64748b;
     border: 1px solid #e2e8f0;
 }
+
 .jhs-qs-btn-ghost:hover {
     background: #f8fafc;
     color: #475569;
     border-color: #cbd5e1;
 }
+
 .jhs-qs-btn-primary {
     background: linear-gradient(135deg, #5d87c2, #4a90d9);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(74, 144, 217, 0.28);
+    box-shadow: 0 2px 8px rgb(74, 144, 217, 0.28);
 }
+
 .jhs-qs-btn-primary:hover {
-    box-shadow: 0 4px 12px rgba(74, 144, 217, 0.35);
+    box-shadow: 0 4px 12px rgb(74, 144, 217, 0.35);
 }
+
 /* 快捷设置内开关：避免被 form-content 通配拉宽 */
 .jhs-qs-panel input.mini-switch[type='checkbox'] {
     width: 40px !important;
@@ -453,6 +703,7 @@ __CSS_TEXT__ .nav-btn::after {
 }
 
 /* ===== 开关（mini-switch）===== */
+
 /* 排除 form-content 通配与 content-panel checkbox 规则的干扰 */
 input.mini-switch[type='checkbox'] {
     appearance: none;
@@ -488,7 +739,7 @@ input.mini-switch[type='checkbox']::before {
     background: white;
     top: 2px;
     left: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgb(0, 0, 0, 0.2);
     transition: left 0.15s ease;
 }
 
@@ -502,7 +753,7 @@ input.mini-switch[type='checkbox']:checked::before {
     cursor: pointer;
     color: #64748b;
     border-left: 3px solid transparent;
-    transition: all 0.2s;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -519,12 +770,12 @@ input.mini-switch[type='checkbox']:checked::before {
 }
 
 .side-menu-item:hover {
-    background-color: rgba(93, 135, 194, 0.08);
+    background-color: rgb(93, 135, 194, 0.08);
     color: #5d87c2;
 }
 
 .side-menu-item.active {
-    background-color: rgba(93, 135, 194, 0.12);
+    background-color: rgb(93, 135, 194, 0.12);
     border-left: 3px solid #5d87c2;
     color: #5d87c2;
     font-weight: 600;
@@ -544,47 +795,18 @@ input.mini-switch[type='checkbox']:checked::before {
     display: block;
 }
 
-/* ===== 表单输入框美化 ===== */
-.content-panel input[type='text'],
-.content-panel input:not([type]),
-.content-panel select,
-.content-panel textarea {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: #334155;
-    background: #fff;
-    transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
-}
-.content-panel input[type='text']:focus,
-.content-panel input:not([type]):focus,
-.content-panel select:focus,
-.content-panel textarea:focus {
-    border-color: #5d87c2;
-    box-shadow: 0 0 0 3px rgba(93, 135, 194, 0.15);
-    outline: none;
-}
-.content-panel input[readonly] {
-    background: #f8fafc;
-    cursor: default;
-}
+/* 表单控件统一样式已收敛至「设置项布局」区块的 .setting-item 作用域规则 */
 
 /* ===== 复选框美化（不含开关）===== */
-.content-panel input[type='checkbox']:not(.mini-switch) {
+.content-panel input[type='checkbox']:not(.mini-switch, .jhs-toggle) {
     width: 16px;
     height: 16px;
     accent-color: #5d87c2;
     cursor: pointer;
 }
+
 input[type='checkbox']:disabled {
     opacity: 0.6;
     cursor: default !important;
 }
 
-/* ===== 面板内分区标题 ===== */
-.content-panel .setting-label {
-    color: #475569;
-}

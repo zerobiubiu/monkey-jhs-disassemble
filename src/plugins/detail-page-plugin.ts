@@ -6,16 +6,22 @@
  *
  * 单字母局部变量（原 e）已语义化：href / event / thumbsVisible / storedValue。
  * `window.isDetailPage` 为运行时由启动序列挂载到 window 的全局（非 src/constants 常量），
- * 此处以 `(window as any).isDetailPage` 访问，保持原逻辑并满足 strict 类型检查。
+ * 此处以 `window.isDetailPage` 访问，保持原逻辑并满足 strict 类型检查。
  * jQuery `.each` 回调按本仓库 base-plugin 既有约定改写为 (index, element) 箭头形式，
  * 规避 noImplicitThis；其余控制流与原脚本一致。
  */
+import type { PageType } from '../core/page-context';
 import { BasePlugin } from './base-plugin';
 
 export class DetailPagePlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L3333-3335。 */
     getName(): string {
         return 'DetailPagePlugin';
+    }
+
+    /** 仅在详情页激活（doc/140）。 */
+    get pageTypes(): PageType[] {
+        return ['detail'];
     }
 
     /** 构造函数：仅调用父类构造，保留原 L3336-3338 结构。 */
@@ -32,8 +38,8 @@ export class DetailPagePlugin extends BasePlugin {
      * 无参数，返回 Promise<void>，不会抛出异常。
      */
     async handle(): Promise<void> {
-        if ((window as any).isDetailPage) {
-            $('.video-meta-panel a').each((_index: number, element: any) => {
+        if (window.isDetailPage) {
+            $('.video-meta-panel a').each((_index: number, element: HTMLElement) => {
                 const href: string | undefined = $(element).attr('href');
                 if (
                     href &&

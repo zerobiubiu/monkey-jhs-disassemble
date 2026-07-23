@@ -2,12 +2,13 @@
     min-width: 120px;
     padding: 7px 12px;
     font-size: 12px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgb(0, 0, 0, 0.7);
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
 }
+
 .video-control-btn.active {
     background-color: #1890ff;
     color: white;

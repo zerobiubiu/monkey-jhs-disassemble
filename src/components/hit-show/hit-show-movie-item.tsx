@@ -24,15 +24,14 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
-import { _updateImgServer } from '../../constants/api';
+import { _updateImgServer, type RankingMovie } from '../../constants/api';
 
 
-/** HitShowMovieItem 的属性（movie 为原始影片对象，字段为 any）。 */
+/** HitShowMovieItem 的属性（movie 为排行影片对象，类型为 RankingMovie）。 */
  
 export interface HitShowMovieItemProps {
     /** 热播影片对象（含 id/cover_url/origin_title/number/release_date/has_cnsub/magnets_count/new_magnets）。 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    movie: any;
+    movie: RankingMovie;
 }
 
 /**
@@ -43,7 +42,7 @@ export interface HitShowMovieItemProps {
  
 export function HitShowMovieItem({ movie }: HitShowMovieItemProps) {
     return (
-        <div className="item" id={movie.id}>
+        <div className="item" id={String(movie.id)}>
             <a href={`/v/${movie.id}`} className="box" title={movie.origin_title}>
                 <div className="cover ">
                     <img

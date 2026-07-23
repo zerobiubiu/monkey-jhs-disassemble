@@ -10,6 +10,7 @@
  */
 
 import { featureFlags } from '../core/feature-flags';
+import { failWithToast } from '../core/toast';
 
 // ============ 基础配置 ============
 
@@ -66,16 +67,6 @@ export function reBuildSignature(): string {
     return sig;
 }
 
-/** 主动清除签名缓存（flag 开清单 key，flag 关清双 key）。 */
-export function removeSignature(): void {
-    if (featureFlags.upgradeSignature300s) {
-        localStorage.removeItem(SIGNATURE_SINGLE_KEY);
-    } else {
-        localStorage.removeItem(SIGNATURE_TIME_KEY);
-        localStorage.removeItem(SIGNATURE_VALUE_KEY);
-    }
-}
-
 /** 将详情图 CDN 域名替换为 c0.jdbstatic.com。 */
 export function _updateImgServer(str: string): string {
     return str.replace(/https:\/\/.*?\/rhe951l4q/g, 'https://c0.jdbstatic.com');
@@ -83,36 +74,90 @@ export function _updateImgServer(str: string): string {
 
 // ============ 响应类型 ============
 
+/** 演员条目（API 返回的 actors 数组元素）。 */
+export interface MovieActor {
+    id: string | number;
+    name: string;
+    gender: number;
+}
+
+/** 预览图条目（API 返回的 preview_images 数组元素）。 */
+interface PreviewImage {
+    large_url: string;
+}
+
+/** 电影评论条目（API 返回的 reviews 数组元素）。 */
+export interface MovieReview {
+    score: number;
+    content: string;
+    username: string;
+    created_at: string;
+    likes_count: number;
+}
+
+/** 排行影片条目（API 返回的 movies 数组元素）。 */
+export interface RankingMovie {
+    id: string | number;
+    cover_url: string;
+    origin_title: string;
+    number: string;
+    release_date: string;
+    has_cnsub: boolean;
+    magnets_count: number;
+    new_magnets: boolean;
+}
+
+/** Top 排行 API 响应包装。 */
+export interface TopMoviesResponse {
+    success: number;
+    message: string;
+    action: string;
+    data: {
+        movies: RankingMovie[];
+    };
+}
+
+/** 相关合集原始条目（API 返回的 lists 数组元素）。 */
+interface RawRelatedCollectionItem {
+    id: string | number;
+    name: string;
+    movies_count: number;
+    collections_count: number;
+    views_count: number;
+    created_at: string;
+}
+
 /** 电影详情（原 V 返回结构） */
 export interface MovieDetail {
-    movieId: any;
-    actors: any;
-    duration: any;
-    title: any;
-    carNum: any;
-    score: any;
-    releaseDate: any;
-    watchedCount: any;
+    movieId: string | number;
+    actors: MovieActor[];
+    duration: string | number;
+    title: string;
+    carNum: string;
+    score: number;
+    releaseDate: string;
+    watchedCount: number;
     imgList: string[];
 }
 
 /** 相关合集项（原 K 返回结构） */
 export interface RelatedCollection {
-    relatedId: any;
-    name: any;
-    movieCount: any;
-    collectionCount: any;
-    viewCount: any;
-    createTime: any;
+    relatedId: string | number;
+    name: string;
+    movieCount: number;
+    collectionCount: number;
+    viewCount: number;
+    createTime: string;
 }
 
 /** 默认请求头（原 q 内 headers 对象） */
-export interface RequestHeaders {
+interface RequestHeaders {
     'user-agent': string;
     'accept-language': string;
     host: string;
     authorization: string;
     jdsignature: string;
+    [key: string]: string;
 }
 
 // ============ 请求函数 ============
@@ -129,20 +174,20 @@ export async function fetchMovieReviews(
     movieId: string | number,
     page: number = 1,
     limit: number = 20
-): Promise<any> {
+): Promise<MovieReview[]> {
     const url = `${API_BASE}/v1/movies/${movieId}/reviews`;
     const headers = { jdSignature: await reBuildSignature() };
-    return (
-        await gmHttp.get(
-            url,
-            {
-                page,
-                sort_by: 'hotly',
-                limit
-            },
-            headers
-        )
-    ).data.reviews;
+    // gmHttp.get returns unknown; API shape is stable per backend contract
+    const resp = (await gmHttp.get(
+        url,
+        {
+            page,
+            sort_by: 'hotly',
+            limit
+        },
+        headers
+    )) as { data: { reviews: MovieReview[] } };
+    return resp.data.reviews;
 }
 
 /**
@@ -154,14 +199,16 @@ export async function fetchMovieReviews(
 export async function fetchMovieDetail(movieId: string | number): Promise<MovieDetail> {
     const url = `${API_BASE}/v4/movies/${movieId}`;
     const headers = { jdSignature: await reBuildSignature() };
-    const resp = await gmHttp.get(url, null, headers);
+    const resp = (await gmHttp.get(url, undefined, headers)) as {
+        data?: { movie: { preview_images: PreviewImage[]; id: string | number; actors: MovieActor[]; duration: string | number; origin_title: string; number: string; score: number; release_date: string; watched_count: number } };
+        message: string;
+    };
     if (!resp.data) {
-        show.error('获取视频详情失败: ' + resp.message);
-        throw new Error(resp.message);
+        failWithToast('获取视频详情失败: ' + resp.message);
     }
     const movie = resp.data.movie;
     const imgList: string[] = [];
-    movie.preview_images.forEach((img: any) => {
+    movie.preview_images.forEach((img: PreviewImage) => {
         imgList.push(_updateImgServer(img.large_url));
     });
     return {
@@ -192,9 +239,9 @@ export async function fetchRelatedCollections(
 ): Promise<RelatedCollection[]> {
     const url = `${API_BASE}/v1/lists/related?movie_id=${movieId}&page=${page}&limit=${limit}`;
     const headers = { jdSignature: await reBuildSignature() };
-    const resp = await gmHttp.get(url, null, headers);
+    const resp = (await gmHttp.get(url, undefined, headers)) as { data: { lists: RawRelatedCollectionItem[] } };
     const list: RelatedCollection[] = [];
-    resp.data.lists.forEach((item: any) => {
+    resp.data.lists.forEach((item: RawRelatedCollectionItem) => {
         list.push({
             relatedId: item.id,
             name: item.name,
@@ -217,10 +264,12 @@ export async function fetchRelatedCollections(
 export async function fetchPlaybackRanking(
     period: string = 'daily',
     filterBy: string = 'high_score'
-): Promise<any> {
+): Promise<RankingMovie[]> {
     const url = `${API_BASE}/v1/rankings/playback?period=${period}&filter_by=${filterBy}`;
     const headers = { jdSignature: await reBuildSignature() };
-    return (await gmHttp.get(url, null, headers)).data.movies;
+    // gmHttp.get returns unknown; API shape is stable per backend contract
+    const resp = (await gmHttp.get(url, undefined, headers)) as { data: { movies: RankingMovie[] } };
+    return resp.data.movies;
 }
 
 // ============ 默认请求头与 Top 排行（原 q） ============
@@ -236,12 +285,12 @@ const APP_AUTH_KEY = 'jhs_appAuthorization';
  *
  * @returns 完整的请求头对象
  */
-export async function DEFAULT_REQUEST_HEADERS(): Promise<RequestHeaders> {
+async function DEFAULT_REQUEST_HEADERS(): Promise<RequestHeaders> {
     return {
         'user-agent': 'Dart/3.5 (dart:io)',
         'accept-language': 'zh-TW',
         host: 'jdforrepam.com',
-        authorization: 'Bearer ' + (localStorage.getItem(APP_AUTH_KEY) as string),
+        authorization: 'Bearer ' + (localStorage.getItem(APP_AUTH_KEY) || ''),
         jdsignature: await reBuildSignature()
     };
 }
@@ -260,102 +309,9 @@ export async function fetchTopMovies(
     typeValue: string = '',
     page: number = 1,
     limit: number = 40
-): Promise<any> {
+): Promise<TopMoviesResponse> {
     const url = `${API_BASE}/v1/movies/top?start_rank=1&type=${type}&type_value=${typeValue}&ignore_watched=false&page=${page}&limit=${limit}`;
     const headers = await DEFAULT_REQUEST_HEADERS();
-    return await gmHttp.get(url, null, headers);
+    return (await gmHttp.get(url, undefined, headers)) as TopMoviesResponse;
 }
 
-/**
- * 搜索影片（新版 javDbApi.searchMovie）。
- * @param keyword 搜索关键词
- */
-export async function searchMovie(keyword: string): Promise<any> {
-    const url = `${API_BASE}/v1/movies/search?q=${encodeURIComponent(keyword)}&page=1&limit=20`;
-    const headers = { jdSignature: await reBuildSignature() };
-    return (await gmHttp.get(url, null, headers)).data;
-}
-
-/**
- * 获取磁链列表（新版 javDbApi.getMagnets）。
- * @param movieId 电影 ID
- */
-export async function getMagnets(movieId: string | number): Promise<any> {
-    const url = `${API_BASE}/v1/movies/${movieId}/magnets`;
-    const headers = { jdSignature: await reBuildSignature() };
-    return (await gmHttp.get(url, null, headers)).data.magnets;
-}
-
-/**
- * App 登录（新版 javDbApi.login）。
- */
-export async function login(username: string, password: string): Promise<any> {
-    const url =
-        `${API_BASE}/v1/sessions?username=${encodeURIComponent(username)}` +
-        `&password=${encodeURIComponent(password)}` +
-        `&device_uuid=04b9534d-5118-53de-9f87-2ddded77111e&device_name=iPhone` +
-        `&device_model=iPhone&platform=ios&system_version=17.4` +
-        `&app_version=official&app_version_number=1.9.29&app_channel=official`;
-    const headers = {
-        'user-agent': 'Dart/3.5 (dart:io)',
-        'accept-language': 'zh-TW',
-        'content-type': 'multipart/form-data; boundary=--dio-boundary-2210433284',
-        jdsignature: await reBuildSignature()
-    };
-    return await gmHttp.post(url, null, headers);
-}
-
-/**
- * 将 API 影片列表转为统一列表项 HTML（封面 CDN、中字/磁链标签）。
- */
-export function markDataListHtml(movies: any[]): string {
-    let moviesHtml = '';
-    movies.forEach((movie: any) => {
-        const newSrc = _updateImgServer(movie.cover_url || '');
-        moviesHtml += `
-            <div class="item" id="${movie.id}">
-                <a href="/v/${movie.id}" class="box" title="${movie.origin_title}">
-                    <div class="cover ">
-                        <img loading="lazy" src="${newSrc}" alt="">
-                    </div>
-                    <div class="video-title"><strong>${movie.number}</strong> ${movie.origin_title}</div>
-                    <div class="score" id="score_${movie.id}">
-                    </div>
-                    <div class="meta">
-                        ${movie.release_date}
-                    </div>
-                    <div class="tags has-addons">
-                       ${
-                           movie.has_cnsub
-                               ? '<span class="tag is-warning">含中字磁鏈</span>'
-                               : movie.magnets_count > 0
-                                 ? '<span class="tag is-success">含磁鏈</span>'
-                                 : '<span class="tag is-info">无磁鏈</span>'
-                       }
-                       ${movie.new_magnets ? '<span class="tag is-info">今日新種</span>' : ''}
-                    </div>
-                </a>
-            </div>
-        `;
-    });
-    return moviesHtml;
-}
-
-/**
- * javDb API 聚合层（新版 javDbApi 对象）。
- * 原散落函数保留为兼容别名；flag 控制调用方是否走本对象。
- */
-export const javDbApi = {
-    getReviews: fetchMovieReviews,
-    searchMovie,
-    getMovieDetail: fetchMovieDetail,
-    related: fetchRelatedCollections,
-    getMagnets,
-    playback: fetchPlaybackRanking,
-    login,
-    top250: fetchTopMovies,
-    buildSignature: reBuildSignature,
-    removeSignature,
-    markDataListHtml,
-    _updateImgServer
-};

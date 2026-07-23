@@ -4,7 +4,7 @@
     right: 40px;
     width: 44px;
     height: 44px;
-    background-color: rgba(30, 30, 30, 0.9);
+    background-color: rgb(30, 30, 30, 0.9);
     backdrop-filter: blur(4px);
     color: #e0e0e0;
     border-radius: 50%;
@@ -12,31 +12,41 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 9999;
+    z-index: var(--jhs-z-page);
     opacity: 0;
     visibility: hidden;
     transform: translateY(20px) scale(0.9);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition:
+        opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        visibility 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        background-color 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        color 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+        border-color 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 4px 12px rgb(0, 0, 0, 0.3);
+    border: 1px solid rgb(255, 255, 255, 0.05);
     user-select: none;
 }
+
 #jhs-back-to-top:hover {
     background-color: #ff8400;
     color: #fff;
     transform: translateY(0) scale(1);
-    box-shadow: 0 8px 20px rgba(255, 132, 0, 0.3);
+    box-shadow: 0 8px 20px rgb(255, 132, 0, 0.3);
     border-color: #ff8400;
 }
+
 #jhs-back-to-top.show {
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);
 }
+
 #jhs-back-to-top svg {
     width: 22px;
     height: 22px;
-    fill: currentColor;
-    stroke: currentColor;
+    fill: currentcolor;
+    stroke: currentcolor;
     stroke-width: 0;
 }

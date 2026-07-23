@@ -12,6 +12,13 @@ const LOG_PREFIX = '[JavDB]';
 /** 清单管理广播键（独立通道，不与 jdb:last-sync 混用）。 */
 const LIST_MGMT_KEY = 'jdb:list-mgmt';
 
+/** 清单管理广播 payload 结构。 */
+interface ListMgmtPayload {
+    type?: string;
+    listId?: string;
+    newName?: string;
+}
+
 /**
  * 注册清单管理广播监听器（三重通道：GM / localStorage / CustomEvent）。
  *
@@ -26,7 +33,7 @@ export function setupListMgmtBroadcastListener(
     onRename: (listId: string, newName: string) => void
 ): void {
     /** 处理收到的广播 payload */
-    const handlePayload = (payload: any): void => {
+    const handlePayload = (payload: ListMgmtPayload | null): void => {
         if (!payload || !payload.type || !payload.listId) return;
         console.log(`${LOG_PREFIX} 收到清单管理广播:`, payload);
         if (payload.type === 'delete') {
@@ -53,7 +60,7 @@ export function setupListMgmtBroadcastListener(
     try {
         GM_addValueChangeListener(
             LIST_MGMT_KEY,
-            (_name: string, _oldValue: any, newValue: any, _remote: boolean) => {
+            (_name: string, _oldValue, newValue, _remote: boolean) => {
                 if (!newValue) return;
                 try {
                     handlePayload(JSON.parse(newValue));

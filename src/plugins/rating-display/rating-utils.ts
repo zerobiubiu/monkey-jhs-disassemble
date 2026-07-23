@@ -17,7 +17,7 @@ const parser: DOMParser = new DOMParser();
  * @param action 日志标记（如 CACHE / FETCH_ERROR / INIT_SYNC）
  * @param args   附加日志参数
  */
-function log(action: string, ...args: any[]): void {
+function log(action: string, ...args: unknown[]): void {
     if (RATING_CONFIG.DEBUG_MODE) {
         console.log(
             `%c[JHS-Rating][${action}]`,
@@ -28,7 +28,7 @@ function log(action: string, ...args: any[]): void {
 }
 
 /** 防抖函数类型（保留原 this 上下文与参数透传）。 */
-type DebouncedFn<A extends any[]> = (...args: A) => void;
+type DebouncedFn<A extends unknown[]> = (...args: A) => void;
 
 /**
  * 防抖：延迟 wait ms 执行 fn，期间再次调用会重置计时器。对应原 L63-69。
@@ -37,7 +37,7 @@ type DebouncedFn<A extends any[]> = (...args: A) => void;
  * @param wait 延迟毫秒
  * @returns 防抖后的函数（保留 this 与参数）
  */
-function debounce<A extends any[]>(fn: (...args: A) => void, wait: number): DebouncedFn<A> {
+function debounce<A extends unknown[]>(fn: (...args: A) => void, wait: number): DebouncedFn<A> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     return function (this: unknown, ...args: A): void {
         clearTimeout(timer);

@@ -115,8 +115,8 @@ export class WebDavClient {
         try {
             await this._sendRequest('PROPFIND', path, { Depth: '0' });
             return true;
-        } catch (error: any) {
-            const statusMatch = String(error?.message || '').match(/请求失败 (\d+):/);
+        } catch (error: unknown) {
+            const statusMatch = String((error as { message?: string })?.message || '').match(/请求失败 (\d+):/);
             if ((statusMatch ? parseInt(statusMatch[1], 10) : 0) === 404) {
                 return false;
             }

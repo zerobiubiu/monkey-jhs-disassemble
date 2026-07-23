@@ -108,9 +108,9 @@ export function loopDetector(
 export function rightClick(
     container: string | HTMLElement,
     targetSelector: string,
-    handler: (event: MouseEvent, target: any) => void
+    handler: (event: MouseEvent, target: Element) => void
 ): void {
-    let el: any;
+    let el: Element | null = null;
     if (typeof container === 'string') {
         el = document.querySelector(container);
     } else if (container instanceof HTMLElement) {
@@ -121,7 +121,7 @@ export function rightClick(
         el = document.body;
     }
     if (typeof targetSelector === 'string' && targetSelector.trim() !== '') {
-        el.addEventListener('contextmenu', (event: MouseEvent) => {
+        (el as HTMLElement).addEventListener('contextmenu', (event: MouseEvent) => {
             const target = (event.target as HTMLElement).closest(targetSelector);
             if (target) {
                 handler(event, target);
@@ -135,8 +135,9 @@ export function rightClick(
 /**
  * 将 HTML 字符串解析为 jQuery 包装的文档（原 htmlTo$dom）。
  * @param html HTML 字符串
- * @returns $(DOMParser 解析的 Document)，类型 any
+ * @returns $(DOMParser 解析的 Document)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object, $ is untyped global
 export function htmlTo$dom(html: string): any {
     const parser = new DOMParser();
     return $(parser.parseFromString(html, 'text/html'));
@@ -147,6 +148,7 @@ export function htmlTo$dom(html: string): any {
  * @param el jQuery 对象或 HTMLElement
  * @returns 隐藏则 true
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- polymorphic: jQuery object or HTMLElement
 export function isHidden(el: any): boolean {
     const node = el.jquery ? el[0] : el;
     return (

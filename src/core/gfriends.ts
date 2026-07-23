@@ -24,6 +24,7 @@ import {
     GFRIENDS_DB_NAME,
     GFRIENDS_SOURCES
 } from '../resources/gfriends';
+import { withLoading } from './util/util-async';
 
 /** Gfriends Filetree.json 数据结构 */
 export interface FiletreeData {
@@ -250,14 +251,11 @@ async function ensureFiletreeLoaded(): Promise<void> {
  * @returns 去重后的头像 URL 列表
  */
 export async function loadGfriends(actressNames: string[]): Promise<string[]> {
-    const loadingHandle = loading();
     try {
-        await ensureFiletreeLoaded();
+        await withLoading(() => ensureFiletreeLoaded());
     } catch (error) {
-        show.error(error);
+        show.error(error as string);
         return [];
-    } finally {
-        loadingHandle.close();
     }
     const filetreeIndex = cachedFiletreeParsed;
     if (!filetreeIndex) {

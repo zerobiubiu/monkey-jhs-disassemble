@@ -21,11 +21,18 @@
  * 从未使用，按 TS 惯例加下划线前缀 _clickEvent 以豁免 noUnusedParameters，签名保持不变。
  */
 import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../constants/status';
+
 import { featureFlags } from '../core/feature-flags';
-import { BasePlugin } from './base-plugin';
-import { WantWatchedHintSpan } from '../components/want-watched-hint-span';
-import { WantWatchedImportButton } from '../components/want-watched-import-button';
 import { jsxToString } from '../core/jsx-to-string';
+import { withLoading } from '../core/util/util-async';
+
+import type { CarSaveInput } from '../core/storage-manager';
+
+import { BasePlugin } from './base-plugin';
+
+import { ConfirmWarn } from '../components/misc/confirm-warn';
+import { WantWatchedHintSpan } from '../components/want-watched/want-watched-hint-span';
+import { WantWatchedImportButton } from '../components/want-watched/want-watched-import-button';
 
 export class WantAndWatchedVideosPlugin extends BasePlugin {
     /** 当前导入动作类型（"favorite" 或 "hasWatch"），由按钮点击时设定。对应原 L10588。 */
@@ -47,7 +54,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         if (window.location.href.includes('/want_watch_videos')) {
             $('h3').append(jsxToString(<WantWatchedImportButton variant="want" />));
             $('h3').append(jsxToString(<WantWatchedHintSpan variant="want" />));
-            $('#wantWatchBtn').on('click', (clickEvent: any) => {
+            $('#wantWatchBtn').on('click', (clickEvent: Event) => {
                 this.type = FAVORITE_ACTION;
                 this.importWantWatchVideos(clickEvent, '是否将 想看的影片 导入到 JHS-收藏?');
             });
@@ -55,7 +62,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         if (window.location.href.includes('/watched_videos')) {
             $('h3').append(jsxToString(<WantWatchedImportButton variant="watched" />));
             $('h3').append(jsxToString(<WantWatchedHintSpan variant="watched" />));
-            $('#wantWatchBtn').on('click', (clickEvent: any) => {
+            $('#wantWatchBtn').on('click', (clickEvent: Event) => {
                 this.type = HAS_WATCH_ACTION;
                 this.importWantWatchVideos(clickEvent, '是否将 看过的影片 导入到 JHS-已观看?');
             });
@@ -69,20 +76,17 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
      * @param confirmMessage 确认对话框正文（带备份数据警告）。
      * 无返回值；不抛异常（parseMovieList 的异常被 try/catch 兜底）。
      */
-    importWantWatchVideos(_clickEvent: any, confirmMessage: string): void {
+    importWantWatchVideos(_clickEvent: Event, confirmMessage: string): void {
         utils.q(
             null,
-            `${confirmMessage} <br/> <span style='color: #f40'>执行此功能前请记得备份数据</span>`,
+            confirmMessage + ' ' + jsxToString(<ConfirmWarn text="执行此功能前请记得备份数据" />),
             async () => {
-                const loadingOverlay = loading();
-                try {
+                await withLoading(async () => {
                     this.currentPage = 1;
                     await this.parseMovieList();
-                } catch (error) {
-                    console.error(error);
-                } finally {
-                    loadingOverlay.close();
-                }
+                }).catch((error) => {
+                    clog.error(error);
+                });
             }
         );
     }
@@ -92,23 +96,24 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
      * flag 开：Set 查重 + 批量 saveCarList + 200ms 间隔；
      * flag 关：逐条 getCar/saveCar + 1000ms ajax 翻页。
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from $ / utils.htmlTo$dom
     async parseMovieList(rootEl?: any): Promise<void> {
         if (featureFlags.wantWatchBatchImport) {
             await this.parseMovieListBatch(rootEl);
             return;
         }
-        let itemElements: any;
+        let itemElements;
         let nextPageHref: string;
         if (rootEl) {
             itemElements = rootEl.find(this.getSelector().itemSelector);
-            nextPageHref = rootEl.find('.pagination-next').attr('href');
+            nextPageHref = rootEl.find('.pagination-next').attr('href') ?? '';
         } else {
             itemElements = $(this.getSelector().itemSelector);
-            nextPageHref = $('.pagination-next').attr('href');
+            nextPageHref = $('.pagination-next').attr('href') ?? '';
         }
         for (const rawItem of itemElements) {
             const $item = $(rawItem);
-            const href: string = $item.find('a').attr('href');
+            const href: string = $item.find('a').attr('href') ?? '';
             const carNum: string = $item.find('.video-title strong').text().trim();
             const metaText: string = $item.find('.meta').text().trim();
             if (href && carNum) {
@@ -120,12 +125,12 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
                     await storageManager.saveCar({
                         carNum: carNum,
                         url: href,
-                        names: null,
-                        actionType: this.type,
-                        publishTime: metaText
+                        names: undefined,
+                        actionType: this.type!,
+                        publishTime: metaText ?? undefined
                     });
                 } catch (error) {
-                    console.error(`保存失败 [${carNum}]:`, error);
+                    clog.error(`保存失败 [${carNum}]:`, error);
                 }
             }
         }
@@ -135,13 +140,13 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
             $.ajax({
                 url: nextPageHref,
                 method: 'GET',
-                success: (responseHtml: any) => {
+                success: (responseHtml: string) => {
                     const domParser = new DOMParser();
                     const $parsedDom = $(domParser.parseFromString(responseHtml, 'text/html'));
                     this.parseMovieList($parsedDom);
                 },
-                error: function (request: any) {
-                    console.error(request);
+                error: function (request: { message?: string }) {
+                    clog.error(request);
                     show.error('加载下一页失败:' + request.message);
                 }
             });
@@ -152,24 +157,25 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
     }
 
     /** 批量导入优化路径（Set 查重 + saveCarList + gmHttp 翻页）。 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from $ / utils.htmlTo$dom
     async parseMovieListBatch(rootEl?: any): Promise<void> {
         const container = rootEl || $('body');
         const movieList = container.find(this.getSelector().itemSelector);
         const nextPageLink = container.find('.pagination-next').attr('href');
         if (movieList.length === 0) {
-            show.success('导入结束!');
+            show.ok('导入结束!');
             refresh();
             return;
         }
         show.info(`正在处理第 ${this.currentPage} 页...`);
         const allLocalCars = await storageManager.getCarList();
         const carNumCache = new Set(
-            allLocalCars.map((c: any) =>
+            allLocalCars.map((c: { carNum: string }) =>
                 featureFlags.caseInsensitiveCarNum ? c.carNum.toLowerCase() : c.carNum
             )
         );
-        const currentPageRecords: any[] = [];
-        movieList.each((_i: number, element: any) => {
+        const currentPageRecords: Record<string, unknown>[] = [];
+        movieList.each((_i: number, element: HTMLElement) => {
             const item = $(element);
             const carNum2 = item.find('.video-title strong').text().trim();
             const href = item.find('a').attr('href');
@@ -190,7 +196,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         });
         if (currentPageRecords.length > 0) {
             try {
-                await storageManager.saveCarList(currentPageRecords);
+                await storageManager.saveCarList(currentPageRecords as unknown as CarSaveInput[]);
                 clog.log(
                     `第 ${this.currentPage} 页：成功写入 ${currentPageRecords.length} 条`
                 );
@@ -207,7 +213,7 @@ export class WantAndWatchedVideosPlugin extends BasePlugin {
         await new Promise((resolve) => setTimeout(resolve, 200));
         try {
             const html = await gmHttp.get(nextPageLink);
-            const next$dom = utils.htmlTo$dom(html);
+            const next$dom = utils.htmlTo$dom(String(html));
             await this.parseMovieListBatch(next$dom);
         } catch (e) {
             clog.error('请求下一页失败', e);

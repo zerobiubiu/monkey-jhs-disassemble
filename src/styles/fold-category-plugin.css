@@ -2,6 +2,7 @@
 .tags a.tag {
     position: relative;
 }
+
 .highlight-btn {
     position: absolute;
     top: -10px;
@@ -16,16 +17,18 @@
     line-height: 24px;
     text-align: center;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgb(0, 0, 0, 0.2);
     display: none;
     z-index: 999;
 }
+
 /* 当父元素被高亮时，按钮变为其他颜色 */
 .highlighted .highlight-btn {
     background-color: #ff5722;
 }
+
 /* 高亮状态下的标签样式 */
 .highlighted {
     /* 浅黄色 */
-    border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
+    border: __highlighted_tag_number__px solid __highlighted_tag_color__;
 }

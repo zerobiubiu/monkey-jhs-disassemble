@@ -100,7 +100,7 @@
 }
 
 .fancybox-container {
-    z-index: 99999999;
+    z-index: var(--jhs-z-top);
 }
 
 /* 错误提示样式 */
