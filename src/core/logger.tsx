@@ -1,9 +1,13 @@
 /**
- * 日志面板模块。
+ * 日志模块。
  *
  * 对应原 `archetype/jhs.user.js` L2365-2762 的日志面板实现：含 `class o` 及其
  * 顶部的样式配置 `e`、过滤器映射 `t`、最大条数 `n` 与三个 localStorage 键
  * `a/i/s`。仅在 JS→TS 转换与命名优化的范围内重写，控制流与渲染逻辑保持不变。
+ *
+ * 重构说明：面板 DOM 渲染 / 事件绑定 / 过滤逻辑已提取至
+ * `src/core/util/logger-panel.tsx`，本类作为薄 facade 保持 `clog.*` 全局调用面
+ * 不变；log/warn/error/debug + 条目管理 + localStorage 持久化保留于此。
  *
  * 依赖（已由 `src/types/globals.d.ts` 声明为 any）：
  * - `storageManager`：读取 `clogMsgCount` 最大条数上限；
@@ -12,8 +16,19 @@
  */
 
 import { jsxToString } from './jsx-to-string';
-import { LoggerLogEntry } from '../components/log/logger-log-entry';
 import { UrlAutoLink } from '../components/misc/url-auto-link';
+import {
+    FILTER_KEY,
+    LOG_TYPE_STYLES,
+    bindEvents,
+    checkInitialCollapseState,
+    checkInitialMaximizeState,
+    clear as panelClear,
+    createContainer,
+    renderLog,
+    reRenderAllLogs,
+    setFilter
+} from './util/logger-panel';
 
 export interface LogEntry {
     /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
@@ -27,32 +42,6 @@ export interface LogEntry {
     /** 唯一标识（Date.now() + Math.random()），用于淘汰旧条目时定位 DOM */
     id: number;
 }
-
-/** 日志类型样式配置：label/background/borderLeftColor */
-const LOG_TYPE_STYLES: Record<
-    string,
-    { label: string; background: string; borderLeftColor: string }
-> = {
-    base: { label: '信息', background: '#e8f4fd', borderLeftColor: '#3498db' },
-    warn: { label: '警告', background: '#fef9e7', borderLeftColor: '#f39c12' },
-    error: { label: '错误', background: '#fdedec', borderLeftColor: '#e74c3c' },
-    debug: { label: '调试', background: '#f4f6f6', borderLeftColor: '#95a5a6' }
-};
-
-/** 过滤器 → 命中类型映射：决定某过滤器下显示哪些类型的日志 */
-const FILTER_TYPE_MAP: Record<string, string[]> = {
-    base: ['base', 'warn', 'error'],
-    warn: ['warn'],
-    error: ['error'],
-    debug: ['base', 'warn', 'error', 'debug']
-};
-
-/** localStorage 键：最大化状态 */
-const MAXIMIZE_KEY = 'jhs_clog_maximize';
-/** localStorage 键：展开/折叠状态 */
-const EXPAND_KEY = 'jhs_clog_expand';
-/** localStorage 键：当前过滤器 */
-const FILTER_KEY = 'jhs_clog_filter';
 
 export class Logger {
     /** 当前生效的过滤器名 */
@@ -106,146 +95,10 @@ export class Logger {
 
     /** 创建面板 DOM、绑定事件、恢复持久化状态。 */
     init(): void {
-        this.createContainer();
-        this.bindEvents();
-        this.checkInitialMaximizeState();
-        this.checkInitialCollapseState();
-    }
-
-    /** 构建面板 DOM 树并追加到 body，按 LOG_TYPE_STYLES 生成过滤器按钮。 */
-    createContainer(): void {
-        this.container = document.createElement('div');
-        this.container.className = 'console-logger-container';
-        this.container.style.display = 'none';
-        this.toggleBtn = document.createElement('div');
-        this.toggleBtn.className = 'console-logger-toggle collapsed';
-        this.container.appendChild(this.toggleBtn);
-        this.window = document.createElement('div');
-        this.window.className = 'console-logger-window collapsed';
-        const header = document.createElement('div');
-        header.className = 'console-logger-header';
-        const title = document.createElement('div');
-        title.className = 'console-logger-title';
-        title.textContent = 'JHS V3.3.2';
-        const controls = document.createElement('div');
-        controls.className = 'console-logger-controls';
-        this.maximizeBtn = document.createElement('button');
-        this.maximizeBtn.textContent = '';
-        this.maximizeBtn.classList.add('console-logger-maximize-toggle');
-        controls.appendChild(this.maximizeBtn);
-        const clearBtn = document.createElement('button');
-        clearBtn.textContent = '清空';
-        clearBtn.addEventListener('click', () => this.clear());
-        controls.appendChild(clearBtn);
-        header.appendChild(title);
-        header.appendChild(controls);
-        this.filtersContainer = document.createElement('div');
-        this.filtersContainer.className = 'console-logger-filters';
-        this.filterButtonGroup = document.createElement('div');
-        this.filterButtonGroup.className = 'console-logger-filter-group';
-        this.filtersContainer.appendChild(this.filterButtonGroup);
-        this.scrollToBottomBtn = document.createElement('button');
-        this.scrollToBottomBtn.className = 'console-logger-scroll-to-bottom';
-        this.scrollToBottomBtn.textContent = '到底部';
-        this.filtersContainer.appendChild(this.scrollToBottomBtn);
-        this.content = document.createElement('div');
-        this.content.className = 'console-logger-content jhs-scrollbar';
-        this.window.appendChild(header);
-        this.window.appendChild(this.filtersContainer);
-        this.window.appendChild(this.content);
-        this.container.appendChild(this.window);
-        document.body.appendChild(this.container);
-        Object.keys(LOG_TYPE_STYLES).forEach((typeName) => {
-            const filterBtn = document.createElement('div');
-            filterBtn.className = 'console-logger-filter';
-            if (typeName === this.currentFilter) {
-                filterBtn.classList.add('active');
-            }
-            filterBtn.textContent = LOG_TYPE_STYLES[typeName].label;
-            filterBtn.dataset.type = typeName;
-            filterBtn.addEventListener('click', () => this.setFilter(typeName));
-            this.filterButtonGroup.appendChild(filterBtn);
-        });
-    }
-
-    /** 绑定折叠、最大化、滚到底部、滚动方向锁定等事件。 */
-    bindEvents(): void {
-        this.toggleBtn.addEventListener('click', () => {
-            this.toggleExpandCollapsed();
-        });
-        this.maximizeBtn.addEventListener('click', () => this.toggleMaximize());
-        this.scrollToBottomBtn.addEventListener('click', () => {
-            this.content.scrollTop = this.content.scrollHeight;
-            this.userScrolledUp = false;
-        });
-        this.content.addEventListener('scroll', () => {
-            const atBottom =
-                this.content.scrollHeight - this.content.clientHeight <= this.content.scrollTop + 5;
-            this.userScrolledUp = !atBottom;
-        });
-        this.content.addEventListener(
-            'wheel',
-            (evt: WheelEvent) => {
-                const atTop = this.content.scrollTop === 0;
-                const atBottom =
-                    this.content.scrollHeight - this.content.clientHeight <=
-                    this.content.scrollTop + 1;
-                if ((atTop && evt.deltaY < 0) || (atBottom && evt.deltaY > 0)) {
-                    evt.preventDefault();
-                    evt.stopPropagation();
-                }
-            },
-            { passive: false }
-        );
-    }
-
-    /** 切换日志窗口展开/折叠，并持久化状态；展开时重渲染全部日志。 */
-    toggleExpandCollapsed(): void {
-        const isCollapsed = this.window.classList.toggle('collapsed');
-        this.toggleBtn.classList.toggle('collapsed');
-        if (isCollapsed) {
-            localStorage.setItem(EXPAND_KEY, 'no');
-        } else {
-            localStorage.setItem(EXPAND_KEY, 'yes');
-            this.reRenderAllLogs();
-        }
-    }
-
-    /** 根据 EXPAND_KEY 恢复初始展开/折叠状态。 */
-    checkInitialCollapseState(): void {
-        const stored = localStorage.getItem(EXPAND_KEY);
-        if (stored && stored !== 'no') {
-            this.window.classList.toggle('collapsed');
-            this.toggleBtn.classList.toggle('collapsed');
-            setTimeout(() => {
-                this.content.scrollTop = this.content.scrollHeight;
-            }, 0);
-        } else {
-            this.window.classList.add('collapsed');
-            this.toggleBtn.classList.add('collapsed');
-        }
-    }
-
-    /** 根据 MAXIMIZE_KEY 恢复初始最大化状态。 */
-    checkInitialMaximizeState(): void {
-        if (localStorage.getItem(MAXIMIZE_KEY) === 'maximized') {
-            this.window.classList.add('maximized');
-            this.maximizeBtn.classList.add('active');
-        }
-    }
-
-    /** 切换最大化/还原，持久化状态并在展开时滚到底部。 */
-    toggleMaximize(): void {
-        const isMaximized = this.window.classList.toggle('maximized');
-        this.maximizeBtn.classList.toggle('active', isMaximized);
-        if (isMaximized) {
-            localStorage.setItem(MAXIMIZE_KEY, 'maximized');
-        } else {
-            localStorage.setItem(MAXIMIZE_KEY, 'minimized');
-        }
-        if (!this.window.classList.contains('collapsed')) {
-            this.content.scrollTop = this.content.scrollHeight;
-        }
+        createContainer(this);
+        bindEvents(this);
+        checkInitialMaximizeState(this);
+        checkInitialCollapseState(this);
     }
 
     /**
@@ -334,7 +187,7 @@ export class Logger {
             }
         }
         if (initialized) {
-            this.renderLog(entry);
+            renderLog(this, entry);
         }
     }
 
@@ -375,77 +228,9 @@ export class Logger {
         }, 0);
     }
 
-    /**
-     * 渲染单条日志到内容区（面板可见、未折叠、且通过当前过滤器时）。
-     * @param entry 待渲染条目
-     */
-    renderLog(entry: LogEntry): void {
-        if (this.container.style.display === 'none') {
-            return;
-        }
-        if (this.window.classList.contains('collapsed')) {
-            return;
-        }
-        if (!(FILTER_TYPE_MAP[this.currentFilter] || []).includes(entry.type)) {
-            return;
-        }
-        const el = this._createLogElement(entry);
-        this.content.appendChild(el);
-        if (!this.window.classList.contains('collapsed') && !this.userScrolledUp) {
-            this.content.scrollTop = this.content.scrollHeight;
-        }
-    }
-
     /** 重新渲染全部日志（清空内容区后按当前过滤器批量重建）。 */
     reRenderAllLogs(): void {
-        if (this.container.style.display !== 'none') {
-            if (!this.window.classList.contains('collapsed')) {
-                setTimeout(() => {
-                    this.content.innerHTML = '';
-                    if (this.logs.length === 0) {
-                        return;
-                    }
-                    const filterTypes = FILTER_TYPE_MAP[this.currentFilter] || [];
-                    const fragment = document.createDocumentFragment();
-                    this.logs.forEach((entry) => {
-                        if (filterTypes.includes(entry.type)) {
-                            const el = this._createLogElement(entry);
-                            fragment.appendChild(el);
-                        }
-                    });
-                    this.content.appendChild(fragment);
-                    this.content.scrollTop = this.content.scrollHeight;
-                }, 0);
-            }
-        }
-    }
-
-    /**
-     * 构造单条日志的 DOM 元素（含时间戳、按类型着色的左边框与背景）。
-     * @param entry 待渲染条目
-     * @returns 日志条目 DOM
-     */
-    _createLogElement(entry: LogEntry): HTMLDivElement {
-        const el = document.createElement('div');
-        el.className = 'console-logger-entry';
-        el.dataset.type = entry.type;
-        el.dataset.id = String(entry.id);
-        const style = LOG_TYPE_STYLES[entry.type] || LOG_TYPE_STYLES.base;
-        el.style.borderLeft = '3px solid ' + style.borderLeftColor;
-        el.style.background = style.background;
-        const timeStr = (
-            entry.timestamp instanceof Date ? entry.timestamp : new Date(entry.timestamp)
-        )
-            .toTimeString()
-            .split(' ')[0];
-        el.innerHTML = jsxToString(
-            <LoggerLogEntry
-                timeStr={timeStr}
-                messageType={entry.messageType}
-                message={entry.message}
-            />
-        );
-        return el;
+        reRenderAllLogs(this);
     }
 
     /**
@@ -453,27 +238,12 @@ export class Logger {
      * @param filterType 过滤器名（base/warn/error/debug）
      */
     setFilter(filterType: string): void {
-        if (this.currentFilter === filterType) {
-            return;
-        }
-        this.currentFilter = filterType;
-        localStorage.setItem(FILTER_KEY, filterType);
-        this.filterButtonGroup
-            .querySelectorAll<HTMLDivElement>('.console-logger-filter')
-            .forEach((btn) => {
-                if (btn.dataset.type === filterType) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-        this.reRenderAllLogs();
+        setFilter(this, filterType);
     }
 
     /** 清空全部日志与内容区 DOM。 */
     clear(): void {
-        this.logs = [];
-        this.content.innerHTML = '';
+        panelClear(this);
     }
 
     /** 显示面板并重渲染日志；未初始化时尝试初始化。 */

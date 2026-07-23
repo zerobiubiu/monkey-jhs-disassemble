@@ -35,42 +35,26 @@
  * 6. updateCurrentPageFromScroll：滚动时同步内部页码（不改地址栏）
  * 7. createBackToTopBtn + updateBackToTopBtn：rAF 节流的回到顶部按钮
  * 8. MAX_PAGES(200) 保护，防止异常无限加载
+ *
+ * 方法组已拆分至 ./list-waterfall/ 子目录：
+ *   lw-fetch.ts  — loadNextPage / setState / findNextUrl / toAbsolute / SEL / LOG_PREFIX
+ *   lw-scroll.ts — checkLoad / updateCurrentPageFromScroll
+ * 本类保留同名薄委托方法，内部调用点签名不变。
  */
 import { TaskSupervisor } from '../core/task-supervisor';
 import { createBackToTopButton } from '../core/util/back-to-top';
 
 import { BasePlugin } from './base-plugin';
+import { findNextUrl, loadNextPage as lwLoadNextPage, LOG_PREFIX, SEL, setState, toAbsolute } from './list-waterfall/lw-fetch';
+import { checkLoad, updateCurrentPageFromScroll } from './list-waterfall/lw-scroll';
 
 import listWaterfallCssRaw from '../styles/list-waterfall-plugin.css?raw';
-
-/** 日志前缀。 */
-const LOG_PREFIX = '[listWaterfall]';
 
 /** 瀑布流开关持久化键（GM_setValue/getValue）。 */
 const ENABLED_KEY = 'jdb:list-waterfall-enabled';
 
-/** 预加载距离：loader 距视口底部多少像素时触发加载下一页。 */
-const PRELOAD_DISTANCE = 800;
-
-/** 最大页数保护，防止异常情况无限加载。 */
-const MAX_PAGES = 200;
-
 /** 路径白名单（@include 较宽松，需在脚本内精确校验）。 */
 const ALLOWED_PATHS = new Set(['/users/lists', '/users/favorite_lists']);
-
-/** 选择器配置。 */
-const SEL = {
-    /** 清单列表容器 */
-    box: '#lists > ul',
-    /** 单个清单项 */
-    item: '#lists > ul > li',
-    /** 下一页链接（JavDB 全站通用） */
-    nextLink: 'a.pagination-next',
-    /** 分页 nav 容器 */
-    paginationNav: 'nav.pagination',
-    /** 清单项内的主链接（清单标题） */
-    itemLink: 'div.column.is-10 > a'
-};
 
 /** 每页滚动位置记录（用于滚动时同步地址栏）。 */
 interface PageItem {
@@ -93,75 +77,6 @@ function getInitialPage(): number {
 }
 
 /**
- * 在文档/节点中查找下一页链接 href。对应原 L180-183。
- *
- * @param doc Document 或 Element
- * @returns 下一页 href（相对或绝对），无则 null
- */
-function findNextUrl(doc: Document | Element): string | null {
-    const a = doc.querySelector(SEL.nextLink) as HTMLAnchorElement | null;
-    return a ? a.getAttribute('href') : null;
-}
-
-/**
- * 将相对 href 转为绝对 URL。对应原 L190-192。
- *
- * @param href 相对或绝对 href
- * @returns 绝对 URL
- */
-function toAbsolute(href: string): string {
-    return new URL(href, location.href).href;
-}
-
-/**
- * 对新追加的 li 应用链接重写（与 ModMyListOpenWay 行为保持一致）。对应原 L201-213。
- * - 设置 target="_blank"（新窗口打开）
- * - /users/list_detail?id=xxx → /lists/xxx（短地址）
- * - /lists/xxx 保持不变
- *
- * @param container 含新 li 的容器节点
- */
-function rewriteItemLinks(container: Element): void {
-    container.querySelectorAll(SEL.itemLink).forEach((a: Element) => {
-        const anchor = a as HTMLAnchorElement;
-        anchor.target = '_blank';
-        const href = anchor.getAttribute('href') || '';
-        // 已是 /lists/xxx 短地址，无需重写
-        if (/^\/lists\/[^/]+$/.test(href)) return;
-        // /users/list_detail?id=xxx → /lists/xxx
-        const m = href.match(/[?&]id=([^&]+)/);
-        if (m) {
-            anchor.href = `/lists/${m[1]}`;
-        }
-    });
-}
-
-/**
- * 发起 GM_xmlhttpRequest GET 请求。对应原 L220-237。
- *
- * @param url 请求 URL
- * @returns Promise<string> responseText
- */
-function gmGet(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url,
-            timeout: 30000,
-            onload: (resp: { status: number; responseText: string }) => {
-                if (resp.status >= 200 && resp.status < 300) {
-                    resolve(resp.responseText);
-                } else {
-                    reject(new Error(`HTTP ${resp.status}`));
-                }
-            },
-            onerror: () => reject(new Error('network error')),
-            ontimeout: () => reject(new Error('timeout'))
-        });
-    });
-}
-
-/**
  * 读取瀑布流开关（默认开启）。对应原 L54-56。
  *
  * @returns 是否启用
@@ -174,25 +89,25 @@ function isEnabled(): boolean {
  * 清单瀑布流插件主类。
  *
  * 原脚本对应行号：L245-502（ListWaterfall 类）。原脚本用独立 class + IIFE 入口，
- * 此处转为 BasePlugin 子类，状态字段保留为类私有字段。
+ * 此处转为 BasePlugin 子类，状态字段保留为类字段（sub-module 需访问）。
  */
 export class ListWaterfallPlugin extends BasePlugin {
     /** 当前页码（滚动同步 / URL 与标题更新使用）。 */
-    private currentPage = getInitialPage();
+    currentPage = getInitialPage();
     /** 下一页绝对 URL（无则表示已到底）。 */
-    private nextUrl: string | null = null;
+    nextUrl: string | null = null;
     /** 是否还有更多页。 */
-    private hasMore = false;
+    hasMore = false;
     /** 加载中标志，防重入。 */
-    private isLoading = false;
+    isLoading = false;
     /** 状态条 DOM 节点。 */
-    private loader: HTMLDivElement | null = null;
+    loader: HTMLDivElement | null = null;
     /** 清单列表容器（#lists > ul）。 */
-    private container: HTMLUListElement | null = null;
+    container: HTMLUListElement | null = null;
     /** 已加载的 li id 集合，用于去重检测。 */
-    private loadedIds: Set<string> = new Set();
+    loadedIds: Set<string> = new Set();
     /** 每页滚动位置记录，用于滚动时同步地址栏。 */
-    private pageItems: PageItem[] = [];
+    pageItems: PageItem[] = [];
     /** scroll 事件处理器引用。 */
     private _onScroll: (() => void) | null = null;
     /** 回到顶部按钮清理函数。 */
@@ -327,136 +242,31 @@ export class ListWaterfallPlugin extends BasePlugin {
     }
 
     /**
-     * 加载下一页：请求 HTML → 解析 → 追加 li → 更新分页。对应原 L339-427。
-     *
-     * @returns Promise<void>；抓取失败时切换错误态，不抛出
+     * 加载下一页。委托至 list-waterfall/lw-fetch。
      */
     private async loadNextPage(): Promise<void> {
-        if (this.isLoading || !this.nextUrl || !this.hasMore) return;
-        if (this.currentPage >= MAX_PAGES) {
-            this.setState('no-more', `已达最大页数 ${MAX_PAGES}，停止加载`);
-            this.hasMore = false;
-            return;
-        }
-        this.isLoading = true;
-        this.setState('loading', '加载中...');
-
-        try {
-            const html = await gmGet(this.nextUrl);
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-
-            const remoteUl = doc.querySelector(SEL.box);
-            if (!remoteUl) {
-                throw new Error('下一页未找到列表容器');
-            }
-
-            // 抽取下一页所有 li
-            const newLis = Array.from(remoteUl.children).filter(
-                (li: Element) => li.tagName === 'LI'
-            );
-
-            // 去重检查：若下一页第一个 li 的 id 已存在于当前页，视为重复，停止
-            if (
-                newLis.length > 0 &&
-                (newLis[0] as HTMLElement).id &&
-                this.loadedIds.has((newLis[0] as HTMLElement).id)
-            ) {
-                this.hasMore = false;
-                this.nextUrl = null;
-                this.setState('no-more', '已经到底了');
-                console.log(`${LOG_PREFIX} 检测到重复数据，停止瀑布流`);
-                return;
-            }
-
-            // 记录追加前的容器高度，用于 pageItems 滚动定位
-            const topBefore = this.container!.scrollHeight;
-
-            // 追加新 li 到当前容器
-            const fragment = document.createDocumentFragment();
-            newLis.forEach((li: Element) => {
-                if (li.id) this.loadedIds.add(li.id);
-                fragment.appendChild(li);
-            });
-            this.container!.appendChild(fragment);
-
-            // 对新追加的 li 应用链接重写（target=_blank + 短地址）
-            rewriteItemLinks(this.container!);
-
-            // 记录本页滚动定位
-            this.currentPage += 1;
-            this.pageItems.push({
-                page: this.currentPage,
-                top: topBefore,
-                url: this.nextUrl
-            });
-
-            // 更新下一页链接
-            const nextHref = findNextUrl(doc);
-            this.nextUrl = nextHref ? toAbsolute(nextHref) : null;
-            this.hasMore = !!this.nextUrl;
-
-            // 替换页面上的分页 nav（保持与当前页同步）
-            const remoteNav = doc.querySelector(SEL.paginationNav);
-            if (remoteNav) {
-                const currentNav = document.querySelector(SEL.paginationNav);
-                if (currentNav) {
-                    currentNav.replaceWith(remoteNav);
-                }
-            }
-
-            this.setState('', '');
-            if (!this.hasMore) {
-                this.setState('no-more', '已经到底了');
-            }
-            console.log(
-                `${LOG_PREFIX} 已加载第 ${this.currentPage} 页，追加 ${newLis.length} 项`
-            );
-        } catch (err) {
-            clog.error(`${LOG_PREFIX} 加载失败:`, err);
-            this.setState('error', '加载失败，点击重试');
-        } finally {
-            this.isLoading = false;
-        }
+        return lwLoadNextPage(this);
     }
 
     /**
-     * 检查是否需要触发加载（loader 接近视口底部时）。对应原 L432-438。
+     * 检查是否需要触发加载。委托至 list-waterfall/lw-scroll。
      */
     private checkLoad(): void {
-        if (!this.loader || !this.hasMore) return;
-        const rect = this.loader.getBoundingClientRect();
-        if (rect.top < window.innerHeight + PRELOAD_DISTANCE) {
-            this.loadNextPage();
-        }
+        checkLoad(this);
     }
 
     /**
-     * 根据滚动位置更新当前页码与地址栏 URL（replaceState）。对应原 L443-456。
+     * 根据滚动位置更新当前页码。委托至 list-waterfall/lw-scroll。
      */
     private updateCurrentPageFromScroll(): void {
-        const y = window.scrollY;
-        for (let i = this.pageItems.length - 1; i >= 0; i--) {
-            const item = this.pageItems[i];
-            if (y >= item.top) {
-                if (this.currentPage !== item.page) {
-                    this.currentPage = item.page;
-                    // 不修改地址栏，保持进入清单页时的原始 URL
-                }
-                break;
-            }
-        }
+        updateCurrentPageFromScroll(this);
     }
 
     /**
-     * 设置状态条样式与文本。对应原 L463-467。
-     *
-     * @param cls 状态类名：loading/error/no-more/空
-     * @param text 显示文本
+     * 设置状态条样式与文本。委托至 list-waterfall/lw-fetch。
      */
     private setState(cls: string, text: string): void {
-        if (!this.loader) return;
-        this.loader.className = `jdb-wf-loader ${cls}`.trim();
-        this.loader.textContent = text;
+        setState(this, cls, text);
     }
 
     /**

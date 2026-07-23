@@ -9,6 +9,19 @@
 
 ---
 
+## v1.28.18
+
+**发布日期**：2026-07-24
+
+### 重构
+
+- **Round-4 原子化拆分**（doc/177）：18 个超 400 行文件拆分为原子模块，新建 7 个子目录 + 25 个新模块；list-page-plugin 734→258（此前从未原子化）、vlt-create-list 687→11、dpb-list-panel 658→428、vlt-db 571→83、common-util 522→283、logger 507→259 等。
+- **D1 去重**：list-page 3× textContent 替换块提取为 `replaceTitleTextNodes`。
+- **Ratchet 合规**：core 根 28 / util 18 / video-lists-tag 20 均在上限内。
+- **eslint 警告下降**：60→59。
+
+---
+
 ## v1.28.17
 
 **发布日期**：2026-07-23

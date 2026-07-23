@@ -51,77 +51,21 @@
  * 6. findMountTarget 按优先级查找挂载目标（jhs-vlt-filter-bar → tabs → section）
  * 7. MutationObserver 监听新增 .item/status-tag（防抖 150ms 刷新）
  * 8. init 等待 document.body + tryBuild + startObserving（含 10s 超时兜底）
+ *
+ * 方法组已拆分至 ./status-tag-filter/ 子目录：
+ *   stf-collect.ts — collectStatusTagCounts / countNoStatusItems
+ *   stf-apply.ts   — applyFilter
+ *   stf-ui.ts      — createFilterChip / doBuild / findMountTarget
+ * 本类保留同名薄委托方法，内部调用点签名不变。
  */
 import type { PageType } from '../core/page-context';
 import { TaskSupervisor } from '../core/task-supervisor';
 
 import { BasePlugin } from './base-plugin';
+import { applyFilter } from './status-tag-filter/stf-apply';
+import { doBuild, findMountTarget, LOG } from './status-tag-filter/stf-ui';
 
 import statusTagFilterCssRaw from '../styles/status-tag-filter-plugin.css?raw';
-
-/** 日志前缀。 */
-const LOG = '[状态标签筛选]';
-
-/** 标记本脚本隐藏的卡片（与 jhs 的 data-hide 区分，协同安全设计）。 */
-const HIDDEN_ATTR = 'data-status-tag-hidden';
-
-/**
- * jhs 主项目的隐藏标记属性名。
- * jhs ListPagePlugin.filterMovieList 用 `$item.hide().attr('data-hide', YES)`
- * （值为 "yes"），showCarNumBox 用 `data-hide="<carNum>-hide"`（临时隐藏）。
- * 两种值都表示卡片被 jhs 隐藏，本脚本统一检查属性是否存在（不关心值）。
- */
-const JHS_HIDE_ATTR = 'data-hide';
-
-/** status-tag 选择器（与 jhs StatusTagHtml 生成的 class 一致）。 */
-const STATUS_TAG_SELECTOR = '.item .tags.has-addons .tag.is-success.status-tag';
-
-/** 无状态标签芯片的值。 */
-const NO_TAG_VALUE = 'no-tag';
-
-/**
- * 收集每个 status-tag 文本的出现次数。
- * 对应原 L40-52。
- *
- * doc/48 增强：排除被 jhs 屏蔽的卡片（带 data-hide 属性），
- * 芯片计数只反映实际可见的卡片，避免计数失真。
- *
- * @returns 标签文本→计数映射
- */
-function collectStatusTagCounts(): Record<string, number> {
-    const counts: Record<string, number> = {};
-    document.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
-        // 向上查找最近的 .item 容器，跳过被 jhs 屏蔽的卡片
-        const itemEl = el.closest('.item');
-        if (itemEl && itemEl.hasAttribute(JHS_HIDE_ATTR)) return;
-        const text = el.textContent?.trim() || '';
-        if (text) {
-            counts[text] = (counts[text] || 0) + 1;
-        }
-    });
-    return counts;
-}
-
-/**
- * 计算无状态标签的卡片数。
- * 对应原 L57-66。
- *
- * doc/48 增强：排除被 jhs 屏蔽的卡片（带 data-hide 属性），
- * 计数只反映实际可见的卡片。
- *
- * @returns 无状态标签的卡片数
- */
-function countNoStatusItems(): number {
-    let count = 0;
-    document.querySelectorAll('.item').forEach((item: Element) => {
-        // 跳过被 jhs 屏蔽的卡片
-        if (item.hasAttribute(JHS_HIDE_ATTR)) return;
-        if (!item.querySelector(STATUS_TAG_SELECTOR)) {
-            count++;
-        }
-    });
-    return count;
-}
 
 /**
  * 状态标签筛选插件主类。
@@ -211,9 +155,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
         const mountTimeout = this.supervisor.setTimeout(() => {
             mountObserver.disconnect();
             if (!document.querySelector('.status-tag-filter-bar')) {
-                const fallback = this.findMountTarget() || document.body.firstElementChild;
+                const fallback = findMountTarget() || document.body.firstElementChild;
                 if (fallback) {
-                    this.doBuild(fallback as Element);
+                    doBuild(fallback as Element);
                     this.startObserving();
                     console.warn(`${LOG} 通过最终回退挂载`, fallback);
                 } else {
@@ -231,227 +175,11 @@ export class StatusTagFilterPlugin extends BasePlugin {
     private tryBuild(): boolean {
         if (document.querySelector('.status-tag-filter-bar')) return true;
 
-        const mountTarget = this.findMountTarget();
+        const mountTarget = findMountTarget();
         if (!mountTarget) return false;
 
-        this.doBuild(mountTarget);
+        doBuild(mountTarget);
         return true;
-    }
-
-    /**
-     * 按优先级依次查找可用的挂载目标。对应原 L197-220。
-     *
-     * @returns 挂载目标元素或 null
-     */
-    private findMountTarget(): Element | null {
-        // 1) 优先挂在 videoListsTag 的 .jhs-vlt-filter-bar 之后
-        const tagFilterBar = document.querySelector('.jhs-vlt-filter-bar');
-        if (tagFilterBar) return tagFilterBar;
-
-        // 2) 挂在页面默认 tabs 容器之后
-        const isActorPage = /^\/actors\//.test(window.location.pathname);
-        if (isActorPage) {
-            const actorTags = document.querySelector('body > section > div > div.actor-tags.tags');
-            if (actorTags) return actorTags;
-        } else {
-            const tabsBoxed = document.querySelector('body > section > div > div.tabs.is-boxed');
-            if (tabsBoxed) return tabsBoxed;
-        }
-
-        // 3) 回退：挂在 section 容器的第一个子元素之前
-        const section = document.querySelector('body > section > div > div');
-        if (section && section.firstElementChild) {
-            if (!section.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
-                return section.firstElementChild;
-            }
-        }
-
-        // 4) 最终回退：挂在 body > section > div 的第一个子元素之前
-        const container = document.querySelector('body > section > div');
-        if (container && container.firstElementChild) {
-            if (!container.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
-                return container.firstElementChild;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * 构建筛选栏并插入到挂载目标之后。对应原 L150-195。
-     * 内部定义 refreshChips（收集 status-tag 文本并重建芯片，保留已激活状态）。
-     *
-     * @param mountTarget 挂载参考元素
-     */
-    private doBuild(mountTarget: Element): void {
-        if (document.querySelector('.status-tag-filter-bar')) return;
-
-        const filterBar = document.createElement('div');
-        filterBar.className = 'status-tag-filter-bar';
-
-        // 标签
-        const label = document.createElement('span');
-        label.className = 'status-tag-filter-label';
-        label.textContent = '\u72B6\u6001:'; // 状态:
-        filterBar.appendChild(label);
-
-        // 芯片容器
-        const chipsContainer = document.createElement('div');
-        chipsContainer.className = 'status-tag-filter-chips';
-        filterBar.appendChild(chipsContainer);
-
-        // 保存 refreshChips 引用以便后续更新（挂在 DOM 元素上，与原脚本一致）
-        const refreshChips = (): void => {
-            // 保存当前选中状态
-            const activeValues = new Set(
-                Array.from(chipsContainer.querySelectorAll('.status-tag-filter-chip.active')).map(
-                    (c: Element) => (c as HTMLElement).dataset.value || ''
-                )
-            );
-
-            chipsContainer.innerHTML = '';
-
-            // "无状态标签" 芯片（始终在第一位，带计数）
-            const noCount = countNoStatusItems();
-            const noTagChip = this.createFilterChip('无状态标签', NO_TAG_VALUE, {
-                isNoTag: true,
-                count: noCount
-            });
-            if (activeValues.has(NO_TAG_VALUE)) noTagChip.classList.add('active');
-            chipsContainer.appendChild(noTagChip);
-
-            // 各状态标签芯片（根据页面实际内容动态生成，带计数）
-            const allCounts = collectStatusTagCounts();
-            const sortedTags = Object.keys(allCounts).sort();
-            sortedTags.forEach((tagName: string) => {
-                const chip = this.createFilterChip(tagName, tagName, {
-                    count: allCounts[tagName]
-                });
-                if (activeValues.has(tagName)) chip.classList.add('active');
-                chipsContainer.appendChild(chip);
-            });
-        };
-
-        // 初始构建芯片
-        refreshChips();
-
-        // 插入到 DOM
-        if (mountTarget.matches('.jhs-vlt-filter-bar, .actor-tags.tags, .tabs.is-boxed')) {
-            mountTarget.insertAdjacentElement('afterend', filterBar);
-        } else {
-            mountTarget.insertAdjacentElement('beforebegin', filterBar);
-        }
-
-        // 保存 refreshChips 引用以便后续更新（与原脚本 filterBar._refreshChips 一致）
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: storing function ref on element
-        (filterBar as any)._refreshChips = refreshChips;
-
-        console.log(`${LOG} 筛选栏已挂载`);
-    }
-
-    /**
-     * 创建单个筛选芯片。对应原 L130-145。
-     *
-     * @param labelText 芯片文本
-     * @param value 芯片值（标签文本或 'no-tag'）
-     * @param opts 选项（isNoTag/count）
-     * @returns 芯片 span 元素
-     */
-    private createFilterChip(
-        labelText: string,
-        value: string,
-        opts: { isNoTag?: boolean; count?: number } = {}
-    ): HTMLSpanElement {
-        const { isNoTag = false, count } = opts;
-        const chip = document.createElement('span');
-        chip.className = 'status-tag-filter-chip';
-        if (isNoTag) chip.classList.add('no-status');
-        // 芯片文本：标签名 + 计数（如 "⭐ 已收藏 12"）
-        chip.textContent = count !== undefined ? `${labelText} ${count}` : labelText;
-        chip.dataset.value = value;
-
-        chip.addEventListener('click', () => {
-            chip.classList.toggle('active');
-            this.applyFilter();
-        });
-
-        return chip;
-    }
-
-    /**
-     * 应用筛选：根据当前激活的芯片显示/隐藏 .item 元素。对应原 L75-120。
-     *
-     * 协同安全（与 jhs 兼容的关键）：
-     * - 被其他脚本隐藏的卡片（display:none 且无 data-status-tag-hidden）不纳入管理
-     * - jhs 用 jQuery .hide() + data-hide 属性隐藏卡片，本脚本识别为"被其他脚本隐藏"并跳过
-     *
-     * 筛选逻辑：
-     * - 无激活芯片：仅恢复本脚本隐藏的卡片（不触碰其他脚本已隐藏的）
-     * - 激活"无状态标签"芯片：仅显示无任何状态标签的项
-     * - 激活其他芯片：OR 逻辑，命中任一选中标签即显示
-     */
-    private applyFilter(): void {
-        const activeChips = document.querySelectorAll('.status-tag-filter-chip.active');
-        const selectedValues = new Set(
-            Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
-        );
-
-        // 无筛选时：仅恢复本脚本隐藏的卡片，不清除其他脚本的隐藏
-        // doc/48 增强：恢复时检查 data-hide，避免恢复被 jhs 屏蔽的卡片
-        if (selectedValues.size === 0) {
-            document.querySelectorAll(`.item[${HIDDEN_ATTR}]`).forEach((item: Element) => {
-                const htmlItem = item as HTMLElement;
-                // 被jhs 屏蔽的卡片不恢复显示（保持隐藏）
-                if (htmlItem.hasAttribute(JHS_HIDE_ATTR)) return;
-                htmlItem.removeAttribute(HIDDEN_ATTR);
-                htmlItem.style.display = '';
-            });
-            return;
-        }
-
-        const showNoTag = selectedValues.has(NO_TAG_VALUE);
-        const selectedTags = new Set([...selectedValues].filter((v) => v !== NO_TAG_VALUE));
-
-        document.querySelectorAll('.item').forEach((item: Element) => {
-            const htmlItem = item as HTMLElement;
-            // 协同安全（doc/48 增强）：被 jhs 屏蔽的卡片不纳入管理。
-            // 优先检查稳定的语义属性 data-hide（jhs 两种隐藏标记：
-            // "yes"=filterMovieList 屏蔽 / "<carNum>-hide"=showCarNumBox 临时隐藏），
-            // 而非易变的 style.display——排序/筛选时序竞争中 style.display 可能
-            // 被临时清除/覆盖，但 data-hide 属性在同一节点引用上不会丢失
-            // （jQuery empty+append 移动节点不丢属性）。同时保留 style.display
-            // 检查作为兼底（兼容未知脚本的隐藏）。
-            const hiddenByJhs = htmlItem.hasAttribute(JHS_HIDE_ATTR);
-            const hiddenByOther =
-                htmlItem.style.display === 'none' && !htmlItem.hasAttribute(HIDDEN_ATTR);
-            if (hiddenByJhs || hiddenByOther) return;
-
-            // 收集当前卡片内所有 status-tag 的文本
-            const itemStatusTags = new Set<string>();
-            item.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
-                const text = el.textContent?.trim() || '';
-                if (text) itemStatusTags.add(text);
-            });
-
-            // 标签匹配：命中任一选定标签即显示（OR 逻辑）
-            let tagMatch = false;
-            if (selectedTags.size > 0) {
-                tagMatch = [...selectedTags].some((t) => itemStatusTags.has(t));
-            }
-
-            // 无标签条件独立判断，与标签匹配用 OR 连接
-            const noTagMatch = showNoTag && itemStatusTags.size === 0;
-
-            const shouldShow = tagMatch || noTagMatch;
-
-            if (shouldShow) {
-                htmlItem.removeAttribute(HIDDEN_ATTR);
-                htmlItem.style.display = '';
-            } else {
-                htmlItem.setAttribute(HIDDEN_ATTR, '');
-                htmlItem.style.display = 'none';
-            }
-        });
     }
 
     /**
@@ -463,7 +191,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         if (filterBar && (filterBar as any)._refreshChips) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: calling stored function ref
             (filterBar as any)._refreshChips();
-            this.applyFilter();
+            applyFilter();
         }
     }
 

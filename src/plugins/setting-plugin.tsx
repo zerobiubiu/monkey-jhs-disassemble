@@ -63,6 +63,7 @@ import {
     openFileListDialog,
     getWebDavCredentialsFromGm
 } from './setting/webdav-operations';
+import { addLabelTag, addKeyword } from './setting/setting-tag-ops';
 
 import { SettingDialog } from '../components/setting/setting-dialog';
 import { BackToTopButton } from '../components/misc/back-to-top-button';
@@ -70,7 +71,6 @@ import { CacheItemHtml } from '../components/setting/cache-item-html';
 import { SettingMountBox } from '../components/setting/setting-mount-box';
 import { SimpleSettingPanel } from '../components/setting/simple-setting-panel';
 import { VideoQualityOption } from '../components/setting/video-quality-option';
-import { KeywordLabel } from '../components/misc/keyword-label';
 import { StyleBlock } from '../components/misc/style-block';
 
 import settingCssRaw from '../styles/setting-plugin.css?raw';
@@ -333,58 +333,12 @@ export class SettingPlugin extends BasePlugin {
 
     /** 在关键词容器内添加一个关键词标签（带删除按钮）。 */
     addLabelTag(containerSelector: string, keyword: string): void {
-        const $tagBox = $(`${containerSelector} .tag-box`);
-        let $label: JQuery;
-        const bgColor = '#cbd5e1';
-        let textColor = '#333';
-        if (/^[a-z]{2,}-/i.test(keyword) && isJavdbSite) {
-            textColor = '#3477ad';
-            $label = $(
-                jsxToString(
-                    <KeywordLabel
-                        keyword={keyword}
-                        bgColor={bgColor}
-                        textColor={textColor}
-                        variant="link"
-                        href={`/video_codes/${keyword.replace('-', '')}`}
-                    />
-                )
-            );
-        } else {
-            $label = $(
-                jsxToString(
-                    <KeywordLabel
-                        keyword={keyword}
-                        bgColor={bgColor}
-                        textColor={textColor}
-                        variant="div"
-                    />
-                )
-            );
-        }
-        $label.find('.keyword-remove').click((event: MouseEvent) => {
-            event.stopPropagation();
-            event.preventDefault();
-            const $removeBtn = $(event.currentTarget);
-            const removeKeyword = ($removeBtn
-                .closest('.keyword-label')
-                .attr('data-keyword') ?? '')
-                .split(' ')[0];
-            utils.q(event, `是否移除屏蔽词  ${removeKeyword}?`, async () => {
-                $removeBtn.parent().remove();
-            });
-        });
-        $tagBox.append($label);
+        addLabelTag(containerSelector, keyword);
     }
 
     /** 从输入框读取关键词并添加为标签。 */
     addKeyword(containerSelector: string): void {
-        const $input = $(`${containerSelector} .keyword-input`);
-        const keyword = String($input.val() ?? '').trim();
-        if (keyword) {
-            this.addLabelTag(containerSelector, keyword);
-            $input.val('');
-        }
+        addKeyword(containerSelector);
     }
 
     /**

@@ -50,12 +50,10 @@
  *   递归抓取（filterAllVideo / filterActorVideo / parseAndSaveFilterInfo）提取至
  *   ./blacklist/blacklist-scraper，本类保留同名 thin delegate。
  */
-import { currentHref, isJavdbSite, ACTOR, ACTRESS } from '../constants/site';
+import { isJavdbSite } from '../constants/site';
 
 import { jsxToString } from '../core/jsx-to-string';
 
-import type { CarRecord } from '../core/storage-manager';
-import type { ActressInfo } from './base-plugin';
 import { BasePlugin } from './base-plugin';
 import { buildBlacklistTableOptions } from './blacklist/blacklist-tabulator';
 import {
@@ -63,10 +61,10 @@ import {
     filterActorVideo as _filterActorVideo,
     parseAndSaveFilterInfo as _parseAndSaveFilterInfo
 } from './blacklist/blacklist-scraper';
+import { addBlacklist as _addBlacklist } from './blacklist/blacklist-add';
+import { getTableData as _getTableData } from './blacklist/blacklist-data';
 
 import { BlacklistDialog } from '../components/blacklist/blacklist-dialog';
-import { BlacklistConfirmMessage } from '../components/blacklist/blacklist-confirm-message';
-import { BlacklistDataTypeOptions } from '../components/blacklist/blacklist-data-type-options';
 
 export class BlacklistPlugin extends BasePlugin {
     /** 全屏 loading 句柄（addBlacklist 执行期间显示，结束/出错时关闭）。 */
@@ -90,103 +88,11 @@ export class BlacklistPlugin extends BasePlugin {
 
     /**
      * 将当前演员/分类加入黑名单，并递归抓取其全部番号。
-     * 对应原 L7327-7439。
+     * 对应原 L7327-7439。实现提取至 blacklist/blacklist-add 的 addBlacklist。
      * @param event 触发点击的 jQuery 事件（取 clientX/clientY 定位确认弹窗）
      */
     async addBlacklist(event: MouseEvent): Promise<void> {
-        const position = {
-            clientX: event.clientX,
-            clientY: event.clientY + 80
-        };
-        const isAlreadyBlacklisted = $('#addBlacklistBtn span').text().includes('已加入');
-        let blacklistInfo: ActressInfo;
-        let isActress: boolean;
-        let tagName: string = '';
-        if (currentHref.includes('/tags')) {
-            const tagUrl = new URL(currentHref);
-            tagUrl.searchParams.delete('page');
-            tagName = $('#jhs-check-tag').text().trim();
-            blacklistInfo = {
-                starId: 'no-' + tagName,
-                name: '虚拟演员-' + tagName,
-                allName: ['虚拟演员'],
-                role: '虚拟演员',
-                movieType: tagName,
-                blacklistUrl: tagUrl.toString()
-            };
-            isActress = false;
-        } else {
-            blacklistInfo = this.getActressPageInfo();
-            isActress = true;
-        }
-        const { starId, name, allName, role, movieType, blacklistUrl } = blacklistInfo;
-        const notFirstPageByQuery = currentHref.includes('page') && !currentHref.includes('page=1');
-        const confirmMessage = jsxToString(
-            <BlacklistConfirmMessage
-                tagName={tagName}
-                name={name}
-                isAlreadyBlacklisted={isAlreadyBlacklisted}
-                isActress={isActress}
-                notFirstPageByQuery={notFirstPageByQuery}
-            />
-        );
-        utils.q(position as unknown as MouseEvent, confirmMessage, async () => {
-            navigator.locks
-                .request(
-                    'checkNewActressActorFilterCar',
-                    {
-                        ifAvailable: true
-                    },
-                    async (lock: unknown) => {
-                        clog.debug('获取锁', lock);
-                        if (lock) {
-                            this.loadObj = loading();
-                            try {
-                                await storageManager.addBlacklistItem({
-                                    starId: starId ?? undefined,
-                                    name,
-                                    allName,
-                                    role,
-                                    movieType,
-                                    url: blacklistUrl ?? undefined
-                                });
-                                await this.filterActorVideo(name, starId);
-                                const okShow = show.ok(
-                                    `屏蔽结束,是否跳转到最后一页: ${this.lastPageLink}`,
-                                    {
-                                        duration: -1,
-                                        close: true,
-                                        onClick: () => {
-                                            okShow.closeShow?.();
-                                            window.location.href = this.lastPageLink!;
-                                        }
-                                    }
-                                );
-                            } catch (error: unknown) {
-                                clog.error(error);
-                                const errorShow = show.error(
-                                    '发生错误, 是否填转到解析失败的那一页? (点击并跳转)',
-                                    {
-                                        duration: -1,
-                                        close: true,
-                                        onClick: () => {
-                                            errorShow.closeShow?.();
-                                            window.location.href = this.nextPageLink!;
-                                        }
-                                    }
-                                );
-                            } finally {
-                                this.loadObj!.close();
-                            }
-                        } else {
-                            show.error('当前有定时任务在后台执行中, 无法发起此操作');
-                        }
-                    }
-                )
-                .catch((lockError: unknown) => {
-                    clog.error('锁任务出现错误:', lockError);
-                });
-        });
+        return _addBlacklist(this, event);
     }
 
     /**
@@ -276,81 +182,11 @@ export class BlacklistPlugin extends BasePlugin {
 
     /**
      * 读取黑名单并按搜索/性别/状态/屏蔽类型过滤，附带聚合每个演员的番号列表。
-     * 对应原 L7510-7573。
+     * 对应原 L7510-7573。实现提取至 blacklist/blacklist-data 的 getTableData。
      * @returns 过滤后的行数据数组（每行含 carList/count）
      */
     async getTableData() {
-        const blacklist = await storageManager.getBlacklist();
-        const blacklistCars = await storageManager.getBlacklistCarList();
-        const searchValue = $('#searchValue').val();
-        const statusType = $('#statusType').val();
-        const $dataTypeSelect = $('#dataType');
-        const dataType = $dataTypeSelect.val();
-        const urlType = $('#urlType').val();
-        const totalCount = blacklist.length;
-        let actorCount = 0;
-        let actressCount = 0;
-        const enrichedList = blacklist
-            .map((item) => {
-                if (item.role === ACTOR) {
-                    actorCount++;
-                } else if (item.role === ACTRESS) {
-                    actressCount++;
-                }
-                let isUnCheck = false;
-                if (item.lastPublishTime) {
-                    isUnCheck = !utils.isUnnecessaryCheck(
-                        item.lastPublishTime,
-                        this.checkBlacklist_ruleTime
-                    );
-                }
-                return {
-                    ...item,
-                    isUnCheck
-                };
-            })
-            .filter(
-                (item) =>
-                    (!searchValue || !!item.name!.includes(searchValue)) &&
-                    (statusType !== 'normal' || !item.isUnCheck) &&
-                    (statusType !== 'stop' || !!item.isUnCheck) &&
-                    (dataType
-                        ? item.role === dataType
-                        : (urlType !== 'hasT' || !!item.url!.includes('t=')) &&
-                          (urlType !== 'noT' || !item.url!.includes('t=')))
-            );
-        $dataTypeSelect.html(
-            jsxToString(
-                <BlacklistDataTypeOptions
-                    totalCount={totalCount}
-                    actorCount={actorCount}
-                    actressCount={actressCount}
-                />
-            )
-        );
-        $dataTypeSelect.val(dataType as string);
-        const carsByStarId = new Map<string | undefined, CarRecord[]>();
-        for (const carItem of blacklistCars) {
-            const starId = carItem.starId;
-            if (!carsByStarId.has(starId)) {
-                carsByStarId.set(starId, []);
-            }
-            carsByStarId.get(starId)!.push(carItem);
-        }
-        const finalData = enrichedList.map((item) => {
-            const starId = item.starId;
-            const cars = carsByStarId.get(starId) || [];
-            return {
-                ...item,
-                carList: cars,
-                count: cars.length
-            };
-        });
-        this.currentCarCount = finalData.reduce(
-            (sum: number, row) => sum + (row.count || 0),
-            0
-        );
-        return finalData;
+        return _getTableData(this);
     }
 
     /**

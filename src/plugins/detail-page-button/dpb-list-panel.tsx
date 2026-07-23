@@ -7,7 +7,6 @@ import { jsxToString } from '../../core/jsx-to-string';
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 
 import { ListPanel } from '../../components/dpb/list-panel';
-import { ListPanelSkeletonSpan } from '../../components/dpb/list-panel-skeleton-span';
 
 type DetailListSort = 'name-desc' | 'name-asc';
 
@@ -27,8 +26,6 @@ const DETAIL_LIST_COLLATOR = new Intl.Collator('zh-CN', {
     sensitivity: 'base'
 });
 const LIST_PANEL_INIT_TIMEOUT_MS = 10000;
-const LIST_PANEL_PAGE_TIMEOUT_MS = 10000;
-const LIST_PANEL_MAX_PAGES = 50;
 
 /**
  * 轮询等待 #otherSiteBox 出现后创建清单面板、初始化并绑定交互。
@@ -319,57 +316,6 @@ export function renderListPanel(plugin: DetailPageButtonPlugin): void {
     }
 }
 
-/** 将 JavDB 原始 p.control 克隆整理为名称、数量分列的整行可点击选项。 */
-export function createListPanelEntry(plugin: DetailPageButtonPlugin, source: Element): DetailListEntry | null {
-    const element = source.cloneNode(true) as HTMLElement;
-    const label = (element.matches('label') ? element : element.querySelector('label')) as
-        | HTMLLabelElement
-        | null;
-    const input = element.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
-    const originalCount = label?.querySelector('span') || null;
-    const listId = input?.dataset.listId || '';
-    if (!label || !input || !listId) return null;
-    input.removeAttribute('id');
-    input.removeAttribute('name');
-    input.removeAttribute('data-action');
-    label.removeAttribute('for');
-
-    const name =
-        Array.from(label.childNodes)
-            .filter((node) => node !== input && node !== originalCount)
-            .map((node) => node.textContent || '')
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim() || '未命名清单';
-    const countMatch = originalCount?.textContent?.match(/\d+/);
-    const count = countMatch ? Number(countMatch[0]) : null;
-    const nameElement = document.createElement('span');
-    nameElement.className = 'jhs-list-item__name';
-    nameElement.textContent = name;
-    nameElement.title = name;
-    const countElement = document.createElement('span');
-    countElement.className = 'jhs-list-item__count';
-    countElement.textContent = count === null ? '—' : String(count);
-    countElement.title = count === null ? '影片数量未知' : `清单内 ${count} 部影片`;
-    countElement.setAttribute(
-        'aria-label',
-        count === null ? '影片数量未知' : `${count} 部影片`
-    );
-    const statusElement = document.createElement('span');
-    statusElement.className = 'jhs-list-item__status';
-    statusElement.setAttribute('aria-live', 'polite');
-    statusElement.setAttribute('aria-atomic', 'true');
-    statusElement.hidden = true;
-
-    element.classList.add('jhs-list-item');
-    element.dataset.listId = listId;
-    element.dataset.listName = name;
-    label.classList.add('jhs-list-item__label');
-    label.replaceChildren(input, nameElement, countElement, statusElement);
-    plugin._updateListPanelEntryState(input);
-    return { element };
-}
-
 /** 应用当前名称升降序与搜索条件，仅重排展示副本，不触碰 modal 源顺序。 */
 export function applyListPanelView(panel: DetailListPanelElement): void {
     const itemsContainer = panel.querySelector('.jhs-list-panel__items') as HTMLElement | null;
@@ -430,59 +376,6 @@ export function applyListPanelView(panel: DetailListPanelElement): void {
             : `没有找到"${searchInput.value.trim()}"`;
 }
 
-/** 恢复初始骨架，用于用户点击重试。 */
-export function showListPanelLoading(plugin: DetailPageButtonPlugin, panel: DetailListPanelElement): void {
-    const items = panel.querySelector('.jhs-list-panel__items');
-    const summary = panel.querySelector('.jhs-list-panel__summary');
-    const empty = panel.querySelector('.jhs-list-panel__empty') as HTMLElement | null;
-    const search = panel.querySelector('.jhs-list-panel__search') as HTMLInputElement | null;
-    const sort = panel.querySelector('.jhs-list-panel__sort-select') as HTMLSelectElement | null;
-    const clear = panel.querySelector('.jhs-list-panel__search-clear') as HTMLElement | null;
-    plugin._clearListPanelNotice(panel);
-    if (summary) summary.textContent = '正在读取…';
-    if (empty) empty.hidden = true;
-    if (search) search.disabled = true;
-    if (sort) sort.disabled = true;
-    if (clear) clear.hidden = true;
-    if (items) {
-        if (items.getAttribute('aria-busy') === 'true' && items.firstElementChild) return;
-        items.setAttribute('aria-busy', 'true');
-        items.innerHTML = Array.from(
-            { length: 4 },
-            () => jsxToString(<ListPanelSkeletonSpan />)
-        ).join('');
-    }
-}
-
-/** 展示可重试错误态，避免初始化失败时面板静默消失。 */
-export function showListPanelError(plugin: DetailPageButtonPlugin, panel: DetailListPanelElement, message: string): void {
-    const items = panel.querySelector('.jhs-list-panel__items');
-    const summary = panel.querySelector('.jhs-list-panel__summary');
-    const search = panel.querySelector('.jhs-list-panel__search') as HTMLInputElement | null;
-    const sort = panel.querySelector('.jhs-list-panel__sort-select') as HTMLSelectElement | null;
-    const clear = panel.querySelector('.jhs-list-panel__search-clear') as HTMLElement | null;
-    plugin._clearListPanelNotice(panel);
-    if (summary) summary.textContent = '读取失败';
-    if (search) search.disabled = true;
-    if (sort) sort.disabled = true;
-    if (clear) clear.hidden = true;
-    if (!items) return;
-    items.setAttribute('aria-busy', 'false');
-    items.replaceChildren();
-    const state = document.createElement('div');
-    state.className = 'jhs-list-panel__error';
-    state.setAttribute('role', 'alert');
-    const text = document.createElement('span');
-    text.textContent = message;
-    const retry = document.createElement('button');
-    retry.type = 'button';
-    retry.className = 'jhs-list-panel__retry';
-    retry.dataset.listPanelRetry = 'true';
-    retry.textContent = '重新加载';
-    state.append(text, retry);
-    items.appendChild(state);
-}
-
 /** 原生容器至少出现一个带 listId 的 checkbox 后，才视为 Ajax 已完成。 */
 export function isListContainerLoaded(container: Element | null): container is Element {
     return Boolean(container?.querySelector('input[type="checkbox"][data-list-id]'));
@@ -508,132 +401,6 @@ export function clearListPanelLoadTimeout(plugin: DetailPageButtonPlugin): void 
     plugin._listPanelLoadTimer = null;
 }
 
-/**
- * 聚合清单接口的全部页，并把缺失原生条目补进隐藏 modal。展示层随后仍只按
- * data-list-id 映射到 modal checkbox，分页不会引入第二套写入链路。
- */
-export function loadAllListPages(plugin: DetailPageButtonPlugin, panel: DetailListPanelElement, container: HTMLElement): void {
-    if (plugin._listPanelPaginationPromise) return;
-    const videoId = window.location.pathname.match(/\/v\/([^/?#]+)/)?.[1];
-    if (!videoId) {
-        container.dataset.jhsPagesStatus = 'complete';
-        plugin._scheduleListPanelSync(0);
-        return;
-    }
-
-    container.dataset.jhsPagesStatus = 'loading';
-    const generation = plugin._listPanelPaginationGeneration;
-    plugin._listPanelPaginationPromise = plugin._fetchAllListPageEntries(videoId)
-        .then((fetchedEntries) => {
-            const currentContainer = document.querySelector(
-                '#modal-save-list [data-list-target="listContainer"]'
-            ) as HTMLElement | null;
-            if (!currentContainer) throw new Error('原生清单容器已移除');
-            if (
-                generation !== plugin._listPanelPaginationGeneration ||
-                currentContainer !== container
-            ) {
-                return;
-            }
-
-            const existingIds = new Set(
-                Array.from(
-                    currentContainer.querySelectorAll<HTMLInputElement>(
-                        'input[type="checkbox"][data-list-id]'
-                    )
-                ).map((input) => input.dataset.listId)
-            );
-            const fragment = document.createDocumentFragment();
-            for (const entry of fetchedEntries) {
-                const input = entry.querySelector<HTMLInputElement>(
-                    'input[type="checkbox"][data-list-id]'
-                );
-                const listId = input?.dataset.listId;
-                if (!listId || existingIds.has(listId)) continue;
-                existingIds.add(listId);
-                fragment.appendChild(document.importNode(entry, true));
-            }
-            currentContainer.dataset.jhsPagesStatus = 'complete';
-            currentContainer.appendChild(fragment);
-        })
-        .catch((error) => {
-            if (generation !== plugin._listPanelPaginationGeneration) return;
-            const currentContainer = document.querySelector(
-                '#modal-save-list [data-list-target="listContainer"]'
-            ) as HTMLElement | null;
-            if (currentContainer) currentContainer.dataset.jhsPagesStatus = 'partial';
-            console.warn('详情页清单分页聚合失败，将显示当前已加载内容', error);
-            plugin._showListPanelNotice(panel, '部分清单未载入，排序与搜索仅覆盖已显示项');
-        })
-        .finally(() => {
-            plugin._listPanelPaginationPromise = null;
-            plugin._scheduleListPanelSync(0);
-        });
-}
-
-/** 顺着接口返回的 rel=next 串行读取，限制页数、域名、路径与单页超时。 */
-export async function fetchAllListPageEntries(videoId: string): Promise<Element[]> {
-    const entries: Element[] = [];
-    const visited = new Set<string>();
-    let url: URL | null = new URL('/users/simple_lists', window.location.origin);
-    url.searchParams.set('vid', videoId);
-
-    while (url) {
-        if (visited.size >= LIST_PANEL_MAX_PAGES) {
-            throw new Error(`清单分页超过 ${LIST_PANEL_MAX_PAGES} 页`);
-        }
-        if (visited.has(url.href)) throw new Error('清单分页出现循环');
-        visited.add(url.href);
-
-        const payload = await (async () => {
-            const controller = new AbortController();
-            const timeout = window.setTimeout(
-                () => controller.abort(),
-                LIST_PANEL_PAGE_TIMEOUT_MS
-            );
-            try {
-                const response = await fetch(url.href, {
-                    credentials: 'same-origin',
-                    cache: 'no-store',
-                    headers: { Accept: 'application/json' },
-                    signal: controller.signal
-                });
-                if (!response.ok) {
-                    throw new Error(`清单分页请求失败：HTTP ${response.status}`);
-                }
-                return (await response.json()) as { lists?: unknown; page?: unknown };
-            } finally {
-                window.clearTimeout(timeout);
-            }
-        })();
-        if (typeof payload.lists !== 'string') throw new Error('清单分页响应格式异常');
-        const listDocument = new DOMParser().parseFromString(payload.lists, 'text/html');
-        for (const child of Array.from(listDocument.body.children)) {
-            if (child.querySelector('input[type="checkbox"][data-list-id]')) {
-                entries.push(child);
-            }
-        }
-
-        const pageHtml = typeof payload.page === 'string' ? payload.page : '';
-        const pageDocument = new DOMParser().parseFromString(pageHtml, 'text/html');
-        const nextHref = pageDocument.querySelector('a[rel="next"]')?.getAttribute('href');
-        if (!nextHref) {
-            url = null;
-            continue;
-        }
-        const nextUrl: URL = new URL(nextHref, url.href);
-        if (
-            nextUrl.origin !== window.location.origin ||
-            nextUrl.pathname !== '/users/simple_lists'
-        ) {
-            throw new Error('清单下一页地址异常');
-        }
-        nextUrl.searchParams.set('vid', videoId);
-        url = nextUrl;
-    }
-    return entries;
-}
-
 /** 在 aria-live 汇总区保留关键回滚提示，避免只依赖短暂 toast。 */
 export function showListPanelNotice(plugin: DetailPageButtonPlugin, panel: DetailListPanelElement, message: string): void {
     if (panel.__jhsNoticeTimer !== undefined) {
@@ -656,3 +423,6 @@ export function clearListPanelNotice(panel: DetailListPanelElement): void {
     delete panel.__jhsNoticeTimer;
     panel.querySelector('.jhs-list-panel__summary')?.classList.remove('is-error');
 }
+
+export { createListPanelEntry, showListPanelLoading, showListPanelError } from './dpb-list-panel-render';
+export { loadAllListPages, fetchAllListPageEntries } from './dpb-list-panel-fetch';

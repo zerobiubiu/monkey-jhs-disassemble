@@ -110,27 +110,27 @@ monkey-jhs-disassemble/
 
 | 插件 | 文件 | 职责 |
 |------|------|------|
-| ListPagePlugin | list-page-plugin.tsx | 列表页主插件：过滤/状态标签/翻译/点击绑定 |
-| AutoPagePlugin | auto-page-plugin.ts | 瀑布流自动翻页 |
+| ListPagePlugin | list-page-plugin.tsx + list-page/ 子目录（4 模块：lp-filter / lp-dom / lp-translate / lp-jump-page） | 列表页主插件：过滤/状态标签/翻译/点击绑定 |
+| AutoPagePlugin | auto-page-plugin.ts + auto-page/ 子目录（2 模块：ap-fetch / ap-scroll） | 瀑布流自动翻页 |
 | FoldCategoryPlugin | fold-category-plugin.tsx | 折叠分类 |
 | ListPageButtonPlugin | list-page-button-plugin.tsx | 列表页按钮组（批量打开/排序切换/加入黑名单） |
-| HistoryPlugin | history-plugin.tsx | 鉴定记录 |
-| SettingPlugin | setting-plugin.tsx | **设置弹窗（侧栏+面板）** + WebDav 备份 + 缓存清理 |
+| HistoryPlugin | history-plugin.tsx（+1 新模块：history-data） | 鉴定记录 |
+| SettingPlugin | setting-plugin.tsx（+3 新模块：setting-form-load / setting-form-bind / setting-tag-ops） | **设置弹窗（侧栏+面板）** + WebDav 备份 + 缓存清理 |
 | NavBarPlugin | nav-bar-plugin.tsx | 导航栏 |
 | HitShowPlugin | hit-show-plugin.tsx | 热播 |
 | Top250Plugin | top250-plugin.tsx | Top250 排行榜 |
 | DetailPagePlugin | detail-page-plugin.ts | 详情页主插件 |
 | ReviewPlugin | review-plugin.tsx | 评论 |
-| DetailPageButtonPlugin | detail-page-button-plugin.tsx | 详情页按钮（想看/观看/评分/清单/字幕） |
+| DetailPageButtonPlugin | detail-page-button-plugin.tsx（+3 新模块：dpb-list-panel-fetch / dpb-list-panel-render / dpb-rating-api） | 详情页按钮（想看/观看/评分/清单/字幕） |
 | HighlightMagnetPlugin | highlight-magnet-plugin.ts | 高亮磁链 |
 | PreviewVideoPlugin | preview-video-plugin.tsx | 预览视频 |
 | ActressInfoPlugin | actress-info-plugin.tsx | 演员信息 |
-| OtherSitePlugin | other-site-plugin.tsx | 第三方站点 |
+| OtherSitePlugin | other-site-plugin.tsx（+1 新模块：osp-probe） | 第三方站点 |
 | WantAndWatchedVideosPlugin | want-and-watched-videos-plugin.tsx | 想看/已观看 |
 | RelatedPlugin | related-plugin.tsx | 相关清单 |
-| BlacklistPlugin | blacklist-plugin.tsx | 黑名单 |
+| BlacklistPlugin | blacklist-plugin.tsx（+2 新模块：blacklist-data / blacklist-add） | 黑名单 |
 | FavoriteActressesPlugin | favorite-actresses-plugin.tsx | 收藏演员 |
-| NewVideoPlugin | new-video-plugin.tsx | 新作品检测 |
+| NewVideoPlugin | new-video-plugin.tsx（+1 新模块：edit-actress） | 新作品检测 |
 | Fc2Plugin | fc2-plugin.tsx | FC2 |
 
 **独立脚本集成插件（12 个）**：来自 `archetype/*.user.js`
@@ -141,11 +141,11 @@ monkey-jhs-disassemble/
 | KeyPageTurningPlugin | key-page-turning-plugin.ts | keyPageTurning.user.js | doc/34 |
 | ModMyListOpenWayPlugin | mod-my-list-open-way-plugin.ts | modMyListOpenWay.user.js | doc/35 |
 | PageSortPlugin | page-sort-plugin.ts | pageSort.user.js | doc/36+37 |
-| StatusTagFilterPlugin | status-tag-filter-plugin.ts | statusTagFilter.user.js | doc/38 |
-| ListWaterfallPlugin | list-waterfall-plugin.ts | listWaterfall.user.js | doc/39 |
-| ListReadingStatusPlugin | list-reading-status-plugin.ts | listReadingStatus.user.js | doc/40 |
+| StatusTagFilterPlugin | status-tag-filter-plugin.ts + status-tag-filter/ 子目录（3 模块：stf-collect / stf-apply / stf-ui） | statusTagFilter.user.js | doc/38 |
+| ListWaterfallPlugin | list-waterfall-plugin.ts + list-waterfall/ 子目录（2 模块：lw-fetch / lw-scroll） | listWaterfall.user.js | doc/39 |
+| ListReadingStatusPlugin | list-reading-status-plugin.ts（+2 新模块：lrs-sort / lrs-filter） | listReadingStatus.user.js | doc/40 |
 | ModalListDisablerPlugin | modal-list-disabler-plugin.ts | modalListDisabler.user.js | doc/42 |
-| VideoListsTagPlugin | video-lists-tag/ 子目录（6 模块，含服务端/本地对账） | listsOptionSync + videoListsTag | doc/45 + doc/126 |
+| VideoListsTagPlugin | video-lists-tag/ 子目录（6 模块，含服务端/本地对账） + db/ 子目录（3 模块：vlt-db-core / vlt-db-reconcile / vlt-db-migrate）+ server/ 子目录（2 模块：vlt-server-api / vlt-server-recover） | listsOptionSync + videoListsTag | doc/45 + doc/126 |
 | CarListReaderPlugin | car-status-sync/ 子目录（6 模块） | jhsCarListReader.user.js | doc/46 |
 | MissavStatusTagPlugin | car-status-sync/ 子目录（6 模块） | missavStatusTag.user.js | doc/46 |
 
@@ -157,7 +157,7 @@ monkey-jhs-disassemble/
 | ScreenShotPlugin | screenshot-plugin.ts | screenShotPlugin | javstore 截图墙 |
 | MagnetHubPlugin | magnet-hub-plugin.tsx | magnetHubPlugin | 多引擎磁链 |
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
-| Fc2By123AvPlugin | fc2-by-123av-plugin.tsx | fc2By123AvPlugin | 123Av FC2 浏览 |
+| Fc2By123AvPlugin | fc2-by-123av-plugin.tsx + fc2-123av/ 子目录（2 模块：fc2-browse / fc2-detail） | fc2By123AvPlugin | 123Av FC2 浏览 |
 
 **新增功能插件（1 个）**：本项目自创（非 archetype 拆分/集成/升级）
 
@@ -196,7 +196,7 @@ monkey-jhs-disassemble/
 | list-dom-bus.ts | 列表页 DOM 变更总线（单 Observer + rAF 批量分发 .item 新增） |
 | pagination-state.ts | 瀑布流分页状态机（idle/loading/error/exhausted + retry） |
 | storage-revision.ts | 跨标签页存储修订号追踪（BroadcastChannel 广播 + 缓存失效回调） |
-| util/ | 核心工具子目录：broadcast.ts（三重广播总线 GM/localStorage/CustomEvent 三通道统一收发，Wave 3 新增）、back-to-top.ts（回到顶部按钮工厂，rAF 节流滚动监听 + 平滑回顶）、tabulator-factory.ts（Tabulator 表格工厂，中文语言包 + 基础配置）、util-async.ts（withLoading 加载蒙层异步包装）、util-clipboard.ts（copyToClipboard 剪贴板复制）、util-cookie.ts（addCookie 批量写入 cookie）、util-date.ts（getNowStr 日期时间格式化）、util-dom.ts（insertStyle / htmlTo$dom DOM 工具）、util-download.ts（download 文件下载 + MIME 映射）、util-misc.ts（isMobile / sleep / copyObj 杂项工具）、util-popup.ts（q 确认框 / 响应式弹窗区域）、util-retry.ts（retry 带重试异步执行）、util-sort.ts（genericSort 多键排序）、util-status-tag.tsx（STATUS_TAG_CONFIG 状态标签配置与渲染）、util-translate.ts（translateText Google 翻译）、util-url.ts（isUrl / getUrlParam URL 工具） |
+| util/ | 核心工具子目录：broadcast.ts（三重广播总线 GM/localStorage/CustomEvent 三通道统一收发，Wave 3 新增）、back-to-top.ts（回到顶部按钮工厂，rAF 节流滚动监听 + 平滑回顶）、tabulator-factory.ts（Tabulator 表格工厂，中文语言包 + 基础配置）、util-async.ts（withLoading 加载蒙层异步包装）、util-clipboard.ts（copyToClipboard 剪贴板复制）、util-cookie.ts（addCookie 批量写入 cookie）、util-date.ts（getNowStr 日期时间格式化）、util-dom.ts（insertStyle / htmlTo$dom DOM 工具）、util-download.ts（download 文件下载 + MIME 映射）、util-misc.ts（isMobile / sleep / copyObj 杂项工具）、util-popup.ts（q 确认框 / 响应式弹窗区域）、util-retry.ts（retry 带重试异步执行）、util-sort.ts（genericSort 多键排序）、util-status-tag.tsx（STATUS_TAG_CONFIG 状态标签配置与渲染）、util-translate.ts（translateText Google 翻译）、util-url.ts（isUrl / getUrlParam URL 工具）、esc-layer.ts（ESC 层管理：gate + 栈同步 + 全局键监听 + setupEscClose，Wave 4 新增）、logger-panel.tsx（日志面板 DOM 渲染 + 事件绑定 + 过滤 + localStorage 持久化，Wave 4 新增） |
 
 ### 3.5 组件 `src/components/`（135 个）
 

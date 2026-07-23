@@ -14,6 +14,13 @@
  * $ / utils / storageManager / clog / gmHttp 已由 ../types/globals.d.ts 声明为
  * any；运行时挂载到 window 的 isListPage 以 window.isListPage 访问；
  * 内联 CSS/HTML 模板字符串原样保留。
+ *
+ * 方法组已拆分至 ./auto-page/ 子目录：
+ *   ap-fetch.ts  — loadNextPage（抓取并追加下一页）
+ *   ap-scroll.ts — checkScrollPosition / checkLoad / setLoadMode /
+ *                  showLoadAllBtn / hideLoadAllBtn / createLoadAllBtn /
+ *                  loadAllPages / updateLoadAllBtn / setState
+ * 本类保留同名薄委托方法，内部调用点签名不变。
  */
 import { currentHref, isJavdbSite } from '../constants/site';
 
@@ -22,6 +29,18 @@ import { TaskSupervisor } from '../core/task-supervisor';
 import { PaginationStateMachine } from '../core/pagination-state';
 
 import { BasePlugin } from './base-plugin';
+import { loadNextPage } from './auto-page/ap-fetch';
+import {
+    checkLoad,
+    checkScrollPosition,
+    createLoadAllBtn,
+    hideLoadAllBtn,
+    loadAllPages,
+    setLoadMode,
+    setState,
+    showLoadAllBtn,
+    updateLoadAllBtn
+} from './auto-page/ap-scroll';
 
 import autoPageCssRaw from '../styles/auto-page-plugin.css?raw';
 
@@ -49,7 +68,7 @@ export class AutoPagePlugin extends BasePlugin {
     /** 下一页 URL；无更多时为 null/undefined。 */
     nextUrl: string | null | undefined = undefined;
     /** 分页状态机：统一管理 hasMore/isLoading/phase 状态转换。 */
-    private pagination = new PaginationStateMachine();
+    pagination = new PaginationStateMachine();
     /** 「加载全部」浮动按钮节点（有下一页时始终显示）。 */
     loadAllBtn: HTMLDivElement | null = null;
     /** 是否正在自动加载全部后续页（防重入）。 */
@@ -60,7 +79,7 @@ export class AutoPagePlugin extends BasePlugin {
      */
     loadMode: 'auto' | 'click' = 'auto';
     /** 统一生命周期管理器：定时器、事件监听器、Observer 的注册与清理。 */
-    private supervisor = new TaskSupervisor();
+    supervisor = new TaskSupervisor();
 
     /**
      * 返回插件名，供 PluginManager 注册去重。对应原 L9077-9079。
@@ -177,173 +196,73 @@ export class AutoPagePlugin extends BasePlugin {
     }
 
     /**
-     * 抓取并追加下一页。JavDb 站超过 60 页（c11 类目 30 页）或月度页时走
-     * Beyond60Plugin；否则 gmHttp 抓取并校验重复番号后追加。对应原 L9145-9236。
-     *
-     * @returns Promise<void>；抓取失败时切换错误态，不抛出
+     * 抓取并追加下一页。委托至 auto-page/ap-fetch。
      */
     async loadNextPage(): Promise<void> {
-        if (!this.pagination.canLoad || !this.nextUrl) {
-            return;
-        }
-        this.pagination.startLoading();
-        this.setState('waterfall-loading', '加载中...');
-        const selectorConfig = this.getSelector();
-        try {
-            const pageNum = utils.getUrlParam(this.nextUrl, 'page');
-            let maxPage = 60;
-            if (currentHref.includes('c11')) {
-                maxPage = 30;
-            }
-            if ((isJavdbSite && Number(pageNum) > maxPage) || currentHref.includes('month')) {
-                // Beyond60Plugin 从未注册（忠实死路径），类型仅为编译通过
-                const beyond60Plugin = this.getBean('Beyond60Plugin') as (BasePlugin & {
-                    handleBeyond60(url: string): Promise<{ html: string; nextUrl: string; hasMore: boolean }>;
-                    createPagination(pageNum: number, hasMore: boolean): string;
-                }) | undefined;
-                if (beyond60Plugin) {
-                    const {
-                        html,
-                        nextUrl: beyondNextUrl,
-                        hasMore: beyondHasMore
-                    } = await beyond60Plugin.handleBeyond60(this.nextUrl);
-                    if (html) {
-                        const scrollHeight = this.container!.scrollHeight;
-                        this.pageItems.push({
-                            page: this.currentPage + 1,
-                            top: scrollHeight,
-                            url: this.nextUrl
-                        });
-                        $('.movie-list').append(html);
-                    }
-                    this.pagination.loadSuccess(beyondHasMore);
-                    this.nextUrl = beyondNextUrl;
-                    const paginationHtml = beyond60Plugin.createPagination(Number(pageNum), beyondHasMore);
-                    $('.pagination').html(paginationHtml);
-                    // 成功且仍可翻页时退出 loading，允许 click 模式下次触底重新显示按钮。
-                    this.setState('', '');
-                    if (!this.pagination.hasMore) {
-                        this.setState('waterfall-no-more', '已经到底了');
-                    }
-                    return;
-                }
-            }
-            const responseHtml = await gmHttp.get(this.nextUrl);
-            clog.log('请求下一页内容:', this.nextUrl);
-            const $dom = utils.htmlTo$dom(String(responseHtml));
-            const items = $dom.find(this.getSelector().requestDomItemSelector);
-            const existingList = this.getBoxCarInfoList();
-            const newList = this.getBoxCarInfoList(items);
-            if (this.checkDuplicateCarNumbers(existingList, newList)) {
-                this.nextUrl = null;
-                this.pagination.loadError();
-                this.setState(
-                    'waterfall-error',
-                    '翻页内容出现重复数据, 页码受JavDB限制, 已停止瀑布流'
-                );
-                return;
-            }
-            const scrollHeight = this.container!.scrollHeight;
-            this.pageItems.push({
-                page: this.currentPage + 1,
-                top: scrollHeight,
-                url: this.nextUrl
-            });
-            const listPagePlugin = this.getBean('ListPagePlugin');
-            const coverImgs = $dom.find(this.getSelector().coverImgSelector);
-            listPagePlugin.replaceHdImg(coverImgs);
-            $(this.getSelector().boxSelector).append(items);
-            const nextLinkEl = $dom.find(selectorConfig.nextPageSelector);
-            this.nextUrl = nextLinkEl == null ? undefined : nextLinkEl.attr('href');
-            this.pagination.loadSuccess(!!this.nextUrl);
-            const paginationEl = $dom.find('.pagination');
-            $('.pagination').replaceWith(paginationEl);
-            // 成功后回到空闲态；否则 waterfall-loading 会永久阻断后续 checkLoad。
-            this.setState('', '');
-            if (!this.pagination.hasMore) {
-                this.setState('waterfall-no-more', '已经到底了');
-            }
-        } catch (err) {
-            clog.error('加载失败:', err);
-            this.pagination.loadError();
-            this.setState('waterfall-error', '加载失败，点击重试');
-        } finally {
-            // 点按钮模式：本页加载完若仍在底部，再次显示「点击加载下一页」
-            if (this.loadMode === 'click' && this.pagination.hasMore && this.nextUrl) {
-                this.checkLoad();
-            }
-        }
+        return loadNextPage(this);
     }
 
     /**
-     * 滚动时同步内部 currentPage（供「加载全部」文案等使用）。
-     * 不再改地址栏，避免瀑布流滚动污染 URL。对应原 L9237-9249（已去 URL 同步）。
+     * 滚动时同步内部 currentPage。委托至 auto-page/ap-scroll。
      */
     checkScrollPosition(): void {
-        const scrollY = window.scrollY;
-        for (let i = this.pageItems.length - 1; i >= 0; i--) {
-            const item = this.pageItems[i];
-            if (scrollY >= item.top) {
-                if (this.currentPage !== item.page) {
-                    this.currentPage = item.page;
-                }
-                break;
-            }
-        }
+        checkScrollPosition(this);
     }
 
     /**
-     * 探测 loader 是否进入预加载区间。
-     * - loadMode=auto：自动抓取下一页
-     * - loadMode=click：展示「点击加载下一页」，由用户点击 loader 再抓取
+     * 探测 loader 是否进入预加载区间。委托至 auto-page/ap-scroll。
      */
     checkLoad(): void {
-        if (!this.loader) {
-            return;
-        }
-        if (this.loader.getBoundingClientRect().top < window.innerHeight + this.preloadDistance) {
-            if (this.loadMode === 'click') {
-                if (
-                    this.pagination.isLoading ||
-                    !this.pagination.hasMore ||
-                    !this.nextUrl ||
-                    this.loader.classList.contains('waterfall-error') ||
-                    this.loader.classList.contains('waterfall-loading') ||
-                    this.loader.classList.contains('waterfall-no-more')
-                ) {
-                    return;
-                }
-                this.setState('waterfall-click', '点击加载下一页');
-            } else {
-                this.loadNextPage().then();
-            }
-        }
+        checkLoad(this);
     }
 
     /**
-     * 运行时切换触底加载方式（设置面板即时生效，无需整页刷新）。
-     * @param mode auto | click
+     * 运行时切换触底加载方式。委托至 auto-page/ap-scroll。
      */
     setLoadMode(mode: 'auto' | 'click'): void {
-        this.loadMode = mode === 'click' ? 'click' : 'auto';
-        if (this.loadMode === 'auto') {
-            // 切回自动：若已在底部则立即尝试加载
-            this.checkLoad();
-        } else if (
-            this.loader &&
-            this.pagination.hasMore &&
-            this.nextUrl &&
-            !this.pagination.isLoading &&
-            !this.loader.classList.contains('waterfall-no-more')
-        ) {
-            // 切到点按钮：若已在底部则显示提示
-            if (
-                this.loader.getBoundingClientRect().top <
-                window.innerHeight + this.preloadDistance
-            ) {
-                this.setState('waterfall-click', '点击加载下一页');
-            }
-        }
+        setLoadMode(this, mode);
+    }
+
+    /**
+     * 显示「加载全部」按钮。委托至 auto-page/ap-scroll。
+     */
+    showLoadAllBtn(): void {
+        showLoadAllBtn(this);
+    }
+
+    /**
+     * 隐藏并移除「加载全部」按钮。委托至 auto-page/ap-scroll。
+     */
+    hideLoadAllBtn(): void {
+        hideLoadAllBtn(this);
+    }
+
+    /**
+     * 创建「加载全部」浮动按钮。委托至 auto-page/ap-scroll。
+     */
+    createLoadAllBtn(): void {
+        createLoadAllBtn(this);
+    }
+
+    /**
+     * 自动加载后续所有页。委托至 auto-page/ap-scroll。
+     */
+    async loadAllPages(): Promise<void> {
+        return loadAllPages(this);
+    }
+
+    /**
+     * 更新「加载全部」按钮文案与禁用态。委托至 auto-page/ap-scroll。
+     */
+    updateLoadAllBtn(text: string, disabled: boolean): void {
+        updateLoadAllBtn(this, text, disabled);
+    }
+
+    /**
+     * 设置 loader 的状态类与文案。委托至 auto-page/ap-scroll。
+     */
+    setState(stateClass: string, text: string): void {
+        setState(this, stateClass, text);
     }
 
     /**
@@ -381,110 +300,5 @@ export class AutoPagePlugin extends BasePlugin {
      */
     updatePageUrl(_url: string): void {
         /* no-op：不修改地址栏 */
-    }
-
-    /**
-     * 显示「加载全部」按钮（瀑布流模式开启时由设置面板 change 调用）。
-     * 已存在 / 无下一页 / 容器未初始化时不创建，避免重复。
-     */
-    showLoadAllBtn(): void {
-        if (this.loadAllBtn) return;
-        if (!this.container || !this.pagination.hasMore) return;
-        this.createLoadAllBtn();
-    }
-
-    /**
-     * 隐藏并移除「加载全部」按钮（瀑布流模式关闭时由设置面板 change 调用）。
-     * 正在 loadAllPages 时安全移除（后续 updateLoadAllBtn 对 null 跳过）。
-     */
-    hideLoadAllBtn(): void {
-        if (!this.loadAllBtn) return;
-        this.loadAllBtn.remove();
-        this.loadAllBtn = null;
-    }
-
-    /**
-     * 创建「加载全部」浮动按钮并追加到 body。
-     * 瀑布流模式且有下一页时调用，点击后循环加载所有后续页。
-     */
-    createLoadAllBtn(): void {
-        const btn = document.createElement('div');
-        btn.className = 'jhs-load-all-btn';
-        btn.textContent = '加载全部';
-        this.supervisor.addEventListener(btn, 'click', () => {
-            if (!this.isLoadingAll) {
-                this.loadAllPages().then();
-            }
-        });
-        document.body.appendChild(btn);
-        this.loadAllBtn = btn;
-    }
-
-    /**
-     * 自动加载后续所有页：循环 loadNextPage 直到无更多页、出错或无进展。
-     * 通过 pageItems.length 变化检测无进展（autoPage 被关闭 / isLoading 重入）。
-     * 循环退出后感知 loadNextPage 设置的 loader 状态（waterfall-error/no-more），
-     * 区分"页码受限停止"/"加载失败"/"全部加载完"三种结果，同步按钮文案。
-     */
-    async loadAllPages(): Promise<void> {
-        if (this.isLoadingAll || !this.pagination.hasMore) return;
-        this.isLoadingAll = true;
-        this.updateLoadAllBtn('加载中...', true);
-        try {
-            while (this.pagination.hasMore && this.nextUrl) {
-                const before = this.pageItems.length;
-                await this.loadNextPage();
-                if (this.pageItems.length === before) break;
-                this.updateLoadAllBtn(`加载中...（第 ${this.currentPage} 页）`, true);
-            }
-            // 深度融合：感知 loadNextPage 设置的 loader 状态
-            if (this.loader?.classList.contains('waterfall-error')) {
-                const text = this.loader?.textContent || '';
-                if (text.includes('重复')) {
-                    this.updateLoadAllBtn('已停止（页码受限）', false);
-                } else {
-                    this.updateLoadAllBtn('加载失败，点击重试', false);
-                }
-            } else {
-                this.updateLoadAllBtn('✓ 已全部加载', false);
-                this.supervisor.setTimeout(() => {
-                    this.loadAllBtn?.classList.add('jhs-load-all-fadeout');
-                    this.supervisor.setTimeout(() => {
-                        this.loadAllBtn?.remove();
-                        this.loadAllBtn = null;
-                    }, 500);
-                }, 2000);
-            }
-        } catch {
-            this.updateLoadAllBtn('加载失败，点击重试', false);
-        } finally {
-            this.isLoadingAll = false;
-        }
-    }
-
-    /**
-     * 更新「加载全部」按钮文案与禁用态。
-     * @param text 按钮文案
-     * @param disabled 是否禁用（加载中时禁用点击视觉）
-     */
-    updateLoadAllBtn(text: string, disabled: boolean): void {
-        if (!this.loadAllBtn) return;
-        this.loadAllBtn.textContent = text;
-        if (disabled) {
-            this.loadAllBtn.classList.add('jhs-load-all-disabled');
-        } else {
-            this.loadAllBtn.classList.remove('jhs-load-all-disabled');
-        }
-    }
-
-    /**
-     * 设置 loader 的状态类与文案。对应原 L9292-9295。
-     *
-     * @param stateClass 状态类名（空字符串表示空闲态，或 waterfall-loading/error/no-more/click）
-     * @param text 展示文案
-     */
-    setState(stateClass: string, text: string): void {
-        this.loader!.className = `jhs-scroll ${stateClass}`;
-        this.loader!.textContent = text;
     }
 }

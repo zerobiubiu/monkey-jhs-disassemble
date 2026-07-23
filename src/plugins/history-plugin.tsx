@@ -53,6 +53,7 @@ import { CarRecord } from '../core/storage-manager';
 import { BasePlugin } from './base-plugin';
 import { handleBatchAction } from './history/history-batch-ops';
 import { buildHistoryTableOptions } from './history/history-tabulator';
+import { getDataList as _getDataList } from './history/history-data';
 
 import { EditRecordDialog } from '../components/dialogs/edit-record-dialog';
 import { HistoryDialog } from '../components/history/history-dialog';
@@ -261,6 +262,7 @@ export class HistoryPlugin extends BasePlugin {
 
     /**
      * 按状态/搜索词/排序从 storageManager 拉取并切片当前页数据。对应原 L6667-6752。
+     * 实现提取至 history/history-data 的 getDataList。
      *
      * @param page 当前页码（从 1 起）
      * @param size 每页条数
@@ -272,89 +274,7 @@ export class HistoryPlugin extends BasePlugin {
         size: number,
         sort: Array<{ field: string; dir: string }>
     ): Promise<{ maxPage: number; dataList: CarRecord[]; totalCount: number }> {
-        const carList = await storageManager.getCarList();
-        this.allCount = carList.length;
-        this.filterCount = 0;
-        this.favoriteCount = 0;
-        this.hasWatchCount = 0;
-        carList.forEach((car: CarRecord) => {
-            switch (car.status) {
-                case FILTER_ACTION:
-                    this.filterCount++;
-                    break;
-                case FAVORITE_ACTION:
-                    this.favoriteCount++;
-                    break;
-                case HAS_WATCH_ACTION:
-                    this.hasWatchCount++;
-            }
-        });
-        $('#dataType option[value="all"]').text(`所有 (${this.allCount})`);
-        $('#dataType option[value="filter"]').text(`${BLOCKED_TEXT} (${this.filterCount})`);
-        $('#dataType option[value="favorite"]').text(`${FAVORITED_TEXT} (${this.favoriteCount})`);
-        $('#dataType option[value="hasWatch"]').text(`${WATCHED_TEXT} (${this.hasWatchCount})`);
-        const selectedType = $('#dataType').val();
-        let filtered: CarRecord[] =
-            selectedType === 'all'
-                ? carList
-                : carList.filter((car: CarRecord) => car.status === selectedType);
-        const searchText = String($('#searchCarNum').val() ?? '').trim();
-        if (searchText) {
-            const normalizedSearch = searchText
-                .toLowerCase()
-                .replace('-c', '')
-                .replace('-uc', '')
-                .replace('-4k', '');
-            filtered = filtered.filter((row: CarRecord) => {
-                const matchCar = row.carNum.toLowerCase().includes(normalizedSearch);
-                const matchName = (row.names ? row.names : '')
-                    .toLowerCase()
-                    .includes(normalizedSearch);
-                return matchCar || matchName;
-            });
-        }
-        if (sort && sort.length > 0) {
-            const sortConfig = sort[0];
-            const field = sortConfig.field;
-            const dir = sortConfig.dir;
-            filtered.sort((rowA: CarRecord, rowB: CarRecord) => {
-                const valA = rowA[field];
-                const valB = rowB[field];
-                const isEmptyA = valA == null || valA === '';
-                const isEmptyB = valB == null || valB === '';
-                if (isEmptyA && !isEmptyB) {
-                    return 1;
-                } else if (!isEmptyA && isEmptyB) {
-                    return -1;
-                } else if (isEmptyA && isEmptyB) {
-                    return 0;
-                } else if ((valA as string) < (valB as string)) {
-                    if (dir === 'asc') {
-                        return -1;
-                    } else {
-                        return 1;
-                    }
-                } else if ((valA as string) > (valB as string)) {
-                    if (dir === 'asc') {
-                        return 1;
-                    } else {
-                        return -1;
-                    }
-                } else {
-                    return 0;
-                }
-            });
-        }
-        const totalCount = filtered.length;
-        const maxPage = Math.ceil(totalCount / size);
-        const start = (page - 1) * size;
-        const end = start + size;
-        filtered = filtered.slice(start, end);
-        return {
-            maxPage,
-            dataList: filtered,
-            totalCount
-        };
+        return _getDataList(this, page, size, sort);
     }
 
     /**
