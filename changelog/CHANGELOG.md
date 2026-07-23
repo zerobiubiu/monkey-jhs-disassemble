@@ -9,6 +9,20 @@
 
 ---
 
+## v1.28.17
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **三重广播总线统一**（doc/176）：新建 core/util/broadcast.ts（broadcastSend + broadcastSubscribe），统一 4 发送 + 3 订阅点的三通道收发，线格式逐字节保留；消除"修 bug 须改 4 处"隐患（~140 行去重）。
+- **failWithToast 补全**（doc/176）：car-list-ops 10 对 + keyword-ops 1 对 show.error+throw 改 failWithToast。
+- **红色 span 组件合并**（doc/176）：LogColored/ConfirmWarn 合并为 ColoredTextCell 薄包装，经 jsxToString 实证输出逐字节相同。
+- **Fc2 骨架合并 DEFERRED**（doc/176）：共享骨架仅 ~6-10 行，干净合并需 ≥3 slot prop，判定为有害过度抽象，标记 resolved-by-deferral。
+- **eslint 警告下降**：74→60。
+
+---
+
 ## v1.28.16
 
 **发布日期**：2026-07-23

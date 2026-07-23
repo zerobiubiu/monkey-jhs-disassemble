@@ -11,6 +11,7 @@ import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constant
 
 import { featureFlags } from '../feature-flags';
 import { storageRevision } from '../storage-revision';
+import { failWithToast } from '../toast';
 import type { StorageManager } from '../storage-manager';
 
 /** 番号记录（carList / blacklistCarList 通用） */
@@ -69,12 +70,10 @@ export function saveSingleCar(input: CarSaveInput, list: CarRecord[]): void {
     const { carNum, actionType, publishTime, starId, score } = input;
     let { url, names } = input;
     if (!carNum) {
-        show.error('番号为空!');
-        throw new Error('番号为空!');
+        failWithToast('番号为空!');
     }
     if (!url) {
-        show.error('url为空!');
-        throw new Error('url为空!');
+        failWithToast('url为空!');
     }
     if (!url.includes('http')) {
         url = window.location.origin + url;
@@ -122,16 +121,14 @@ export function saveSingleCar(input: CarSaveInput, list: CarRecord[]): void {
         case FILTER_ACTION:
             if (car.status === FILTER_ACTION) {
                 const msg = `${carNum} 已在屏蔽列表中`;
-                show.error(msg);
-                throw new Error(msg);
+                failWithToast(msg);
             }
             car.status = FILTER_ACTION;
             break;
         case FAVORITE_ACTION:
             if (car.status === FAVORITE_ACTION) {
                 const msg = `${carNum} 已在收藏列表中`;
-                show.error(msg);
-                throw new Error(msg);
+                failWithToast(msg);
             }
             car.status = FAVORITE_ACTION;
             break;
@@ -143,8 +140,7 @@ export function saveSingleCar(input: CarSaveInput, list: CarRecord[]): void {
             break;
         default: {
             const msg = 'actionType错误, 请联系作者更正: ' + actionType;
-            show.error(msg);
-            throw new Error(msg);
+            failWithToast(msg);
         }
     }
 }
@@ -198,12 +194,10 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
     const { carNum, url, actionType, remark } = input;
     let { names } = input;
     if (!carNum) {
-        show.error('番号为空!');
-        throw new Error('番号为空!');
+        failWithToast('番号为空!');
     }
     if (!url) {
-        show.error('url为空!');
-        throw new Error('url为空!');
+        failWithToast('url为空!');
     }
     if (names) {
         names = names.trim();
@@ -212,8 +206,7 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
     const car = list.find((item) => item.carNum === carNum);
     if (!car) {
         const msg = '数据不存在: ' + carNum;
-        show.error(msg);
-        throw new Error(msg);
+        failWithToast(msg);
     }
     car.names = names;
     car.url = url;
@@ -228,8 +221,7 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
             break;
         default: {
             const msg = 'actionType错误, 请联系作者更正: ' + actionType;
-            show.error(msg);
-            throw new Error(msg);
+            failWithToast(msg);
         }
     }
     await sm.forage.setItem(sm.car_list_key, list);
@@ -246,8 +238,7 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
  */
 export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): Promise<void> {
     if (!inputs || !Array.isArray(inputs) || inputs.length === 0) {
-        show.error('记录列表为空!');
-        throw new Error('记录列表为空!');
+        failWithToast('记录列表为空!');
     }
     const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
     for (const item of inputs) {

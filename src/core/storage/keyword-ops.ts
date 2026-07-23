@@ -7,6 +7,7 @@
  */
 
 import { storageRevision } from '../storage-revision';
+import { failWithToast } from '../toast';
 import type { StorageManager } from '../storage-manager';
 
 import { getFavoriteActressList } from './favorite-actress-ops';
@@ -32,8 +33,7 @@ export async function saveKeyword(
         list = (await sm.forage.getItem(key)) || [];
         if (list.includes(keyword)) {
             const msg = `${keyword} ${label}已存在`;
-            show.error(msg);
-            throw new Error(msg);
+            failWithToast(msg);
         }
         list.push(keyword);
     }

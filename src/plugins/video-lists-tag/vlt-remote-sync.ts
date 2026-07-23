@@ -5,6 +5,7 @@
  * - setupListMgmtBroadcastListener：监听清单管理广播（删除/改名），
  *   三重通道（GM / localStorage / CustomEvent）接收并分发回调。
  */
+import { broadcastSubscribe } from '../../core/util/broadcast';
 
 /** 日志前缀。 */
 const LOG_PREFIX = '[JavDB]';
@@ -43,29 +44,6 @@ export function setupListMgmtBroadcastListener(
         }
     };
 
-    // 1) 同脚本同页面（CustomEvent 即时）
-    document.addEventListener(LIST_MGMT_KEY, (e: Event) => {
-        handlePayload((e as CustomEvent).detail);
-    });
-
-    // 2) 跨脚本跨标签页（localStorage storage 事件，只在其他标签页触发）
-    window.addEventListener('storage', (e: StorageEvent) => {
-        if (e.key !== LIST_MGMT_KEY || !e.newValue) return;
-        try {
-            handlePayload(JSON.parse(e.newValue));
-        } catch {}
-    });
-
-    // 3) 同脚本跨标签页（GM 原生通道）
-    try {
-        GM_addValueChangeListener(
-            LIST_MGMT_KEY,
-            (_name: string, _oldValue, newValue, _remote: boolean) => {
-                if (!newValue) return;
-                try {
-                    handlePayload(JSON.parse(newValue));
-                } catch {}
-            }
-        );
-    } catch {}
+    // 三重通道（CustomEvent / storage / GM）接收并解析广播 payload
+    broadcastSubscribe<ListMgmtPayload>(LIST_MGMT_KEY, (payload) => handlePayload(payload));
 }

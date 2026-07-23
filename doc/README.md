@@ -287,6 +287,7 @@
 173. `173-settings-ui-overhaul-and-vlt-final-split.md` — 设置面板 UI 统一化（CSS Grid + 原子组件 + 选择器审计）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel）；version 1.28.13→1.28.14
 174. `174-wave1-atomization-and-reuse-merge.md` — Wave 1 原子化拆分与复用合并（storage-manager 1321→415 / vlt-tags 1028→421 / review·related 七对组件合并为 shared 参数化组件 / 5 共享工具抽取接入 10 处）；version 1.28.14→1.28.15
 175. `175-wave2-atomization-and-reuse-merge.md` — Wave 2 原子化拆分与复用合并（setting 1568→497 / history 782→511 / blacklist 780→441 / preview-video 661→157 / new-video 589→288 / history 源·状态单元格合并为 shared/colored-text-cell / util-status-tag 抽取接入 list-page）；version 1.28.15→1.28.16
+176. `176-wave3-reuse-merge.md` — Wave 3 复用合并（三重广播总线统一 core/util/broadcast.ts 4 发送+3 订阅 / failWithToast 补全 11 对 / LogColored·ConfirmWarn 合并为 ColoredTextCell 薄包装 / Fc2 骨架合并 DEFERRED / eslint 74→60）；version 1.28.16→1.28.17
 
 ## 当前进度概览
 
@@ -312,7 +313,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/175（177 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/176（178 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

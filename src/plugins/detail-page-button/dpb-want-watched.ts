@@ -5,6 +5,8 @@
 import { isJavdbSite } from '../../constants/site';
 import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
+import { broadcastSend, broadcastSubscribe } from '../../core/util/broadcast';
+
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import type { WantWatchedState, WantWatchedSyncPayload } from './dpb-types';
 
@@ -212,23 +214,11 @@ export async function removeCarIfStatus(carNum: string, status: string): Promise
  */
 export function broadcastWantWatchedSync(payload: WantWatchedSyncPayload): void {
     try {
-        const json = JSON.stringify({ ...payload, time: Date.now() });
-        // 1) GM 原生通道（跨标签页）
-        try {
-            GM_setValue('jdb:want-watched-sync', json);
-        } catch {}
-        // 2) localStorage（跨脚本同源）
-        try {
-            localStorage.setItem('jdb:want-watched-sync', json);
-        } catch {}
-        // 3) CustomEvent（跨脚本同页面）
-        try {
-            document.dispatchEvent(
-                new CustomEvent('jdb:want-watched-sync', {
-                    detail: payload
-                })
-            );
-        } catch {}
+        // GM/localStorage 写入含 time 的载荷；CustomEvent detail 为不含 time 的原始 payload
+        broadcastSend('jdb:want-watched-sync', { ...payload, time: Date.now() }, {
+            eventDetail: payload,
+            onError: () => {}
+        });
     } catch (err: unknown) {
         clog.error('[JHS-想看/观看同步] 广播失败', err);
     }
@@ -272,25 +262,8 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
         // 2) 列表页/series 页：刷新匹配卡片的 status-tag
         self.refreshItemStatusTag(payload.carNum);
     };
-    // 1) 同页面 CustomEvent
-    document.addEventListener('jdb:want-watched-sync', (event: Event) =>
-        handleSync((event as CustomEvent).detail)
-    );
-    // 2) localStorage（跨标签页 / 跨 iframe）
-    window.addEventListener('storage', (event: StorageEvent) => {
-        if (event.key !== 'jdb:want-watched-sync' || !event.newValue) return;
-        handleSync(event.newValue);
-    });
-    // 3) GM 通道
-    try {
-        GM_addValueChangeListener(
-            'jdb:want-watched-sync',
-            (_name: string, _oldValue: unknown, newValue: unknown) => {
-                if (!newValue) return;
-                handleSync(newValue);
-            }
-        );
-    } catch {}
+    // 三重通道（CustomEvent / storage / GM）原始送达，handleSync 自行解析
+    broadcastSubscribe('jdb:want-watched-sync', (rawData) => handleSync(rawData), { raw: true });
 }
 
 /**

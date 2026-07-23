@@ -5,6 +5,8 @@
  * - setupAutoRefreshListener：设置三重监听（CustomEvent / storage / GM_addValueChangeListener）
  * - handleSyncNotify：处理同步通知（过滤 + 防抖 + 回调）
  */
+import { broadcastSubscribe } from '../../core/util/broadcast';
+
 import type { VltTags } from './vlt-tags';
 
 /** GM 存储键 + localStorage 键：最后一次同步事件 payload。 */
@@ -90,45 +92,26 @@ export function setupAutoRefreshListener(
 ): void {
     const state = { lastRefreshTime: 0 };
 
-    // 1) 跨脚本同页面（CustomEvent）
-    document.addEventListener('jdb:sync-complete', (e: Event) => {
-        console.log('[视频清单标签] [CustomEvent] 收到 jdb:sync-complete');
-        handleSyncNotify(plugin, (e as CustomEvent).detail, onSync, state);
-    });
-
-    // 2) 跨脚本跨标签页（localStorage storage 事件，只在其他标签页触发）
-    window.addEventListener('storage', (e: StorageEvent) => {
-        if (e.key !== LAST_SYNC_KEY) {
-            return;
-        }
-        console.log(
-            `[视频清单标签] [storage] key=${e.key} newValue=${e.newValue ? '<set>' : '<empty>'}`
-        );
-        if (!e.newValue) return;
-        let payload: SyncPayload | null = null;
-        try {
-            payload = JSON.parse(e.newValue);
-        } catch {
-            return;
-        }
-        handleSyncNotify(plugin, payload, onSync, state);
-    });
-
-    // 3) 同脚本跨标签页（GM 原生通道，兜底）
-    GM_addValueChangeListener(
+    // 三重通道（CustomEvent 'jdb:sync-complete' / storage / GM）接收同步事件，
+    // onDelivery 保留各通道诊断日志（与原始实现时序一致：storage/GM 在 key 过滤后、空值检查前打印）
+    broadcastSubscribe<SyncPayload>(
         LAST_SYNC_KEY,
-        (_name: string, _oldValue, newValue, remote: boolean): void => {
-            console.log(
-                `[视频清单标签] [GM_addValueChangeListener] remote=${remote} newValue=${newValue ? '<set>' : '<empty>'}`
-            );
-            if (!newValue) return;
-            let payload: SyncPayload | null = null;
-            try {
-                payload = JSON.parse(newValue);
-            } catch {
-                return;
+        (payload) => handleSyncNotify(plugin, payload, onSync, state),
+        {
+            eventName: 'jdb:sync-complete',
+            onDelivery: (delivery) => {
+                if (delivery.channel === 'customEvent') {
+                    console.log('[视频清单标签] [CustomEvent] 收到 jdb:sync-complete');
+                } else if (delivery.channel === 'storage') {
+                    console.log(
+                        `[视频清单标签] [storage] key=${LAST_SYNC_KEY} newValue=${delivery.rawValue ? '<set>' : '<empty>'}`
+                    );
+                } else {
+                    console.log(
+                        `[视频清单标签] [GM_addValueChangeListener] remote=${delivery.remote} newValue=${delivery.rawValue ? '<set>' : '<empty>'}`
+                    );
+                }
             }
-            handleSyncNotify(plugin, payload, onSync, state);
         }
     );
 

@@ -6,6 +6,7 @@
  * - broadcastSyncComplete：清单 checkbox 同步完成广播
  * - broadcastListMgmt：清单管理（删除/改名）广播
  */
+import { broadcastSend } from '../../core/util/broadcast';
 
 /** 日志前缀。 */
 const LOG_PREFIX = '[JavDB]';
@@ -18,6 +19,14 @@ const WANT_WATCHED_SYNC_KEY = 'jdb:want-watched-sync';
 
 /** 清单管理广播键（独立通道，不与 jdb:last-sync 混用）。 */
 const LIST_MGMT_KEY = 'jdb:list-mgmt';
+
+/** 「想看/观看」状态变更广播载荷（GM/localStorage 写入结构）。 */
+interface WantWatchedSyncPayload {
+    carNum: string;
+    status: string;
+    op: 'add' | 'remove';
+    time: number;
+}
 
 /**
  * 广播「想看/观看」状态变更，与 DetailPageButtonPlugin.broadcastWantWatchedSync 等价。
@@ -36,20 +45,10 @@ const LIST_MGMT_KEY = 'jdb:list-mgmt';
  */
 export function broadcastWantWatchedSync(carNum: string, status: string, op: 'add' | 'remove'): void {
     try {
-        const payload = { carNum, status, op, time: Date.now() };
-        const json = JSON.stringify(payload);
-        // 1) GM 原生通道（跨标签页）
-        try {
-            GM_setValue(WANT_WATCHED_SYNC_KEY, json);
-        } catch {}
-        // 2) localStorage（跨脚本同源）
-        try {
-            localStorage.setItem(WANT_WATCHED_SYNC_KEY, json);
-        } catch {}
-        // 3) CustomEvent（同页面即时，DetailPageButtonPlugin.setupWantWatchedSyncListener 接收）
-        try {
-            document.dispatchEvent(new CustomEvent(WANT_WATCHED_SYNC_KEY, { detail: payload }));
-        } catch {}
+        const payload: WantWatchedSyncPayload = { carNum, status, op, time: Date.now() };
+        broadcastSend(WANT_WATCHED_SYNC_KEY, payload, {
+            onError: () => {}
+        });
     } catch (err: unknown) {
         clog.error(`${LOG_PREFIX} 自动收藏广播失败`, err);
     }
@@ -69,28 +68,20 @@ export function broadcastSyncComplete(designation: string, action: string, assoc
         association,
         time: Date.now()
     };
-    const payloadStr = JSON.stringify(syncPayload);
 
-    // 1) 同脚本跨标签页（GM 原生通道）
-    try {
-        GM_setValue(LAST_SYNC_KEY, payloadStr);
-    } catch (error) {
-        console.warn(`${LOG_PREFIX} GM 同步广播失败`, error);
-    }
-
-    // 2) 跨脚本跨标签页（localStorage 触发 storage 事件）
-    try {
-        localStorage.setItem(LAST_SYNC_KEY, payloadStr);
-    } catch (error) {
-        console.warn(`${LOG_PREFIX} localStorage 同步广播失败`, error);
-    }
-
-    // 3) 跨脚本同页面（CustomEvent 即时）
-    try {
-        document.dispatchEvent(new CustomEvent('jdb:sync-complete', { detail: syncPayload }));
-    } catch (error) {
-        console.warn(`${LOG_PREFIX} 页面同步广播失败`, error);
-    }
+    // 三重通道（GM / localStorage / CustomEvent 'jdb:sync-complete'），逐通道失败日志
+    broadcastSend(LAST_SYNC_KEY, syncPayload, {
+        eventName: 'jdb:sync-complete',
+        onError: (channel, error) => {
+            const msg =
+                channel === 'gm'
+                    ? 'GM 同步广播失败'
+                    : channel === 'localStorage'
+                      ? 'localStorage 同步广播失败'
+                      : '页面同步广播失败';
+            console.warn(`${LOG_PREFIX} ${msg}`, error);
+        }
+    });
 }
 
 /**
@@ -108,14 +99,5 @@ export function broadcastListMgmt(
     extra?: { newName?: string }
 ): void {
     const payload = { type, listId, newName: extra?.newName, time: Date.now() };
-    const json = JSON.stringify(payload);
-    try {
-        GM_setValue(LIST_MGMT_KEY, json);
-    } catch {}
-    try {
-        localStorage.setItem(LIST_MGMT_KEY, json);
-    } catch {}
-    try {
-        document.dispatchEvent(new CustomEvent(LIST_MGMT_KEY, { detail: payload }));
-    } catch {}
+    broadcastSend(LIST_MGMT_KEY, payload, { onError: () => {} });
 }
