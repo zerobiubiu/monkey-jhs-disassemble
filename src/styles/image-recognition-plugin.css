@@ -1,0 +1,40 @@
+/*
+ * 以图识图 ImageRecognitionPlugin 样式。
+ *
+ * 原脚本位于 ImageRecognitionPlugin.initCss() 返回的 `\3c style>` 字符串内
+ * （经 PluginManager.processCss → utils.insertStyle 注入 head），此处提取
+ * 为独立 .css，由 initCss() 返回 → PluginManager utils.insertStyle 注入
+ * （insertStyle 检测无 \3c style> 标签时自动包裹）。注入目标始终为 head
+ * （全局作用域），与原实现一致。CSS 规则内容与原字符串一致（缩进标准化，
+ * CSS 解析忽略空白，渲染等价）。
+ */
+#upload-area {
+    border: 2px dashed #85af68; border-radius: 8px; padding: 40px;
+    text-align: center; margin-bottom: 20px; transition: border-color 0.3s, background-color 0.3s;
+    background-color: #f9f9f9;
+}
+#upload-area:hover { border-color: #76b947; background-color: #f0f0f0; }
+#upload-area.highlight { border-color: #2196F3; background-color: #e3f2fd; }
+
+#select-image-btn {
+    background-color: #4CAF50; color: white; border: none;
+    padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px;
+}
+
+#handle-btn, #cancel-btn {
+    padding: 8px 16px; border-radius: 4px; cursor: pointer;
+    font-size: 14px; border: none;
+}
+#handle-btn { background-color: #2196F3; color: white; }
+#cancel-btn { background-color: #f44336; color: white; }
+
+.search-img-site-btns-container {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;
+}
+
+.search-img-site-btn {
+    display: flex; align-items: center; padding: 8px 12px;
+    background-color: #f5f5f5; border-radius: 4px; text-decoration: none;
+    color: #333; font-size: 14px; border: 1px solid #ddd;
+}
+.search-img-site-btn img { width: 16px; height: 16px; margin-right: 6px; }

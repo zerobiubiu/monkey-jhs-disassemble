@@ -1,0 +1,30 @@
+/* 无障碍基础样式（doc/145 批次 5 基础） */
+
+/* focus-visible：键盘导航时显示焦点环，鼠标点击时不显示 */
+:focus-visible {
+    outline: 2px solid #5d87c2;
+    outline-offset: 2px;
+}
+
+/* 交互元素的焦点样式 */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid #5d87c2;
+    outline-offset: 2px;
+}
+
+/* 减少动态效果：尊重用户系统偏好 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

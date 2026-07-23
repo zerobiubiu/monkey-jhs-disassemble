@@ -1,0 +1,64 @@
+/* JavDB Power Tools 设计令牌（doc/147 批次 5 基础） */
+
+/* 作用域：.jhs-ui 或全局 :root，供所有插件 CSS 引用 */
+
+:root {
+    /* 主色 */
+    --jhs-color-primary: #5d87c2;
+    --jhs-color-primary-hover: #4a73b0;
+    --jhs-color-primary-light: #e8eef6;
+
+    /* 语义色 */
+    --jhs-color-success: #64bb69;
+    --jhs-color-warning: #d7a80c;
+    --jhs-color-error: #de3333;
+    --jhs-color-info: #25b1dc;
+
+    /* 中性色 */
+    --jhs-color-text: #363636;
+    --jhs-color-text-secondary: #6c757d;
+    --jhs-color-text-muted: #999;
+    --jhs-color-border: #e2e8f0;
+    --jhs-color-bg: #fff;
+    --jhs-color-bg-secondary: #fbfcfd;
+    --jhs-color-bg-hover: #f5f5f5;
+
+    /* 间距 */
+    --jhs-space-xs: 4px;
+    --jhs-space-sm: 8px;
+    --jhs-space-md: 12px;
+    --jhs-space-lg: 16px;
+    --jhs-space-xl: 20px;
+    --jhs-space-2xl: 24px;
+
+    /* 圆角 */
+    --jhs-radius-sm: 4px;
+    --jhs-radius-md: 6px;
+    --jhs-radius-lg: 8px;
+    --jhs-radius-full: 9999px;
+
+    /* 字体 */
+    --jhs-font-size-xs: 11px;
+    --jhs-font-size-sm: 12px;
+    --jhs-font-size-md: 13px;
+    --jhs-font-size-lg: 14px;
+    --jhs-font-size-xl: 16px;
+
+    /* 阴影 */
+    --jhs-shadow-sm: 0 1px 3px rgb(0, 0, 0, 0.08);
+    --jhs-shadow-md: 0 2px 8px rgb(0, 0, 0, 0.12);
+    --jhs-shadow-lg: 0 4px 16px rgb(0, 0, 0, 0.16);
+
+    /* z-index 层级（layer.js z-index 无上限递增，above-layer 层需 genuinely large 常量） */
+    --jhs-z-dropdown: 100;
+    --jhs-z-sticky: 200;
+    --jhs-z-page: 9999;
+    --jhs-z-top: 999999999;
+
+    /* 过渡 */
+    --jhs-transition-fast: 150ms ease;
+    --jhs-transition-normal: 250ms ease;
+
+    /* 触控目标最小尺寸 */
+    --jhs-touch-target: 44px;
+}

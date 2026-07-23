@@ -1,0 +1,11 @@
+/* 标题翻译插件样式（原 translate-plugin.tsx initCss 返回的 <style> 块，
+   改走 CSS 管线：utils.insertStyle 自动包裹 <style> 注入 head，时机/作用域与原先一致）。 */
+.translated-title {
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 5px;
+    border-left: 4px solid rgb(76, 175, 80);
+    background: linear-gradient(135deg, rgb(255, 255, 255) 0%, rgb(245, 245, 245) 100%);
+    box-shadow: 0 4px 8px rgb(0, 0, 0, 0.08);
+    font-size: 20px;
+}
