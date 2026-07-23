@@ -9,6 +9,18 @@
 
 ---
 
+## v1.28.16
+
+**发布日期**：2026-07-23
+
+### 重构
+
+- **Wave 2 原子化拆分**（doc/175）：setting-plugin.tsx 1568→497（5 模块 + WebDAV 凭据去重 + withLoading + downloadJson）；history 782→511、blacklist 780→441（tabulator 配置复用 + 业务模块）；preview-video 661→157、new-video 589→288（5 模块 + util-status-tag）。
+- **组件复用合并**（doc/175）：history 源/状态单元格合并为 shared/colored-text-cell，删除 2 冗余组件。
+- **eslint 警告下降**：123→74（拆分消除内联 any 块）。
+
+---
+
 ## v1.28.15
 
 **发布日期**：2026-07-23

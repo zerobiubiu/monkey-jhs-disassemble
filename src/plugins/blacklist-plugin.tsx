@@ -45,33 +45,28 @@
  * - 内联 CSS/HTML（含 Tabulator 列配置、\n 转义与缩进）原样保留，仅替换模板
  *   插值变量名；控制流（分支/for/try-catch-finally/IIFE/fire-and-forget .then()）
  *   与原脚本一致。
+ * - Tabulator 列定义/中文 locale 已提取至 ./blacklist/blacklist-tabulator
+ *   （buildBlacklistTableOptions，复用 createTabulatorOptions + TABULATOR_ZH_CN）；
+ *   递归抓取（filterAllVideo / filterActorVideo / parseAndSaveFilterInfo）提取至
+ *   ./blacklist/blacklist-scraper，本类保留同名 thin delegate。
  */
-import {
-    currentHref,
-    isJavdbSite,
-    JAVDB,
-    ACTOR,
-    ACTRESS,
-    CENSORED,
-    UNCENSORED
-} from '../constants/site';
-import { FILTER_ACTION } from '../constants/status';
+import { currentHref, isJavdbSite, ACTOR, ACTRESS } from '../constants/site';
 
 import { jsxToString } from '../core/jsx-to-string';
 
-import type { CarRecord, CarSaveInput } from '../core/storage-manager';
+import type { CarRecord } from '../core/storage-manager';
 import type { ActressInfo } from './base-plugin';
 import { BasePlugin } from './base-plugin';
+import { buildBlacklistTableOptions } from './blacklist/blacklist-tabulator';
+import {
+    filterAllVideo as _filterAllVideo,
+    filterActorVideo as _filterActorVideo,
+    parseAndSaveFilterInfo as _parseAndSaveFilterInfo
+} from './blacklist/blacklist-scraper';
 
 import { BlacklistDialog } from '../components/blacklist/blacklist-dialog';
 import { BlacklistConfirmMessage } from '../components/blacklist/blacklist-confirm-message';
 import { BlacklistDataTypeOptions } from '../components/blacklist/blacklist-data-type-options';
-import { BlacklistNameCell } from '../components/blacklist/blacklist-name-cell';
-import { BlacklistUrlTypeCell } from '../components/blacklist/blacklist-url-type-cell';
-import { BlacklistStatusCell } from '../components/blacklist/blacklist-status-cell';
-import { BlacklistActionCell } from '../components/blacklist/blacklist-action-cell';
-import { MovieListWrapper } from '../components/movie/movie-list-wrapper';
-import { BlacklistPaginationCounter } from '../components/blacklist/blacklist-pagination-counter';
 
 export class BlacklistPlugin extends BasePlugin {
     /** 全屏 loading 句柄（addBlacklist 执行期间显示，结束/出错时关闭）。 */
@@ -360,235 +355,14 @@ export class BlacklistPlugin extends BasePlugin {
 
     /**
      * 初始化黑名单 Tabulator 表格（列定义/分页/中文语言/操作列删除按钮）。
-     * 对应原 L7574-7786。内联列配置与 HTML 原样保留。
+     * 对应原 L7574-7786。列定义/中文 locale 已提取至 blacklist/blacklist-tabulator
+     * 的 buildBlacklistTableOptions（含 createTabulatorOptions 基础配置）。
      */
     async loadTableData(): Promise<void> {
         this.checkBlacklist_ruleTime =
             (await storageManager.getSetting('checkBlacklist_ruleTime')) || 8760;
         const data = await this.getTableData();
-        this.tableObj = new Tabulator('#table-container', {
-            layout: 'fitColumns',
-            placeholder: '暂无数据',
-            virtualDom: true,
-            data,
-            pagination: true,
-            paginationMode: 'local',
-            paginationSize: 20,
-            paginationSizeSelector: [20, 50, 100, 1000, 99999],
-            paginationCounter: (
-                _pageSize: unknown,
-                _pageNo: unknown,
-                _maxPage: unknown,
-                actorCount: number,
-                _pages: unknown
-            ) =>
-                jsxToString(
-                    <BlacklistPaginationCounter
-                        actorCount={actorCount}
-                        currentCarCount={this.currentCarCount}
-                    />
-                ),
-            responsiveLayout: 'collapse',
-            responsiveLayoutCollapse: true,
-            columnDefaults: {
-                headerHozAlign: 'center',
-                hozAlign: 'center'
-            },
-            index: 'starId',
-            columns: [
-                {
-                    title: '演员',
-                    field: 'name',
-                    sorter: 'string',
-                    minWidth: 100,
-                    responsive: 0,
-                    headerSort: false,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const rowData = cell.getData();
-                        return jsxToString(
-                            <BlacklistNameCell url={rowData.url} name={rowData.name} />
-                        );
-                    }
-                },
-                {
-                    title: '性别角色',
-                    field: 'role',
-                    sorter: 'string',
-                    width: 120,
-                    responsive: 5,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const role = cell.getData().role;
-                        let roleText = role;
-                        if (role === ACTOR) {
-                            roleText = '男演员';
-                        } else if (role === ACTRESS) {
-                            roleText = '女演员';
-                        }
-                        return roleText;
-                    }
-                },
-                {
-                    title: '影视类别',
-                    field: 'movieType',
-                    sorter: 'string',
-                    width: 120,
-                    responsive: 5,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const movieType = cell.getData().movieType;
-                        let movieTypeText = movieType;
-                        if (movieType === CENSORED) {
-                            movieTypeText = '有码';
-                        } else if (movieType === UNCENSORED) {
-                            movieTypeText = '无码';
-                        }
-                        return movieTypeText;
-                    }
-                },
-                {
-                    title: '屏蔽类型',
-                    field: 'url',
-                    sorter: 'string',
-                    minWidth: 120,
-                    responsive: 4,
-                    visible: isJavdbSite,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const hasTag = cell.getData().url.includes('t=');
-                        return jsxToString(<BlacklistUrlTypeCell hasTag={hasTag} />);
-                    }
-                },
-                {
-                    title: '番号数量',
-                    field: 'count',
-                    sorter: 'number',
-                    width: 170,
-                    responsive: 1
-                },
-                {
-                    title: '创建时间',
-                    field: 'createTime',
-                    sorter: 'string',
-                    width: 170,
-                    responsive: 5
-                },
-                {
-                    title: '最后发行时间',
-                    field: 'lastPublishTime',
-                    sorter: 'string',
-                    width: 170,
-                    responsive: 1
-                },
-                {
-                    title: '状态',
-                    field: 'isUnCheck',
-                    sorter: 'string',
-                    width: 120,
-                    responsive: 1,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        let tipText = '';
-                        let statusText = '正常检测';
-                        if (cell.getData().isUnCheck) {
-                            tipText = `停更${this.checkBlacklist_ruleTime / 24 / 365}年以上, 下轮任务不再进行检测`;
-                            statusText = '停止检测';
-                        }
-                        return jsxToString(
-                            <BlacklistStatusCell tipText={tipText} statusText={statusText} />
-                        );
-                    }
-                },
-                {
-                    title: '操作',
-                    sorter: 'string',
-                    cssClass: 'action-cell-dropdown',
-                    minWidth: 150,
-                    responsive: 0,
-                    headerSort: false,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, onRendered: (callback: () => void) => void) => {
-                        const rowData = cell.getData();
-                        onRendered(() => {
-                            const deleteBtn = cell.getElement().querySelector('.delete-btn');
-                            if (deleteBtn != null) {
-                                deleteBtn.addEventListener('click', (event: MouseEvent) => {
-                                    const name = rowData.name;
-                                    const starId = rowData.starId;
-                                    if (name) {
-                                        if (starId) {
-                                            utils.q(
-                                                event,
-                                                `是否移除对 ${name} 的屏蔽?`,
-                                                async () => {
-                                                    await storageManager.removeBlacklistCarList(
-                                                        starId
-                                                    );
-                                                    await storageManager.deleteBlacklistItem(
-                                                        starId
-                                                    );
-                                                    show.info('操作成功');
-                                                    this.reloadTable().then();
-                                                }
-                                            );
-                                        } else {
-                                            show.error('获取starId失败');
-                                        }
-                                    } else {
-                                        show.error('获取名称失败');
-                                    }
-                                });
-                            }
-                            const keywordBtn = cell.getElement().querySelector('.keyword-btn');
-                            if (keywordBtn != null) {
-                                keywordBtn.addEventListener('click', () => {
-                                    const prefixCounts: Record<string, number> = rowData.carList.reduce(
-                                        (acc: Record<string, number>, carItem: { carNum: string }) => {
-                                            const prefix = carItem.carNum.split('-')[0] + '-';
-                                            acc[prefix] = (acc[prefix] || 0) + 1;
-                                            return acc;
-                                        },
-                                        {}
-                                    );
-                                    const sortedPrefixes = Object.entries(prefixCounts)
-                                        .map(([prefix, count]: [string, number]) => ({
-                                            prefix,
-                                            count
-                                        }))
-                                        .sort((a: { count: number }, b: { count: number }) => b.count - a.count);
-                                    console.log(sortedPrefixes);
-                                });
-                            }
-                        });
-                        return jsxToString(<BlacklistActionCell />);
-                    }
-                }
-            ],
-            initialSort: [
-                {
-                    column: 'createTime',
-                    dir: 'desc'
-                }
-            ],
-            locale: 'zh-cn',
-            langs: {
-                'zh-cn': {
-                    pagination: {
-                        first: '首页',
-                        first_title: '首页',
-                        last: '尾页',
-                        last_title: '尾页',
-                        prev: '上一页',
-                        prev_title: '上一页',
-                        next: '下一页',
-                        next_title: '下一页',
-                        all: '所有',
-                        page_size: '每页行数'
-                    }
-                }
-            }
-        });
+        this.tableObj = new Tabulator('#table-container', buildBlacklistTableOptions(this, data));
     }
 
     /**
@@ -628,153 +402,40 @@ export class BlacklistPlugin extends BasePlugin {
 
     /**
      * 递归遍历演员作品列表页，将每个番号写入鉴定记录（屏蔽动作）。
-     * 对应原 L7812-7865。
+     * 对应原 L7812-7865。实现提取至 blacklist/blacklist-scraper 的 filterAllVideo。
      * @param names 演员名（写入 saveCar.names）
      * @param $dom 可选的已解析页 DOM；缺省时从当前页选择器取
      */
     async filterAllVideo(names: string, $dom?: JQuery): Promise<void> {
-        let items: JQuery;
-        let nextPageHref: string | undefined;
-        if ($dom) {
-            items = $dom.find(this.getSelector().requestDomItemSelector);
-            nextPageHref = $dom.find(this.getSelector().nextPageSelector).attr('href');
-        } else {
-            items = $(this.getSelector().itemSelector);
-            nextPageHref = $(this.getSelector().nextPageSelector).attr('href');
-        }
-        if (nextPageHref && items.length === 0) {
-            show.error('解析列表失败');
-            throw new Error('解析列表失败');
-        }
-        for (const itemEl of items) {
-            const $item = $(itemEl);
-            const { carNum, url, publishTime } =
-                this.getBean('ListPagePlugin').findCarNumAndHref($item);
-            if (url && carNum) {
-                try {
-                    if (await storageManager.getCar(carNum)) {
-                        continue;
-                    }
-                    await storageManager.saveCar({
-                        carNum,
-                        url,
-                        names,
-                        actionType: FILTER_ACTION,
-                        publishTime
-                    });
-                    clog.log('屏蔽演员番号', names, carNum);
-                } catch (error: unknown) {
-                    clog.error(`保存失败 [${carNum}]:`, error);
-                }
-            }
-        }
-        if (nextPageHref) {
-            show.info('请不要关闭窗口, 正在解析下一页:' + nextPageHref);
-            await new Promise<void>((resolve) => setTimeout(resolve, 500));
-            const pageHtml = await gmHttp.get(nextPageHref);
-            const domParser = new DOMParser();
-            const $parsed = $(domParser.parseFromString(String(pageHtml), 'text/html'));
-            await this.filterAllVideo(names, $parsed);
-        } else {
-            show.ok('执行结束!');
-            refresh();
-        }
+        return _filterAllVideo(this, names, $dom);
     }
 
     /**
      * 递归抓取演员番号并批量写入黑名单番号列表（用于 addBlacklist 后的屏蔽）。
      * JavDb 站点页码超过 60 时改走 Beyond60Plugin 合并请求。对应原 L7866-7893。
+     * 实现提取至 blacklist/blacklist-scraper 的 filterActorVideo。
      * @param name 演员名
      * @param starId 演员 starId
      * @param $dom 可选的已解析页 DOM；缺省时从当前页选择器取
      */
     async filterActorVideo(name: string, starId: string | null, $dom?: JQuery): Promise<void> {
-        const { nextPageLink } = await this.parseAndSaveFilterInfo($dom, name, starId);
-        this.nextPageLink = nextPageLink;
-        if (nextPageLink) {
-            let nextDom: JQuery;
-            this.lastPageLink = nextPageLink;
-            show.info('请不要关闭窗口, 正在解析下一页:' + nextPageLink);
-            const pageNum = utils.getUrlParam(nextPageLink, 'page') || 0;
-            // Beyond60Plugin 从未注册（忠实死路径），类型仅为编译通过
-            const beyond60Plugin = this.getBean('Beyond60Plugin') as (BasePlugin & {
-                handleBeyond60(url: string): Promise<{ html: string; nextUrl: string; hasMore: boolean }>;
-            }) | undefined;
-            if (isJavdbSite && beyond60Plugin && Number(pageNum) > 60) {
-                const {
-                    html,
-                    nextUrl,
-                    hasMore: _hasMore
-                } = await beyond60Plugin.handleBeyond60(nextPageLink);
-                const wrapperHtml = jsxToString(<MovieListWrapper html={html} nextUrl={nextUrl} />);
-                nextDom = utils.htmlTo$dom(wrapperHtml);
-            } else {
-                clog.log('正在请求下一页内容:', nextPageLink);
-                const pageHtml = await gmHttp.get(nextPageLink);
-                nextDom = utils.htmlTo$dom(String(pageHtml));
-            }
-            await this.filterActorVideo(name, starId, nextDom);
-        } else {
-            show.ok('执行结束!');
-            refresh();
-        }
+        return _filterActorVideo(this, name, starId, $dom);
     }
 
     /**
      * 解析一页 DOM 中的番号列表并批量保存到黑名单番号列表，返回下一页链接与
-     * 首条发行时间。对应原 L7894-7950。
+     * 首条发行时间。对应原 L7894-7950。实现提取至 blacklist/blacklist-scraper 的
+     * parseAndSaveFilterInfo。
      * @param $dom 已解析页 DOM；缺省时从当前页选择器取
      * @param names 演员名（写入 carList.names）
      * @param starId 演员 starId（写入 carList.starId）
-     * @returns nextPageLink 下一页 href（无则为 null）；lastPublishTime 首条发行时间
+     * @returns nextPageLink 下一页 href（无则为 undefined）；lastPublishTime 首条发行时间
      */
     async parseAndSaveFilterInfo(
         $dom: JQuery | undefined,
         names: string,
         starId: string | null
     ): Promise<{ nextPageLink: string | undefined; lastPublishTime: string | null }> {
-        let items: JQuery;
-        let nextPageHref: string | undefined;
-        if ($dom) {
-            const siteType = JAVDB;
-            items = $dom.find(this.getSelector(siteType).requestDomItemSelector);
-            nextPageHref = $dom.find(this.getSelector(siteType).nextPageSelector).attr('href');
-        } else {
-            items = $(this.getSelector().itemSelector);
-            nextPageHref = $(this.getSelector().nextPageSelector).attr('href');
-        }
-        if (nextPageHref && items.length === 0) {
-            return {
-                nextPageLink: undefined,
-                lastPublishTime: null
-            };
-        }
-        const carList: CarSaveInput[] = [];
-        let lastPublishTime: string | null = null;
-        for (const itemEl of items) {
-            const $item = $(itemEl);
-            const { carNum, url, publishTime } =
-                this.getBean('ListPagePlugin').findCarNumAndHref($item);
-            lastPublishTime ||= publishTime;
-            if (url && carNum) {
-                carList.push({
-                    carNum,
-                    url,
-                    names,
-                    actionType: FILTER_ACTION,
-                    starId: starId ?? undefined,
-                    publishTime
-                });
-            }
-        }
-        try {
-            await storageManager.batchSaveBlacklistCarList(carList);
-        } catch (error: unknown) {
-            clog.error('保存失败:', error);
-        }
-        return {
-            nextPageLink: nextPageHref,
-            lastPublishTime
-        };
+        return _parseAndSaveFilterInfo(this, $dom, names, starId);
     }
 }

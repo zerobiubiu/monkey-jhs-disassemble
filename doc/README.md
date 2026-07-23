@@ -286,6 +286,7 @@
 172. `172-big-file-splits-and-components-reorg.md` — 5 个大文件职责拆分（facade/delegate 模式）+ src/components/ 120+ 平铺文件重组为 25 个子目录 + 机械门禁更新；version 1.28.12→1.28.13
 173. `173-settings-ui-overhaul-and-vlt-final-split.md` — 设置面板 UI 统一化（CSS Grid + 原子组件 + 选择器审计）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel）；version 1.28.13→1.28.14
 174. `174-wave1-atomization-and-reuse-merge.md` — Wave 1 原子化拆分与复用合并（storage-manager 1321→415 / vlt-tags 1028→421 / review·related 七对组件合并为 shared 参数化组件 / 5 共享工具抽取接入 10 处）；version 1.28.14→1.28.15
+175. `175-wave2-atomization-and-reuse-merge.md` — Wave 2 原子化拆分与复用合并（setting 1568→497 / history 782→511 / blacklist 780→441 / preview-video 661→157 / new-video 589→288 / history 源·状态单元格合并为 shared/colored-text-cell / util-status-tag 抽取接入 list-page）；version 1.28.15→1.28.16
 
 ## 当前进度概览
 
@@ -302,7 +303,7 @@
 - resources：`gfriends`/`icons`
 - styles：37 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
   无障碍样式），全部清理 `transition: all` 反模式
-- components：137 个 React 函数组件（JSX → jsxToString → HTML 字符串），
+- components：135 个 React 函数组件（JSX → jsxToString → HTML 字符串），
   重组为 25 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels），直接文件数 0
 - 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）
 - 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
@@ -311,7 +312,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/174（175 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/175（177 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

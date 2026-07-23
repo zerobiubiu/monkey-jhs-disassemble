@@ -30,12 +30,6 @@ import {
     FILTER_ACTION,
     FAVORITE_ACTION,
     HAS_WATCH_ACTION,
-    BLOCKED_TEXT,
-    BLOCK_COLOR,
-    FAVORITED_TEXT,
-    FAVORITE_COLOR,
-    WATCHED_TEXT,
-    WATCHED_COLOR,
     NO,
     YES
 } from '../constants/status';
@@ -45,77 +39,19 @@ import type { PageType } from '../core/page-context';
 import { jsxToString } from '../core/jsx-to-string';
 import { translateText } from '../core/util/util-translate';
 import { failWithToast } from '../core/toast';
+import {
+    STATUS_TAG_CONFIG,
+    getStatusTagPositionStyle,
+    buildStatusTagHtml,
+    injectStatusTag
+} from '../core/util/util-status-tag';
+import type { StatusTagConfig } from '../core/util/util-status-tag';
 
 import { BasePlugin } from './base-plugin';
 
-import { StatusTagHtml } from '../components/misc/status-tag-html';
 import { JumpPageControl } from '../components/misc/jump-page-control';
 import { PageCountTable } from '../components/misc/page-count-table';
 
-/** 状态标签配置项结构（原顶层 Te 对象的每个条目）。 */
-interface StatusTagConfig {
-    text: string;
-    color: string;
-    reasonType: string;
-    isCounted: boolean;
-    countKey: string;
-}
-
-/**
- * 状态标签配置表（原顶层 Te）。
- * 将原 u/f/b/w/k/S 等单字母文本/颜色常量替换为 ../constants/status 的语义常量。
- */
-const STATUS_TAG_CONFIG: Record<string, StatusTagConfig> = {
-    IS_FILTERED: {
-        text: BLOCKED_TEXT,
-        color: BLOCK_COLOR,
-        reasonType: '单番号屏蔽',
-        isCounted: true,
-        countKey: 'currentPageFilterCount'
-    },
-    IS_FAVORITE: {
-        text: FAVORITED_TEXT,
-        color: FAVORITE_COLOR,
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageFavoriteCount'
-    },
-    IS_HAS_WATCH: {
-        text: WATCHED_TEXT,
-        color: WATCHED_COLOR,
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageHasWatchCount'
-    },
-    IS_KEYWORD_FILTER: {
-        text: '❌ 关键词屏蔽',
-        color: '#de3333',
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageKeywordFilterCount'
-    },
-    IS_ACTOR_FILTER: {
-        text: '♂️ 男演员屏蔽',
-        color: '#b22222',
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageActorFilterCount'
-    },
-    IS_ACTRESS_FILTER: {
-        text: '♀️ 女演员屏蔽',
-        color: '#cd5c5c',
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageActorFilterCount'
-    },
-    IS_WAIT_CHECK: {
-        text: '',
-        color: '',
-        reasonType: '',
-        isCounted: true,
-        countKey: 'currentPageWaitCheckCount'
-    }
-};
 
 export class ListPagePlugin extends BasePlugin {
     // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
@@ -284,28 +220,15 @@ export class ListPagePlugin extends BasePlugin {
             }
             // 与 filterMovieList 中保持一致的注入逻辑
             const tagPosition = (await storageManager.getSetting()).tagPosition || 'rightTop';
-            const positionStyle =
-                tagPosition === 'rightTop' ? 'right: 0; top:5px;' : 'left: 0; top:5px;';
-            const tagHtml = jsxToString(
-                <StatusTagHtml
-                    variant="render"
-                    text={tagConfig.text}
-                    color={tagConfig.color}
-                    dataTip={tagConfig.reasonType}
-                    positionStyle={positionStyle}
-                />
+            const positionStyle = getStatusTagPositionStyle(tagPosition);
+            const tagHtml = buildStatusTagHtml(
+                'render',
+                tagConfig.text,
+                tagConfig.color,
+                tagConfig.reasonType,
+                positionStyle
             );
-            const tagsEl = $item.find('.tags');
-            if (tagsEl.length) {
-                tagsEl.append(tagHtml);
-                return;
-            }
-            const itemTagEl = $item.find('.item-tag');
-            if (itemTagEl.length) {
-                itemTagEl.append(tagHtml);
-                return;
-            }
-            $item.find('.photo-info > span > div').append(tagHtml);
+            injectStatusTag($item, tagHtml);
         } catch (err) {
             clog.error('[JHS-想看/观看] renderItemStatusTag 失败', err);
         }
@@ -487,17 +410,14 @@ export class ListPagePlugin extends BasePlugin {
                 }
                 this.currentPageTotalCount++;
                 $item.find('.status-tag').remove();
-                const positionStyle =
-                    tagPosition === 'rightTop' ? 'right: 0; top:5px;' : 'left: 0; top:5px;';
+                const positionStyle = getStatusTagPositionStyle(tagPosition);
                 if (tagConfig.text) {
-                    const tagHtml = jsxToString(
-                        <StatusTagHtml
-                            variant="filter"
-                            text={tagConfig.text}
-                            color={tagConfig.color}
-                            dataTip={reasonText as string}
-                            positionStyle={positionStyle}
-                        />
+                    const tagHtml = buildStatusTagHtml(
+                        'filter',
+                        tagConfig.text,
+                        tagConfig.color,
+                        reasonText as string,
+                        positionStyle
                     );
                     if (isJavdbSite) {
                         $item.find('.tags').append(tagHtml);

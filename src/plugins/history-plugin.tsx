@@ -14,11 +14,15 @@
  * - 站点布尔 r 改由 ../constants/site 引入；状态动作 d/h/p 与展示文本/颜色
  *   m/u/f/v/b/w/k/S 改由 ../constants/status 引入。
  * - 内联 HTML/CSS（layer 弹窗 content、initCss 返回的 <style>）已提取为组件/CSS：
- *   来源/状态列 formatter → HistorySourceCell / HistoryStatusCell，弹窗 → 既有组件；
- *   仅替换其中的模板插值变量名为语义常量。
- * - 组件（HistoryDialog/EditRecordDialog/HistoryNavButton/HistoryActionButtons/
- *   HistorySourceCell/HistoryStatusCell）已转 TSX 原生 React 组件（doc/18），
- *   调用点改 jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。
+ *   来源/状态列 formatter → 共享 ColoredTextCell（合并 A2，原 HistorySourceCell /
+ *   HistoryStatusCell 字节级相同已删除），弹窗 → 既有组件；仅替换其中的模板插值
+ *   变量名为语义常量。
+ * - 组件（HistoryDialog/EditRecordDialog/HistoryNavButton/HistoryActionButtons）
+ *   已转 TSX 原生 React 组件（doc/18），调用点改 jsxToString(<Comp {...props} />)；
+ *   本文件因含 JSX 重命名为 .tsx。
+ * - Tabulator 列定义/中文 locale 已提取至 ./history/history-tabulator
+ *   （buildHistoryTableOptions，复用 createTabulatorOptions + TABULATOR_ZH_CN）；
+ *   批量状态变更处理提取至 ./history/history-batch-ops（handleBatchAction）。
  * - 全局 $/layer/utils/storageManager/show/Tabulator/loading/refresh 已由
  *   src/types/globals.d.ts 声明，按 any 使用；原 window.refresh() 以全局 refresh() 调用。
  * - any 类型 callee（$/layer/Tabulator/utils 等）的回调参数显式标注 : any 以规避 noImplicitAny；
@@ -47,14 +51,12 @@ import { jsxToString } from '../core/jsx-to-string';
 import { CarRecord } from '../core/storage-manager';
 
 import { BasePlugin } from './base-plugin';
+import { handleBatchAction } from './history/history-batch-ops';
+import { buildHistoryTableOptions } from './history/history-tabulator';
 
 import { EditRecordDialog } from '../components/dialogs/edit-record-dialog';
-import { HistoryActionButtons } from '../components/history/history-action-buttons';
 import { HistoryDialog } from '../components/history/history-dialog';
 import { HistoryNavButton } from '../components/history/history-nav-button';
-import { HistorySourceCell } from '../components/history/history-source-cell';
-import { HistoryStatusCell } from '../components/history/history-status-cell';
-import { TableLinkParam } from '../components/misc/table-link-param';
 
 import historyCssRaw from '../styles/history-plugin.css?raw';
 
@@ -252,57 +254,7 @@ export class HistoryPlugin extends BasePlugin {
             'click',
             '.multiple-history-deleteBtn, .multiple-history-filterBtn, .multiple-history-favoriteBtn, .multiple-history-hasWatchBtn',
             (event: Event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const btn = $(event.currentTarget);
-                const selectedRows = this.tableObj.getSelectedData();
-                let actionLabel = '';
-                let actionType = '';
-                if (btn.hasClass('multiple-history-filterBtn')) {
-                    actionLabel = '屏蔽';
-                    actionType = FILTER_ACTION;
-                } else if (btn.hasClass('multiple-history-favoriteBtn')) {
-                    actionLabel = '收藏';
-                    actionType = FAVORITE_ACTION;
-                } else if (btn.hasClass('multiple-history-hasWatchBtn')) {
-                    actionLabel = '已观看';
-                    actionType = HAS_WATCH_ACTION;
-                } else if (btn.hasClass('multiple-history-deleteBtn')) {
-                    actionLabel = '移除';
-                    actionType = 'delete';
-                }
-                utils.q(
-                    event as MouseEvent,
-                    `当前已勾选${selectedRows.length}条数据, 是否全标记为 ${actionLabel}?`,
-                    async () => {
-                        const loader = loading();
-                        try {
-                            if (actionType === 'delete') {
-                                const carNums = selectedRows.map((row: CarRecord) => row.carNum);
-                                const removed = await storageManager.batchRemoveCars(carNums);
-                                if (Number(removed) > 0) {
-                                    show.ok(`已成功删除 ${removed} 个番号`);
-                                } else if (removed === false) {
-                                    show.error('提供的番号中没有一个存在于列表中。');
-                                }
-                            } else {
-                                const updates = JSON.parse(JSON.stringify(selectedRows));
-                                updates.forEach((item: CarRecord) => {
-                                    item.actionType = actionType;
-                                });
-                                await storageManager.saveCarList(updates);
-                                show.ok('操作成功');
-                            }
-                            this.tableObj.deselectRow();
-                            this.reloadTable().then();
-                        } catch (err: unknown) {
-                            clog.error('批量操作失败:', err);
-                            show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
-                        } finally {
-                            loader.close();
-                        }
-                    }
-                );
+                handleBatchAction(this, event, $(event.currentTarget));
             }
         );
     }
@@ -407,234 +359,11 @@ export class HistoryPlugin extends BasePlugin {
 
     /**
      * 初始化 Tabulator 表格：远程分页/排序、列定义、行选择联动、双击切换选中。
-     * 对应原 L6753-6975。内联列配置与中文 locale 原样保留。
+     * 对应原 L6753-6975。列定义/中文 locale 已提取至 history/history-tabulator
+     * 的 buildHistoryTableOptions（含 createTabulatorOptions 基础配置）。
      */
     async loadTableData(): Promise<void> {
-        this.tableObj = new Tabulator('#table-container', {
-            layout: 'fitColumns',
-            placeholder: '暂无数据',
-            virtualDom: true,
-            pagination: true,
-            paginationMode: 'remote',
-            sortMode: 'remote',
-            ajaxURL: 'queryRealm',
-            dataLoader: false,
-            ajaxRequestFunc: async (_url: unknown, _config: unknown, params: { page: number; size: number; sort: Array<{ field: string; dir: string }> }) => {
-                const page = params.page;
-                const size = params.size;
-                const sort = params.sort;
-                return await this.getDataList(page, size, sort);
-            },
-            dataReceiveParams: {
-                last_page: 'maxPage',
-                last_row: 'totalCount',
-                data: 'dataList'
-            },
-            paginationSize: 50,
-            paginationSizeSelector: [50, 100, 1000, 99999],
-            paginationCounter: (
-                _pageNumber: unknown,
-                _pageSize: unknown,
-                _totalPages: unknown,
-                recordCount: number,
-                _data: unknown
-            ) => `共 ${recordCount} 条记录`,
-            responsiveLayout: 'collapse',
-            responsiveLayoutCollapse: true,
-            columnDefaults: {
-                headerHozAlign: 'center',
-                hozAlign: 'center'
-            },
-            selectableRowsPersistence: false,
-            index: 'carNum',
-            columns: [
-                {
-                    formatter: 'rowSelection',
-                    titleFormatter: 'rowSelection',
-                    hozAlign: 'center',
-                    headerSort: false,
-                    responsive: 0,
-                    width: 40,
-                    titleFormatterParams: {
-                        rowRange: 'active'
-                    },
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    cellClick: (_event: unknown, cell: any) => {
-                        cell.getRow().toggleSelect();
-                    }
-                },
-                {
-                    title: '番号',
-                    field: 'carNum',
-                    width: 120,
-                    sorter: 'string',
-                    responsive: 0,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const carNum = cell.getData().carNum;
-                        const dashIndex = carNum.indexOf('-');
-                        if (dashIndex === -1) {
-                            return carNum;
-                        }
-                        return jsxToString(<TableLinkParam text={carNum.substring(0, dashIndex + 1)} />) + carNum.substring(dashIndex + 1);
-                    }
-                },
-                {
-                    title: '演员',
-                    field: 'names',
-                    minWidth: 200,
-                    sorter: 'string',
-                    responsive: 5,
-                    headerSort: true,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) =>
-                        (cell.getData().names || '')
-                            .split(' ')
-                            .filter((part: string) => part.trim() !== '')
-                            .map((part: string) => jsxToString(<TableLinkParam text={part} />))
-                            .join(' ')
-                },
-                {
-                    title: '创建时间',
-                    field: 'createDate',
-                    width: 170,
-                    sorter: 'string',
-                    responsive: 4
-                },
-                {
-                    title: '修改时间',
-                    field: 'updateDate',
-                    width: 170,
-                    sorter: 'string',
-                    responsive: 4
-                },
-                {
-                    title: '发行时间',
-                    field: 'publishTime',
-                    width: 170,
-                    sorter: 'string',
-                    responsive: 4
-                },
-                {
-                    title: '来源',
-                    field: 'url',
-                    width: 80,
-                    sorter: 'string',
-                    responsive: 5,
-                    hozAlign: 'left',
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const url = cell.getData().url;
-                        if (url) {
-                            if (url.includes('javdb')) {
-                                return jsxToString(
-                                    <HistorySourceCell text="Javdb" color="#d34f9e" />
-                                );
-                            } else {
-                                return jsxToString(
-                                    <HistorySourceCell text={url} color="#050505" />
-                                );
-                            }
-                        } else {
-                            return '';
-                        }
-                    }
-                },
-                {
-                    title: '状态',
-                    field: 'status',
-                    width: 100,
-                    sorter: 'string',
-                    responsive: 1,
-                    headerSort: false,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
-                        const status = cell.getData().status;
-                        let color = '';
-                        let text = '';
-                        switch (status) {
-                            case 'filter':
-                                color = BLOCK_COLOR;
-                                text = BLOCK_TEXT;
-                                break;
-                            case 'favorite':
-                                color = FAVORITE_COLOR;
-                                text = FAVORITE_TEXT;
-                                break;
-                            case 'hasWatch':
-                                color = WATCHED_COLOR;
-                                text = WATCHED_TEXT;
-                                break;
-                            default:
-                                text = status;
-                        }
-                        return jsxToString(<HistoryStatusCell text={text} color={color} />);
-                    }
-                },
-                {
-                    title: '备注',
-                    field: 'remark',
-                    width: 100,
-                    sorter: 'string',
-                    responsive: 6
-                },
-                {
-                    title: '操作',
-                    sorter: 'string',
-                    minWidth: 150,
-                    cssClass: 'action-cell-dropdown',
-                    responsive: 0,
-                    headerSort: false,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
-                    formatter: (cell: any, _formatterParams: unknown, onRendered: (callback: () => void) => void) => {
-                        const data = cell.getData();
-                        onRendered(() => {
-                            const editBtn = cell.getElement().querySelector('.history-editBtn');
-                            if (editBtn != null) {
-                                editBtn.addEventListener('click', () => {
-                                    this.editRecord(data);
-                                });
-                            }
-                        });
-                        return jsxToString(
-                            <HistoryActionButtons
-                                carNum={data.carNum}
-                                url={data.url || ''}
-                                watchedColor={WATCHED_COLOR}
-                                watchedText={WATCHED_TEXT}
-                                favoriteColor={FAVORITE_COLOR}
-                                favoriteText={FAVORITE_TEXT}
-                                blockColor={BLOCK_COLOR}
-                                blockText={BLOCK_TEXT}
-                            />
-                        );
-                    }
-                }
-            ],
-            initialSort: [
-                {
-                    column: 'updateDate',
-                    dir: 'desc'
-                }
-            ],
-            locale: 'zh-cn',
-            langs: {
-                'zh-cn': {
-                    pagination: {
-                        first: '首页',
-                        first_title: '首页',
-                        last: '尾页',
-                        last_title: '尾页',
-                        prev: '上一页',
-                        prev_title: '上一页',
-                        next: '下一页',
-                        next_title: '下一页',
-                        all: '所有',
-                        page_size: '每页行数'
-                    }
-                }
-            }
-        });
+        this.tableObj = new Tabulator('#table-container', buildHistoryTableOptions(this));
         this.tableObj.on(
             'rowSelectionChanged',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明

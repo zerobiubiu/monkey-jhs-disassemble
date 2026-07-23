@@ -6,80 +6,35 @@
  * 最新作品数量角标、无码/有码彩带），支持分页、编辑女优信息、取消收藏，
  * 以及通过 Gfriends 仓库搜索/选择头像、切换头像 CDN 源。
  *
- * 单字母局部变量（原 e/t/n/a/i/s/o/r/l/c/h/g 等）已语义化：
- *   $container / favoriteActresses / typeFilter / sortedActresses / totalCount /
- *   totalPages / startIndex / endIndex / pageActresses / javDbUrl / ruleTimeHours /
- *   cardsHtml / actress / allNameText / actressUrl / isStale / typeLabel / typeColor /
- *   btnStyle / event / starId / uncollectUrl / csrfToken / response / name / avatar /
- *   remark / newVideoText / starId / textareaStyle / actressType / dialogContent /
- *   layerIndex / autoHeight / $allNameArea / $newVideoArea / currentIndex /
- *   radioButtonsHtml / cdnDialogContent / cdnLayerIndex / selectedValue / selectedIndex /
- *   page / paginationHtml / $pagination / rangeStart / rangeEnd / pageNum / targetPage /
- *   $nameInput / $allNameInput / nameText / searchNames / loader / avatarUrls /
- *   imagesHtml / errorCount / $layer / $images / $prompt / $img / wrapperId / $wrapper /
- *   $sizeTag / width / height / remaining / url。
+ * 已提取模块：
+ *   - new-video/actress-card-renderer.tsx：renderActressCards + renderPagination + FavoriteActressRecord
+ *   - new-video/avatar-search.tsx：searchAvatar
  *
  * 站点类别常量 A/D 改由 ../constants/site 引入（UNCENSORED / CENSORED）；
- * Gfriends CDN 源清单与键名（原 tt/nt/rt）改由 ../resources/gfriends 引入
- * （GFRIENDS_SOURCES / GFRIENDS_CDN_INDEX_KEY / FILETREE_DATA_KEY），均为只读复用。
- * Gfriends 运行时能力（原 gt/at/it/st/ct/dt）改由 ../core/gfriends 正式导入：
- *   loadGfriends（搜索头像）、getCurrentCdnSource（读当前 CDN 源 {json,base,index}）、
- *   clearCache（清内存缓存）。切换 CDN 源时写 localStorage + clearCache() 即生效。
- * IndexedDB 缓存清理（原 lt.set）经 window.filetreeDb 访问（filetreeDb 已导出，
- *   挂载于 window.filetreeDb）。
+ * Gfriends CDN 源清单与键名改由 ../resources/gfriends 引入；
+ * Gfriends 运行时能力改由 ../core/gfriends 正式导入。
  * $ / layer / utils / storageManager / show / clog / gmHttp / loading 已由
- * ../types/globals.d.ts 声明（loading 实际接收消息参数，调用处以类型断言补全签名）；
- * jQuery .each / .on 回调按本仓库既有约定改写为箭头形式（(_index, element) /
- * (event) => $(event.currentTarget)），规避 noImplicitThis；
- * 因 $ 为 any，jQuery 链式结果均为 any，故局部常量仅以 :string/:number 等标注意图。
- * 内联 HTML（卡片/分页/弹窗标题/弹窗 content 模板）已提取为组件（NewVideoDialog /
- * EditActressDialog / CdnSelectDialog / AvatarSelectDialog / ActressCard /
- * ActressPagination / NewVideoDialogTitle），已转 TSX 原生 React 组件，调用点改
- * jsxToString(<Comp {...props} />)；本文件因含 JSX 重命名为 .tsx。textareaStyle/
- * btnStyle 由原 string 改为 CSSProperties 对象（React 19 style 不再接受 string）。
+ * ../types/globals.d.ts 声明。
  */
 import type { CSSProperties } from 'react';
-import { UNCENSORED, CENSORED } from '../constants/site';
 import { GFRIENDS_SOURCES, GFRIENDS_CDN_INDEX_KEY, FILETREE_DATA_KEY } from '../resources/gfriends';
-import { clearCache, getCurrentCdnSource, loadGfriends } from '../core/gfriends';
+import { clearCache, getCurrentCdnSource } from '../core/gfriends';
 import { jsxToString } from '../core/jsx-to-string';
+
 import { BasePlugin } from './base-plugin';
+import { renderActressCards, renderPagination } from './new-video/actress-card-renderer';
+import type { FavoriteActressRecord } from './new-video/actress-card-renderer';
+import { searchAvatar } from './new-video/avatar-search';
+
 import { NewVideoDialog } from '../components/dialogs/new-video-dialog';
 import { EditActressDialog } from '../components/dialogs/edit-actress-dialog';
 import { CdnSelectDialog } from '../components/dialogs/cdn-select-dialog';
-import { AvatarSelectDialog } from '../components/dialogs/avatar-select-dialog';
-import { ActressCard } from '../components/actress/actress-card';
-import { ActressPagination } from '../components/actress/actress-pagination';
 import { NewVideoDialogTitle } from '../components/misc/new-video-dialog-title';
-import { StyleBlock } from '../components/misc/style-block';
 
 import newVideoCssRaw from '../styles/new-video-plugin.css?raw';
-import avatarSelectDialogCssRaw from '../styles/avatar-select-dialog.css?raw';
 
-/**
- * 收藏女优记录结构（storageManager.getFavoriteActressList() 返回元素）。
- * starId/name/avatar 为收藏时必填；其余字段可缺省，由各处 || "" / Array.isArray 兜底。
- */
-interface FavoriteActressRecord {
-    /** 演员 starId（URL /actors/<id> 末段） */
-    starId: string;
-    /** 主名称 */
-    name: string;
-    /** 头像 URL */
-    avatar: string;
-    /** 全部别名 */
-    allName?: string[];
-    /** 最新作品番号列表 */
-    newVideoList?: string[];
-    /** 演员类别：censored / uncensored / 空(未知) */
-    actressType?: string;
-    /** 备注 */
-    remark?: string;
-    /** 上次检测时间 */
-    lastCheckTime?: string;
-    /** 最后发行作品时间 */
-    lastPublishTime?: string;
-}
+/** 收藏女优记录结构（re-export 供外部模块引用）。 */
+export type { FavoriteActressRecord } from './new-video/actress-card-renderer';
 
 export class NewVideoPlugin extends BasePlugin {
     /** 当前分页页码（从 1 开始） */
@@ -94,10 +49,6 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 注入卡片网格 / 分页 / 按钮等内联样式（原 L11044-11046 的 <style>）。
-     * 头像选择弹窗的 gfriends-* 样式不在 initCss 注入，改由 searchAvatar
-     * 在 layer.open content 中拼接 avatar-select-dialog.css（原 L11404 的
-     * <style> 块 + HTML），与原脚本 content 字符级一致。无参数；返回
-     * Promise<string>（CSS 文本）；不抛出异常。
      */
     async initCss(): Promise<string> {
         return newVideoCssRaw;
@@ -105,7 +56,6 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 主处理入口：刷新新作品计数。对应原 L11047-11049。
-     * 无参数；返回 Promise<void>；不抛出异常。
      */
     async handle(): Promise<void> {
         await this.showNewVideoCount();
@@ -113,7 +63,7 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 统计收藏女优的新作品总数并写入 #newVideoCount。
-     * 对应原 L11050-11062。无参数；返回 Promise<void>；不抛出异常。
+     * 对应原 L11050-11062。
      */
     async showNewVideoCount(): Promise<void> {
         const totalCount: number = ((await storageManager.getFavoriteActressList()) as FavoriteActressRecord[]).reduce(
@@ -127,14 +77,12 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 重置按钮提示（占位实现，暂无逻辑）。对应原 L11063。
-     * 无参数；返回 Promise<void>；不抛出异常。
      */
     async resetBtnTip(): Promise<void> {}
 
     /**
      * 打开"新作品检测"对话框并初始化数据加载与事件绑定。
-     * 对应原 L11064-11079。无参数；返回 Promise<void>；不抛出异常
-     *（success 回调内 loadData/bindClick 异常由调用方兜底）。
+     * 对应原 L11064-11079。
      */
     async openDialog(): Promise<void> {
         const dialogContent: string = jsxToString(<NewVideoDialog refreshSvg={this.refreshSvg} />);
@@ -155,7 +103,6 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 绑定刷新按钮与类型筛选下拉的交互。对应原 L11080-11088。
-     * 无参数；无返回值；不抛出异常。
      */
     bindClick(): void {
         $('#reLoad').on('click', (_event: Event) => {
@@ -169,7 +116,6 @@ export class NewVideoPlugin extends BasePlugin {
 
     /**
      * 重置页码并重新渲染卡片。对应原 L11089-11092。
-     * 无参数；无返回值；不抛出异常。
      */
     loadData(): void {
         this.currentPage = 1;
@@ -177,135 +123,11 @@ export class NewVideoPlugin extends BasePlugin {
     }
 
     /**
-     * 渲染收藏女优卡片网格：读取收藏列表 → 按类型过滤 → 排序（新作品数、最后发行时间）
-     * → 分页切片 → 生成卡片 HTML → 绑定取消收藏/编辑按钮 → 渲染分页。
-     * 对应原 L11093-11195。无参数；返回 Promise<void>；不抛出异常
-     *（容器不存在时短路返回；移除失败仅 show.error/clog.error）。
+     * 渲染收藏女优卡片网格。委托 new-video/actress-card-renderer.tsx。
+     * 对应原 L11093-11195。
      */
     async renderActressCards(): Promise<void> {
-        const $container = $('#actress-card-container');
-        if (!$container.length) {
-            return;
-        }
-        let favoriteActresses: FavoriteActressRecord[] =
-            (await storageManager.getFavoriteActressList()) as FavoriteActressRecord[];
-        const typeFilter = String($('#paramActressType').val() ?? '');
-        if (typeFilter !== 'all') {
-            favoriteActresses = favoriteActresses.filter(
-                (actress) => actress.actressType === typeFilter
-            );
-        }
-        const sortedActresses: FavoriteActressRecord[] = utils.genericSort(favoriteActresses, [
-            {
-                key: (actress: FavoriteActressRecord) => actress.newVideoList?.length ?? 0,
-                order: 'desc'
-            },
-            {
-                key: 'lastPublishTime',
-                order: 'desc'
-            }
-        ]);
-        const totalCount: number = sortedActresses.length;
-        const totalPages: number = Math.ceil(totalCount / this.pageSize);
-        const startIndex: number = (this.currentPage - 1) * this.pageSize;
-        const endIndex: number = startIndex + this.pageSize;
-        const pageActresses: FavoriteActressRecord[] = sortedActresses.slice(startIndex, endIndex);
-        const javDbUrl: string = await this.getBean('OtherSitePlugin').getJavDbUrl();
-        const ruleTimeHours: number =
-            (await storageManager.getSetting('checkNewVideo_ruleTime')) || 8760;
-        const cardsHtml: string = pageActresses
-            .map((actress: FavoriteActressRecord) => {
-                const allNameText: string = Array.isArray(actress.allName)
-                    ? actress.allName.join('，')
-                    : '';
-                // 保留原 no-op 语句（原 L11132-11134，join 结果未使用，控制流不变）
-                if (Array.isArray(actress.newVideoList)) {
-                    actress.newVideoList.join('，');
-                }
-                const actressUrl: string = `${javDbUrl}/actors/${actress.starId}?t=d`;
-                let isStale: boolean = false;
-                if (actress.lastPublishTime) {
-                    isStale = !utils.isUnnecessaryCheck(actress.lastPublishTime, ruleTimeHours);
-                }
-                let typeLabel: string = '未知';
-                let typeColor: string = '#9E9E9E';
-                if (actress.actressType === UNCENSORED) {
-                    typeLabel = '无码';
-                    typeColor = '#4CAF50';
-                } else if (actress.actressType === CENSORED) {
-                    typeLabel = '有码';
-                    typeColor = '#FF9800';
-                }
-                let btnStyle: CSSProperties = {};
-                if (isStale) {
-                    btnStyle = {
-                        background: 'linear-gradient(145deg, #e0e0e0 0%, #cabdbd 100%)',
-                        boxShadow: 'none'
-                    };
-                }
-                return jsxToString(
-                    <ActressCard
-                        starId={actress.starId}
-                        avatar={
-                            actress.avatar || 'https://c0.jdbstatic.com/images/actor_unknow.jpg'
-                        }
-                        name={actress.name}
-                        allNameText={allNameText}
-                        actressUrl={actressUrl}
-                        lastCheckTime={actress.lastCheckTime || ''}
-                        lastPublishTime={actress.lastPublishTime || ''}
-                        isStale={isStale}
-                        ruleTimeYears={ruleTimeHours / 24 / 365}
-                        remark={actress.remark || ''}
-                        editSvg={this.editSvg}
-                        deleteSvg={this.deleteSvg}
-                        btnStyle={btnStyle}
-                        typeLabel={typeLabel}
-                        typeColor={typeColor}
-                        newVideoCount={actress.newVideoList?.length || 0}
-                    />
-                );
-            })
-            .join('');
-        $container.html(cardsHtml);
-        $('.btn-delete-actress')
-            .off('click')
-            .on('click', (event: Event) => {
-                event.preventDefault();
-                const starId: string = $(event.currentTarget).attr('data-starId') ?? '';
-                const actress = sortedActresses.find((item) => item.starId === starId);
-                if (!actress) return;
-                utils.q(event as MouseEvent, `是否取消收藏 ${actress.name}?`, async () => {
-                    const uncollectUrl: string = `${await this.getBean('OtherSitePlugin').getJavDbUrl()}/actors/${starId}/uncollect`;
-                    const csrfToken: string =
-                        document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ??
-                        '';
-                    const response = await gmHttp.post(uncollectUrl, undefined, {
-                        'x-csrf-token': csrfToken
-                    });
-                    if ((response as string).includes('removeClass')) {
-                        await storageManager.removeFavoriteActress(starId);
-                        this.loadData();
-                    } else {
-                        show.error('移除失败');
-                        clog.error('移除失败,返回值:', response);
-                    }
-                });
-            });
-        $('.btn-edit-actress')
-            .off('click')
-            .on('click', (event: Event) => {
-                event.preventDefault();
-                const starId: string = $(event.currentTarget).attr('data-starId') ?? '';
-                const actress = sortedActresses.find((item) => item.starId === starId);
-                if (actress) {
-                    this.editActress(actress);
-                } else {
-                    show.error(`未找到 starId 为 ${starId} 的女优记录。`);
-                }
-            });
-        this.renderPagination(totalCount, totalPages);
-        show.ok('加载完成');
+        await renderActressCards(this);
     }
 
     /**
@@ -313,7 +135,6 @@ export class NewVideoPlugin extends BasePlugin {
      * 切换 CDN 源、自动调整 textarea 高度，保存时回写 storageManager。
      * 对应原 L11196-11321。
      * @param actress 待编辑的收藏女优记录。
-     * 返回 Promise<void>；不抛出异常（保存失败仅 show.error）。
      */
     async editActress(actress: FavoriteActressRecord): Promise<void> {
         const name: string = actress.name;
@@ -450,140 +271,18 @@ export class NewVideoPlugin extends BasePlugin {
     }
 
     /**
-     * 渲染分页条（首页/上一页/页码/下一页/尾页/记录数），并绑定页码点击。
+     * 渲染分页条。委托 new-video/actress-card-renderer.tsx。
      * 对应原 L11322-11366。
-     * @param totalCount 记录总数。
-     * @param totalPages 总页数。
-     * 无返回值；不抛出异常（totalPages 为 0 时仅显示"共 0 条记录"后返回）。
      */
     renderPagination(totalCount: number, totalPages: number): void {
-        const page: number = this.currentPage;
-        const $pagination = $('#actress-pagination');
-        $pagination.html(
-            jsxToString(
-                <ActressPagination totalCount={totalCount} totalPages={totalPages} page={page} />
-            )
-        );
-        $('.pagination-btn')
-            .off('click')
-            .on('click', (event: Event) => {
-                if ($(event.currentTarget).is('[disabled]')) {
-                    return;
-                }
-                const targetPage: number = parseInt($(event.currentTarget).data('page'));
-                if (
-                    targetPage >= 1 &&
-                    targetPage <= totalPages &&
-                    targetPage !== this.currentPage
-                ) {
-                    this.currentPage = targetPage;
-                    this.renderActressCards();
-                }
-            });
+        renderPagination(this, totalCount, totalPages);
     }
 
     /**
-     * 调用 Gfriends 仓库按女优名称搜索头像，弹出图片选择网格（含尺寸标签、
-     * 加载/出错处理），选中后回填编辑弹窗的头像链接与预览。
-     * 对应原 L11367-11464。无参数；返回 Promise<void>；不抛出异常
-     *（搜索失败/无结果/链接全失效均仅 show.error 后返回）。
+     * 调用 Gfriends 仓库按女优名称搜索头像。委托 new-video/avatar-search.tsx。
+     * 对应原 L11367-11464。
      */
     async searchAvatar(): Promise<void> {
-        const $nameInput = $('#edit-actress-name');
-        const $allNameInput = $('#edit-actress-allname');
-        const nameText: string = $nameInput.val().trim();
-        const searchNames: string[] = $allNameInput
-            .val()
-            .trim()
-            .split(/[\uff0c,]/)
-            .map((name: string) => name.trim())
-            .filter((name: string) => name.length > 0);
-        if (nameText) {
-            searchNames.unshift(nameText);
-        }
-        if (searchNames.length === 0) {
-            show.error('请先填写女优主名称或别名进行搜索。');
-            return;
-        }
-        const loader = (
-            loading as (message: string) => {
-                close: () => void;
-            }
-        )('正在搜索头像...');
-        let avatarUrls: string[] = [];
-        try {
-            avatarUrls = await loadGfriends(searchNames);
-        } catch (error: unknown) {
-            show.error(`头像数据加载或搜索失败: ${error instanceof Error ? error.message : String(error)}`);
-            return;
-        } finally {
-            loader.close();
-        }
-        if (avatarUrls.length === 0) {
-            show.error(`未找到与 '${searchNames.join('、')}' 相关的头像。请检查名称。`);
-            return;
-        }
-        // content = 原 searchAvatar 的 r 模板：<style> 块（avatar-select-dialog.css）
-        // + HTML（AvatarSelectDialog），与原 content 字符级一致。
-        const dialogContent: string =
-            jsxToString(<StyleBlock css={avatarSelectDialogCssRaw} />) +
-            jsxToString(<AvatarSelectDialog avatarUrls={avatarUrls} />);
-        let errorCount: number = 0;
-        layer.open({
-            type: 1,
-            title: `选择女优头像 (${avatarUrls.length} 张)`,
-            area: utils.getResponsiveArea(['900px', '85%']),
-            content: dialogContent,
-            btn: ['关闭'],
-            success: (layerEl: HTMLElement, layerIndex: number) => {
-                const $layer = $(layerEl);
-                const $images = $layer.find('.gfriends-selectable-img');
-                const $prompt = $layer.find('#gfriends-prompt');
-                $images.each((_index: number, element: HTMLImageElement) => {
-                    const $img = $(element);
-                    const wrapperId = String($img.data('wrapper-id') ?? '');
-                    const $wrapper = $layer.find(`#${wrapperId}`);
-                    const $sizeTag = $layer.find(
-                        `.gfriends-size-tag[data-size-for="${wrapperId}"]`
-                    );
-                    $img.on('load', () => {
-                        const width: number = element.naturalWidth;
-                        const height: number = element.naturalHeight;
-                        $sizeTag.text(`${width} x ${height}`);
-                    });
-                    $img.on('error', () => {
-                        $wrapper.remove();
-                        errorCount++;
-                        const remaining: number = avatarUrls.length - errorCount;
-                        $prompt.text(
-                            `点击图片即可选择（已移除 ${errorCount} 张错误图片，剩余 ${remaining} 张）`
-                        );
-                        if (remaining === 0) {
-                            show.error('所有搜索到的头像链接均已失效，无法选择。');
-                            layer.close(layerIndex);
-                        }
-                    });
-                    if (element.complete) {
-                        if (element.naturalWidth > 0) {
-                            $img.trigger('load');
-                        } else {
-                            $img.trigger('error');
-                        }
-                    }
-                });
-                $images.on('click', (event: Event) => {
-                    const $img = $(event.currentTarget);
-                    const url = String($img.data('url') ?? '');
-                    $('#edit-actress-avatar').val(url);
-                    $('#edit-avatar-preview').attr('src', url);
-                    $images.removeClass('is-selected');
-                    $img.addClass('is-selected');
-                    setTimeout(() => {
-                        layer.close(layerIndex);
-                    }, 150);
-                });
-                utils.setupEscClose(layerIndex);
-            }
-        });
+        await searchAvatar();
     }
 }
