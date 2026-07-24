@@ -16,7 +16,6 @@
 import { isJavdbSite } from '../constants/site';
 
 import { TaskSupervisor } from '../core/task-supervisor';
-import type { PageType } from '../core/page-context';
 
 import { BasePlugin } from './base-plugin';
 
@@ -54,11 +53,6 @@ export class VisitHistoryPlugin extends BasePlugin {
 
     getName(): string {
         return 'VisitHistoryPlugin';
-    }
-
-    /** 仅在详情页激活（doc/140）。 */
-    get pageTypes(): PageType[] {
-        return ['detail'];
     }
 
     async initCss(): Promise<string> {

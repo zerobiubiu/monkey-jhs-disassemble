@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.22
+
+**发布日期**：2026-07-24
+
+### 修复
+
+- **修复 pageTypes 与内部路径守卫不匹配（第二轮）**（doc/182）：系统性审计发现 FavoriteActressesPlugin（演员页收藏按钮失效）和 VisitHistoryPlugin（非详情页访问不记录）存在同类 pageTypes 门控 bug；移除 pageTypes 覆写，依赖内部路径守卫。
+
+---
+
 ## v1.28.21
 
 **发布日期**：2026-07-24

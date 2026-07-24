@@ -25,7 +25,6 @@
  */
 import { YES } from '../constants/status';
 
-import type { PageType } from '../core/page-context';
 import { jsxToString } from '../core/jsx-to-string';
 
 import { BasePlugin } from './base-plugin';
@@ -52,11 +51,6 @@ export class FavoriteActressesPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L10697-10699。 */
     getName(): string {
         return 'FavoriteActressesPlugin';
-    }
-
-    /** 仅在详情页激活（doc/140）。 */
-    get pageTypes(): PageType[] {
-        return ['detail'];
     }
 
     /**
