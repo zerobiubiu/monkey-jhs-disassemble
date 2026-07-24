@@ -297,6 +297,7 @@
 183. `183-codex-dev-extraction-phase1.md` — codex-dev 提取 Phase 1：P0 修复（ensureListPanel 15s 超时 + nav 回退挂载）+ P0-J（@noframes）+ P1 前置（export escapeText/escapeAttr/sanitizeUrl）；version 1.28.22→1.28.23
 184. `184-codex-dev-extraction-phase2.md` — codex-dev 提取 Phase 2：XSS / URL / 沙箱加固：E1 日志 XSS 中和（addLog 存原始文本，logger-log-entry 以 linkifySafe 渲染期转义文本段 + sanitizeUrl 净化链接段，消除 dangerouslySetInnerHTML，公共 API 与 §9.2 console 分层不变）/ E2 tooltip innerHTML→textContent（全部 data-tip 来源确认纯文本）/ F 出站链接加固（消灭 javascript: 注入 + movieId/搜索查询 encodeURIComponent + window.open 统一 noopener,noreferrer）/ K unsafeWindow 收敛（高权限全局改挂沙箱 window）；review-item 评论正文（JavDB 非可信 HTML）dangerouslySetInnerHTML 消除延后至 good 模型/人工复核（既有面非回归）；version 1.28.23→1.28.24
 185. `185-review-item-content-xss.md` — review-item 评论正文 XSS 加固：JavDB API 不可信正文 HTML 改由 safeReviewNodes（DOMParser 遍历）安全渲染——文本转义、`<a>` 经 sanitizeUrl + 强制 rel、白名单内联标签（含 span）保留并仅复制 class/style、其余标签剥离；可信星级 stars 维持原 raw 注入；修正首版 strip-all 对 ed2k 高亮 / a-primary 的视觉回归；version 1.28.24→1.28.25
+186. `186-revert-noframes-iframe-regression.md` — 回退 @noframes（视频流 iframe 详情页回归修复）：v1.28.23 P0-J 的 `noframes: true` 使脚本不在任何 iframe 运行，导致视频流打开的 iframe 视频详情页不加载脚本；删除该指令恢复 iframe 执行（`@match` 已限定执行源，边际安全收益不值得破坏功能）；回退后 v1.28.24 K 的 iframe 继承父窗口 clog 逻辑重新按预期生效；version 1.28.25→1.28.26
 
 ## 当前进度概览
 
@@ -322,7 +323,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/185（187 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/186（188 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
