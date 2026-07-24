@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.25
+
+**发布日期**：2026-07-24
+
+### 安全
+
+- **review-item 评论正文 XSS 加固**（doc/185）：来自 JavDB API 的不可信正文 HTML 改由 safeReviewNodes（DOMParser 遍历）安全渲染——文本转义、`<a>` 经 sanitizeUrl + 强制 rel、白名单内联标签（含 span）保留并仅复制 class/style、其余标签剥离；可信星级 `stars` 维持原 raw 注入。修正首版 strip-all 对 ed2k 高亮 / a-primary 的视觉回归。
+
+---
+
 ## v1.28.24
 
 **发布日期**：2026-07-24
