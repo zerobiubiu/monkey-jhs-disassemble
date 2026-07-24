@@ -37,3 +37,9 @@ flag 关（默认）时运行行为与改动前逐字节一致：未修改任何
 ## 验证
 
 tsc 0 错 / vitest 28/28 / eslint 0 错 / check:structure OK；flag 关 diff 审计：既有函数体未改。
+
+## flag-ON 一致性修正（v1.28.28）
+
+- handle() 页面加载全量同步在 flag 开时改走 syncFullCarStatusFlagged（修订号保护发布 + 裁剪增量日志），与 pushDelta/consume* 门控一致。
+- 菜单命令「🔁 全量同步车辆状态到 missav」回调在 flag 开时同样改走 syncFullCarStatusFlagged，避免手动全量同步在 flag-ON 下用无 revision 的旧载荷覆盖新快照、毒化修订号序导致后续增量被误判过期。
+- flag 关两条路径均走原 syncFullCarStatus，逐字节不变；flag 关字节等价不变量保持。

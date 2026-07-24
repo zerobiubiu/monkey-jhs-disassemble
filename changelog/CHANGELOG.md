@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.28
+
+**发布日期**：2026-07-24
+
+### 修复（flag-ON 一致性，默认关路径不变）
+
+- **跨站同步全量触发门控补全**（doc/187）：handle() 页面加载全量同步 + 菜单命令「🔁 全量同步车辆状态到 missav」回调，在 featureFlags.crossSiteSyncProtocol 开时均改走 syncFullCarStatusFlagged（修订号保护发布 + 裁剪增量日志），与 pushDelta/consume* 门控模式一致；修复 flag-ON 下旧全量快照覆盖新快照、手动全量同步毒化修订号序致后续增量被误判过期、增量日志在页面加载/手动路径不裁剪的问题。flag 关两条路径均走原 syncFullCarStatus，逐字节不变；flag 关字节等价不变量保持。经 AST 全树枚举 syncFullCarStatus / replaceLocalCars 调用点确认无遗漏未门控调用方。
+
+---
+
 ## v1.28.27
 
 **发布日期**：2026-07-24

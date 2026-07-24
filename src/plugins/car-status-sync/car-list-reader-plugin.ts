@@ -65,7 +65,12 @@ export class CarListReaderPlugin extends BasePlugin {
         // 注册菜单命令
         try {
             GM_registerMenuCommand('🔁 全量同步车辆状态到 missav', () => {
-                this.syncFullCarStatus();
+                if (featureFlags.crossSiteSyncProtocol) {
+                    // 跨站同步协议升级（feature flag 门控）：手动全量同步也走修订号保护发布，与 handle()/pushDelta/consume* 一致，避免 flag-ON 下旧全量覆盖新快照/毒化修订号序。
+                    void this.syncFullCarStatusFlagged();
+                } else {
+                    this.syncFullCarStatus();
+                }
             });
         } catch {
             /* 某些环境不支持 GM_registerMenuCommand */
@@ -86,7 +91,15 @@ export class CarListReaderPlugin extends BasePlugin {
             currentRev !== syncedRev || Date.now() - lastSyncTime > DAILY_SYNC_INTERVAL;
         if (needsSync) {
             logInfo('全量同步已调度', `rev=${currentRev}, synced=${syncedRev}`);
-            setTimeout(() => this.syncFullCarStatus(), 2000);
+            if (featureFlags.crossSiteSyncProtocol) {
+                // 跨站同步协议升级（feature flag 门控）：flag 开走修订号保护的全量发布，
+                // 避免并发标签页旧全量覆盖新快照并裁剪增量日志；与 pushDelta/consume* 门控模式一致。
+                setTimeout(() => {
+                    void this.syncFullCarStatusFlagged();
+                }, 2000);
+            } else {
+                setTimeout(() => this.syncFullCarStatus(), 2000);
+            }
         } else {
             logInfo('跳过全量同步', `数据未变更 (rev=${currentRev})，上次同步 ${new Date(lastSyncTime).toLocaleString()}`);
         }
