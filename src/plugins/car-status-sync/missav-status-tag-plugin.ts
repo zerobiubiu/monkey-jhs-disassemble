@@ -21,12 +21,26 @@ import {
     GM_KEY_CAR_STATUS_DATA,
     GM_KEY_CAR_STATUS_DELTA,
     LOG_PREFIX_MISSAV,
+    STATUS_LIST,
+    type CarStatusDeltaJournal,
     type CarStatusPayload,
     type CarStatusDeltaPayload,
+    type CarStatusSyncKind,
     type StatusColumn
 } from './car-status-config';
-import { gunzipFromBase64, columnarToFlat } from './car-status-columnar';
-import { upsertLocalCars, queryLocalCars, deleteLocalCars } from './car-status-db';
+import { gunzipFromBase64, columnarToFlat, validateColumnarSnapshot } from './car-status-columnar';
+import {
+    upsertLocalCars,
+    queryLocalCars,
+    deleteLocalCars,
+    readLocalCarsSelection,
+    readLocalCarsSnapshot,
+    replaceLocalCars,
+    restoreLocalCarsSelection,
+    restoreLocalCarsSnapshot,
+    withSyncRevision
+} from './car-status-db';
+import { featureFlags } from '../../core/feature-flags';
 import { normalizeCarNum, renderBadges, isVideoPage } from './missav-renderer';
 import { createLogger } from './car-status-logger';
 
@@ -36,6 +50,12 @@ const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LO
 let isFullConsuming = false;
 
 export class MissavStatusTagPlugin extends BasePlugin {
+    /** 串行消费全量和增量，避免两类 IDB 写入交错（跨站同步协议升级，feature flag 门控）。 */
+    private consumeQueue: Promise<void> = Promise.resolve();
+    /** 当前页面实例已应用的最高修订号（跨站同步协议升级）。 */
+    private lastAppliedRevision = -1;
+    private lastAppliedKind: CarStatusSyncKind | null = null;
+
     getName(): string {
         return 'MissavStatusTagPlugin';
     }
@@ -62,7 +82,12 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 GM_KEY_CAR_STATUS_DELTA,
                 (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
-                        this.consumeDelta(newValue as CarStatusDeltaPayload);
+                        if (featureFlags.crossSiteSyncProtocol) {
+                            // 跨站同步协议升级（feature flag 门控）：消费 journal（兼容旧单对象）。
+                            void this.consumeDeltaJournal(newValue);
+                        } else {
+                            this.consumeDelta(newValue as CarStatusDeltaPayload);
+                        }
                     }
                 }
             );
@@ -78,7 +103,11 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
                         logInfo('收到 javdb 端全量数据通知');
-                        this.consumeFull(newValue as CarStatusPayload);
+                        if (featureFlags.crossSiteSyncProtocol) {
+                            void this.consumeFullFlagged(newValue as CarStatusPayload);
+                        } else {
+                            this.consumeFull(newValue as CarStatusPayload);
+                        }
                     }
                 }
             );
@@ -87,7 +116,13 @@ export class MissavStatusTagPlugin extends BasePlugin {
         }
 
         // 4) 页面加载时读取当前 GM 存储全量数据初始化
-        await this.consumeFull(undefined);
+        if (featureFlags.crossSiteSyncProtocol) {
+            // 跨站同步协议升级（feature flag 门控）：flag 开走修订号门控消费，并在初始化后补消费 journal。
+            await this.consumeFullFlagged(undefined);
+            await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
+        } else {
+            await this.consumeFull(undefined);
+        }
 
         // 5) 启动 MutationObserver 监听动态加载的缩略图
         this.observeAndProcess();
@@ -98,6 +133,11 @@ export class MissavStatusTagPlugin extends BasePlugin {
      * 不压缩（几条记录），不锁（处理极快），不冷却（实时）。
      */
     async consumeDelta(delta: CarStatusDeltaPayload): Promise<void> {
+        if (featureFlags.crossSiteSyncProtocol) {
+            // 跨站同步协议升级（feature flag 门控）：串行队列 + 修订号门控 + 条件回滚。
+            await this.applyDeltaFlagged(delta);
+            return;
+        }
         try {
             if (delta.action === 'upsert' && delta.items) {
                 // 将增量项转为 upsertLocalCars 需要的格式
@@ -125,6 +165,10 @@ export class MissavStatusTagPlugin extends BasePlugin {
      * @param payload 直接传入的载荷；undefined 时从 GM_getValue 读取
      */
     async consumeFull(payload?: CarStatusPayload): Promise<void> {
+        if (featureFlags.crossSiteSyncProtocol) {
+            await this.consumeFullFlagged(payload);
+            return;
+        }
         if (isFullConsuming) {
             logWarn('全量消费任务在进行中');
             return;
@@ -337,4 +381,206 @@ export class MissavStatusTagPlugin extends BasePlugin {
             attributeFilter: ['alt']
         });
     }
+    /** 消费新数组日志或旧版本单对象，并按修订号排序（跨站同步协议升级，feature flag 门控）。 */
+    async consumeDeltaJournal(value: unknown): Promise<void> {
+        const journal = sortDeltaJournal(readDeltaJournal(value));
+        for (const delta of journal) {
+            await this.enqueueConsume(() => this.applyDeltaFlagged(delta));
+        }
+    }
+
+    /** 协议升级版全量消费入口（featureFlags.crossSiteSyncProtocol 门控，默认关）。 */
+    async consumeFullFlagged(payload?: CarStatusPayload): Promise<void> {
+        return this.enqueueConsume(() => this.applyFullFlagged(payload));
+    }
+
+    /** 协议升级版增量应用：修订号门控 + 条件回滚（feature flag 门控）。 */
+    private async applyDeltaFlagged(delta: CarStatusDeltaPayload): Promise<void> {
+        try {
+            const revision = getPayloadRevision(delta);
+            if (revision < 0 || !isDeltaPayload(delta)) {
+                logWarn('忽略无效增量载荷');
+                return;
+            }
+            if (!this.shouldApply(revision, 'delta')) return;
+            let rollback: (() => Promise<void>) | undefined;
+            const result = await withSyncRevision(
+                revision,
+                'delta',
+                async () => {
+                    const affectedCarNums = delta.items.map((item) => item.carNum);
+                    const previous = await readLocalCarsSelection(affectedCarNums);
+                    rollback = () => restoreLocalCarsSelection(previous);
+                    if (delta.action === 'upsert') {
+                        const records = delta.items.map((item) => ({
+                            carNum: item.carNum.trim(),
+                            status: (item.status || '').trim(),
+                            url_path: (item.url_path || '').trim()
+                        }));
+                        await upsertLocalCars(records);
+                        logInfo('增量更新', `upsert ${records.length} 条`);
+                    } else {
+                        const carNums = delta.items.map((item) => item.carNum.trim());
+                        await deleteLocalCars(carNums);
+                        logInfo('增量更新', `delete ${carNums.length} 条`);
+                    }
+                },
+                async () => {
+                    if (rollback) await rollback();
+                }
+            );
+            if (!result.applied) {
+                this.markApplied(revision, 'delta');
+                return;
+            }
+            this.markApplied(revision, 'delta');
+            await this.processAll();
+        } catch (err: unknown) {
+            logErr('增量消费失败', err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    /** 协议升级版全量应用：严格校验 + 批量对账 + 修订号门控（feature flag 门控）。 */
+    private async applyFullFlagged(payload?: CarStatusPayload): Promise<void> {
+        try {
+            const data: CarStatusPayload | undefined =
+                payload ?? (GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined);
+            if (!data || typeof data !== 'object' || typeof data.data !== 'string' || !data.data) {
+                if (payload !== undefined) logWarn('GM 存储中无全量数据');
+                return;
+            }
+            const revision = getPayloadRevision(data);
+            if (
+                revision < 0 ||
+                !Number.isInteger(data.count) ||
+                data.count < 0 ||
+                (data.mode !== undefined && data.mode !== 'snapshot') ||
+                data.ready === false ||
+                (data.count === 0 && data.ready !== true)
+            ) {
+                logWarn('拒绝未就绪或格式无效的全量快照');
+                return;
+            }
+            if (!this.shouldApply(revision, 'full')) return;
+            logInfo('全量消费开始', `count=${data.count} hwm=${data.hwm} revision=${revision}`);
+            const store = await gunzipFromBase64<unknown>(data.data);
+            if (!store) {
+                logErr('解压失败（DecompressionStream 不可用？数据损坏？）');
+                return;
+            }
+            const validation = validateColumnarSnapshot(store, data.count);
+            if (!validation.ok) {
+                logErr('全量快照校验失败，拒绝覆盖本地数据', validation.reason);
+                return;
+            }
+            logInfo('解压完成', `${validation.records.length} 条记录`);
+            let rollback: (() => Promise<void>) | undefined;
+            const result = await withSyncRevision(
+                revision,
+                'full',
+                async () => {
+                    const previous = await readLocalCarsSnapshot();
+                    rollback = () => restoreLocalCarsSnapshot(previous);
+                    return replaceLocalCars(validation.records, previous);
+                },
+                async () => {
+                    if (rollback) await rollback();
+                }
+            );
+            if (!result.applied) {
+                this.markApplied(revision, 'full');
+                return;
+            }
+            const { written, deleted } = result.value!;
+            logOk('对账本地 IDB', `写入 ${written} 条，删除 ${deleted} 条`);
+            this.markApplied(revision, 'full');
+            await this.processAll();
+        } catch (err: unknown) {
+            logErr('全量消费失败', err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    /** 将消费任务加入串行队列；前一任务失败也不阻塞后续同步（跨站同步协议升级）。 */
+    private enqueueConsume(task: () => Promise<void>): Promise<void> {
+        const next = this.consumeQueue.then(task, task);
+        this.consumeQueue = next.catch((err: unknown) => {
+            logErr('同步队列任务失败', err instanceof Error ? err.message : String(err));
+        });
+        return next;
+    }
+
+    /** 拒绝旧修订；同修订号下增量优先于全量，防止慢压缩快照复活已删除记录（协议升级）。 */
+    private shouldApply(revision: number, kind: CarStatusSyncKind): boolean {
+        if (revision < this.lastAppliedRevision) {
+            logWarn('忽略过期同步载荷', `${kind} revision=${revision} < ${this.lastAppliedRevision}`);
+            return false;
+        }
+        if (revision === this.lastAppliedRevision && kind === 'full') {
+            logWarn('忽略重复或落后的全量快照', `revision=${revision}, last=${this.lastAppliedKind || 'none'}`);
+            return false;
+        }
+        return true;
+    }
+
+    private markApplied(revision: number, kind: CarStatusSyncKind): void {
+        this.lastAppliedRevision = Math.max(this.lastAppliedRevision, revision);
+        this.lastAppliedKind = kind;
+    }
+
+}
+
+/* ===========================================================================
+ * 跨站车号状态同步协议升级 —— missav 端消费侧辅助（featureFlags.crossSiteSyncProtocol 门控，默认关）。
+ * 载荷修订号解析 + 增量 journal 读取/排序/校验，均为新增模块级函数，仅 flag 开启时被调用。
+ * ========================================================================= */
+
+/** 兼容旧载荷：新协议使用 revision，旧协议回退到 ts（协议升级）。 */
+function getPayloadRevision(payload: { revision?: number; ts: number }): number {
+    const revision = payload.revision ?? payload.ts;
+    return Number.isInteger(revision) && revision >= 0 ? revision : -1;
+}
+
+function isDeltaPayload(value: unknown): value is CarStatusDeltaPayload {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+    const payload = value as Record<string, unknown>;
+    if (payload.action !== 'upsert' && payload.action !== 'delete') return false;
+    if (!Array.isArray(payload.items) || payload.items.length === 0) return false;
+    if (typeof payload.ts !== 'number' || !Number.isInteger(payload.ts) || payload.ts < 0) {
+        return false;
+    }
+    if (
+        payload.revision !== undefined &&
+        (typeof payload.revision !== 'number' || !Number.isInteger(payload.revision) || payload.revision < 0)
+    ) {
+        return false;
+    }
+    return payload.items.every((item) => {
+        if (item === null || typeof item !== 'object' || Array.isArray(item)) return false;
+        const record = item as Record<string, unknown>;
+        if (typeof record.carNum !== 'string' || record.carNum.trim() === '') return false;
+        if (payload.action === 'delete') return true;
+        return (
+            typeof record.status === 'string' &&
+            record.status.trim() !== '' &&
+            STATUS_LIST.includes(record.status as (typeof STATUS_LIST)[number]) &&
+            typeof record.url_path === 'string' &&
+            record.url_path.trim() !== ''
+        );
+    });
+}
+
+/** 读取 GM 中的增量日志，兼容新数组与旧单对象形态（协议升级）。 */
+function readDeltaJournal(value: unknown): CarStatusDeltaJournal {
+    const values: unknown[] = Array.isArray(value) ? value : value ? [value] : [];
+    return values.filter(isDeltaPayload);
+}
+
+function sortDeltaJournal(journal: CarStatusDeltaJournal): CarStatusDeltaJournal {
+    return journal
+        .map((payload, index) => ({ payload, index }))
+        .sort((left, right) => {
+            const revisionDiff = getPayloadRevision(left.payload) - getPayloadRevision(right.payload);
+            return revisionDiff || left.index - right.index;
+        })
+        .map(({ payload }) => payload);
 }

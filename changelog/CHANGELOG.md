@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.27
+
+**发布日期**：2026-07-24
+
+### 新增（默认关闭，需实测启用）
+
+- **跨站车号状态同步协议升级**（doc/187，featureFlags.crossSiteSyncProtocol 默认关）：移植 codex-dev 的 Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 sync_meta + 批量对账，替换 replaceLocalCars 的 objectStore.clear()。flag 关时行为与改动前逐字节一致（既有函数体未改，仅调用点分支）。**启用前须跨标签实测**。
+
+---
+
 ## v1.28.26
 
 **发布日期**：2026-07-24

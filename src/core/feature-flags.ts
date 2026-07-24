@@ -60,6 +60,10 @@ export interface FeatureFlags {
     // —— 复合型新插件（批次 D）——
     /** 123Av FC2 浏览插件注册与 handle 开关（main.tsx / fc2-by-123av-plugin）。 */
     fc2By123AvPlugin: boolean;
+
+    // —— 跨站同步协议升级（默认关，需实测）——
+    /** 跨站车号状态同步协议升级：Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 sync_meta + 批量对账替换 clear()（car-status-sync/*）。默认关闭，需跨标签实测后开启。 */
+    crossSiteSyncProtocol: boolean;
 }
 
 export const featureFlags: FeatureFlags = {
@@ -82,7 +86,9 @@ export const featureFlags: FeatureFlags = {
     magnetHubPlugin: true,
     imageRecognitionPlugin: true,
     // —— 复合型新插件（批次 D）——
-    fc2By123AvPlugin: true
+    fc2By123AvPlugin: true,
+    // —— 跨站同步协议升级（默认关，需实测）——
+    crossSiteSyncProtocol: false
 };
 
 (() => {

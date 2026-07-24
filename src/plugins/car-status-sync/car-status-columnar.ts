@@ -10,7 +10,12 @@
  */
 
 import type { CarRecord } from '../../core/storage-manager';
-import { VIDEO_ROUTE_PREFIX, type ColumnarStore, type StatusColumn } from './car-status-config';
+import {
+    STATUS_LIST,
+    VIDEO_ROUTE_PREFIX,
+    type ColumnarStore,
+    type StatusColumn
+} from './car-status-config';
 
 /**
  * 把 url 规整为「仅保留 /v/ 后的短码」或「原样保留路径」。
@@ -240,4 +245,173 @@ export function emptyStore(): ColumnarStore {
         hasDown: { ...empty },
         hasWatch: { ...empty }
     } as ColumnarStore;
+}
+
+/* ===========================================================================
+ * 跨站车号状态同步协议升级（featureFlags.crossSiteSyncProtocol 门控，默认关）。
+ * 严格列存校验/导入解析/安全 URL 判定，均为新增导出，仅在 flag 开启时被调用；
+ * flag 关时既有 normalizeUrl/toColumnar/columnarToFlat 等路径逐字节未改。
+ * ========================================================================= */
+
+/** 控制字符判定（由字符码构造，避免正则字面量触发 no-control-regex；协议升级）。 */
+const CONTROL_CHAR_REGEX = new RegExp(`[\\u0000-\\u001f\\u007f]`);
+
+/** 已校验的快照行式记录（协议升级）。 */
+export interface ValidatedCarStatusRecord {
+    carNum: string;
+    status: string;
+    url_path: string;
+}
+
+/** 列存校验结果（协议升级）。 */
+export type ColumnarValidationResult =
+    | { ok: true; records: ValidatedCarStatusRecord[]; count: number }
+    | { ok: false; reason: string };
+
+const COLUMNAR_IMPORT_META_KEYS = new Set([
+    'count',
+    'count_total',
+    'high_water_mark',
+    'hwm',
+    'mode',
+    'ready',
+    'revision',
+    'ts'
+]);
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+/** 判定 url_path 是否安全（协议升级）：拒绝控制字符、协议相对链接与外部 scheme。 */
+function isSafeUrlPath(value: string): boolean {
+    const raw = value.trim();
+    if (!raw || CONTROL_CHAR_REGEX.test(raw)) return false;
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+        return !normalizeUrl(raw).malformed;
+    }
+    return !raw.startsWith('//') && !/^[a-z][a-z\d+.-]*:/i.test(raw);
+}
+
+/**
+ * 严格校验来自 GM 的列存快照（协议升级），再允许其进入 replaceLocalCars。
+ * 不能只依赖 count：损坏载荷可能让 carNums 数量看似正确但 urls 缺项，
+ * 之后会被写入层过滤并触发「空快照删除全部旧数据」。
+ */
+export function validateColumnarSnapshot(
+    store: unknown,
+    expectedCount: unknown
+): ColumnarValidationResult {
+    if (!Number.isInteger(expectedCount) || (expectedCount as number) < 0) {
+        return { ok: false, reason: '快照 count 必须是非负整数' };
+    }
+    if (!isPlainRecord(store)) {
+        return { ok: false, reason: '快照列存必须是普通对象' };
+    }
+    const validStatuses = new Set<string>(STATUS_LIST);
+    const seenCarNums = new Set<string>();
+    const records: ValidatedCarStatusRecord[] = [];
+    for (const [status, rawGroup] of Object.entries(store)) {
+        if (!validStatuses.has(status)) {
+            return { ok: false, reason: `快照包含未知状态：${status}` };
+        }
+        if (!isPlainRecord(rawGroup)) {
+            return { ok: false, reason: `状态 ${status} 的列不是普通对象` };
+        }
+        const carNums = rawGroup.carNums;
+        const urls = rawGroup.urls;
+        const updateDates = rawGroup.update_date;
+        if (!isStringArray(carNums) || !isStringArray(urls)) {
+            return { ok: false, reason: `状态 ${status} 的 carNums/urls 必须是字符串数组` };
+        }
+        if (carNums.length !== urls.length) {
+            return { ok: false, reason: `状态 ${status} 的 carNums/urls 长度不一致` };
+        }
+        if (
+            updateDates !== undefined &&
+            (!isStringArray(updateDates) || updateDates.length !== carNums.length)
+        ) {
+            return { ok: false, reason: `状态 ${status} 的 update_date 长度或类型无效` };
+        }
+        for (let index = 0; index < carNums.length; index++) {
+            const carNum = carNums[index].trim();
+            const urlPath = urls[index].trim();
+            if (!carNum || !urlPath) {
+                return { ok: false, reason: `状态 ${status} 包含空番号或空路径` };
+            }
+            if (!isSafeUrlPath(urlPath)) {
+                return { ok: false, reason: `状态 ${status} 包含不安全链接` };
+            }
+            const normalizedCarNum = carNum.toUpperCase();
+            if (seenCarNums.has(normalizedCarNum)) {
+                return { ok: false, reason: `快照包含重复番号：${carNum}` };
+            }
+            seenCarNums.add(normalizedCarNum);
+            records.push({ carNum, status, url_path: urlPath });
+        }
+    }
+    const count = expectedCount as number;
+    if (records.length !== count) {
+        return { ok: false, reason: `快照记录数不一致：声明 ${count}，实际 ${records.length}` };
+    }
+    return { ok: true, records, count };
+}
+
+/**
+ * 严格解析设置面板选择的历史「后端列存」文件（协议升级）。
+ * 兼容状态列位于根对象或 groups 字段两种旧形态；拒绝 {}、主程序备份及带未知业务键的 JSON，
+ * 防止它们被误判为空快照而清库。
+ */
+export function parseColumnarImport(value: unknown): ValidatedCarStatusRecord[] {
+    if (!isPlainRecord(value)) throw new Error('列存导入文件必须是普通对象');
+    const root = value;
+    const hasGroups = Object.prototype.hasOwnProperty.call(root, 'groups');
+    if (hasGroups && !isPlainRecord(root.groups)) {
+        throw new Error('列存导入文件的 groups 字段格式无效');
+    }
+    const rawStore = hasGroups ? (root.groups as Record<string, unknown>) : root;
+    const statusSet = new Set<string>(STATUS_LIST);
+    const statusKeys = Object.keys(rawStore).filter((key) => statusSet.has(key));
+    if (statusKeys.length === 0) {
+        throw new Error('列存导入文件不包含任何已知状态分组');
+    }
+    const allowedRootKeys = new Set(COLUMNAR_IMPORT_META_KEYS);
+    if (hasGroups) allowedRootKeys.add('groups');
+    for (const key of Object.keys(root)) {
+        if (!hasGroups && statusSet.has(key)) continue;
+        if (!allowedRootKeys.has(key)) {
+            throw new Error(`列存导入文件包含未知字段：${key}`);
+        }
+    }
+    if (hasGroups) {
+        for (const key of Object.keys(rawStore)) {
+            if (!statusSet.has(key)) {
+                throw new Error(`列存导入文件包含未知状态：${key}`);
+            }
+        }
+    }
+    const store = Object.fromEntries(statusKeys.map((key) => [key, rawStore[key]]));
+    const declaredCount = root.count_total ?? root.count;
+    let expectedCount: number;
+    if (declaredCount !== undefined) {
+        if (!Number.isInteger(declaredCount) || (declaredCount as number) < 0) {
+            throw new Error('列存导入文件的记录数必须是非负整数');
+        }
+        expectedCount = declaredCount as number;
+    } else {
+        expectedCount = statusKeys.reduce((sum, status) => {
+            const group = rawStore[status];
+            if (!isPlainRecord(group) || !Array.isArray(group.carNums)) return sum;
+            return sum + group.carNums.length;
+        }, 0);
+    }
+    const validation = validateColumnarSnapshot(store, expectedCount);
+    if (!validation.ok) throw new Error(validation.reason);
+    return validation.records;
 }

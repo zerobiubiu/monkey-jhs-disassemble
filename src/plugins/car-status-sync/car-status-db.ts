@@ -8,7 +8,18 @@
  * 再由 jhs 的 WebDav 备份链路上传（与 vlt-panel 模式一致）。
  */
 
-import { MISSAV_DB_NAME, MISSAV_DB_STORE } from './car-status-config';
+import {
+    MISSAV_DB_META_STORE,
+    MISSAV_DB_NAME,
+    MISSAV_DB_STORE,
+    MISSAV_DB_VERSION,
+    MISSAV_SYNC_LOCK_NAME,
+    MISSAV_SYNC_META_KEY,
+    STATUS_LIST,
+    type CarStatusSyncKind,
+    type CarStatusSyncMeta
+} from './car-status-config';
+import { featureFlags } from '../../core/feature-flags';
 
 /**
  * 打开本地 IndexedDB（不存在则创建）。
@@ -192,6 +203,10 @@ export async function exportLocalDB(): Promise<
 export async function importLocalDB(
     records: Array<{ carNum: string; status: string; url: string }>
 ): Promise<number> {
+    if (featureFlags.crossSiteSyncProtocol) {
+        // 跨站同步协议升级（feature flag 门控）：严格校验 + 批量对账（先写后删、失败回滚），替换 clear()。
+        return importLocalDBFlagged(records);
+    }
     const db = await openLocalDB();
     try {
         // 先清空
@@ -244,4 +259,517 @@ function buildJavdbUrlLocal(urlPath: string): string {
         return 'https://javdb.com' + urlPath;
     }
     return 'https://javdb.com/v/' + urlPath;
+}
+
+/* ===========================================================================
+ * 跨站车号状态同步协议升级（featureFlags.crossSiteSyncProtocol 门控，默认关）。
+ *
+ * 以下全部为新增函数，仅在 flag 开启时被调用；flag 关时运行路径与改动前逐字节一致
+ * （既有函数体未改，importLocalDB 在入口处 if/else 分支，else 走原 clear() 逻辑）。
+ * 移植自 codex-dev P3：Web Lock 跨标签互斥 + 条件回滚 + IDB v2 sync_meta + 批量对账。
+ * ========================================================================= */
+
+/** 控制字符判定（由字符码构造，避免正则字面量触发 no-control-regex；协议升级）。 */
+const CONTROL_CHAR_REGEX = new RegExp(`[\\u0000-\\u001f\\u007f]`);
+
+const JAVDB_BASE_URL = 'https://javdb.com';
+const JAVDB_HOSTNAME = 'javdb.com';
+
+/** 本地车辆状态记录（协议升级内部用）。 */
+export interface LocalCarStatusRecord {
+    carNum: string;
+    status: string;
+    url_path: string;
+}
+
+/** 已存储的车辆状态记录（含完整 url）。 */
+export interface StoredCarStatusRecord {
+    carNum: string;
+    status: string;
+    url: string;
+    updateDate?: string;
+}
+
+interface NavigatorWithOptionalLocks {
+    locks?: {
+        request<T>(name: string, options: { mode: 'exclusive' }, callback: () => Promise<T>): Promise<T>;
+    };
+}
+
+/**
+ * 将内部/导入的 URL 统一为安全的 url_path（协议升级）。
+ * 拒绝 javascript/data/外部主机等危险或无法回放的值，避免静默回退到首页造成数据损坏。
+ */
+export function normalizeJavdbUrlPath(value: unknown): string {
+    if (typeof value !== 'string') throw new Error('车辆记录链接必须是字符串');
+    const raw = value.trim();
+    if (!raw || CONTROL_CHAR_REGEX.test(raw)) {
+        throw new Error('车辆记录链接为空或包含控制字符');
+    }
+    let candidate: URL;
+    try {
+        if (/^https?:\/\//i.test(raw)) {
+            candidate = new URL(raw);
+        } else if (raw.startsWith('/')) {
+            if (raw.startsWith('//')) throw new Error('不允许协议相对链接');
+            candidate = new URL(raw, JAVDB_BASE_URL);
+        } else {
+            if (/^[a-z][a-z\d+.-]*:/i.test(raw)) throw new Error('不允许非 HTTPS 链接');
+            candidate = new URL(`/v/${raw}`, JAVDB_BASE_URL);
+            if (!candidate.pathname.startsWith('/v/')) throw new Error('车辆短码路径无效');
+        }
+    } catch (error) {
+        throw new Error(`车辆记录链接无效：${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (candidate.protocol !== 'https:' || candidate.hostname !== JAVDB_HOSTNAME) {
+        throw new Error('车辆记录链接必须指向 https://javdb.com');
+    }
+    if (candidate.pathname === '/') throw new Error('车辆记录链接路径为空');
+    const suffix = candidate.pathname.startsWith('/v/')
+        ? candidate.pathname.slice('/v/'.length)
+        : candidate.pathname;
+    if (!suffix) throw new Error('车辆记录链接路径为空');
+    return `${suffix}${candidate.search}${candidate.hash}`;
+}
+
+/** 校验并归一化单条记录（协议升级）。 */
+export function normalizeLocalRecord(record: LocalCarStatusRecord): LocalCarStatusRecord {
+    if (record === null || typeof record !== 'object') throw new Error('车辆记录格式无效');
+    if (typeof record.carNum !== 'string' || record.carNum.trim() === '') {
+        throw new Error('车辆记录番号为空');
+    }
+    if (
+        typeof record.status !== 'string' ||
+        !STATUS_LIST.includes(record.status.trim() as (typeof STATUS_LIST)[number])
+    ) {
+        throw new Error(`车辆记录状态无效：${String(record.status)}`);
+    }
+    return {
+        carNum: record.carNum.trim().toUpperCase(),
+        status: record.status.trim(),
+        url_path: normalizeJavdbUrlPath(record.url_path)
+    };
+}
+
+/** 在支持 Web Locks 的浏览器中把 MissAV 多标签页写入串行化（协议升级）。 */
+export async function withLocalSyncLock<T>(task: () => Promise<T>): Promise<T> {
+    const browserNavigator =
+        typeof navigator === 'undefined' ? undefined : (navigator as NavigatorWithOptionalLocks);
+    if (!browserNavigator?.locks) return task();
+    return browserNavigator.locks.request(MISSAV_SYNC_LOCK_NAME, { mode: 'exclusive' }, task);
+}
+
+/**
+ * 打开 v2 本地 IndexedDB（协议升级专用）。
+ * 与原 openLocalDB（v1，flag 关时使用，逐字节未改）并存：仅在升级到 v2 时创建 sync_meta。
+ */
+function openLocalDBFlagged(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(MISSAV_DB_NAME, MISSAV_DB_VERSION);
+        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            const oldVersion = event.oldVersion;
+            if (!db.objectStoreNames.contains(MISSAV_DB_STORE)) {
+                db.createObjectStore(MISSAV_DB_STORE, { keyPath: 'carNum' });
+            }
+            if (oldVersion < MISSAV_DB_VERSION && !db.objectStoreNames.contains(MISSAV_DB_META_STORE)) {
+                db.createObjectStore(MISSAV_DB_META_STORE, { keyPath: 'key' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('数据库被阻塞，请关闭其他标签页后刷新'));
+    });
+}
+
+/** 修订号门控：旧/重复载荷不可应用；同修订号下增量优先于全量（协议升级）。 */
+function canApplyRevision(
+    incomingRevision: number,
+    incomingKind: CarStatusSyncKind,
+    current: CarStatusSyncMeta | null
+): boolean {
+    if (!Number.isInteger(incomingRevision) || incomingRevision < 0) return false;
+    if (!current) return true;
+    if (incomingRevision < current.revision) return false;
+    if (incomingRevision === current.revision && incomingKind === 'full') return false;
+    return true;
+}
+
+async function readAppliedRevision(): Promise<CarStatusSyncMeta | null> {
+    const db = await openLocalDBFlagged();
+    try {
+        return await new Promise<CarStatusSyncMeta | null>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_META_STORE, 'readonly');
+            const request = tx.objectStore(MISSAV_DB_META_STORE).get(MISSAV_SYNC_META_KEY);
+            request.onsuccess = () => {
+                const value = request.result as Partial<CarStatusSyncMeta> | undefined;
+                if (
+                    value &&
+                    value.key === MISSAV_SYNC_META_KEY &&
+                    typeof value.revision === 'number' &&
+                    Number.isInteger(value.revision) &&
+                    value.revision >= 0 &&
+                    (value.kind === 'full' || value.kind === 'delta')
+                ) {
+                    resolve(value as CarStatusSyncMeta);
+                } else {
+                    resolve(null);
+                }
+            };
+            request.onerror = () => reject(request.error || new Error('读取同步修订号失败'));
+            tx.onerror = () => reject(tx.error || new Error('读取同步元数据事务失败'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+async function writeAppliedRevision(meta: CarStatusSyncMeta): Promise<void> {
+    const db = await openLocalDBFlagged();
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_META_STORE, 'readwrite');
+            tx.objectStore(MISSAV_DB_META_STORE).put(meta);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('写入同步修订号失败'));
+            tx.onabort = () => reject(tx.error || new Error('写入同步修订号事务中止'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+async function clearAppliedRevision(): Promise<void> {
+    const db = await openLocalDBFlagged();
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_META_STORE, 'readwrite');
+            tx.objectStore(MISSAV_DB_META_STORE).delete(MISSAV_SYNC_META_KEY);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('清理同步修订号失败'));
+            tx.onabort = () => reject(tx.error || new Error('清理同步修订号事务中止'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+/**
+ * 在跨标签页锁内检查并提交修订号（协议升级）。
+ * task 失败时不推进水位线，后续收到同一载荷仍可重试。
+ */
+export async function withSyncRevision<T>(
+    revision: number,
+    kind: CarStatusSyncKind,
+    task: () => Promise<T>,
+    rollback?: () => Promise<void>
+): Promise<{ applied: boolean; value?: T }> {
+    return withLocalSyncLock(async () => {
+        const current = await readAppliedRevision();
+        if (!canApplyRevision(revision, kind, current)) {
+            return { applied: false };
+        }
+        let metadataWriteStarted = false;
+        try {
+            const value = await task();
+            metadataWriteStarted = true;
+            await writeAppliedRevision({ key: MISSAV_SYNC_META_KEY, revision, kind });
+            return { applied: true, value };
+        } catch (applyError) {
+            const recoveryErrors: string[] = [];
+            if (rollback) {
+                try {
+                    await rollback();
+                } catch (rollbackError) {
+                    recoveryErrors.push(
+                        `数据回滚失败：${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`
+                    );
+                }
+            }
+            if (metadataWriteStarted) {
+                try {
+                    if (current) await writeAppliedRevision(current);
+                    else await clearAppliedRevision();
+                } catch (metadataRollbackError) {
+                    recoveryErrors.push(
+                        `修订号回滚失败：${metadataRollbackError instanceof Error ? metadataRollbackError.message : String(metadataRollbackError)}`
+                    );
+                }
+            }
+            if (recoveryErrors.length > 0) {
+                const applyMessage = applyError instanceof Error ? applyError.message : String(applyError);
+                throw new Error(`同步提交失败（${applyMessage}）；${recoveryErrors.join('；')}`);
+            }
+            throw applyError;
+        }
+    });
+}
+
+/** 协议升级版写入：严格归一化后分批 put（不调用 clear()）。 */
+async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<number> {
+    const BATCH_SIZE = 3000;
+    const normalizedRecords = records.map(normalizeLocalRecord);
+    let totalWritten = 0;
+    const db = await openLocalDBFlagged();
+    try {
+        for (let i = 0; i < normalizedRecords.length; i += BATCH_SIZE) {
+            const batch = normalizedRecords.slice(i, i + BATCH_SIZE);
+            totalWritten += await new Promise<number>((resolveBatch, rejectBatch) => {
+                const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
+                const store = tx.objectStore(MISSAV_DB_STORE);
+                let count = 0;
+                for (const rec of batch) {
+                    const req = store.put({
+                        carNum: rec.carNum,
+                        status: rec.status,
+                        url: buildJavdbUrlLocal(rec.url_path),
+                        updateDate: ''
+                    });
+                    req.onsuccess = () => count++;
+                    req.onerror = () => console.warn('[MissAV] 写入失败', rec.carNum, req.error);
+                }
+                tx.oncomplete = () => resolveBatch(count);
+                tx.onerror = () => rejectBatch(tx.error || new Error('事务失败'));
+                tx.onabort = () => rejectBatch(tx.error || new Error('事务中止'));
+            });
+        }
+        return totalWritten;
+    } finally {
+        db.close();
+    }
+}
+
+/** 读取 cars 仓库原始快照，供对账失败时回滚（协议升级）。 */
+export async function readLocalCarsSnapshot(): Promise<StoredCarStatusRecord[]> {
+    const db = await openLocalDBFlagged();
+    try {
+        return await new Promise<StoredCarStatusRecord[]>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
+            const store = tx.objectStore(MISSAV_DB_STORE);
+            const records: StoredCarStatusRecord[] = [];
+            const request = store.openCursor();
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                records.push(cursor.value as StoredCarStatusRecord);
+                cursor.continue();
+            };
+            request.onerror = () => reject(request.error || new Error('读取本地状态快照失败'));
+            tx.oncomplete = () => resolve(records);
+            tx.onerror = () => reject(tx.error || new Error('读取本地状态快照事务失败'));
+            tx.onabort = () => reject(tx.error || new Error('读取本地状态快照事务中止'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+/** 单事务恢复 cars 仓库：删除快照之外的键并逐条 put 回原记录，不调用 clear()（协议升级）。 */
+export async function restoreLocalCarsSnapshot(snapshot: StoredCarStatusRecord[]): Promise<void> {
+    const snapshotKeys = new Set(snapshot.map((record) => String(record.carNum)));
+    const db = await openLocalDBFlagged();
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
+            const store = tx.objectStore(MISSAV_DB_STORE);
+            const request = store.openCursor();
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (cursor) {
+                    if (!snapshotKeys.has(String(cursor.primaryKey))) cursor.delete();
+                    cursor.continue();
+                    return;
+                }
+                for (const record of snapshot) store.put(record);
+            };
+            request.onerror = () => reject(request.error || new Error('恢复本地状态游标失败'));
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('恢复本地状态事务失败'));
+            tx.onabort = () => reject(tx.error || new Error('恢复本地状态事务中止'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+/** 增量回滚快照（协议升级）。 */
+export interface LocalCarsSelectionSnapshot {
+    carNums: string[];
+    records: StoredCarStatusRecord[];
+}
+
+/** 只读取增量会触及的番号，避免每条增量都复制整库（协议升级）。 */
+export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCarsSelectionSnapshot> {
+    const normalizedCarNums = Array.from(
+        new Set(carNums.map((carNum) => carNum.trim().toUpperCase()).filter(Boolean))
+    );
+    if (normalizedCarNums.length === 0) return { carNums: [], records: [] };
+    const db = await openLocalDBFlagged();
+    try {
+        const records = await new Promise<StoredCarStatusRecord[]>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
+            const store = tx.objectStore(MISSAV_DB_STORE);
+            const snapshot: StoredCarStatusRecord[] = [];
+            let settled = false;
+            const rejectOnce = (error: unknown): void => {
+                if (settled) return;
+                settled = true;
+                reject(error);
+            };
+            for (const carNum of normalizedCarNums) {
+                const request = store.get(carNum);
+                request.onsuccess = () => {
+                    if (request.result) snapshot.push(request.result as StoredCarStatusRecord);
+                };
+                request.onerror = () => rejectOnce(request.error || new Error(`读取增量回滚快照失败：${carNum}`));
+            }
+            tx.oncomplete = () => {
+                if (settled) return;
+                settled = true;
+                resolve(snapshot);
+            };
+            tx.onerror = () => rejectOnce(tx.error || new Error('读取增量回滚快照事务失败'));
+            tx.onabort = () => rejectOnce(tx.error || new Error('读取增量回滚快照事务中止'));
+        });
+        return { carNums: normalizedCarNums, records };
+    } finally {
+        db.close();
+    }
+}
+
+/** 原子恢复一次增量触及的番号，其它番号保持不变（协议升级）。 */
+export async function restoreLocalCarsSelection(snapshot: LocalCarsSelectionSnapshot): Promise<void> {
+    if (snapshot.carNums.length === 0) return;
+    const db = await openLocalDBFlagged();
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
+            const store = tx.objectStore(MISSAV_DB_STORE);
+            for (const carNum of snapshot.carNums) store.delete(carNum);
+            for (const record of snapshot.records) store.put(record);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('恢复增量回滚快照事务失败'));
+            tx.onabort = () => reject(tx.error || new Error('恢复增量回滚快照事务中止'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+/**
+ * 用权威全量快照对账本地数据库（协议升级，替换 clear()）。
+ * 先完成全部 upsert，校验写入条数后再删除快照之外的旧记录；写入失败时回滚到写前快照。
+ * 空数组是合法快照，会清除全部旧记录。
+ */
+export async function replaceLocalCars(
+    records: LocalCarStatusRecord[],
+    previousSnapshot?: StoredCarStatusRecord[]
+): Promise<{ written: number; deleted: number }> {
+    const recordsByCarNum = new Map<string, LocalCarStatusRecord>();
+    for (const record of records) {
+        const normalized = normalizeLocalRecord(record);
+        if (recordsByCarNum.has(normalized.carNum)) {
+            throw new Error(`快照包含重复番号：${normalized.carNum}`);
+        }
+        recordsByCarNum.set(normalized.carNum, normalized);
+    }
+    const validRecords = Array.from(recordsByCarNum.values());
+    const rollbackSnapshot = previousSnapshot ?? (await readLocalCarsSnapshot());
+    try {
+        const written = await upsertLocalCarsFlagged(validRecords);
+        if (written !== validRecords.length) {
+            throw new Error(
+                `快照写入条数不一致：声明 ${validRecords.length}，实际 ${written}，已停止删除旧数据`
+            );
+        }
+        const snapshotKeys = new Set(recordsByCarNum.keys());
+        const db = await openLocalDBFlagged();
+        let deleted = 0;
+        try {
+            deleted = await new Promise<number>((resolve, reject) => {
+                const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
+                const store = tx.objectStore(MISSAV_DB_STORE);
+                const request = store.openCursor();
+                let deletedCount = 0;
+                request.onsuccess = () => {
+                    const cursor = request.result;
+                    if (!cursor) return;
+                    const rawCarNum = String(cursor.primaryKey);
+                    const carNum = rawCarNum.toUpperCase();
+                    if (!snapshotKeys.has(carNum) || rawCarNum !== carNum) {
+                        cursor.delete();
+                        deletedCount++;
+                    }
+                    cursor.continue();
+                };
+                request.onerror = () => reject(request.error || new Error('快照对账游标读取失败'));
+                tx.oncomplete = () => resolve(deletedCount);
+                tx.onerror = () => reject(tx.error || new Error('快照对账事务失败'));
+                tx.onabort = () => reject(tx.error || new Error('快照对账事务中止'));
+            });
+        } finally {
+            db.close();
+        }
+        return { written, deleted };
+    } catch (replaceError) {
+        try {
+            await restoreLocalCarsSnapshot(rollbackSnapshot);
+        } catch (rollbackError) {
+            const replaceMessage = replaceError instanceof Error ? replaceError.message : String(replaceError);
+            const rollbackMessage = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+            throw new Error(
+                `状态快照对账失败且回滚失败（对账错误：${replaceMessage}；回滚错误：${rollbackMessage}）`
+            );
+        }
+        throw replaceError;
+    }
+}
+
+/**
+ * 协议升级版导入：严格校验 + 批量对账（替换 clear()），失败时回滚数据与修订号。
+ * 仅在 featureFlags.crossSiteSyncProtocol 开启时由 importLocalDB 调用。
+ */
+async function importLocalDBFlagged(
+    records: Array<{ carNum: string; status: string; url: string }>
+): Promise<number> {
+    return withLocalSyncLock(async () => {
+        if (!Array.isArray(records)) throw new Error('导入记录必须是数组');
+        const normalizedRecords = records.map((record) =>
+            normalizeLocalRecord({ carNum: record?.carNum, status: record?.status, url_path: record?.url })
+        );
+        const [previousCars, previousRevision] = await Promise.all([
+            readLocalCarsSnapshot(),
+            readAppliedRevision()
+        ]);
+        let replaced = false;
+        try {
+            const { written } = await replaceLocalCars(normalizedRecords, previousCars);
+            replaced = true;
+            await clearAppliedRevision();
+            return written;
+        } catch (importError) {
+            if (!replaced) throw importError;
+            const recoveryErrors: string[] = [];
+            try {
+                await restoreLocalCarsSnapshot(previousCars);
+            } catch (rollbackError) {
+                recoveryErrors.push(
+                    `状态数据回滚失败：${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`
+                );
+            }
+            try {
+                if (previousRevision) await writeAppliedRevision(previousRevision);
+                else await clearAppliedRevision();
+            } catch (metadataRollbackError) {
+                recoveryErrors.push(
+                    `修订号回滚失败：${metadataRollbackError instanceof Error ? metadataRollbackError.message : String(metadataRollbackError)}`
+                );
+            }
+            if (recoveryErrors.length > 0) {
+                const importMessage = importError instanceof Error ? importError.message : String(importError);
+                throw new Error(`导入失败（${importMessage}）；${recoveryErrors.join('；')}`);
+            }
+            throw importError;
+        }
+    });
 }
