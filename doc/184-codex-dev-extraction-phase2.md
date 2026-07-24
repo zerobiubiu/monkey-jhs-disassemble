@@ -29,6 +29,7 @@
 ## 延后项（需 good 模型 / 人工复核；非回归）
 
 - `review-item.tsx` 评论正文（来自 JavDB API 的非可信 HTML）的 `dangerouslySetInnerHTML` 消除：正确实现需 `DOMParser` 遍历（保留 text/`<a>`/`<br>`、剥离其余标签）。直接复用 logger 的 `linkifySafe` 不适用——它会把 `<br>`/`<b>` 等转义为字面文本，导致评论排版错乱（可见回归）。该 XSS 面为**既有**状态（非本次引入），故延后至 good 模型配额恢复或人工复核实现，避免用 fast 模型编写 DOM 遍历引入渲染 bug。`stars` 为调用方生成的可信 `<i>` 标记，保留 `dangerouslySetInnerHTML` 安全。
+- **P3 跨站同步协议**（Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 + 批量对账，替换 `replaceLocalCars` 的 `objectStore.clear()`）：改动量最大（约 1200 行，跨 6 个 `car-status-sync` 文件），且为数据完整性核心，需 good 模型仔细推理 + 跨标签页实测；当前 good 模型配额耗尽（重置 2026-07-29 01:55 UTC），fast 模型无法保证零回归，故延后。
 
 ## 实施清单
 
