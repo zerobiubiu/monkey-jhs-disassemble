@@ -26,22 +26,33 @@ const DETAIL_LIST_COLLATOR = new Intl.Collator('zh-CN', {
     sensitivity: 'base'
 });
 const LIST_PANEL_INIT_TIMEOUT_MS = 10000;
+/** 等待 #otherSiteBox 的最大时间（ms）。超时后回退挂载到 nav 末尾。 */
+const DETAIL_DOM_WAIT_TIMEOUT_MS = 15_000;
 
 /**
  * 轮询等待 #otherSiteBox 出现后创建清单面板、初始化并绑定交互。
  * 对应原 L5637-5681，展示顺序只作用于克隆面板，服务端映射始终按 listId。
  * @param nav nav 容器
+ * @param startTime 首次调用时间戳，用于超时判断
  */
-export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: HTMLElement): void {
+export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: HTMLElement, startTime: number = Date.now()): void {
     if (plugin._listPanelEnsured) return;
     const otherSite = nav.querySelector('#otherSiteBox') as HTMLElement | null;
     if (!otherSite) {
-        setTimeout(() => plugin._ensureListPanel(nav), 400);
-        return;
+        if (Date.now() - startTime > DETAIL_DOM_WAIT_TIMEOUT_MS) {
+            clog.warn('[JHS] 清单面板：等待 #otherSiteBox 超时，回退挂载到 nav');
+        } else {
+            setTimeout(() => ensureListPanel(plugin, nav, startTime), 400);
+            return;
+        }
     }
     plugin._listPanelEnsured = true;
     if (!nav.querySelector('.jhs-list-panel')) {
-        otherSite.insertAdjacentHTML('afterend', jsxToString(<ListPanel />));
+        if (otherSite) {
+            otherSite.insertAdjacentHTML('afterend', jsxToString(<ListPanel />));
+        } else {
+            nav.insertAdjacentHTML('beforeend', jsxToString(<ListPanel />));
+        }
     }
     const listPanel = nav.querySelector('.jhs-list-panel') as DetailListPanelElement | null;
     if (!listPanel) return;

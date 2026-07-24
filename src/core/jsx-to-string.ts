@@ -91,7 +91,7 @@ function isReactElement(node: unknown): node is ReactElement {
  * @param s 原始文本
  * @returns 转义后文本
  */
-function escapeText(s: string): string {
+export function escapeText(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -101,7 +101,7 @@ function escapeText(s: string): string {
  * @param s 原始属性值
  * @returns 转义后属性值
  */
-function escapeAttr(s: string): string {
+export function escapeAttr(s: string): string {
     return s
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -115,7 +115,7 @@ function escapeAttr(s: string): string {
  * @param url 原始 URL
  * @returns 安全的 URL（危险协议返回 '#'）
  */
-function sanitizeUrl(url: string): string {
+export function sanitizeUrl(url: string): string {
     const trimmed = url.trim().toLowerCase();
     if (
         trimmed.startsWith('javascript:') ||

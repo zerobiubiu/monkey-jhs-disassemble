@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.28.22',
+                version: '1.28.23',
                                 author: 'zerobiubiu',
                 copyright: '2024-2026 zerobiubiu (https://github.com/zerobiubiu) — 基于 JAV-JHS 3.3.6 (MIT) 二次开发',
                 license: 'MIT',
@@ -31,6 +31,7 @@ export default defineConfig({
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
                 match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*'],
                 'run-at': 'document-idle',
+                noframes: true,
                 connect: [
                     'xunlei.com',
                     'missav.live',

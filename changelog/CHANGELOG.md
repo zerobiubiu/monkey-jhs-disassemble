@@ -9,6 +9,21 @@
 
 ---
 
+## v1.28.23
+
+**发布日期**：2026-07-24
+
+### 修复
+
+- **详情页清单面板超时保护**（doc/183）：ensureListPanel 添加 15s 超时上限，超时后回退挂载到 nav 末尾，防止 OtherSite 插件未启用时永久卡住。
+
+### 安全
+
+- **@noframes**（doc/183）：vite.config.ts 添加 noframes: true，防止脚本在 iframe 内执行。
+- **导出安全函数**（doc/183）：escapeText/escapeAttr/sanitizeUrl 从 jsx-to-string 内部函数改为 export，供插件直接调用。
+
+---
+
 ## v1.28.22
 
 **发布日期**：2026-07-24

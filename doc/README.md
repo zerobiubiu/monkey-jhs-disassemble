@@ -294,6 +294,7 @@
 180. `180-css-filter-chip-reuse.md` — CSS 筛选芯片共享基础提取（Round 4 CSS 复用）：status-tag-filter / video-lists-tag / preload-status-badge 三文件的筛选栏+芯片基础样式（~30 声明 × 3）提取为 filter-chip-base.css 分组选择器；各插件 CSS 仅保留 active 配色与 no-tag/pf-dot 变体；零偏差处理（inline-block 基础 + preload inline-flex 覆盖）；导演级 CSS 全文件审查发现 TS/TSX 锚点未覆盖的 CSS-to-CSS 跨文件重复；version 1.28.19→1.28.20
 181. `181-fix-lists-page-gating.md` — 修复 /users/lists 页面插件被跳过：VideoListsTagPlugin + ListReadingStatusPlugin 的 pageTypes: ['detail', 'list'] 导致在 /users/lists（pageType='unknown'）上被 matchesPage() 静默跳过；移除 pageTypes 覆写，依赖 handle() 内部路径守卫（与 ListWaterfallPlugin / ModMyListOpenWayPlugin 模式一致）；根因 commit 5b4f447（v1.28.15）；version 1.28.21
 182. `182-fix-pagetypes-mismatches.md` — 修复 pageTypes 与内部路径守卫不匹配（第二轮）：系统性审计发现 FavoriteActressesPlugin（演员页收藏按钮失效）和 VisitHistoryPlugin（非详情页访问不记录）存在同类 pageTypes 门控 bug；移除 pageTypes 覆写，依赖内部路径守卫；version 1.28.22
+183. `183-codex-dev-extraction-phase1.md` — codex-dev 提取 Phase 1：P0 修复（ensureListPanel 15s 超时 + nav 回退挂载）+ P0-J（@noframes）+ P1 前置（export escapeText/escapeAttr/sanitizeUrl）；version 1.28.22→1.28.23
 
 ## 当前进度概览
 
@@ -319,7 +320,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/182（184 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/183（185 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
