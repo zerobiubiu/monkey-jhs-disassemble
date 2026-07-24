@@ -311,7 +311,9 @@ export class Fc2Plugin extends BasePlugin {
         const otherSite = this.getBean('OtherSitePlugin');
         const javdbUrl = await otherSite?.getJavDbUrl();
         window.open(
-            `${javdbUrl}/users/collection_codes?movieId=${movieId}&carNum=${carNum}&url=${url}`
+            `${javdbUrl}/users/collection_codes?movieId=${encodeURIComponent(movieId)}&carNum=${encodeURIComponent(carNum)}&url=${encodeURIComponent(url)}`,
+            '_blank',
+            'noopener,noreferrer'
         );
     }
 }

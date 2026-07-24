@@ -125,9 +125,9 @@ export class NavBarPlugin extends BasePlugin {
             const searchType = String($('#search-type option:selected').val() ?? '');
             if (keyword !== '') {
                 if (window.location.href.includes('/search')) {
-                    window.location.href = '/search?q=' + keyword + '&f=' + searchType;
+                    window.location.href = '/search?q=' + encodeURIComponent(keyword) + '&f=' + encodeURIComponent(searchType);
                 } else {
-                    window.open('/search?q=' + keyword + '&f=' + searchType);
+                    window.open('/search?q=' + encodeURIComponent(keyword) + '&f=' + encodeURIComponent(searchType), '_blank', 'noopener,noreferrer');
                 }
             }
         });

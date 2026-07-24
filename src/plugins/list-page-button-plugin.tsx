@@ -263,7 +263,7 @@ export class ListPageButtonPlugin extends BasePlugin {
                 this.getBean('Fc2Plugin')?.openFc2Page(movieId, carNum, aHref);
             } else {
                 const url = aHref + (aHref.includes('?') ? '&autoPlay=1' : '?autoPlay=1');
-                window.open(url);
+                window.open(url, '_blank', 'noopener,noreferrer');
             }
             openedCount++;
         });
@@ -295,7 +295,7 @@ export class ListPageButtonPlugin extends BasePlugin {
                 const movieId = this.parseMovieId(url);
                 await this.getBean('Fc2Plugin')?.openFc2Page(movieId, carNum, url);
             } else {
-                window.open(url);
+                window.open(url, '_blank', 'noopener,noreferrer');
             }
             clog.debug('打开已收藏', carNum, url);
         }

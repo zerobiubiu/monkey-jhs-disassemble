@@ -76,7 +76,7 @@ export class ScreenShotPlugin extends BasePlugin {
     }
 
     async getJavStoreScreenShot(carNum: string): Promise<string | null> {
-        const url = `https://javstore.net/search?q=${carNum.toLowerCase().replace('fc2-', '')}`;
+        const url = `https://javstore.net/search?q=${encodeURIComponent(carNum.toLowerCase().replace('fc2-', ''))}`;
         clog.log('正在解析缩略图:', url);
         const html = await gmHttp.get(url);
         const $dom = utils.htmlTo$dom(String(html));
@@ -151,7 +151,7 @@ export class ScreenShotPlugin extends BasePlugin {
             .on('click', '.check-link', async (e: Event) => {
                 e.stopPropagation();
                 e.preventDefault();
-                window.open(`https://javstore.net/search?q=${carNum}`, '_blank');
+                window.open(`https://javstore.net/search?q=${encodeURIComponent(carNum)}`, '_blank', 'noopener,noreferrer');
             });
     }
 }

@@ -6,6 +6,7 @@
  */
 
 import { STATUS_CONFIG } from './car-status-config';
+import { sanitizeUrl } from '../../core/jsx-to-string';
 
 /**
  * 将 missav.ws 页面上的番号归一化为 JHS 数据库中的标准格式。
@@ -47,9 +48,14 @@ export function createBadge(status: string, url: string): HTMLAnchorElement | nu
     const a = document.createElement('a');
     a.className = 'missav-status-tag';
     a.textContent = cfg.label;
-    a.href = url || 'javascript:;';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    const safeUrl = sanitizeUrl(url || '');
+    if (safeUrl && safeUrl !== '#') {
+        a.href = safeUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+    } else {
+        a.removeAttribute('href');
+    }
     a.title = '点击跳转到 javdb 详情页';
     a.style.cssText = [
         'border-radius:10px',

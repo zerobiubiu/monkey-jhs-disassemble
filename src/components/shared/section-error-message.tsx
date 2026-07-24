@@ -35,11 +35,11 @@ export function SectionErrorMessage({ text, retryId, linkColor }: SectionErrorMe
             {text}
             <a
                 id={retryId}
-                href="javascript:;"
                 style={{
                     marginLeft: '10px',
                     color: linkColor,
-                    textDecoration: 'none'
+                    textDecoration: 'none',
+                    cursor: 'pointer'
                 }}
             >
                 重试

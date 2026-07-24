@@ -333,7 +333,7 @@ export class HistoryPlugin extends BasePlugin {
                 this.getBean('Fc2Plugin')?.openFc2Dialog(movieId, carInfo.carNum, carInfo.url!);
             } else {
                 if (!carInfo.url) {
-                    window.open('/search?q=' + carInfo.carNum, '_blank');
+                    window.open('/search?q=' + encodeURIComponent(carInfo.carNum), '_blank', 'noopener,noreferrer');
                     return;
                 }
                 utils.openPage(carInfo.url, carInfo.carNum, false, event as MouseEvent);

@@ -153,13 +153,10 @@ injectCss(filterChipBaseCssRaw);
 
 // ===== 运行时全局挂载（utils/gmHttp/storageManager/gt/lt/De） =====
 window.utils = new CommonUtil();
-unsafeWindow.utils = window.utils;
 window.gmHttp = new GmHttp();
 window.storageManager = new StorageManager();
 window.loadGfriends = loadGfriends;
-unsafeWindow.loadGfriends = window.loadGfriends;
 window.filetreeDb = filetreeDb;
-unsafeWindow.filetreeDb = window.filetreeDb;
 window.WebDavClient = WebDavClient;
 
 // ===== BroadcastChannel 跨标签页刷新/清缓存（原 G → refreshChannel） =====
@@ -182,8 +179,8 @@ window.clean_cacheSettingObj = function () {
 
 // ===== loading CSS 注入 + loading/show 挂载 =====
 injectCss(loadingCssRaw);
-unsafeWindow.loading = window.loading = createLoading;
-unsafeWindow.show = window.show = show;
+window.loading = createLoading;
+window.show = show;
 
 // ===== 图片查看器（原 window.showImageViewer） =====
 (function () {
@@ -224,13 +221,13 @@ unsafeWindow.show = window.show = show;
     injectCss(loggerCssRaw);
     try {
         if (unsafeWindow.parent.clog && typeof unsafeWindow.parent.clog.log == 'function') {
-            window.clog = unsafeWindow.clog = unsafeWindow.parent.clog;
+            window.clog = unsafeWindow.parent.clog;
         } else {
-            window.clog = unsafeWindow.clog = new Logger();
+            window.clog = new Logger();
         }
     } catch (err) {
         console.error('创建日志控制台出现异常', err);
-        window.clog = unsafeWindow.clog = new Logger();
+        window.clog = new Logger();
     }
     (function () {
         const logger = window.clog || console;

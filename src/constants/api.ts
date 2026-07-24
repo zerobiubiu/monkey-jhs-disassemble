@@ -175,7 +175,7 @@ export async function fetchMovieReviews(
     page: number = 1,
     limit: number = 20
 ): Promise<MovieReview[]> {
-    const url = `${API_BASE}/v1/movies/${movieId}/reviews`;
+    const url = `${API_BASE}/v1/movies/${encodeURIComponent(movieId)}/reviews`;
     const headers = { jdSignature: await reBuildSignature() };
     // gmHttp.get returns unknown; API shape is stable per backend contract
     const resp = (await gmHttp.get(
@@ -197,7 +197,7 @@ export async function fetchMovieReviews(
  * @returns 结构化的电影详情
  */
 export async function fetchMovieDetail(movieId: string | number): Promise<MovieDetail> {
-    const url = `${API_BASE}/v4/movies/${movieId}`;
+    const url = `${API_BASE}/v4/movies/${encodeURIComponent(movieId)}`;
     const headers = { jdSignature: await reBuildSignature() };
     const resp = (await gmHttp.get(url, undefined, headers)) as {
         data?: { movie: { preview_images: PreviewImage[]; id: string | number; actors: MovieActor[]; duration: string | number; origin_title: string; number: string; score: number; release_date: string; watched_count: number } };
@@ -237,7 +237,7 @@ export async function fetchRelatedCollections(
     page: number = 1,
     limit: number = 20
 ): Promise<RelatedCollection[]> {
-    const url = `${API_BASE}/v1/lists/related?movie_id=${movieId}&page=${page}&limit=${limit}`;
+    const url = `${API_BASE}/v1/lists/related?movie_id=${encodeURIComponent(movieId)}&page=${page}&limit=${limit}`;
     const headers = { jdSignature: await reBuildSignature() };
     const resp = (await gmHttp.get(url, undefined, headers)) as { data: { lists: RawRelatedCollectionItem[] } };
     const list: RelatedCollection[] = [];

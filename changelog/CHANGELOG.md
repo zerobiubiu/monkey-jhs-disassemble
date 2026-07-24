@@ -9,6 +9,20 @@
 
 ---
 
+## v1.28.24
+
+**发布日期**：2026-07-24
+
+### 安全
+
+- **日志 XSS 中和**（doc/184）：addLog 不再内嵌 HTML，logger-log-entry 以 linkifySafe 在渲染期转义文本段 + sanitizeUrl 净化链接段，消除 dangerouslySetInnerHTML；公共 API 与 §9.2 console 分层不变。
+- **tooltip innerHTML → textContent**（doc/184）：确认全部 data-tip 来源为纯文本后改用 textContent。
+- **出站链接加固**（doc/184）：消灭 javascript: 注入（missav-renderer / section-error-message）；movieId 与搜索查询 encodeURIComponent；window.open 统一 noopener,noreferrer。
+- **unsafeWindow 收敛**（doc/184）：高权限全局改挂沙箱 window，关闭页面窗口泄漏面。
+- **延后**：review-item 评论正文（JavDB 非可信 HTML）的 dangerouslySetInnerHTML 消除需 DOMParser 遍历，延后至 good 模型 / 人工复核（既有面，非回归）。
+
+---
+
 ## v1.28.23
 
 **发布日期**：2026-07-24

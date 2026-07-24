@@ -158,7 +158,7 @@ export async function bindClick(plugin: ListPagePlugin): Promise<void> {
         } else if (dialogOpenDetail === YES) {
             utils.openPage(aHref, carNum, true, event);
         } else {
-            window.open(aHref);
+            window.open(aHref, '_blank', 'noopener,noreferrer');
         }
     });
     $(selectorConfig.boxSelector).on('click', '.item video', async (event: Event) => {

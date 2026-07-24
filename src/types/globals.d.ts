@@ -67,7 +67,7 @@ declare const GM_addValueChangeListener: (key: string, callback: (name: string, 
 declare const GM_registerMenuCommand: (name: string, callback: () => void, accessKey?: string) => number;
 declare const unsafeWindow: any;
 
-// 应用运行时全局（由 main.tsx 启动时挂载到 window/unsafeWindow）
+// 应用运行时全局（由 main.tsx 启动时挂载到 window）
 declare const show: typeof import('../core/toast').show;
 declare const utils: import('../core/common-util').CommonUtil;
 declare const storageManager: import('../core/storage-manager').StorageManager;

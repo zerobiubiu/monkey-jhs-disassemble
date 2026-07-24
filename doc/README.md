@@ -295,6 +295,7 @@
 181. `181-fix-lists-page-gating.md` — 修复 /users/lists 页面插件被跳过：VideoListsTagPlugin + ListReadingStatusPlugin 的 pageTypes: ['detail', 'list'] 导致在 /users/lists（pageType='unknown'）上被 matchesPage() 静默跳过；移除 pageTypes 覆写，依赖 handle() 内部路径守卫（与 ListWaterfallPlugin / ModMyListOpenWayPlugin 模式一致）；根因 commit 5b4f447（v1.28.15）；version 1.28.21
 182. `182-fix-pagetypes-mismatches.md` — 修复 pageTypes 与内部路径守卫不匹配（第二轮）：系统性审计发现 FavoriteActressesPlugin（演员页收藏按钮失效）和 VisitHistoryPlugin（非详情页访问不记录）存在同类 pageTypes 门控 bug；移除 pageTypes 覆写，依赖内部路径守卫；version 1.28.22
 183. `183-codex-dev-extraction-phase1.md` — codex-dev 提取 Phase 1：P0 修复（ensureListPanel 15s 超时 + nav 回退挂载）+ P0-J（@noframes）+ P1 前置（export escapeText/escapeAttr/sanitizeUrl）；version 1.28.22→1.28.23
+184. `184-codex-dev-extraction-phase2.md` — codex-dev 提取 Phase 2：XSS / URL / 沙箱加固：E1 日志 XSS 中和（addLog 存原始文本，logger-log-entry 以 linkifySafe 渲染期转义文本段 + sanitizeUrl 净化链接段，消除 dangerouslySetInnerHTML，公共 API 与 §9.2 console 分层不变）/ E2 tooltip innerHTML→textContent（全部 data-tip 来源确认纯文本）/ F 出站链接加固（消灭 javascript: 注入 + movieId/搜索查询 encodeURIComponent + window.open 统一 noopener,noreferrer）/ K unsafeWindow 收敛（高权限全局改挂沙箱 window）；review-item 评论正文（JavDB 非可信 HTML）dangerouslySetInnerHTML 消除延后至 good 模型/人工复核（既有面非回归）；version 1.28.23→1.28.24
 
 ## 当前进度概览
 
@@ -320,7 +321,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/183（185 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/184（186 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

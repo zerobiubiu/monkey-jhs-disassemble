@@ -15,8 +15,6 @@
  * 面板样式由原脚本顶部注入的 `<style>` 块提供，本模块不重复注入。
  */
 
-import { jsxToString } from './jsx-to-string';
-import { UrlAutoLink } from '../components/misc/url-auto-link';
 import {
     FILTER_KEY,
     LOG_TYPE_STYLES,
@@ -31,7 +29,7 @@ import {
 } from './util/logger-panel';
 
 export interface LogEntry {
-    /** 渲染后的消息 HTML（对象已 JSON 序列化、URL 已链接化） */
+    /** 原始消息文本（对象已 JSON 序列化；URL 链接化在渲染期完成，此处不内嵌 HTML） */
     message: string;
     /** 消息渲染类型：`"msg"` 普通文本 / `"json"` 预格式化 JSON */
     messageType: string;
@@ -103,7 +101,9 @@ export class Logger {
 
     /**
      * 追加一条日志（核心入口）。先确保初始化，再对参数做类型归一化、
-     * 对象 JSON 序列化、URL 链接化，最后渲染；超出上限时淘汰最旧一条。
+     * 对象 JSON 序列化，最后渲染；超出上限时淘汰最旧一条。URL 链接化不在
+     * 此处进行——`entry.message` 始终保存原始文本，链接化推迟到渲染期
+     * （`logger-log-entry.tsx` 的 `linkifySafe`），避免把不可信文本当 HTML 注入。
      *
      * 时序说明：原脚本在模块顶层 `await storageManager.getSetting(...)`
      * 读取日志条数上限。但本模块被 legacy 顶部 import 时 storageManager
@@ -140,7 +140,7 @@ export class Logger {
                 parts.push(String(part));
             } else if (typeof part === 'object' && part !== null) {
                 try {
-                    parts.push(jsxToString(<br />) + JSON.stringify(part, null, 2));
+                    parts.push('\n' + JSON.stringify(part, null, 2));
                     messageType = 'json';
                 } catch {
                     parts.push(String(part));
@@ -150,22 +150,7 @@ export class Logger {
                 parts.push(String(part));
             }
         });
-        let formattedMessage: string = parts.join('  ');
-        formattedMessage = formattedMessage.replace(
-            /(?:(?:https?|ftp):\/\/|www\.|(?:\/\/))[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|]/gi,
-            (match) => {
-                const isHttpOrFtp = match.startsWith('http') || match.startsWith('ftp');
-                const isProtocolRelative = match.startsWith('//');
-                const isWww = match.startsWith('www.');
-                let href = match;
-                if (isProtocolRelative) {
-                    href = `http:${match}`;
-                } else if (!isHttpOrFtp && isWww) {
-                    href = `http://${match}`;
-                }
-                return jsxToString(<UrlAutoLink href={href} text={match} />);
-            }
-        );
+        const formattedMessage: string = parts.join('  ');
         const entry: LogEntry = {
             message: formattedMessage,
             messageType,
