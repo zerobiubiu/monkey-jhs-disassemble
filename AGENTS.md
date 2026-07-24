@@ -75,7 +75,7 @@ monkey-jhs-disassemble/
 **关键点**：
 - 页面判定先于 `processCss()`（doc/139：PluginManager 按 `pageTypes` 过滤）
 - `window.isDetailPage` 等直接访问（doc/134：不再需要 `(window as any)`）
-- 19 个插件声明 `pageTypes`，不匹配插件不注入 CSS、不执行 handle
+- 14 个插件声明 `pageTypes`，不匹配插件不注入 CSS、不执行 handle
 - 9 个资源密集型插件使用 TaskSupervisor 管理定时器/Observer/事件监听器
 - 版本化迁移（doc/135）：6 步映射为版本 0→6，后续启动仅 1 次 IDB 读取
 - StorageRevision（doc/144）：16 个写入方法递增修订号 + BroadcastChannel 广播
