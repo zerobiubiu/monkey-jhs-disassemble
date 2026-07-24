@@ -299,6 +299,7 @@
 185. `185-review-item-content-xss.md` — review-item 评论正文 XSS 加固：JavDB API 不可信正文 HTML 改由 safeReviewNodes（DOMParser 遍历）安全渲染——文本转义、`<a>` 经 sanitizeUrl + 强制 rel、白名单内联标签（含 span）保留并仅复制 class/style、其余标签剥离；可信星级 stars 维持原 raw 注入；修正首版 strip-all 对 ed2k 高亮 / a-primary 的视觉回归；version 1.28.24→1.28.25
 186. `186-revert-noframes-iframe-regression.md` — 回退 @noframes（视频流 iframe 详情页回归修复）：v1.28.23 P0-J 的 `noframes: true` 使脚本不在任何 iframe 运行，导致视频流打开的 iframe 视频详情页不加载脚本；删除该指令恢复 iframe 执行（`@match` 已限定执行源，边际安全收益不值得破坏功能）；回退后 v1.28.24 K 的 iframe 继承父窗口 clog 逻辑重新按预期生效；version 1.28.25→1.28.26
 187. `187-cross-site-sync-protocol-flagged.md` — 跨站车号状态同步协议升级（feature flag 默认关）：移植 codex-dev P3（Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 sync_meta + 批量对账替换 replaceLocalCars 的 objectStore.clear()）；全部位于 featureFlags.crossSiteSyncProtocol 之后默认 false，flag 关时行为与改动前逐字节一致（未改既有函数体，仅调用点 if/else 分支）；IDB 请求版本 = flag ? 2 : 1，sync_meta 仅升级 v2 时创建；启用前须跨标签实测；version 1.28.26→1.28.27→1.28.28
+188. `188-fix-idb-version-mismatch.md` — 修复 MissAV IDB 版本冲突：P3 移植引入双 opener（v1/v2 同名 DB），flag-ON 全量消费升级 v2 后旧 CRUD 函数 openLocalDB(v1) 抛 VersionError 致标签不渲染；统一为单一 opener 打开 MISSAV_DB_VERSION + sync_meta 创建守卫，flag-OFF 首次运行 v1→v2 升级（空 sync_meta 无副作用）；version 1.28.28→1.28.29
 
 ## 当前进度概览
 
@@ -324,7 +325,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/187（189 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/188（190 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

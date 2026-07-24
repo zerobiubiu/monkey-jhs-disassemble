@@ -113,7 +113,7 @@ export const MISSAV_DB_NAME = 'MissAV-CarStatus';
 export const MISSAV_DB_STORE = 'cars';
 /** 同步元数据仓库（跨站同步协议升级，feature flag 门控）：跨标签页防止旧全量覆盖新增量。 */
 export const MISSAV_DB_META_STORE = 'sync_meta';
-/** 跨站同步协议升级后的 IndexedDB 版本（feature flag 门控，flag 关时维持 v1）。 */
+/** MissAV 端 IndexedDB 版本（v2 起含 sync_meta 仓库；openLocalDB 统一打开此版本，flag 关时 sync_meta 为空无副作用）。 */
 export const MISSAV_DB_VERSION = 2;
 /** sync_meta 中记录已应用修订号的键（跨站同步协议升级）。 */
 export const MISSAV_SYNC_META_KEY = 'car_status_revision';

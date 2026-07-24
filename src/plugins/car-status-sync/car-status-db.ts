@@ -22,18 +22,22 @@ import {
 import { featureFlags } from '../../core/feature-flags';
 
 /**
- * 打开本地 IndexedDB（不存在则创建）。
+ * 打开本地 IndexedDB（不存在则创建，版本 MISSAV_DB_VERSION）。
+ * 统一 opener：同时创建 cars 与 sync_meta 仓库（sync_meta 仅在升级时创建）。
  * 来源：missavStatusTag.user.js L156-173。
  * @returns IDBDatabase 实例
  */
 export function openLocalDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(MISSAV_DB_NAME, 1);
+        const request = indexedDB.open(MISSAV_DB_NAME, MISSAV_DB_VERSION);
         request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
             const db = (event.target as IDBOpenDBRequest).result;
+            const oldVersion = event.oldVersion;
             if (!db.objectStoreNames.contains(MISSAV_DB_STORE)) {
-                // 以 carNum 为主键，同一番号在多个 status 下的记录只保留最新写入
                 db.createObjectStore(MISSAV_DB_STORE, { keyPath: 'carNum' });
+            }
+            if (oldVersion < MISSAV_DB_VERSION && !db.objectStoreNames.contains(MISSAV_DB_META_STORE)) {
+                db.createObjectStore(MISSAV_DB_META_STORE, { keyPath: 'key' });
             }
         };
         request.onsuccess = () => resolve(request.result);
@@ -359,29 +363,6 @@ export async function withLocalSyncLock<T>(task: () => Promise<T>): Promise<T> {
     return browserNavigator.locks.request(MISSAV_SYNC_LOCK_NAME, { mode: 'exclusive' }, task);
 }
 
-/**
- * 打开 v2 本地 IndexedDB（协议升级专用）。
- * 与原 openLocalDB（v1，flag 关时使用，逐字节未改）并存：仅在升级到 v2 时创建 sync_meta。
- */
-function openLocalDBFlagged(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(MISSAV_DB_NAME, MISSAV_DB_VERSION);
-        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            const oldVersion = event.oldVersion;
-            if (!db.objectStoreNames.contains(MISSAV_DB_STORE)) {
-                db.createObjectStore(MISSAV_DB_STORE, { keyPath: 'carNum' });
-            }
-            if (oldVersion < MISSAV_DB_VERSION && !db.objectStoreNames.contains(MISSAV_DB_META_STORE)) {
-                db.createObjectStore(MISSAV_DB_META_STORE, { keyPath: 'key' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-        request.onblocked = () => reject(new Error('数据库被阻塞，请关闭其他标签页后刷新'));
-    });
-}
-
 /** 修订号门控：旧/重复载荷不可应用；同修订号下增量优先于全量（协议升级）。 */
 function canApplyRevision(
     incomingRevision: number,
@@ -396,7 +377,7 @@ function canApplyRevision(
 }
 
 async function readAppliedRevision(): Promise<CarStatusSyncMeta | null> {
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         return await new Promise<CarStatusSyncMeta | null>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_META_STORE, 'readonly');
@@ -425,7 +406,7 @@ async function readAppliedRevision(): Promise<CarStatusSyncMeta | null> {
 }
 
 async function writeAppliedRevision(meta: CarStatusSyncMeta): Promise<void> {
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         await new Promise<void>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_META_STORE, 'readwrite');
@@ -440,7 +421,7 @@ async function writeAppliedRevision(meta: CarStatusSyncMeta): Promise<void> {
 }
 
 async function clearAppliedRevision(): Promise<void> {
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         await new Promise<void>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_META_STORE, 'readwrite');
@@ -510,7 +491,7 @@ async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<
     const BATCH_SIZE = 3000;
     const normalizedRecords = records.map(normalizeLocalRecord);
     let totalWritten = 0;
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         for (let i = 0; i < normalizedRecords.length; i += BATCH_SIZE) {
             const batch = normalizedRecords.slice(i, i + BATCH_SIZE);
@@ -541,7 +522,7 @@ async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<
 
 /** 读取 cars 仓库原始快照，供对账失败时回滚（协议升级）。 */
 export async function readLocalCarsSnapshot(): Promise<StoredCarStatusRecord[]> {
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         return await new Promise<StoredCarStatusRecord[]>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
@@ -567,7 +548,7 @@ export async function readLocalCarsSnapshot(): Promise<StoredCarStatusRecord[]> 
 /** 单事务恢复 cars 仓库：删除快照之外的键并逐条 put 回原记录，不调用 clear()（协议升级）。 */
 export async function restoreLocalCarsSnapshot(snapshot: StoredCarStatusRecord[]): Promise<void> {
     const snapshotKeys = new Set(snapshot.map((record) => String(record.carNum)));
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         await new Promise<void>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
@@ -604,7 +585,7 @@ export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCa
         new Set(carNums.map((carNum) => carNum.trim().toUpperCase()).filter(Boolean))
     );
     if (normalizedCarNums.length === 0) return { carNums: [], records: [] };
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         const records = await new Promise<StoredCarStatusRecord[]>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
@@ -640,7 +621,7 @@ export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCa
 /** 原子恢复一次增量触及的番号，其它番号保持不变（协议升级）。 */
 export async function restoreLocalCarsSelection(snapshot: LocalCarsSelectionSnapshot): Promise<void> {
     if (snapshot.carNums.length === 0) return;
-    const db = await openLocalDBFlagged();
+    const db = await openLocalDB();
     try {
         await new Promise<void>((resolve, reject) => {
             const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
@@ -683,7 +664,7 @@ export async function replaceLocalCars(
             );
         }
         const snapshotKeys = new Set(recordsByCarNum.keys());
-        const db = await openLocalDBFlagged();
+        const db = await openLocalDB();
         let deleted = 0;
         try {
             deleted = await new Promise<number>((resolve, reject) => {

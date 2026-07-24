@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.29
+
+**发布日期**：2026-07-24
+
+### 修复
+
+- **MissAV IDB 版本冲突**（doc/188）：P3 移植引入双 opener（v1/v2 同名 DB），flag-ON 全量消费升级 v2 后旧 CRUD 函数 openLocalDB(v1) 抛 VersionError 致标签不渲染；统一为单一 opener 打开 MISSAV_DB_VERSION + sync_meta 创建守卫，flag-OFF 首次运行 v1→v2 升级（空 sync_meta 无副作用）。
+
+---
+
 ## v1.28.28
 
 **发布日期**：2026-07-24
