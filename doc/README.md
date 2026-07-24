@@ -300,6 +300,7 @@
 186. `186-revert-noframes-iframe-regression.md` — 回退 @noframes（视频流 iframe 详情页回归修复）：v1.28.23 P0-J 的 `noframes: true` 使脚本不在任何 iframe 运行，导致视频流打开的 iframe 视频详情页不加载脚本；删除该指令恢复 iframe 执行（`@match` 已限定执行源，边际安全收益不值得破坏功能）；回退后 v1.28.24 K 的 iframe 继承父窗口 clog 逻辑重新按预期生效；version 1.28.25→1.28.26
 187. `187-cross-site-sync-protocol-flagged.md` — 跨站车号状态同步协议升级（feature flag 默认关）：移植 codex-dev P3（Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 sync_meta + 批量对账替换 replaceLocalCars 的 objectStore.clear()）；全部位于 featureFlags.crossSiteSyncProtocol 之后默认 false，flag 关时行为与改动前逐字节一致（未改既有函数体，仅调用点 if/else 分支）；IDB 请求版本 = flag ? 2 : 1，sync_meta 仅升级 v2 时创建；启用前须跨标签实测；version 1.28.26→1.28.27→1.28.28
 188. `188-fix-idb-version-mismatch.md` — 修复 MissAV IDB 版本冲突：P3 移植引入双 opener（v1/v2 同名 DB），flag-ON 全量消费升级 v2 后旧 CRUD 函数 openLocalDB(v1) 抛 VersionError 致标签不渲染；统一为单一 opener 打开 MISSAV_DB_VERSION + sync_meta 创建守卫，flag-OFF 首次运行 v1→v2 升级（空 sync_meta 无副作用）；version 1.28.28→1.28.29
+189. `189-fix-missav-delta-shape-route.md` — 修复跨站 flag 不对称静默丢增量（与 doc/188 IDB 版本 bug 独立的第二个 bug）：javdb=ON 把 GM_KEY_CAR_STATUS_DELTA 写成数组 journal，missav=OFF 的旧 consumeDelta 只认单对象 `.action`，收到数组两分支皆不进直接 processAll = 静默丢；消费端改按**载荷形状**路由（抽纯函数 seam deltaRoute：数组无条件走 consumeDeltaJournal，单对象维持本地 flag 门控）+ 初始化 flag-OFF 分支补消费数组兜底；flag-OFF 走 journal 路径全链路无 flag 守卫且 sync_meta 已由 doc/188 统一 opener 创建，可行；flag 对称逐字节不变；新增 tests/delta-route.test.ts 8 用例；version 1.28.29→1.28.30
 
 ## 当前进度概览
 

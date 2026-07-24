@@ -43,6 +43,7 @@ import {
 import { featureFlags } from '../../core/feature-flags';
 import { normalizeCarNum, renderBadges, isVideoPage } from './missav-renderer';
 import { createLogger } from './car-status-logger';
+import { deltaRoute } from './car-status-delta-route';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
 
@@ -82,8 +83,9 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 GM_KEY_CAR_STATUS_DELTA,
                 (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
-                        if (featureFlags.crossSiteSyncProtocol) {
-                            // 跨站同步协议升级（feature flag 门控）：消费 journal（兼容旧单对象）。
+                        // 按载荷形状路由（doc/189）：数组无条件走 journal 消费器，修复 javdb=ON/
+                        // missav=OFF 时数组增量被旧 consumeDelta 静默丢弃；单对象维持本地 flag 门控。
+                        if (deltaRoute(newValue, featureFlags.crossSiteSyncProtocol) === 'journal') {
                             void this.consumeDeltaJournal(newValue);
                         } else {
                             this.consumeDelta(newValue as CarStatusDeltaPayload);
@@ -122,6 +124,12 @@ export class MissavStatusTagPlugin extends BasePlugin {
             await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
         } else {
             await this.consumeFull(undefined);
+            // flag 关兜底（doc/189）：若 javdb=ON 只发了数组增量，此处按形状补消费一次，
+            // 否则初始化丢增量（监听器仅在后续变更时触发）。
+            const initDelta: unknown = GM_getValue(GM_KEY_CAR_STATUS_DELTA);
+            if (deltaRoute(initDelta, false) === 'journal') {
+                await this.consumeDeltaJournal(initDelta);
+            }
         }
 
         // 5) 启动 MutationObserver 监听动态加载的缩略图

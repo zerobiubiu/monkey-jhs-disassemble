@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.30
+
+**发布日期**：2026-07-24
+
+### 修复
+
+- **MissAV 增量消费按载荷形状路由**（doc/189）：修复跨站 flag 不对称（javdb 开 crossSiteSyncProtocol、missav 没开）时增量**静默丢数据**——javdb=ON 把 GM_KEY_CAR_STATUS_DELTA 写成数组 journal，missav=OFF 的旧 consumeDelta 只认单对象 `.action`，收到数组两分支皆不进、直接 processAll，不写库不报错。消费端改按载荷形状路由（抽纯函数 seam `deltaRoute`：数组无条件走 consumeDeltaJournal，单对象维持本地 flag 门控）+ 初始化 flag-OFF 分支补消费数组兜底；flag 对称（双 OFF/双 ON）行为逐字节不变。与 doc/188 IDB 版本 bug 独立的第二个 bug。新增 tests/delta-route.test.ts（8 用例）。
+
+---
+
 ## v1.28.29
 
 **发布日期**：2026-07-24
