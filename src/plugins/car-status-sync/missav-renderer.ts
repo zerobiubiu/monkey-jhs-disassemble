@@ -47,6 +47,7 @@ export function createBadge(status: string, url: string): HTMLAnchorElement | nu
 
     const a = document.createElement('a');
     a.className = 'missav-status-tag';
+    a.dataset.status = status;
     a.textContent = cfg.label;
     const safeUrl = sanitizeUrl(url || '');
     if (safeUrl && safeUrl !== '#') {
@@ -91,7 +92,7 @@ export function createBadge(status: string, url: string): HTMLAnchorElement | nu
  *
  * @param container 包含缩略图的父容器
  * @param carMap carNum → {status, url} 映射
- * @returns total 总新增数；matched 命中数
+ * @returns total 处理数（新增 + 状态变更）；matched 命中数
  */
 export function renderBadges(
     container: HTMLElement,
@@ -104,10 +105,6 @@ export function renderBadges(
     let matched = 0;
 
     for (const item of items) {
-        // 防御：已处理过的跳过（放在 total++ 之前，不计入 total）
-        if (item.querySelector('.missav-status-tag')) continue;
-        total++;
-
         // 查找带有 alt 属性的 <a> 标签获取番号
         const link = item.querySelector<HTMLAnchorElement>('a[alt]');
         if (!link) continue;
@@ -119,6 +116,14 @@ export function renderBadges(
         const normalized = normalizeCarNum(carNum);
         const record = carMap.get(normalized);
         if (!record) continue;
+
+        // 已有徽章且状态未变：跳过；状态变更：移除旧徽章后重建（doc/190）
+        const existing = item.querySelector<HTMLElement>('.missav-status-tag');
+        if (existing) {
+            if (existing.dataset.status === record.status) continue;
+            existing.remove();
+        }
+        total++;
 
         // 找到缩略图容器（.relative 元素，用来定位标签）
         const thumbDiv = item.querySelector<HTMLElement>('div.relative');

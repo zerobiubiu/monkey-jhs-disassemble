@@ -301,6 +301,7 @@
 187. `187-cross-site-sync-protocol-flagged.md` — 跨站车号状态同步协议升级（feature flag 默认关）：移植 codex-dev P3（Web Lock 跨标签互斥 + 增量 journal 压缩 + 条件回滚 + MissAV IDB v2 sync_meta + 批量对账替换 replaceLocalCars 的 objectStore.clear()）；全部位于 featureFlags.crossSiteSyncProtocol 之后默认 false，flag 关时行为与改动前逐字节一致（未改既有函数体，仅调用点 if/else 分支）；IDB 请求版本 = flag ? 2 : 1，sync_meta 仅升级 v2 时创建；启用前须跨标签实测；version 1.28.26→1.28.27→1.28.28
 188. `188-fix-idb-version-mismatch.md` — 修复 MissAV IDB 版本冲突：P3 移植引入双 opener（v1/v2 同名 DB），flag-ON 全量消费升级 v2 后旧 CRUD 函数 openLocalDB(v1) 抛 VersionError 致标签不渲染；统一为单一 opener 打开 MISSAV_DB_VERSION + sync_meta 创建守卫，flag-OFF 首次运行 v1→v2 升级（空 sync_meta 无副作用）；version 1.28.28→1.28.29
 189. `189-fix-missav-delta-shape-route.md` — 修复跨站 flag 不对称静默丢增量（与 doc/188 IDB 版本 bug 独立的第二个 bug）：javdb=ON 把 GM_KEY_CAR_STATUS_DELTA 写成数组 journal，missav=OFF 的旧 consumeDelta 只认单对象 `.action`，收到数组两分支皆不进直接 processAll = 静默丢；消费端改按**载荷形状**路由（抽纯函数 seam deltaRoute：数组无条件走 consumeDeltaJournal，单对象维持本地 flag 门控）+ 初始化 flag-OFF 分支补消费数组兜底；flag-OFF 走 journal 路径全链路无 flag 守卫且 sync_meta 已由 doc/188 统一 opener 创建，可行；flag 对称逐字节不变；新增 tests/delta-route.test.ts 8 用例；version 1.28.29→1.28.30
+190. `190-fix-missav-badge-frozen.md` — 修复 MissAV 徽章状态冻结：renderBadges 对已有 .missav-status-tag 的缩略图无条件跳过，跨站同步后 processAll 再次调用时徽章不更新；createBadge 写入 dataset.status，renderBadges 改为状态变更时移除旧徽章重建（原始脚本无跨站同步，skip 在其场景无害，本修复为新增功能服务）；version 1.28.30→1.28.31
 
 ## 当前进度概览
 
@@ -326,7 +327,7 @@
 - build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/188（190 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/190（191 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
