@@ -41,7 +41,6 @@
  * 本类保留同名瘦委托方法，内部调用点与运行时 getBean 面保持不变；被委托方法
  * 读写的实例字段去掉 private（编译期修饰符，运行时无变化），以便跨模块访问。
  */
-import type { PageType } from '../core/page-context';
 import { TaskSupervisor } from '../core/task-supervisor';
 
 import { BasePlugin } from './base-plugin';
@@ -100,11 +99,6 @@ export class ListReadingStatusPlugin extends BasePlugin {
      */
     getName(): string {
         return 'ListReadingStatusPlugin';
-    }
-
-    /** 详情页 + 列表页激活（doc/140）。 */
-    get pageTypes(): PageType[] {
-        return ['detail', 'list'];
     }
 
     /**

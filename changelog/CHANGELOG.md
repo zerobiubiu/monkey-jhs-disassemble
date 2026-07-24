@@ -9,6 +9,16 @@
 
 ---
 
+## v1.28.21
+
+**发布日期**：2026-07-24
+
+### 修复
+
+- **修复 /users/lists 页面插件被跳过**（doc/181）：VideoListsTagPlugin 和 ListReadingStatusPlugin 的 `pageTypes: ['detail', 'list']` 导致在 /users/lists（pageType='unknown'）上被 matchesPage() 静默跳过；移除 pageTypes 覆写，依赖 handle() 内部路径守卫。
+
+---
+
 ## v1.28.20
 
 **发布日期**：2026-07-24

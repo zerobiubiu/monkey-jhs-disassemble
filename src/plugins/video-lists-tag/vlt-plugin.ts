@@ -29,7 +29,6 @@
  * - vlt-sync.ts — checkbox 同步 + 三重广播（setupCheckboxListener/handleCheckboxChange）
  * - vlt-plugin.tsx — 插件入口（本文件）
  */
-import type { PageType } from '../../core/page-context';
 
 import { BasePlugin } from '../base-plugin';
 import { VltTags } from './vlt-tags';
@@ -60,11 +59,6 @@ export class VideoListsTagPlugin extends BasePlugin {
      */
     getName(): string {
         return 'VideoListsTagPlugin';
-    }
-
-    /** 详情页 + 列表页激活（doc/140）。 */
-    get pageTypes(): PageType[] {
-        return ['detail', 'list'];
     }
 
     /**
