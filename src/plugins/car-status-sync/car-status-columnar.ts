@@ -30,7 +30,7 @@ import {
  * @returns code 规整后的值；malformed 是否无法解析
  */
 export function normalizeUrl(rawUrl: string): { code: string; malformed: boolean } {
-    let path = rawUrl;
+    let path: string;
     try {
         if (/^https?:\/\//.test(rawUrl)) {
             const u = new URL(rawUrl);

@@ -181,5 +181,5 @@ export function broadcastSubscribe<T>(
                 handler(payload, delivery);
             }
         );
-    } catch {}
+    } catch { /* ignore */ }
 }

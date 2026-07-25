@@ -32,6 +32,6 @@ export default tseslint.config(
         }
     },
     {
-        ignores: ['dist/', 'archetype/', 'node_modules/', '*.config.*']
+        ignores: ['dist/', 'archetype/', 'node_modules/']
     }
 );

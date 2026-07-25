@@ -56,7 +56,7 @@ export function removePendingJournal(key: string | null): void {
     if (!key) return;
     try {
         localStorage.removeItem(key);
-    } catch {}
+    } catch { /* ignore */ }
 }
 
 export function readPendingJournals(): { key: string; entry: PendingServerSync }[] {

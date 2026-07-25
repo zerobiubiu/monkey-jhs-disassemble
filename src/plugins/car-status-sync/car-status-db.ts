@@ -200,6 +200,7 @@ export function normalizeJavdbUrlPath(value: unknown): string {
             if (!candidate.pathname.startsWith('/v/')) throw new Error('车辆短码路径无效');
         }
     } catch (error) {
+        // eslint-disable-next-line preserve-caught-error -- ES2020 target 不支持 Error cause
         throw new Error(`车辆记录链接无效：${error instanceof Error ? error.message : String(error)}`);
     }
     if (candidate.protocol !== 'https:' || candidate.hostname !== JAVDB_HOSTNAME) {
@@ -350,6 +351,7 @@ export async function withSyncRevision<T>(
             }
             if (recoveryErrors.length > 0) {
                 const applyMessage = applyError instanceof Error ? applyError.message : String(applyError);
+                // eslint-disable-next-line preserve-caught-error -- ES2020 target 不支持 Error cause
                 throw new Error(`同步提交失败（${applyMessage}）；${recoveryErrors.join('；')}`);
             }
             throw applyError;
@@ -575,6 +577,7 @@ export async function replaceLocalCars(
         } catch (rollbackError) {
             const replaceMessage = replaceError instanceof Error ? replaceError.message : String(replaceError);
             const rollbackMessage = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+            // eslint-disable-next-line preserve-caught-error -- ES2020 target 不支持 Error cause
             throw new Error(
                 `状态快照对账失败且回滚失败（对账错误：${replaceMessage}；回滚错误：${rollbackMessage}）`
             );
@@ -627,6 +630,7 @@ export async function importLocalDB(
             }
             if (recoveryErrors.length > 0) {
                 const importMessage = importError instanceof Error ? importError.message : String(importError);
+                // eslint-disable-next-line preserve-caught-error -- ES2020 target 不支持 Error cause
                 throw new Error(`导入失败（${importMessage}）；${recoveryErrors.join('；')}`);
             }
             throw importError;

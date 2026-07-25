@@ -226,7 +226,7 @@ export async function withState<T>(
     } catch (error) {
         try {
             transaction.abort();
-        } catch {}
+        } catch { /* ignore */ }
         await done.catch(() => {});
         throw error;
     } finally {
