@@ -99,8 +99,8 @@ export class StorageManager {
     readonly highlighted_tags_key = 'highlighted_tags';
 
     /** localforage 实例（可通过构造函数注入测试替身） */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- localforage is untyped global, 40+ usage sites
     /** @internal */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- localforage 无类型声明
     readonly forage: any;
 
     /** 番号清单缓存（新版） @internal */

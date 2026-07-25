@@ -225,7 +225,7 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
 - **构建**：`bun run build` = `tsc -b && vite build`
 - **ESLint**：`bun run lint`（`eslint.config.js`，TypeScript recommended +
   `prefer-const`/`no-useless-escape` error 门禁，`no-explicit-any` warn，
-  基线 0 errors / 764 warnings）
+  基线 0 errors / 0 warnings）
 - **Stylelint**：`bun run lint:css`（`.stylelintrc.json`，CSS 一致性检查）
 
 ### 3.9 产品设计上下文 `PRODUCT.md`

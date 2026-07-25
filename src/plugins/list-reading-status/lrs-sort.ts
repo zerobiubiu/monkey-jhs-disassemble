@@ -38,7 +38,7 @@ export function ensureLiOrder(plugin: ListReadingStatusPlugin, li: Element): voi
 export function compareLi(plugin: ListReadingStatusPlugin, a: Element, b: Element): number {
     const ma = getListMeta(plugin, a);
     const mb = getListMeta(plugin, b);
-    let cmp = 0;
+    let cmp: number;
     switch (plugin.currentSort) {
         case 'rating-desc': cmp = mb.rating - ma.rating; break;
         case 'rating-asc': cmp = ma.rating - mb.rating; break;

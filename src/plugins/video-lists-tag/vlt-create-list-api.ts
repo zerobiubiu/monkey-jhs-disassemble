@@ -94,7 +94,7 @@ export async function createList(listName: string): Promise<CreateListResult> {
     console.log(`${LOG_PREFIX} ═══ 新增清单「${listName}」(video_id=${videoId}) ═══`);
 
     // ── 发送 ajax 请求 ──
-    let responseText = '';
+    let responseText: string;
     try {
         responseText = await new Promise<string>((resolve, reject) => {
             GM_xmlhttpRequest({
@@ -501,7 +501,7 @@ function finishCreateList(checkbox: HTMLInputElement, listName: string): void {
                 'a[data-action="list#cancelNewList"]'
             ) as HTMLAnchorElement | null;
             cancelLink?.click();
-        } catch {}
+        } catch { /* ignore */ }
     }
 
     restoreCreateListUi();

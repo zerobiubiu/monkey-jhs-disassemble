@@ -140,7 +140,7 @@ export function buildHistoryTableOptions(plugin: HistoryPlugin): Record<string, 
             formatter: (cell: any, _formatterParams: unknown, _onRendered: unknown) => {
                 const status = cell.getData().status;
                 let color = '';
-                let text = '';
+                let text: string;
                 switch (status) {
                     case 'filter':
                         color = BLOCK_COLOR;

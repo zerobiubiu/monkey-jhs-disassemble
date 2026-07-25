@@ -52,7 +52,7 @@ export function genericSort<T>(data: T[], sortConfigs: SortConfig<T>[], nullsFir
             }
             const coercedA = coerceDate(valA);
             const coercedB = coerceDate(valB);
-            let cmp = 0;
+            let cmp: number;
             const aIsNull = valA == null;
             const bIsNull = valB == null;
             if (aIsNull && bIsNull) {

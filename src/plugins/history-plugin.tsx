@@ -48,7 +48,7 @@ import {
 } from '../constants/status';
 
 import { jsxToString } from '../core/jsx-to-string';
-import { CarRecord } from '../core/storage-manager';
+import type { CarRecord } from '../core/storage-manager';
 
 import { BasePlugin } from './base-plugin';
 import { handleBatchAction } from './history/history-batch-ops';

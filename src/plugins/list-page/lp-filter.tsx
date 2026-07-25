@@ -94,7 +94,7 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
     const statusCarSets: Record<string, Set<string>> = carList.reduce(
         (acc: Record<string, Set<string>>, car) => {
             const status = car.status ?? '';
-            if (acc.hasOwnProperty(status)) {
+            if (Object.prototype.hasOwnProperty.call(acc, status)) {
                 acc[status].add(useLower ? car.carNum.toLowerCase() : car.carNum);
             }
             return acc;

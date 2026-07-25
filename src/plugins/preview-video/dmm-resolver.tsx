@@ -232,6 +232,7 @@ class DmmPreviewVideoResolver {
         try {
             ({ bitrates } = JSON.parse(argsMatch[1]));
         } catch (err) {
+            // eslint-disable-next-line preserve-caught-error -- ES2020 target 不支持 Error cause
             throw new Error(`解析播放器脚本 JSON 失败: ${(err as Error).message}`);
         }
         const videoMap: QualityVideoMap = {};

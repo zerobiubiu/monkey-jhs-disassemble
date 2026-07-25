@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- 第三方库（jQuery/layer/Tabulator/Viewer/localforage）无类型声明，any 是有意为之 */
 /**
  * 全局类型声明
  *
@@ -21,8 +22,7 @@ declare const Viewer: any;
 declare const md5: (s: string) => string;
 
 // JQuery 类型别名（@types/jquery 已被 shim 屏蔽，此处提供宽松类型供类型注解使用）
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- project-wide jQuery is intentionally untyped
-type JQuery<T = HTMLElement> = any;
+type JQuery<_T = HTMLElement> = any;
 
 // Window 接口扩展：第三方库全局挂载（由 src/core/libs.ts 运行时挂载）
 interface Window {
@@ -69,11 +69,17 @@ declare const GM_info: { script: { version: string; [key: string]: unknown }; [k
 declare const unsafeWindow: any;
 
 // 应用运行时全局（由 main.tsx 启动时挂载到 window）
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const show: typeof import('../core/toast').show;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const utils: import('../core/common-util').CommonUtil;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const storageManager: import('../core/storage-manager').StorageManager;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const clog: import('../core/logger').Logger;
 declare const loading: () => { close: () => void };
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const gmHttp: import('../core/gm-http').GmHttp;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- .d.ts 环境声明中 import() 类型注解是标准写法
 declare const pluginManager: import('../plugins/plugin-manager').PluginManager;
 declare const refresh: () => void;

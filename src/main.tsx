@@ -193,7 +193,7 @@ window.show = show;
     injectCss(viewerCssRaw);
     window.showImageViewer = function (src: string | Element, alt: string = '') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object from untyped $
-        let container: any = null;
+        let container: any;
         let isTemporary = false;
         if (typeof src == 'string' || src instanceof String) {
             container = $(

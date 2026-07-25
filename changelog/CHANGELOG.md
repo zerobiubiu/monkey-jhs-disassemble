@@ -9,6 +9,14 @@
 
 ---
 
+## v1.30.1
+
+**发布日期**：2026-07-25
+
+### 优化
+
+- **消除全部 ESLint 警告（764 → 0）**（doc/196）：第三方库 any 文件级 disable、死初始值、空 catch、preserve-caught-error、表达式语句、无用 try/catch、hasOwnProperty、import type 等 20 个文件纯 lint 修复，零业务逻辑变更。
+
 ## v1.30.0
 
 **发布日期**：2026-07-25

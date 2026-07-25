@@ -298,11 +298,13 @@ async function handleListRename(listId: string, newName: string): Promise<void> 
 export function removeDetailPageCheckbox(listId: string): void {
     const panelCb = document.querySelector(`.jhs-list-panel input[data-list-id="${listId}"]`);
     if (panelCb) {
-        panelCb.closest('p.control')?.remove() || panelCb.closest('label')?.remove();
+        const panelParent = panelCb.closest('p.control') ?? panelCb.closest('label');
+        panelParent?.remove();
     }
     const modalCb = document.querySelector(`#modal-save-list input[data-list-id="${listId}"]`);
     if (modalCb) {
-        modalCb.closest('p.control')?.remove() || modalCb.closest('label')?.remove();
+        const modalParent = modalCb.closest('p.control') ?? modalCb.closest('label');
+        modalParent?.remove();
     }
     refreshListPanel();
     console.log(`${LOG_PREFIX} 详情页已移除清单 ${listId} 的 checkbox`);

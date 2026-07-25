@@ -125,7 +125,7 @@ class ImagePreview {
             preview.style.width = `${width}px`;
             preview.style.height = `${height}px`;
             // 读取 offsetHeight 强制浏览器回流，确保后续 opacity 过渡生效
-            preview.offsetHeight;
+            void preview.offsetHeight;
             preview.classList.add('active');
             this.handleMouseMove(event);
         };

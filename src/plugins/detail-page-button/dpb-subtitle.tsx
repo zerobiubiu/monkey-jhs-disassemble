@@ -54,8 +54,8 @@ export async function searchXunLeiSubtitle(plugin: DetailPageButtonPlugin, carNu
                                         title: '操作',
                                         responsive: 0,
                                         headerSort: false,
-                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
                                         formatter: (
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Tabulator 无类型声明
                                             cell: any,
                                             _formatterParams: unknown,
                                             onRendered: (callback: () => void) => void

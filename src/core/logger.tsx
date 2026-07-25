@@ -123,7 +123,7 @@ export class Logger {
         }
         const initialized = this.tryInitialize();
         let resolvedType: string;
-        let resolvedExtra: unknown[] = [];
+        let resolvedExtra: unknown[];
         if (LOG_TYPE_STYLES[typeArg]) {
             resolvedType = typeArg;
             resolvedExtra = extraArgs;

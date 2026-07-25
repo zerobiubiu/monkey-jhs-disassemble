@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- layui-layer 无类型声明，shim 有意使用 any */
 /**
  * layui-layer type shim — prevents @types/layui-layer from being resolved.
  * @types/layui-layer carries `/// <reference types="jquery" />` which pulls

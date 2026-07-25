@@ -257,7 +257,7 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
             if (currentCarNum && payload.carNum === currentCarNum) {
                 self.showStatus(currentCarNum).then(() => {});
             }
-        } catch {}
+        } catch { /* ignore */ }
 
         // 2) 列表页/series 页：刷新匹配卡片的 status-tag
         self.refreshItemStatusTag(payload.carNum);

@@ -242,11 +242,7 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
     }
     const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
     for (const item of inputs) {
-        try {
-            saveSingleCar(item, list);
-        } catch (err) {
-            throw err;
-        }
+        saveSingleCar(item, list);
     }
     await sm.forage.setItem(sm.car_list_key, list);
     storageRevision.increment();

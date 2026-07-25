@@ -100,7 +100,7 @@ export class ActressInfoPlugin extends BasePlugin {
         try {
             if (rawCache) cache = JSON.parse(rawCache);
         } catch { /* 缓存损坏，回退空对象 */ }
-        let info: ActressWikiInfo | null | undefined = null;
+        let info: ActressWikiInfo | null | undefined;
         let html = '';
         for (const actressName of actressNames) {
             info = cache[actressName];

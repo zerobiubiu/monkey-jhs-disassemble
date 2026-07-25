@@ -141,7 +141,7 @@ export class GmHttp {
         }
         const timeout: number = await storageManager.getSetting('httpTimeout', 5000);
         const retryCount: number = await storageManager.getSetting('httpRetryCount', 3);
-        let fileSize: number = 0;
+        let fileSize: number;
         let mimeType: string | undefined;
         clog.log(`[${filename}] 正在获取文件大小...`);
         try {
