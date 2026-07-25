@@ -83,6 +83,17 @@ export async function probeSite(
             buttonEl.attr('href', searchUrl);
             const htmlContent = await gmHttp.get(searchUrl, undefined, siteConfig.headers, true);
             const $dom = utils.htmlTo$dom(String(htmlContent));
+
+            // 检测登录页：missav 等站点未登录时返回登录页而非搜索结果
+            const isLoginPage = $dom.find('form[action*="login"], form[action*="signin"], form[id*="login"], input[name*="password"], input[type="password"]').length > 0
+                || /\u767b\u5f55|\u767b\u9646|\u767b\u5165|sign\s*in|log\s*in/i.test($dom.text());
+            if (isLoginPage) {
+                buttonEl.attr('title', '该站点需登录后才能搜索');
+                buttonEl.css('backgroundColor', plugin.warnBackgroundColor);
+                clog.warn(`检测到登录页，跳过 ${siteConfig.id.replace('Btn', '')}`);
+                return;
+            }
+
             const detailHrefs: string[] = [];
             $dom.find(siteConfig.itemSelector).each((_index: number, element: HTMLElement) => {
                 const itemEl = $(element);
