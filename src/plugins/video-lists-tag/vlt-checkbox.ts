@@ -23,6 +23,7 @@ import {
     triggerJavdbWantAndSyncRatingBar
 } from './vlt-helpers';
 import type { ListInfo, MovieInfo } from './vlt-helpers';
+import { enqueueServerCheckboxMutation } from './vlt-server';
 
 /** association → toast 映射。 */
 const ASSOC_TOAST: Record<
@@ -205,7 +206,6 @@ export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
         }
 
         // DOM 仍不可用：仍先请求 JavDB，确认成功后才删除本地关联
-        const { enqueueServerCheckboxMutation } = await import('./vlt-server');
         for (const item of pending) {
             const movieInfo = getMovieInfo(item.videoId);
             if (!movieInfo) continue;
