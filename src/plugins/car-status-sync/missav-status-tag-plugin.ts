@@ -27,11 +27,10 @@ import {
     MISSAV_SYNC_META_KEY,
     type CarStatusDeltaPayload,
     type CarStatusSyncKind,
-    type CarStatusPayload,
-    type StatusColumn
+    type CarStatusPayload
 } from './car-status-config';
 import { getPayloadRevision, isDeltaPayload, readDeltaJournal, sortDeltaJournal } from './car-status-journal';
-import { gunzipFromBase64, columnarToFlat, validateColumnarSnapshot } from './car-status-columnar';
+import { gunzipFromBase64, validateColumnarSnapshot } from './car-status-columnar';
 import {
     openLocalDB,
     upsertLocalCars,
@@ -44,20 +43,15 @@ import {
     restoreLocalCarsSnapshot,
     withSyncRevision
 } from './car-status-db';
-import { featureFlags } from '../../core/feature-flags';
 import { normalizeCarNum, renderBadges, isVideoPage } from './missav-renderer';
 import { createLogger } from './car-status-logger';
-import { deltaRoute } from './car-status-delta-route';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
 
-/** 全量消费锁（增量不锁，因为处理极快）。 */
-let isFullConsuming = false;
-
 export class MissavStatusTagPlugin extends BasePlugin {
-    /** 串行消费全量和增量，避免两类 IDB 写入交错（跨站同步协议升级，feature flag 门控）。 */
+    /** 串行消费全量和增量，避免两类 IDB 写入交错。 */
     private consumeQueue: Promise<void> = Promise.resolve();
-    /** 当前页面实例已应用的最高修订号（跨站同步协议升级）。 */
+    /** 当前页面实例已应用的最高修订号。 */
     private lastAppliedRevision = -1;
     private lastAppliedKind: CarStatusSyncKind | null = null;
 
@@ -91,7 +85,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
                         this.lastAppliedRevision = -1;
                         this.lastAppliedKind = 'delta';
                         show.ok('水位线已清除，开始重新消费...');
-                        await this.consumeFullFlagged(undefined);
+                        await this.consumeFull(undefined);
                         await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
                         await this.processAll();
                         show.ok('强制重新同步完成');
@@ -142,7 +136,6 @@ export class MissavStatusTagPlugin extends BasePlugin {
                     const info = {
                         site: 'missav',
                         version: GM_info.script.version,
-                        flag: featureFlags.crossSiteSyncProtocol,
                         gmRevision: GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0),
                         journal: {
                             length: journal.length,
@@ -182,13 +175,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 GM_KEY_CAR_STATUS_DELTA,
                 (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
-                        // 按载荷形状路由（doc/189）：数组无条件走 journal 消费器，修复 javdb=ON/
-                        // missav=OFF 时数组增量被旧 consumeDelta 静默丢弃；单对象维持本地 flag 门控。
-                        if (deltaRoute(newValue, featureFlags.crossSiteSyncProtocol) === 'journal') {
-                            void this.consumeDeltaJournal(newValue);
-                        } else {
-                            this.consumeDelta(newValue as CarStatusDeltaPayload);
-                        }
+                        void this.consumeDeltaJournal(newValue);
                     }
                 }
             );
@@ -204,11 +191,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
                     if (remote && newValue) {
                         logInfo('收到 javdb 端全量数据通知');
-                        if (featureFlags.crossSiteSyncProtocol) {
-                            void this.consumeFullFlagged(newValue as CarStatusPayload);
-                        } else {
-                            this.consumeFull(newValue as CarStatusPayload);
-                        }
+                        void this.consumeFull(newValue as CarStatusPayload);
                     }
                 }
             );
@@ -217,19 +200,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
         }
 
         // 4) 页面加载时读取当前 GM 存储全量数据初始化
-        if (featureFlags.crossSiteSyncProtocol) {
-            // 跨站同步协议升级（feature flag 门控）：flag 开走修订号门控消费，并在初始化后补消费 journal。
-            await this.consumeFullFlagged(undefined);
-            await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
-        } else {
-            await this.consumeFull(undefined);
-            // flag 关兜底（doc/189）：若 javdb=ON 只发了数组增量，此处按形状补消费一次，
-            // 否则初始化丢增量（监听器仅在后续变更时触发）。
-            const initDelta: unknown = GM_getValue(GM_KEY_CAR_STATUS_DELTA);
-            if (deltaRoute(initDelta, false) === 'journal') {
-                await this.consumeDeltaJournal(initDelta);
-            }
-        }
+        await this.consumeFull(undefined);
+        await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
 
         // 4.5) 消费验证：对比 GM 存储最新修订号与 IDB 水位线
         try {
@@ -245,91 +217,6 @@ export class MissavStatusTagPlugin extends BasePlugin {
 
         // 5) 启动 MutationObserver 监听动态加载的缩略图
         this.observeAndProcess();
-    }
-
-    /**
-     * 消费增量变更：直接 upsert/delete 本地 IndexedDB + 刷新标签。
-     * 不压缩（几条记录），不锁（处理极快），不冷却（实时）。
-     */
-    async consumeDelta(delta: CarStatusDeltaPayload): Promise<void> {
-        if (featureFlags.crossSiteSyncProtocol) {
-            // 跨站同步协议升级（feature flag 门控）：串行队列 + 修订号门控 + 条件回滚。
-            await this.applyDeltaFlagged(delta);
-            return;
-        }
-        try {
-            if (delta.action === 'upsert' && delta.items) {
-                // 将增量项转为 upsertLocalCars 需要的格式
-                const records = delta.items.map((item) => ({
-                    carNum: item.carNum,
-                    status: item.status || '',
-                    url_path: item.url_path || ''
-                }));
-                await upsertLocalCars(records);
-                logInfo('增量更新', `upsert ${records.length} 条`);
-            } else if (delta.action === 'delete' && delta.items) {
-                const carNums = delta.items.map((item) => item.carNum);
-                await deleteLocalCars(carNums);
-                logInfo('增量更新', `delete ${carNums.length} 条`);
-            }
-            // 刷新页面标签
-            await this.processAll();
-        } catch (err: unknown) {
-            logErr('增量消费失败', err instanceof Error ? err.message : String(err));
-        }
-    }
-
-    /**
-     * 消费全量数据：解压 → 全量 upsert → 刷新标签。
-     * @param payload 直接传入的载荷；undefined 时从 GM_getValue 读取
-     */
-    async consumeFull(payload?: CarStatusPayload): Promise<void> {
-        if (featureFlags.crossSiteSyncProtocol) {
-            await this.consumeFullFlagged(payload);
-            return;
-        }
-        if (isFullConsuming) {
-            logWarn('全量消费任务在进行中');
-            return;
-        }
-        isFullConsuming = true;
-
-        try {
-            // 读取 GM 存储数据
-            const data: CarStatusPayload | undefined =
-                payload ?? (GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined);
-            if (!data || !data.data) {
-                if (payload !== undefined) logWarn('GM 存储中无全量数据');
-                return;
-            }
-
-            logInfo('全量消费开始', `count=${data.count} hwm=${data.hwm}`);
-
-            // 1) 解压 base64 + gzip
-            const store = await gunzipFromBase64<Record<string, StatusColumn>>(data.data);
-            if (!store) {
-                logErr('解压失败（DecompressionStream 不可用？数据损坏？）');
-                return;
-            }
-
-            // 2) 转行式 → 写入本地 IndexedDB
-            const records = columnarToFlat(store);
-            if (records.length === 0) {
-                logWarn('解压后无有效记录');
-                return;
-            }
-
-            logInfo('解压完成', `${records.length} 条记录`);
-            const written = await upsertLocalCars(records);
-            logOk('写入本地 IDB', `${written} 条`);
-
-            // 3) 刷新页面标签
-            await this.processAll();
-        } catch (err: unknown) {
-            logErr('全量消费失败', err instanceof Error ? err.message : String(err));
-        } finally {
-            isFullConsuming = false;
-        }
     }
 
     /**
@@ -506,21 +393,21 @@ export class MissavStatusTagPlugin extends BasePlugin {
             attributeFilter: ['alt']
         });
     }
-    /** 消费新数组日志或旧版本单对象，并按修订号排序（跨站同步协议升级，feature flag 门控）。 */
+    /** 消费增量日志（兼容数组 journal 与单对象载荷），按修订号排序后串行应用。 */
     async consumeDeltaJournal(value: unknown): Promise<void> {
         const journal = sortDeltaJournal(readDeltaJournal(value));
         for (const delta of journal) {
-            await this.enqueueConsume(() => this.applyDeltaFlagged(delta));
+            await this.enqueueConsume(() => this.applyDelta(delta));
         }
     }
 
-    /** 协议升级版全量消费入口（featureFlags.crossSiteSyncProtocol 门控，默认关）。 */
-    async consumeFullFlagged(payload?: CarStatusPayload): Promise<void> {
-        return this.enqueueConsume(() => this.applyFullFlagged(payload));
+    /** 全量消费入口：串行队列 + 修订号门控 + 条件回滚。 */
+    async consumeFull(payload?: CarStatusPayload): Promise<void> {
+        return this.enqueueConsume(() => this.applyFull(payload));
     }
 
-    /** 协议升级版增量应用：修订号门控 + 条件回滚（feature flag 门控）。 */
-    private async applyDeltaFlagged(delta: CarStatusDeltaPayload): Promise<void> {
+    /** 增量应用：修订号门控 + 条件回滚。 */
+    private async applyDelta(delta: CarStatusDeltaPayload): Promise<void> {
         try {
             const revision = getPayloadRevision(delta);
             if (revision < 0 || !isDeltaPayload(delta)) {
@@ -565,8 +452,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
         }
     }
 
-    /** 协议升级版全量应用：严格校验 + 批量对账 + 修订号门控（feature flag 门控）。 */
-    private async applyFullFlagged(payload?: CarStatusPayload): Promise<void> {
+    /** 全量应用：严格校验 + 批量对账 + 修订号门控。 */
+    private async applyFull(payload?: CarStatusPayload): Promise<void> {
         try {
             const data: CarStatusPayload | undefined =
                 payload ?? (GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined);

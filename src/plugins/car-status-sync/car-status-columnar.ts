@@ -248,9 +248,7 @@ export function emptyStore(): ColumnarStore {
 }
 
 /* ===========================================================================
- * 跨站车号状态同步协议升级（featureFlags.crossSiteSyncProtocol 门控，默认关）。
- * 严格列存校验/导入解析/安全 URL 判定，均为新增导出，仅在 flag 开启时被调用；
- * flag 关时既有 normalizeUrl/toColumnar/columnarToFlat 等路径逐字节未改。
+ * 严格列存校验/导入解析/安全 URL 判定。
  * ========================================================================= */
 
 /** 控制字符判定（由字符码构造，避免正则字面量触发 no-control-regex；协议升级）。 */

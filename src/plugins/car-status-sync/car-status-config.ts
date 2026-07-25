@@ -34,17 +34,16 @@ export const GM_KEY_CAR_STATUS_DATA = 'jhs_car_status_data';
 /** GM 存储键：跨域传递的车辆状态增量变更（单条/批量，不压缩）。 */
 export const GM_KEY_CAR_STATUS_DELTA = 'jhs_car_status_delta';
 
-/** GM 存储键：JavDB 端跨标签页共享的修订号分配器（跨站同步协议升级，feature flag 门控）。 */
+/** GM 存储键：JavDB 端跨标签页共享的修订号分配器。 */
 export const GM_KEY_CAR_STATUS_REVISION = 'jhs_car_status_revision';
 
-/** 增量日志记录项超过此数量时按番号压缩（跨站同步协议升级，feature flag 门控）。 */
+/** 增量日志记录项超过此数量时按番号压缩。 */
 export const CAR_STATUS_DELTA_COMPACT_THRESHOLD = 256;
 
-/** 单次增量超过此数量时改发 gzip 全量快照（跨站同步协议升级，feature flag 门控）。 */
+/** 单次增量超过此数量时改发 gzip 全量快照。 */
 export const CAR_STATUS_DELTA_MAX_ITEMS = 500;
 
-/** GM 存储键：上次全量同步完成的时间戳（毫秒）。 */
-export const GM_KEY_LAST_SYNC_TS = 'jhs_car_status_last_sync_ts';
+
 
 /**
  * 全量载荷结构。
@@ -59,11 +58,11 @@ export interface CarStatusPayload {
     count: number;
     /** 数据生成时间戳（毫秒）。 */
     ts: number;
-    /** 单调修订号（跨站同步协议升级，feature flag 门控）；旧载荷缺失时消费端回退到 ts。 */
+    /** 单调修订号；旧载荷缺失时消费端回退到 ts。 */
     revision?: number;
-    /** 全量包语义（跨站同步协议升级）；缺失时按旧协议兼容为 snapshot。 */
+    /** 全量包语义；缺失时按旧协议兼容为 snapshot。 */
     mode?: 'snapshot';
-    /** 新协议要求来源清单已完成初始化（跨站同步协议升级）；旧载荷缺失时仍兼容。 */
+    /** 来源清单已完成初始化标记；旧载荷缺失时仍兼容。 */
     ready?: boolean;
 }
 
@@ -82,11 +81,11 @@ export interface CarStatusDeltaPayload {
     }>;
     /** 变更时间戳（毫秒） */
     ts: number;
-    /** 单调修订号（跨站同步协议升级，feature flag 门控）；旧载荷缺失时消费端回退到 ts。 */
+    /** 单调修订号；旧载荷缺失时消费端回退到 ts。 */
     revision?: number;
 }
 
-/** GM 存储中的增量日志形态（跨站同步协议升级，feature flag 门控）。 */
+/** GM 存储中的增量日志形态。 */
 export type CarStatusDeltaJournal = CarStatusDeltaPayload[];
 
 /**
@@ -111,19 +110,19 @@ export const VIDEO_ROUTE_PREFIX = '/v/';
 /** missav 端本地 IndexedDB 配置（来源：missavStatusTag.user.js L38-40）。 */
 export const MISSAV_DB_NAME = 'MissAV-CarStatus';
 export const MISSAV_DB_STORE = 'cars';
-/** 同步元数据仓库（跨站同步协议升级，feature flag 门控）：跨标签页防止旧全量覆盖新增量。 */
+/** 同步元数据仓库：跨标签页防止旧全量覆盖新增量。 */
 export const MISSAV_DB_META_STORE = 'sync_meta';
-/** MissAV 端 IndexedDB 版本（v2 起含 sync_meta 仓库；openLocalDB 统一打开此版本，flag 关时 sync_meta 为空无副作用）。 */
+/** MissAV 端 IndexedDB 版本（v2 起含 sync_meta 仓库）。 */
 export const MISSAV_DB_VERSION = 2;
-/** sync_meta 中记录已应用修订号的键（跨站同步协议升级）。 */
+/** sync_meta 中记录已应用修订号的键。 */
 export const MISSAV_SYNC_META_KEY = 'car_status_revision';
-/** MissAV 端跨标签页写入互斥的 Web Lock 名称（跨站同步协议升级）。 */
+/** MissAV 端跨标签页写入互斥的 Web Lock 名称。 */
 export const MISSAV_SYNC_LOCK_NAME = 'jhs-missav-car-status-sync';
 
-/** 同步类型（跨站同步协议升级，feature flag 门控）。 */
+/** 同步类型。 */
 export type CarStatusSyncKind = 'full' | 'delta';
 
-/** 已应用的同步修订号元数据（跨站同步协议升级，feature flag 门控）。 */
+/** 已应用的同步修订号元数据。 */
 export interface CarStatusSyncMeta {
     key: string;
     revision: number;

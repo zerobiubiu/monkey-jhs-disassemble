@@ -19,7 +19,7 @@ import {
     type CarStatusSyncKind,
     type CarStatusSyncMeta
 } from './car-status-config';
-import { featureFlags } from '../../core/feature-flags';
+import { buildJavdbUrl } from './car-status-columnar';
 
 /**
  * 打开本地 IndexedDB（不存在则创建，版本 MISSAV_DB_VERSION）。
@@ -46,56 +46,7 @@ export function openLocalDB(): Promise<IDBDatabase> {
     });
 }
 
-/**
- * 将同步到的记录分批写入本地 IndexedDB（每批 3000 条，避免单事务过大被浏览器中止）。
- * 写入时自动将 carNum 转为大写，确保与查询侧 normalizeCarNum 的输出一致。
- *
- * 来源：missavStatusTag.user.js L182-230 upsertLocalCars。
- *
- * @param records 记录数组 [{carNum, status, url_path}]
- * @returns 实际写入条数
- */
-export async function upsertLocalCars(
-    records: Array<{ carNum: string; status: string; url_path: string }>
-): Promise<number> {
-    const BATCH_SIZE = 3000;
-    let totalWritten = 0;
-    const db = await openLocalDB();
 
-    try {
-        for (let i = 0; i < records.length; i += BATCH_SIZE) {
-            const batch = records.slice(i, i + BATCH_SIZE);
-            totalWritten += await new Promise<number>((resolveBatch, rejectBatch) => {
-                const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
-                const store = tx.objectStore(MISSAV_DB_STORE);
-                let count = 0;
-
-                for (const rec of batch) {
-                    if (!rec.carNum || !rec.status || rec.url_path === undefined) continue;
-                    const req = store.put({
-                        carNum: rec.carNum.toUpperCase(),
-                        status: rec.status,
-                        url: buildJavdbUrlLocal(rec.url_path),
-                        updateDate: ''
-                    });
-                    req.onsuccess = () => {
-                        count++;
-                    };
-                    req.onerror = () => {
-                        clog.warn('[MissAV] 写入失败', rec.carNum, req.error);
-                    };
-                }
-
-                tx.oncomplete = () => resolveBatch(count);
-                tx.onerror = () => rejectBatch(tx.error || new Error('事务失败'));
-                tx.onabort = () => rejectBatch(tx.error || new Error('事务中止'));
-            });
-        }
-        return totalWritten;
-    } finally {
-        db.close();
-    }
-}
 
 /**
  * 从本地 IndexedDB 批量查询番号对应的记录。
@@ -199,87 +150,17 @@ export async function exportLocalDB(): Promise<
     }
 }
 
-/**
- * 清空并导入数据到本地 IndexedDB。
- * @param records 行式记录数组
- * @returns 写入条数
- */
-export async function importLocalDB(
-    records: Array<{ carNum: string; status: string; url: string }>
-): Promise<number> {
-    if (featureFlags.crossSiteSyncProtocol) {
-        // 跨站同步协议升级（feature flag 门控）：严格校验 + 批量对账（先写后删、失败回滚），替换 clear()。
-        return importLocalDBFlagged(records);
-    }
-    const db = await openLocalDB();
-    try {
-        // 先清空
-        await new Promise<void>((resolve, reject) => {
-            const tx = db.transaction(MISSAV_DB_STORE, 'readwrite');
-            tx.objectStore(MISSAV_DB_STORE).clear();
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-        });
-    } finally {
-        db.close();
-    }
-    // 再批量写入（复用 upsertLocalCars，需把 url 转为 url_path 格式——但这里直接存 url）
-    let written = 0;
-    const BATCH_SIZE = 3000;
-    const db2 = await openLocalDB();
-    try {
-        for (let i = 0; i < records.length; i += BATCH_SIZE) {
-            const batch = records.slice(i, i + BATCH_SIZE);
-            written += await new Promise<number>((resolveBatch, rejectBatch) => {
-                const tx = db2.transaction(MISSAV_DB_STORE, 'readwrite');
-                const store = tx.objectStore(MISSAV_DB_STORE);
-                let count = 0;
-                for (const rec of batch) {
-                    const req = store.put({
-                        carNum: rec.carNum.toUpperCase(),
-                        status: rec.status,
-                        url: rec.url,
-                        updateDate: ''
-                    });
-                    req.onsuccess = () => count++;
-                }
-                tx.oncomplete = () => resolveBatch(count);
-                tx.onerror = () => rejectBatch(tx.error);
-            });
-        }
-    } finally {
-        db2.close();
-    }
-    return written;
-}
 
-/**
- * 将服务端返回的 url_path 还原为完整 javdb URL（本地辅助函数）。
- * 来源：missavStatusTag.user.js L140-146 buildJavdbUrl。
- */
-function buildJavdbUrlLocal(urlPath: string): string {
-    if (!urlPath) return 'https://javdb.com';
-    if (urlPath.startsWith('/')) {
-        return 'https://javdb.com' + urlPath;
-    }
-    return 'https://javdb.com/v/' + urlPath;
-}
 
-/* ===========================================================================
- * 跨站车号状态同步协议升级（featureFlags.crossSiteSyncProtocol 门控，默认关）。
- *
- * 以下全部为新增函数，仅在 flag 开启时被调用；flag 关时运行路径与改动前逐字节一致
- * （既有函数体未改，importLocalDB 在入口处 if/else 分支，else 走原 clear() 逻辑）。
- * 移植自 codex-dev P3：Web Lock 跨标签互斥 + 条件回滚 + IDB v2 sync_meta + 批量对账。
- * ========================================================================= */
 
-/** 控制字符判定（由字符码构造，避免正则字面量触发 no-control-regex；协议升级）。 */
+
+/** 控制字符判定（由字符码构造，避免正则字面量触发 no-control-regex）。 */
 const CONTROL_CHAR_REGEX = new RegExp(`[\\u0000-\\u001f\\u007f]`);
 
 const JAVDB_BASE_URL = 'https://javdb.com';
 const JAVDB_HOSTNAME = 'javdb.com';
 
-/** 本地车辆状态记录（协议升级内部用）。 */
+/** 本地车辆状态记录。 */
 export interface LocalCarStatusRecord {
     carNum: string;
     status: string;
@@ -301,7 +182,7 @@ interface NavigatorWithOptionalLocks {
 }
 
 /**
- * 将内部/导入的 URL 统一为安全的 url_path（协议升级）。
+ * 将内部/导入的 URL 统一为安全的 url_path。
  * 拒绝 javascript/data/外部主机等危险或无法回放的值，避免静默回退到首页造成数据损坏。
  */
 export function normalizeJavdbUrlPath(value: unknown): string {
@@ -336,7 +217,7 @@ export function normalizeJavdbUrlPath(value: unknown): string {
     return `${suffix}${candidate.search}${candidate.hash}`;
 }
 
-/** 校验并归一化单条记录（协议升级）。 */
+/** 校验并归一化单条记录。 */
 export function normalizeLocalRecord(record: LocalCarStatusRecord): LocalCarStatusRecord {
     if (record === null || typeof record !== 'object') throw new Error('车辆记录格式无效');
     if (typeof record.carNum !== 'string' || record.carNum.trim() === '') {
@@ -355,7 +236,7 @@ export function normalizeLocalRecord(record: LocalCarStatusRecord): LocalCarStat
     };
 }
 
-/** 在支持 Web Locks 的浏览器中把 MissAV 多标签页写入串行化（协议升级）。 */
+/** 在支持 Web Locks 的浏览器中把 MissAV 多标签页写入串行化。 */
 export async function withLocalSyncLock<T>(task: () => Promise<T>): Promise<T> {
     const browserNavigator =
         typeof navigator === 'undefined' ? undefined : (navigator as NavigatorWithOptionalLocks);
@@ -363,7 +244,7 @@ export async function withLocalSyncLock<T>(task: () => Promise<T>): Promise<T> {
     return browserNavigator.locks.request(MISSAV_SYNC_LOCK_NAME, { mode: 'exclusive' }, task);
 }
 
-/** 修订号门控：旧/重复载荷不可应用；同修订号下增量优先于全量（协议升级）。 */
+/** 修订号门控：旧/重复载荷不可应用；同修订号下增量优先于全量。 */
 function canApplyRevision(
     incomingRevision: number,
     incomingKind: CarStatusSyncKind,
@@ -436,7 +317,7 @@ async function clearAppliedRevision(): Promise<void> {
 }
 
 /**
- * 在跨标签页锁内检查并提交修订号（协议升级）。
+ * 在跨标签页锁内检查并提交修订号。
  * task 失败时不推进水位线，后续收到同一载荷仍可重试。
  */
 export async function withSyncRevision<T>(
@@ -486,8 +367,14 @@ export async function withSyncRevision<T>(
     });
 }
 
-/** 协议升级版写入：严格归一化后分批 put（不调用 clear()）。 */
-async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<number> {
+/**
+ * 将同步到的记录严格归一化后分批写入本地 IndexedDB（每批 3000 条，避免单事务过大被浏览器中止）。
+ * 写入前通过 normalizeLocalRecord 校验番号、状态、链接合法性，carNum 自动转大写。
+ *
+ * @param records 记录数组 [{carNum, status, url_path}]
+ * @returns 实际写入条数
+ */
+export async function upsertLocalCars(records: LocalCarStatusRecord[]): Promise<number> {
     const BATCH_SIZE = 3000;
     const normalizedRecords = records.map(normalizeLocalRecord);
     let totalWritten = 0;
@@ -503,7 +390,7 @@ async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<
                     const req = store.put({
                         carNum: rec.carNum,
                         status: rec.status,
-                        url: buildJavdbUrlLocal(rec.url_path),
+                        url: buildJavdbUrl(rec.url_path),
                         updateDate: ''
                     });
                     req.onsuccess = () => count++;
@@ -520,7 +407,7 @@ async function upsertLocalCarsFlagged(records: LocalCarStatusRecord[]): Promise<
     }
 }
 
-/** 读取 cars 仓库原始快照，供对账失败时回滚（协议升级）。 */
+/** 读取 cars 仓库原始快照，供对账失败时回滚。 */
 export async function readLocalCarsSnapshot(): Promise<StoredCarStatusRecord[]> {
     const db = await openLocalDB();
     try {
@@ -545,7 +432,7 @@ export async function readLocalCarsSnapshot(): Promise<StoredCarStatusRecord[]> 
     }
 }
 
-/** 单事务恢复 cars 仓库：删除快照之外的键并逐条 put 回原记录，不调用 clear()（协议升级）。 */
+/** 单事务恢复 cars 仓库：删除快照之外的键并逐条 put 回原记录，不调用 clear()。 */
 export async function restoreLocalCarsSnapshot(snapshot: StoredCarStatusRecord[]): Promise<void> {
     const snapshotKeys = new Set(snapshot.map((record) => String(record.carNum)));
     const db = await openLocalDB();
@@ -573,13 +460,13 @@ export async function restoreLocalCarsSnapshot(snapshot: StoredCarStatusRecord[]
     }
 }
 
-/** 增量回滚快照（协议升级）。 */
+/** 增量回滚快照。 */
 export interface LocalCarsSelectionSnapshot {
     carNums: string[];
     records: StoredCarStatusRecord[];
 }
 
-/** 只读取增量会触及的番号，避免每条增量都复制整库（协议升级）。 */
+/** 只读取增量会触及的番号，避免每条增量都复制整库。 */
 export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCarsSelectionSnapshot> {
     const normalizedCarNums = Array.from(
         new Set(carNums.map((carNum) => carNum.trim().toUpperCase()).filter(Boolean))
@@ -618,7 +505,7 @@ export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCa
     }
 }
 
-/** 原子恢复一次增量触及的番号，其它番号保持不变（协议升级）。 */
+/** 原子恢复一次增量触及的番号，其它番号保持不变。 */
 export async function restoreLocalCarsSelection(snapshot: LocalCarsSelectionSnapshot): Promise<void> {
     if (snapshot.carNums.length === 0) return;
     const db = await openLocalDB();
@@ -638,7 +525,7 @@ export async function restoreLocalCarsSelection(snapshot: LocalCarsSelectionSnap
 }
 
 /**
- * 用权威全量快照对账本地数据库（协议升级，替换 clear()）。
+ * 用权威全量快照对账本地数据库。
  * 先完成全部 upsert，校验写入条数后再删除快照之外的旧记录；写入失败时回滚到写前快照。
  * 空数组是合法快照，会清除全部旧记录。
  */
@@ -657,7 +544,7 @@ export async function replaceLocalCars(
     const validRecords = Array.from(recordsByCarNum.values());
     const rollbackSnapshot = previousSnapshot ?? (await readLocalCarsSnapshot());
     try {
-        const written = await upsertLocalCarsFlagged(validRecords);
+        const written = await upsertLocalCars(validRecords);
         if (written !== validRecords.length) {
             throw new Error(
                 `快照写入条数不一致：声明 ${validRecords.length}，实际 ${written}，已停止删除旧数据`
@@ -707,10 +594,12 @@ export async function replaceLocalCars(
 }
 
 /**
- * 协议升级版导入：严格校验 + 批量对账（替换 clear()），失败时回滚数据与修订号。
- * 仅在 featureFlags.crossSiteSyncProtocol 开启时由 importLocalDB 调用。
+ * 清空并导入数据到本地 IndexedDB。
+ * 严格校验 + 批量对账（先写后删、失败回滚），不使用 clear()。
+ * @param records 行式记录数组
+ * @returns 写入条数
  */
-async function importLocalDBFlagged(
+export async function importLocalDB(
     records: Array<{ carNum: string; status: string; url: string }>
 ): Promise<number> {
     return withLocalSyncLock(async () => {

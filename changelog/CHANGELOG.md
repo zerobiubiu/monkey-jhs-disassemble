@@ -9,6 +9,14 @@
 
 ---
 
+## v1.29.0
+
+**发布日期**：2026-07-25
+
+### 重构
+
+- **统一跨站同步协议，删除双路径**（doc/194）：删除 `crossSiteSyncProtocol` feature flag 及全部 10 处分支，P3 协议（修订号 journal + 门控 + 对账 + 回滚）成为唯一实现；删除 6 对重复函数的旧版本（`syncFullCarStatus`/`pushDelta`/`consumeFull`/`consumeDelta`/`upsertLocalCars`/`importLocalDB`）并去掉 Flagged 后缀；删除 `car-status-delta-route.ts` 补丁模块（43 行）及其测试；清理死常量 `GM_KEY_LAST_SYNC_TS`、重复函数 `buildJavdbUrlLocal`；净减 ~488 行。
+
 ## v1.28.34
 
 **发布日期**：2026-07-25
