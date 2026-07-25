@@ -1,31 +1,19 @@
 /**
- * 锁队列 —— Web Locks API + 同页 Promise 队列，串行化并发写入。
+ * 锁队列 —— 按 association key 串行化并发写入。
  *
- * 提取自 vlt-sync.tsx：
- * - withAssociationLock：Web Locks 排他锁包装（navigator.locks.request）
- * - enqueueAssociationTask：同页 Promise 队列（按 association key 串行，
- *   防止同一影片-清单对的并发写入竞争）
+ * 底层使用 src/core/sync 共享基础设施（doc/195）：
+ * - withExclusiveLock：Web Locks 排他锁（跨标签页互斥）
+ * - KeyedQueue：同页 Promise 队列（同 key 串行，不同 key 并发）
+ *
+ * 锁名格式：javdb-power-tools:vlt:{associationKey}
  */
 
-/** 按 association key 串行化的 Promise 队列。 */
-const checkboxMutationQueues = new Map<string, Promise<void>>();
+import { KeyedQueue, withExclusiveLock } from '../../core/sync';
 
-async function withAssociationLock(key: string, task: () => Promise<void>): Promise<void> {
-    if (!navigator.locks) {
-        await task();
-        return;
-    }
-    await navigator.locks.request(`javdb-power-tools:vlt:${key}`, { mode: 'exclusive' }, task);
-}
+const queue = new KeyedQueue();
+const LOCK_PREFIX = 'javdb-power-tools:vlt:';
 
+/** 将任务加入指定 association key 的串行队列（Web Lock 跨标签页互斥）。 */
 export function enqueueAssociationTask(key: string, task: () => Promise<void>): Promise<void> {
-    const previous = checkboxMutationQueues.get(key) || Promise.resolve();
-    const current = previous
-        .catch(() => {})
-        .then(() => withAssociationLock(key, task));
-    checkboxMutationQueues.set(key, current);
-    current.finally(() => {
-        if (checkboxMutationQueues.get(key) === current) checkboxMutationQueues.delete(key);
-    });
-    return current;
+    return queue.enqueue(key, () => withExclusiveLock(LOCK_PREFIX + key, task));
 }

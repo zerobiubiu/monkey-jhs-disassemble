@@ -322,6 +322,11 @@ export class DetailPageButtonPlugin extends BasePlugin {
             actionType: FAVORITE_ACTION,
             publishTime: pageInfo.publishTime ?? undefined
         });
+        // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+        const clr = this.getBean('CarListReaderPlugin');
+        if (clr) {
+            await clr.waitForPendingPush();
+        }
         this.showStatus(pageInfo.carNum!).then();
         refresh();
         utils.closePage();
@@ -339,6 +344,11 @@ export class DetailPageButtonPlugin extends BasePlugin {
             actionType: HAS_WATCH_ACTION,
             publishTime: pageInfo.publishTime ?? undefined
         });
+        // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+        const clr = this.getBean('CarListReaderPlugin');
+        if (clr) {
+            await clr.waitForPendingPush();
+        }
         this.showStatus(pageInfo.carNum!).then();
         refresh();
         utils.closePage();
@@ -361,6 +371,11 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 actionType: FILTER_ACTION,
                 publishTime: pageInfo.publishTime ?? undefined
             });
+            // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+            const clr = this.getBean('CarListReaderPlugin');
+            if (clr) {
+                await clr.waitForPendingPush();
+            }
             this.showStatus(pageInfo.carNum!).then();
             refresh();
             utils.closePage();

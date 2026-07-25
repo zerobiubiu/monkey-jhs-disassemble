@@ -8,6 +8,8 @@
  * 再由 jhs 的 WebDav 备份链路上传（与 vlt-panel 模式一致）。
  */
 
+import { withExclusiveLock } from '../../core/sync';
+
 import {
     MISSAV_DB_META_STORE,
     MISSAV_DB_NAME,
@@ -175,12 +177,6 @@ export interface StoredCarStatusRecord {
     updateDate?: string;
 }
 
-interface NavigatorWithOptionalLocks {
-    locks?: {
-        request<T>(name: string, options: { mode: 'exclusive' }, callback: () => Promise<T>): Promise<T>;
-    };
-}
-
 /**
  * 将内部/导入的 URL 统一为安全的 url_path。
  * 拒绝 javascript/data/外部主机等危险或无法回放的值，避免静默回退到首页造成数据损坏。
@@ -236,13 +232,7 @@ export function normalizeLocalRecord(record: LocalCarStatusRecord): LocalCarStat
     };
 }
 
-/** 在支持 Web Locks 的浏览器中把 MissAV 多标签页写入串行化。 */
-export async function withLocalSyncLock<T>(task: () => Promise<T>): Promise<T> {
-    const browserNavigator =
-        typeof navigator === 'undefined' ? undefined : (navigator as NavigatorWithOptionalLocks);
-    if (!browserNavigator?.locks) return task();
-    return browserNavigator.locks.request(MISSAV_SYNC_LOCK_NAME, { mode: 'exclusive' }, task);
-}
+
 
 /** 修订号门控：旧/重复载荷不可应用；同修订号下增量优先于全量。 */
 function canApplyRevision(
@@ -326,7 +316,7 @@ export async function withSyncRevision<T>(
     task: () => Promise<T>,
     rollback?: () => Promise<void>
 ): Promise<{ applied: boolean; value?: T }> {
-    return withLocalSyncLock(async () => {
+    return withExclusiveLock(MISSAV_SYNC_LOCK_NAME, async () => {
         const current = await readAppliedRevision();
         if (!canApplyRevision(revision, kind, current)) {
             return { applied: false };
@@ -602,7 +592,7 @@ export async function replaceLocalCars(
 export async function importLocalDB(
     records: Array<{ carNum: string; status: string; url: string }>
 ): Promise<number> {
-    return withLocalSyncLock(async () => {
+    return withExclusiveLock(MISSAV_SYNC_LOCK_NAME, async () => {
         if (!Array.isArray(records)) throw new Error('导入记录必须是数组');
         const normalizedRecords = records.map((record) =>
             normalizeLocalRecord({ carNum: record?.carNum, status: record?.status, url_path: record?.url })

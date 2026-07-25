@@ -9,6 +9,22 @@
 
 ---
 
+## v1.30.0
+
+**发布日期**：2026-07-25
+
+### 重构
+
+- **跨站同步共享基础设施 `src/core/sync/`**（doc/195）：提取三处重复的 Web Locks 包装为 `withExclusiveLock`（car-list-reader / car-status-db / vlt-lock-queue 同款）、两处重复的串行队列为 `KeyedQueue`（missav enqueueConsume / vlt enqueueAssociationTask 同款）；新增意图日志 `sync-intent-journal`（借鉴 VLT pending journal，崩溃后下次加载恢复未完成消费）。car-status 两侧迁移到共享基础设施，删除 3 份近乎相同的锁实现与 2 份队列实现。
+
+### 新增
+
+- **MissAV 消费侧增强**（doc/195）：增量/全量消费前后写/清意图日志，页面加载时恢复上次未完成消费的载荷；全量快照读取加双读一致性校验（间隔 50ms 复读，修订号不一致时取第二次结果，防止读取期间 javdb 正在写入导致混合数据）。
+
+### 修复
+
+- **pushDelta 竞态**（doc/195）：详情页收藏/已看/屏蔽触发 `saveCar` 后异步增量推送可能被紧随的 `utils.closePage()` 中断导致 GM 写入丢失。`CarListReaderPlugin` 新增 `pendingPush` 跟踪与 `waitForPendingPush()`，`DetailPageButtonPlugin` 在三处 `closePage` 前等待增量推送完成。
+
 ## v1.29.0
 
 **发布日期**：2026-07-25

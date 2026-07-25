@@ -16,6 +16,14 @@
  * 页面加载时先读 GM 存储中的全量数据初始化本地 IndexedDB，之后增量实时更新。
  */
 
+import {
+    KeyedQueue,
+    writeIntent,
+    clearIntent,
+    readPendingIntents,
+    cleanStaleIntents
+} from '../../core/sync';
+
 import { BasePlugin } from '../base-plugin';
 import {
     GM_KEY_CAR_STATUS_DATA,
@@ -49,8 +57,8 @@ import { createLogger } from './car-status-logger';
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
 
 export class MissavStatusTagPlugin extends BasePlugin {
-    /** 串行消费全量和增量，避免两类 IDB 写入交错。 */
-    private consumeQueue: Promise<void> = Promise.resolve();
+    /** 串行消费全量和增量，避免两类 IDB 写入交错（键控串行队列，doc/195）。 */
+    private consumeQueue = new KeyedQueue();
     /** 当前页面实例已应用的最高修订号。 */
     private lastAppliedRevision = -1;
     private lastAppliedKind: CarStatusSyncKind | null = null;
@@ -214,6 +222,21 @@ export class MissavStatusTagPlugin extends BasePlugin {
         } catch {
             /* 验证失败不阻塞启动 */
         }
+
+        // 4.6) 意图日志恢复：处理上次未完成消费的载荷（doc/195）
+        const pending = readPendingIntents();
+        if (pending.length > 0) {
+            logInfo('恢复未完成消费', `${pending.length} 条待处理意图`);
+            for (const intent of pending) {
+                if (intent.type === 'delta') {
+                    const journal = GM_getValue(GM_KEY_CAR_STATUS_DELTA);
+                    await this.consumeDeltaJournal(journal);
+                }
+                // full 类型：consumeFull 已在步骤 4 执行，只需清理过期意图
+                clearIntent(intent.revision);
+            }
+        }
+        cleanStaleIntents();
 
         // 5) 启动 MutationObserver 监听动态加载的缩略图
         this.observeAndProcess();
@@ -397,13 +420,13 @@ export class MissavStatusTagPlugin extends BasePlugin {
     async consumeDeltaJournal(value: unknown): Promise<void> {
         const journal = sortDeltaJournal(readDeltaJournal(value));
         for (const delta of journal) {
-            await this.enqueueConsume(() => this.applyDelta(delta));
+            await this.consumeQueue.enqueue('consume', () => this.applyDelta(delta));
         }
     }
 
     /** 全量消费入口：串行队列 + 修订号门控 + 条件回滚。 */
     async consumeFull(payload?: CarStatusPayload): Promise<void> {
-        return this.enqueueConsume(() => this.applyFull(payload));
+        return this.consumeQueue.enqueue('consume', () => this.applyFull(payload));
     }
 
     /** 增量应用：修订号门控 + 条件回滚。 */
@@ -415,6 +438,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 return;
             }
             if (!this.shouldApply(revision, 'delta')) return;
+            // 意图日志：记录「已接收但未完成消费」，崩溃后下次加载可恢复（doc/195）
+            writeIntent(revision, 'delta');
             let rollback: (() => Promise<void>) | undefined;
             const result = await withSyncRevision(
                 revision,
@@ -443,10 +468,12 @@ export class MissavStatusTagPlugin extends BasePlugin {
             );
             if (!result.applied) {
                 this.markApplied(revision, 'delta');
+                clearIntent(revision);
                 return;
             }
             this.markApplied(revision, 'delta');
             await this.processAll();
+            clearIntent(revision);
         } catch (err: unknown) {
             logErr('增量消费失败', err instanceof Error ? err.message : String(err));
         }
@@ -455,8 +482,19 @@ export class MissavStatusTagPlugin extends BasePlugin {
     /** 全量应用：严格校验 + 批量对账 + 修订号门控。 */
     private async applyFull(payload?: CarStatusPayload): Promise<void> {
         try {
-            const data: CarStatusPayload | undefined =
+            // 读取全量快照（双读一致性：防止读取期间 javdb 正在写入导致混合数据，doc/195）
+            let data: CarStatusPayload | undefined =
                 payload ?? (GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined);
+            if (!payload && data) {
+                const rev1 = data.revision ?? data.ts;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                const data2 = GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined;
+                const rev2 = data2 ? (data2.revision ?? data2.ts) : -1;
+                if (rev1 !== rev2) {
+                    logWarn('全量快照双读不一致', `rev1=${rev1} rev2=${rev2}，使用第二次读取结果`);
+                    data = data2;
+                }
+            }
             if (!data || typeof data !== 'object' || typeof data.data !== 'string' || !data.data) {
                 if (payload !== undefined) logWarn('GM 存储中无全量数据');
                 return;
@@ -474,6 +512,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 return;
             }
             if (!this.shouldApply(revision, 'full')) return;
+            // 意图日志：记录「已接收但未完成消费」（doc/195）
+            writeIntent(revision, 'full');
             logInfo('全量消费开始', `count=${data.count} hwm=${data.hwm} revision=${revision}`);
             const store = await gunzipFromBase64<unknown>(data.data);
             if (!store) {
@@ -501,24 +541,17 @@ export class MissavStatusTagPlugin extends BasePlugin {
             );
             if (!result.applied) {
                 this.markApplied(revision, 'full');
+                clearIntent(revision);
                 return;
             }
             const { written, deleted } = result.value!;
             logOk('对账本地 IDB', `写入 ${written} 条，删除 ${deleted} 条`);
             this.markApplied(revision, 'full');
             await this.processAll();
+            clearIntent(revision);
         } catch (err: unknown) {
             logErr('全量消费失败', err instanceof Error ? err.message : String(err));
         }
-    }
-
-    /** 将消费任务加入串行队列；前一任务失败也不阻塞后续同步（跨站同步协议升级）。 */
-    private enqueueConsume(task: () => Promise<void>): Promise<void> {
-        const next = this.consumeQueue.then(task, task);
-        this.consumeQueue = next.catch((err: unknown) => {
-            logErr('同步队列任务失败', err instanceof Error ? err.message : String(err));
-        });
-        return next;
     }
 
     /** 拒绝旧修订；同修订号下增量优先于全量，防止慢压缩快照复活已删除记录（协议升级）。 */

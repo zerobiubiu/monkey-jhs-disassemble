@@ -19,6 +19,7 @@
 
 import { BasePlugin } from '../base-plugin';
 import type { CarListChangeEvent } from '../../core/storage-manager';
+import { withExclusiveLock } from '../../core/sync';
 import {
     CAR_STATUS_DELTA_COMPACT_THRESHOLD,
     CAR_STATUS_DELTA_MAX_ITEMS,
@@ -137,56 +138,71 @@ export class CarListReaderPlugin extends BasePlugin {
         }
     }
 
+    /** 当前正在进行的增量推送 Promise（供外部 await 等待完成）。 */
+    private pendingPush: Promise<void> = Promise.resolve();
+
+    /**
+     * 增量推送入口（fire-and-forget）：把异步推送挂到 pendingPush 上，
+     * 供 waitForPendingPush 等待完成，避免 closePage 中断异步 GM 写入（doc/195）。
+     * @param event storageManager 的变更事件
+     */
+    pushDelta(event: CarListChangeEvent): void {
+        this.pendingPush = this.pushDeltaAsync(event).catch((err: unknown) => {
+            logErr('增量推送失败', err instanceof Error ? err.message : String(err));
+        });
+    }
+
+    /** 等待当前增量推送完成（供 DetailPageButtonPlugin 在 closePage 前调用，doc/195）。 */
+    async waitForPendingPush(): Promise<void> {
+        await this.pendingPush;
+    }
+
     /**
      * 增量推送：单调修订号 + 增量 journal（按 carNum 去重 + 阈值压缩 + 超限收敛为全量快照）。
      * @param event storageManager 的变更事件
      */
-    async pushDelta(event: CarListChangeEvent): Promise<void> {
-        try {
-            if (event.action === 'upsert' && event.upserts) {
-                const items = event.upserts.map((car) => {
-                    const { code } = normalizeUrl(car.url || '');
-                    return { carNum: car.carNum, status: car.status, url_path: code };
-                });
-                if (items.length === 0) return;
-                if (items.length > CAR_STATUS_DELTA_MAX_ITEMS) {
-                    logWarn('批量变更超过增量上限，改发压缩全量快照', `${items.length} 条`);
-                    await this.syncFullCarStatus();
-                    return;
-                }
-                const revision = await nextRevision();
-                const payload: CarStatusDeltaPayload = { action: 'upsert', items, ts: revision, revision };
-                const needsFullSnapshot = await appendDeltaJournal(payload);
-                logInfo('增量推送', `upsert ${items.length} 条`);
-                if (needsFullSnapshot) {
-                    logInfo('增量日志超过阈值，发布压缩全量快照');
-                    await this.syncFullCarStatus();
-                }
-            } else if (event.action === 'delete' && event.deletes) {
-                if (event.deletes.length === 0) return;
-                if (event.deletes.length > CAR_STATUS_DELTA_MAX_ITEMS) {
-                    logWarn('批量删除超过增量上限，改发压缩全量快照', `${event.deletes.length} 条`);
-                    await this.syncFullCarStatus();
-                    return;
-                }
-                const revision = await nextRevision();
-                const payload: CarStatusDeltaPayload = {
-                    action: 'delete',
-                    items: event.deletes.map((carNum) => ({ carNum })),
-                    ts: revision,
-                    revision
-                };
-                const needsFullSnapshot = await appendDeltaJournal(payload);
-                logInfo('增量推送', `delete ${event.deletes.length} 条`);
-                if (needsFullSnapshot) {
-                    logInfo('增量日志超过阈值，发布压缩全量快照');
-                    await this.syncFullCarStatus();
-                }
+    private async pushDeltaAsync(event: CarListChangeEvent): Promise<void> {
+        if (event.action === 'upsert' && event.upserts) {
+            const items = event.upserts.map((car) => {
+                const { code } = normalizeUrl(car.url || '');
+                return { carNum: car.carNum, status: car.status, url_path: code };
+            });
+            if (items.length === 0) return;
+            if (items.length > CAR_STATUS_DELTA_MAX_ITEMS) {
+                logWarn('批量变更超过增量上限，改发压缩全量快照', `${items.length} 条`);
+                await this.syncFullCarStatus();
+                return;
             }
-            GM_setValue(GM_KEY_CAR_LIST_REV, (GM_getValue(GM_KEY_CAR_LIST_REV, 0) as number) + 1);
-        } catch (err: unknown) {
-            logErr('增量推送失败', err instanceof Error ? err.message : String(err));
+            const revision = await nextRevision();
+            const payload: CarStatusDeltaPayload = { action: 'upsert', items, ts: revision, revision };
+            const needsFullSnapshot = await appendDeltaJournal(payload);
+            logInfo('增量推送', `upsert ${items.length} 条`);
+            if (needsFullSnapshot) {
+                logInfo('增量日志超过阈值，发布压缩全量快照');
+                await this.syncFullCarStatus();
+            }
+        } else if (event.action === 'delete' && event.deletes) {
+            if (event.deletes.length === 0) return;
+            if (event.deletes.length > CAR_STATUS_DELTA_MAX_ITEMS) {
+                logWarn('批量删除超过增量上限，改发压缩全量快照', `${event.deletes.length} 条`);
+                await this.syncFullCarStatus();
+                return;
+            }
+            const revision = await nextRevision();
+            const payload: CarStatusDeltaPayload = {
+                action: 'delete',
+                items: event.deletes.map((carNum) => ({ carNum })),
+                ts: revision,
+                revision
+            };
+            const needsFullSnapshot = await appendDeltaJournal(payload);
+            logInfo('增量推送', `delete ${event.deletes.length} 条`);
+            if (needsFullSnapshot) {
+                logInfo('增量日志超过阈值，发布压缩全量快照');
+                await this.syncFullCarStatus();
+            }
         }
+        GM_setValue(GM_KEY_CAR_LIST_REV, (GM_getValue(GM_KEY_CAR_LIST_REV, 0) as number) + 1);
     }
 
     /**
@@ -267,25 +283,12 @@ let fullResyncRequested = false;
 /** 当前 javdb 标签页内的单调修订号逻辑时钟。 */
 let lastIssuedRevision = 0;
 
-interface NavigatorWithOptionalLocks {
-    locks?: {
-        request<T>(name: string, options: { mode: 'exclusive' }, callback: () => Promise<T>): Promise<T>;
-    };
-}
-
+/** javdb 发布侧跨标签页读改写互斥的 Web Lock 名称。 */
 const JAVDB_SYNC_LOCK_NAME = 'jhs-javdb-car-status-publisher';
-
-/** 在支持 Web Locks 的浏览器中把 javdb 发布侧读改写串行化。 */
-async function withPublisherLock<T>(task: () => Promise<T>): Promise<T> {
-    const browserNavigator =
-        typeof navigator === 'undefined' ? undefined : (navigator as NavigatorWithOptionalLocks);
-    if (!browserNavigator?.locks) return task();
-    return browserNavigator.locks.request(JAVDB_SYNC_LOCK_NAME, { mode: 'exclusive' }, task);
-}
 
 /** 分配下一个单调修订号（跨标签页以 GM 持久值 + 本地逻辑时钟取大）。 */
 async function nextRevision(): Promise<number> {
-    return withPublisherLock(async () => {
+    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
         const now = Date.now();
         let persisted = 0;
         try {
@@ -304,7 +307,7 @@ async function nextRevision(): Promise<number> {
 
 /** 追加一条增量到 journal；超过压缩阈值时返回 true 提示调用方发布全量。 */
 async function appendDeltaJournal(payload: CarStatusDeltaPayload): Promise<boolean> {
-    return withPublisherLock(async () => {
+    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
         const journal = readDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
         journal.push(payload);
         const compacted = compactDeltaJournal(sortDeltaJournal(journal));
@@ -318,7 +321,7 @@ async function appendDeltaJournal(payload: CarStatusDeltaPayload): Promise<boole
  * 较早开始、较晚压缩完成的旧全量不能覆盖已发布的新全量；同修订号增量保留由消费端兜底。
  */
 async function publishSnapshot(payload: CarStatusPayload): Promise<boolean> {
-    return withPublisherLock(async () => {
+    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
         const current = GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined;
         const currentRevision = current ? getPayloadRevision(current) : -1;
         if (currentRevision >= getPayloadRevision(payload)) {
