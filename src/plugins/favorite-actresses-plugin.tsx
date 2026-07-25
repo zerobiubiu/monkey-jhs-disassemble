@@ -31,6 +31,8 @@ import { BasePlugin } from './base-plugin';
 
 import { FavoriteActressAvatarColumn } from '../components/actress/favorite-actress-avatar-column';
 
+import highlightCssRaw from '../styles/fold-category-plugin.css?raw';
+
 /**
  * 收藏演员记录结构。
  * 对应 storageManager.getFavoriteActressList() 返回元素及 addFavoriteActressList() 入参元素。
@@ -51,6 +53,19 @@ export class FavoriteActressesPlugin extends BasePlugin {
     /** 返回插件名，供 PluginManager 注册去重。对应原 L10697-10699。 */
     getName(): string {
         return 'FavoriteActressesPlugin';
+    }
+
+    /**
+     * 注入 .highlighted 高亮边框 CSS（详情页演员红框）。
+     * 该 CSS 原本仅由 FoldCategoryPlugin（pageTypes=['list']）注入，
+     * 详情页不执行 FoldCategoryPlugin.initCss()，导致红框失效。
+     * 本插件无 pageTypes 限制，在所有页面注入，确保详情页可用。
+     */
+    async initCss(): Promise<string> {
+        const settings = await storageManager.getSetting();
+        return highlightCssRaw
+            .replace('__HIGHLIGHTED_TAG_NUMBER__', String(settings.highlightedTagNumber || 1))
+            .replace('__HIGHLIGHTED_TAG_COLOR__', settings.highlightedTagColor || '#ce2222');
     }
 
     /**
