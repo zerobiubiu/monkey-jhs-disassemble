@@ -306,17 +306,18 @@
 192. `192-cross-site-sync-robustness.md` — 跨站同步消费侧健壮性加固：提取 car-status-journal.ts 共享模块消除两端 6 个重复纯函数；新增强制重新同步菜单（清除 IDB 水位线后重新消费）；页面加载消费验证（GM 修订号 > IDB 水位线时自动补消费）；视频页选择器兜底（精确选择器未命中时回退全页扫描）；新增 tests/car-status-consume.test.ts 22 用例；version 1.28.32→1.28.33
 193. `193-fix-iframe-callback-not-registered.md` — 修复 iframe 详情页增量回调未注册：javdb 详情页在 layui 弹窗 iframe 中打开，CarListReaderPlugin.handle() 的 iframe 守卫导致 setCarListChangeCallback 从未在 iframe 执行，详情页操作（收藏/已看/屏蔽）的增量静默丢失；callback 注册移到 iframe 守卫前，菜单/全量同步仍限 top frame；version 1.28.33→1.28.34
 194. `194-unify-cross-site-sync-protocol.md` — 统一跨站同步协议，删除双路径：删除 crossSiteSyncProtocol feature flag 及 10 处分支，P3 协议（修订号 journal + 门控 + 对账 + 回滚）成为唯一实现；删除 6 对重复函数旧版并去掉 Flagged 后缀；删除 car-status-delta-route.ts 补丁模块及测试；清理死常量/重复函数；净减 ~488 行；version 1.28.34→1.29.0
-195. `195-cross-site-sync-shared-infra.md` — 跨站同步优化四项：提取共享基础设施 src/core/sync/（withExclusiveLock 统一 Web Locks 包装 + KeyedQueue 键控串行队列 + sync-intent-journal 意图日志）；car-status 两侧迁移到共享基础设施（删除 3 份锁实现 + 2 份队列实现）；missav 消费侧增强（消费前后写/清意图日志 + 页面加载意图恢复 + 全量快照双读一致性校验）；pushDelta 竞态修复（CarListReaderPlugin 新增 pendingPush/waitForPendingPush，DetailPageButtonPlugin 三处 closePage 前等待增量推送）；不修改 VLT 文件；version 1.29.0→1.30.0
+195. `195-cross-site-sync-shared-infra.md` — 跨站同步优化四项：提取共享基础设施 src/core/sync/（withExclusiveLock 统一 Web Locks 包装 + KeyedQueue 键控串行队列 + sync-intent-journal 意图日志）；car-status 两侧 + VLT vlt-lock-queue 迁移到共享基础设施；missav 消费侧增强（意图日志恢复 + 全量双读一致性）；pushDelta 竞态修复（waitForPendingPush）；修复 vlt-checkbox 无效动态导入（消除循环依赖重复打包，产物−372KB/15%）；version 1.29.0→1.30.1
+196. `196-eslint-warnings-cleanup.md` — 消除全部 ESLint 警告（764→0）：20 个文件纯 lint 修复（第三方库 any 文件级 disable、死初始值、空 catch、preserve-caught-error、表达式语句、无用 try/catch、hasOwnProperty、import type）；零业务逻辑变更；AGENTS.md 基线更新为 0 warnings
 
 ## 当前进度概览
 
-- core：28 个模块（`_jquery-global`/`async-task-queue`/`auto-backup`/
+- core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
   `backup-crypto`/`backup-extra-storage`/`common-util`/`feature-flags`/
   `gfriends`/`gm-http`/`image-preview`/`jsx-to-string`/`layer-wrapper`/
   `libs`/`list-dom-bus`/`loading`/`logger`/`page-context`/
   `pagination-state`/`plugin-diagnostics`/`storage-manager`/
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
-  `tooltip`/`viewer`/`webdav`/`webdav-crypto`）
+  `tooltip`/`viewer`/`webdav`/`webdav-crypto`
 - plugins：`base-plugin` + `plugin-manager` + 40 个插件（javdb 38 + missav 2），
   19 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
@@ -327,9 +328,9 @@
   重组为 25 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels），直接文件数 0
 - 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）
 - 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
-- 工具链：`tsc -b`（零错误）+ ESLint（0 errors, 764 warnings）+
+- 工具链：`tsc -b`（零错误）+ ESLint（0 errors, 0 warnings）+
   Stylelint（0 errors）三重门禁
-- build：`tsc -b && vite build` 通过，产物 1,989 kB（见最终构建）
+- build：`tsc -b && vite build` 通过，产物 2,071 kB（gzip 479 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
 - 文档：doc/001-doc/196（197 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
