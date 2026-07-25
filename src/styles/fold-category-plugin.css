@@ -30,5 +30,5 @@
 /* 高亮状态下的标签样式 */
 .highlighted {
     /* 浅黄色 */
-    border: __highlighted_tag_number__px solid __highlighted_tag_color__;
+    border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
 }
