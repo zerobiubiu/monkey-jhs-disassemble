@@ -9,6 +9,23 @@
 
 ---
 
+## v1.30.4
+
+**发布日期**：2026-07-26
+
+### 优化
+
+- **外站探测请求伪装浏览器导航头**（doc/199）：`GM_xmlhttpRequest` 默认不携带 `Sec-Fetch-*`/`Referer` 等导航头，Cloudflare 将其判定为机器人请求返回 403。新增 `buildBrowserNavHeaders` 共享函数，为 `doPreloadSite` 和 `probeSite` 的搜索请求补充完整浏览器导航头（`Sec-Fetch-Site: same-origin` + `Referer: <origin>/` + `Accept-Language` 等），使请求与浏览器地址栏直接访问一致，尝试绕过 Cloudflare 跨域拦截。
+
+## v1.30.3
+
+**发布日期**：2026-07-26
+
+### 修复
+
+- **修复 gmRequest 重定向检测误判**（doc/197）：`response.finalUrl` 为可选字段，部分 Tampermonkey 版本不返回；缺失时 `undefined !== requestUrl` 恒真，导致所有 `followRedirect: true` 请求被误判为重定向而拒绝。增加 `finalUrl` 存在性检查，并在 `reject()` 后补 `return` 阻止执行流落入状态码判断分支。
+- **修复 osp-preload doPreloadSite 三处 bug**（doc/198）：① `getDetailPageHref` 返回 falsy 时由静默 `return` 改为 `throw`（对齐 probeSite 行为）；② 登录页检测收窄为 title 关键词 + 登录表单选择器 + missav 特征文本，移除宽泛的 `bodyText.includes('登录')`（避免匹配搜索结果页导航栏"登录"按钮）；③ catch 块增加"重定向"错误分类，输出"域名失效（被重定向）"日志。
+
 ## v1.30.1
 
 **发布日期**：2026-07-25

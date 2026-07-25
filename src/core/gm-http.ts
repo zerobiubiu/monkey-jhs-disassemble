@@ -318,8 +318,12 @@ export class GmHttp {
                         data: requestData,
                         onload: (response: GmResponse) => {
                             try {
-                                if (followRedirect && response.finalUrl !== requestUrl) {
+                                // finalUrl 为可选字段，部分 Tampermonkey 版本可能不返回；
+                                // 缺失时跳过重定向检测，避免将正常请求误判为重定向而拒绝
+                                if (followRedirect && response.finalUrl && response.finalUrl !== requestUrl) {
                                     reject('请求被重定向了,URL是:' + response.finalUrl);
+                                    // reject 后立即 return，防止执行流继续进入状态码判断分支
+                                    return;
                                 }
                                 if (response.status >= 200 && response.status < 300) {
                                     if (response.responseText) {

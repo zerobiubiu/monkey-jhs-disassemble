@@ -308,6 +308,9 @@
 194. `194-unify-cross-site-sync-protocol.md` — 统一跨站同步协议，删除双路径：删除 crossSiteSyncProtocol feature flag 及 10 处分支，P3 协议（修订号 journal + 门控 + 对账 + 回滚）成为唯一实现；删除 6 对重复函数旧版并去掉 Flagged 后缀；删除 car-status-delta-route.ts 补丁模块及测试；清理死常量/重复函数；净减 ~488 行；version 1.28.34→1.29.0
 195. `195-cross-site-sync-shared-infra.md` — 跨站同步优化四项：提取共享基础设施 src/core/sync/（withExclusiveLock 统一 Web Locks 包装 + KeyedQueue 键控串行队列 + sync-intent-journal 意图日志）；car-status 两侧 + VLT vlt-lock-queue 迁移到共享基础设施；missav 消费侧增强（意图日志恢复 + 全量双读一致性）；pushDelta 竞态修复（waitForPendingPush）；修复 vlt-checkbox 无效动态导入（消除循环依赖重复打包，产物−372KB/15%）；version 1.29.0→1.30.1
 196. `196-eslint-warnings-cleanup.md` — 消除全部 ESLint 警告（764→0）：20 个文件纯 lint 修复（第三方库 any 文件级 disable、死初始值、空 catch、preserve-caught-error、表达式语句、无用 try/catch、hasOwnProperty、import type）；零业务逻辑变更；AGENTS.md 基线更新为 0 warnings
+197. `197-fix-gm-redirect-detection.md` — 修复 gmRequest 重定向检测误判：`response.finalUrl` 为可选字段，缺失时 `undefined !== requestUrl` 恒真导致所有 followRedirect 请求被误判为重定向；增加 finalUrl 存在性检查 + reject 后补 return；version 1.30.1→1.30.2
+198. `198-fix-osp-preload-bugs.md` — 修复 osp-preload doPreloadSite 三处 bug：href 解析失败改为 throw（对齐 probeSite）、登录页检测收窄为 title/表单特征（移除宽泛 bodyText.includes('登录')）、catch 块增加"重定向"错误分类；version 1.30.2→1.30.3
+199. `199-fix-cloudflare-nav-headers.md` — 外站探测请求伪装浏览器导航头：新增 buildBrowserNavHeaders 共享函数，为 doPreloadSite/probeSite 补充 Sec-Fetch-Site: same-origin + Referer + Accept-Language 等导航头，尝试绕过 Cloudflare 跨域 403 拦截；version 1.30.3→1.30.4
 
 ## 当前进度概览
 
@@ -333,7 +336,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,071 kB（gzip 479 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/196（197 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/199（200 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
