@@ -9,6 +9,30 @@
 
 ---
 
+## v1.28.34
+
+**发布日期**：2026-07-25
+
+### 修复
+
+- **iframe 详情页增量回调未注册**（doc/193）：javdb 详情页在 layui 弹窗 iframe 中打开，`CarListReaderPlugin.handle()` 的 `window.self !== window.top` 守卫导致 `setCarListChangeCallback` 从未在 iframe 中执行；详情页收藏/已看/屏蔽操作触发 `saveCar` 时 `carListChangeCallback` 为 `undefined`，增量静默丢失，missav 永远只能拿到旧快照。修复：callback 注册移到 iframe 守卫之前，菜单/全量同步/诊断仍限 top frame。
+
+## v1.28.33
+
+**发布日期**：2026-07-25
+
+### 修复
+
+- **跨站同步消费侧健壮性加固**（doc/192）：提取 `car-status-journal.ts` 共享模块消除 javdb/missav 两端 6 个重复纯函数；新增强制重新同步菜单（清除 IDB 水位线后重新消费）；页面加载消费验证（GM 修订号 > IDB 水位线时自动补消费）；视频页选择器兜底（精确选择器未命中时回退全页扫描）。新增 22 个消费管线集成测试。
+
+## v1.28.32
+
+**发布日期**：2026-07-24
+
+### 新增
+
+- **跨站同步诊断菜单命令**（doc/191）：javdb 端新增 `🔍 诊断：跨站同步发布侧`、missav 端新增 `🔍 诊断：跨站同步消费侧` Tampermonkey 菜单命令，一键转储 GM 修订号/增量 journal/全量快照/IDB 元数据/页面水位线等全部同步状态到控制台 + 剪贴板；纯只读诊断，不修改任何同步逻辑。新增 `GM_info` 类型声明与 grant。
+
 ## v1.28.31
 
 **发布日期**：2026-07-24

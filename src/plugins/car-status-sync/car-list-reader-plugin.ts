@@ -26,11 +26,16 @@ import {
     GM_KEY_CAR_STATUS_DELTA,
     GM_KEY_CAR_STATUS_REVISION,
     LOG_PREFIX_JHS,
-    STATUS_LIST,
-    type CarStatusDeltaJournal,
     type CarStatusPayload,
     type CarStatusDeltaPayload
 } from './car-status-config';
+import {
+    compactDeltaJournal,
+    countDeltaItems,
+    getPayloadRevision,
+    readDeltaJournal,
+    sortDeltaJournal
+} from './car-status-journal';
 import { toColumnar, gzipToBase64, countColumnar, normalizeUrl } from './car-status-columnar';
 import { featureFlags } from '../../core/feature-flags';
 import { createLogger } from './car-status-logger';
@@ -59,7 +64,16 @@ export class CarListReaderPlugin extends BasePlugin {
     }
 
     async handle(): Promise<void> {
-        // 跳过 iframe 内的重复触发
+        // 增量回调必须在所有帧（含 layui 详情页 iframe）注册——
+        // 详情页操作（收藏/已看/屏蔽）在 iframe 中触发 saveCar，
+        // 若 callback 未注册则增量静默丢失（doc/193 root cause）。
+        storageManager.setCarListChangeCallback(
+            (event: CarListChangeEvent) => {
+                this.pushDelta(event);
+            }
+        );
+
+        // 菜单命令、全量同步、诊断仅在 top frame 执行（避免 iframe 重复注册）
         if (window.self !== window.top) return;
 
         // 注册菜单命令
@@ -76,12 +90,46 @@ export class CarListReaderPlugin extends BasePlugin {
             /* 某些环境不支持 GM_registerMenuCommand */
         }
 
-        // 注入增量回调：storageManager 每次 saveCar/removeCar 等操作后实时触发
-        storageManager.setCarListChangeCallback(
-            (event: CarListChangeEvent) => {
-                this.pushDelta(event);
-            }
-        );
+        // 诊断菜单命令：转储跨站同步发布侧状态（doc/191）
+        try {
+            GM_registerMenuCommand('🔍 诊断：跨站同步发布侧', () => {
+                void (async () => {
+                    const delta = GM_getValue(GM_KEY_CAR_STATUS_DELTA);
+                    const data = GM_getValue(GM_KEY_CAR_STATUS_DATA) as Record<string, unknown> | undefined;
+                    const journal: unknown[] = Array.isArray(delta) ? delta : delta ? [delta] : [];
+                    const info = {
+                        site: 'javdb',
+                        version: GM_info.script.version,
+                        flag: featureFlags.crossSiteSyncProtocol,
+                        gmRevision: GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0),
+                        carListRev: GM_getValue(GM_KEY_CAR_LIST_REV, 0),
+                        syncedRev: GM_getValue(GM_KEY_SYNCED_REV, -1),
+                        journal: {
+                            length: journal.length,
+                            entries: journal.slice(-5).map((e: unknown) => {
+                                const entry = e as Record<string, unknown>;
+                                return {
+                                    action: entry?.action,
+                                    revision: entry?.revision ?? entry?.ts,
+                                    carNums: Array.isArray(entry?.items)
+                                        ? (entry.items as Array<Record<string, unknown>>).map((i) => i?.carNum)
+                                        : undefined
+                                };
+                            })
+                        },
+                        fullSnapshot: data ? {
+                            revision: data.revision ?? data.ts,
+                            count: data.count,
+                            ready: data.ready
+                        } : null
+                    };
+                    const text = JSON.stringify(info, null, 2);
+                    console.log('[JHS CarSync 诊断-发布侧]', text);
+                    try { await navigator.clipboard.writeText(text); } catch { /* clipboard may fail */ }
+                    show.ok('诊断信息已输出到控制台并复制到剪贴板');
+                })();
+            });
+        } catch { /* ignore */ }
 
         // 版本门控全量同步：仅在数据变更或每日兜底时执行（doc/138）
         const currentRev: number = GM_getValue(GM_KEY_CAR_LIST_REV, 0);
@@ -379,83 +427,6 @@ async function nextRevision(): Promise<number> {
     });
 }
 
-/** 兼容旧载荷：新协议使用 revision，旧协议回退到 ts（协议升级）。 */
-function payloadRevision(payload: CarStatusDeltaPayload | CarStatusPayload): number {
-    const revision = payload.revision ?? payload.ts;
-    return typeof revision === 'number' && Number.isInteger(revision) && revision >= 0 ? revision : -1;
-}
-
-function isDeltaPayload(value: unknown): value is CarStatusDeltaPayload {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-    const payload = value as Record<string, unknown>;
-    if (payload.action !== 'upsert' && payload.action !== 'delete') return false;
-    if (!Array.isArray(payload.items) || payload.items.length === 0) return false;
-    if (typeof payload.ts !== 'number' || !Number.isInteger(payload.ts) || payload.ts < 0) {
-        return false;
-    }
-    if (
-        payload.revision !== undefined &&
-        (typeof payload.revision !== 'number' || !Number.isInteger(payload.revision) || payload.revision < 0)
-    ) {
-        return false;
-    }
-    return payload.items.every((item) => {
-        if (item === null || typeof item !== 'object' || Array.isArray(item)) return false;
-        const record = item as Record<string, unknown>;
-        if (typeof record.carNum !== 'string' || record.carNum.trim() === '') return false;
-        if (payload.action === 'delete') return true;
-        return (
-            typeof record.status === 'string' &&
-            record.status.trim() !== '' &&
-            STATUS_LIST.includes(record.status as (typeof STATUS_LIST)[number]) &&
-            typeof record.url_path === 'string' &&
-            record.url_path.trim() !== ''
-        );
-    });
-}
-
-/** 读取 GM 中的增量日志，兼容新数组与旧单对象形态（协议升级）。 */
-function readDeltaJournal(value: unknown): CarStatusDeltaJournal {
-    const values: unknown[] = Array.isArray(value) ? value : value ? [value] : [];
-    return values.filter(isDeltaPayload);
-}
-
-function sortDeltaJournal(journal: CarStatusDeltaJournal): CarStatusDeltaJournal {
-    return journal
-        .map((payload, index) => ({ payload, index }))
-        .sort((left, right) => {
-            const revisionDiff = payloadRevision(left.payload) - payloadRevision(right.payload);
-            return revisionDiff || left.index - right.index;
-        })
-        .map(({ payload }) => payload);
-}
-
-function countDeltaItems(journal: CarStatusDeltaJournal): number {
-    return journal.reduce((total, payload) => total + payload.items.length, 0);
-}
-
-/** 日志较长时按番号保留最终操作，避免中间重复更新占用 GM 配额（协议升级）。 */
-function compactDeltaJournal(journal: CarStatusDeltaJournal): CarStatusDeltaJournal {
-    if (countDeltaItems(journal) <= CAR_STATUS_DELTA_COMPACT_THRESHOLD) return journal;
-    const latestByCar = new Map<
-        string,
-        { payload: CarStatusDeltaPayload; item: CarStatusDeltaPayload['items'][number] }
-    >();
-    for (const payload of sortDeltaJournal(journal)) {
-        for (const item of payload.items) {
-            latestByCar.set(item.carNum.trim().toUpperCase(), { payload, item });
-        }
-    }
-    const grouped = new Map<string, CarStatusDeltaPayload>();
-    for (const { payload, item } of latestByCar.values()) {
-        const key = `${payloadRevision(payload)}:${payload.action}:${payload.ts}`;
-        const existing = grouped.get(key);
-        if (existing) existing.items.push(item);
-        else grouped.set(key, { ...payload, items: [item] });
-    }
-    return sortDeltaJournal(Array.from(grouped.values()));
-}
-
 /** 追加一条增量到 journal；超过压缩阈值时返回 true 提示调用方发布全量（协议升级）。 */
 async function appendDeltaJournal(payload: CarStatusDeltaPayload): Promise<boolean> {
     return withPublisherLock(async () => {
@@ -474,13 +445,13 @@ async function appendDeltaJournal(payload: CarStatusDeltaPayload): Promise<boole
 async function publishSnapshot(payload: CarStatusPayload): Promise<boolean> {
     return withPublisherLock(async () => {
         const current = GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined;
-        const currentRevision = current ? payloadRevision(current) : -1;
-        if (currentRevision >= payloadRevision(payload)) {
+        const currentRevision = current ? getPayloadRevision(current) : -1;
+        if (currentRevision >= getPayloadRevision(payload)) {
             return false;
         }
         GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
         const journal = readDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
-        const retained = journal.filter((delta) => payloadRevision(delta) >= payloadRevision(payload));
+        const retained = journal.filter((delta) => getPayloadRevision(delta) >= getPayloadRevision(payload));
         if (retained.length !== journal.length) {
             GM_setValue(GM_KEY_CAR_STATUS_DELTA, sortDeltaJournal(retained));
         }

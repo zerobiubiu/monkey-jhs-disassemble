@@ -20,16 +20,20 @@ import { BasePlugin } from '../base-plugin';
 import {
     GM_KEY_CAR_STATUS_DATA,
     GM_KEY_CAR_STATUS_DELTA,
+    GM_KEY_CAR_STATUS_REVISION,
     LOG_PREFIX_MISSAV,
-    STATUS_LIST,
-    type CarStatusDeltaJournal,
-    type CarStatusPayload,
+    MISSAV_DB_META_STORE,
+    MISSAV_DB_STORE,
+    MISSAV_SYNC_META_KEY,
     type CarStatusDeltaPayload,
     type CarStatusSyncKind,
+    type CarStatusPayload,
     type StatusColumn
 } from './car-status-config';
+import { getPayloadRevision, isDeltaPayload, readDeltaJournal, sortDeltaJournal } from './car-status-journal';
 import { gunzipFromBase64, columnarToFlat, validateColumnarSnapshot } from './car-status-columnar';
 import {
+    openLocalDB,
     upsertLocalCars,
     queryLocalCars,
     deleteLocalCars,
@@ -76,6 +80,101 @@ export class MissavStatusTagPlugin extends BasePlugin {
         } catch {
             /* 某些环境不支持 GM_registerMenuCommand */
         }
+
+        // 强制重新同步菜单：清除水位线后重新消费全量 + 增量（恢复手段）
+        try {
+            GM_registerMenuCommand('🔄 强制重新同步（清除水位线）', () => {
+                void (async () => {
+                    try {
+                        show.ok('正在清除同步水位线...');
+                        await clearAppliedRevisionLocal();
+                        this.lastAppliedRevision = -1;
+                        this.lastAppliedKind = 'delta';
+                        show.ok('水位线已清除，开始重新消费...');
+                        await this.consumeFullFlagged(undefined);
+                        await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
+                        await this.processAll();
+                        show.ok('强制重新同步完成');
+                    } catch (err: unknown) {
+                        show.error('强制重新同步失败: ' + (err instanceof Error ? err.message : String(err)));
+                    }
+                })();
+            });
+        } catch {
+            /* 某些环境不支持 GM_registerMenuCommand */
+        }
+
+        // 诊断菜单命令：转储跨站同步消费侧状态（doc/191）
+        try {
+            GM_registerMenuCommand('🔍 诊断：跨站同步消费侧', () => {
+                void (async () => {
+                    const delta = GM_getValue(GM_KEY_CAR_STATUS_DELTA);
+                    const data = GM_getValue(GM_KEY_CAR_STATUS_DATA) as Record<string, unknown> | undefined;
+                    const journal: unknown[] = Array.isArray(delta) ? delta : delta ? [delta] : [];
+                    let syncMeta: unknown = null;
+                    let carCount = -1;
+                    let mgt140: unknown = null;
+                    try {
+                        const db = await openLocalDB();
+                        try {
+                            syncMeta = await new Promise((resolve) => {
+                                const tx = db.transaction(MISSAV_DB_META_STORE, 'readonly');
+                                const req = tx.objectStore(MISSAV_DB_META_STORE).get(MISSAV_SYNC_META_KEY);
+                                req.onsuccess = () => resolve(req.result ?? null);
+                                req.onerror = () => resolve(null);
+                            });
+                            carCount = await new Promise<number>((resolve) => {
+                                const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
+                                const req = tx.objectStore(MISSAV_DB_STORE).count();
+                                req.onsuccess = () => resolve(req.result);
+                                req.onerror = () => resolve(-1);
+                            });
+                            mgt140 = await new Promise((resolve) => {
+                                const tx = db.transaction(MISSAV_DB_STORE, 'readonly');
+                                const req = tx.objectStore(MISSAV_DB_STORE).get('MGT-140');
+                                req.onsuccess = () => resolve(req.result ?? null);
+                                req.onerror = () => resolve(null);
+                            });
+                        } finally {
+                            db.close();
+                        }
+                    } catch { /* IDB open may fail */ }
+                    const info = {
+                        site: 'missav',
+                        version: GM_info.script.version,
+                        flag: featureFlags.crossSiteSyncProtocol,
+                        gmRevision: GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0),
+                        journal: {
+                            length: journal.length,
+                            lastEntries: journal.slice(-3).map((e: unknown) => {
+                                const entry = e as Record<string, unknown>;
+                                return {
+                                    action: entry?.action,
+                                    revision: entry?.revision ?? entry?.ts,
+                                    carNums: Array.isArray(entry?.items)
+                                        ? (entry.items as Array<Record<string, unknown>>).map((i) => i?.carNum)
+                                        : undefined
+                                };
+                            })
+                        },
+                        fullSnapshot: data ? {
+                            revision: data.revision ?? data.ts,
+                            count: data.count,
+                            ready: data.ready
+                        } : null,
+                        idb: { syncMeta, carCount, MGT140: mgt140 },
+                        inMemory: {
+                            lastAppliedRevision: this.lastAppliedRevision,
+                            lastAppliedKind: this.lastAppliedKind
+                        }
+                    };
+                    const text = JSON.stringify(info, null, 2);
+                    console.log('[MissAV 诊断-消费侧]', text);
+                    try { await navigator.clipboard.writeText(text); } catch { /* clipboard may fail */ }
+                    show.ok('诊断信息已输出到控制台并复制到剪贴板');
+                })();
+            });
+        } catch { /* ignore */ }
 
         // 2) 注册增量变更监听（实时，不锁不冷却）
         try {
@@ -130,6 +229,18 @@ export class MissavStatusTagPlugin extends BasePlugin {
             if (deltaRoute(initDelta, false) === 'journal') {
                 await this.consumeDeltaJournal(initDelta);
             }
+        }
+
+        // 4.5) 消费验证：对比 GM 存储最新修订号与 IDB 水位线
+        try {
+            const gmRevision = GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0) as number;
+            if (typeof gmRevision === 'number' && gmRevision > 0 && this.lastAppliedRevision < gmRevision) {
+                logWarn('消费验证：IDB 水位线落后于 GM 修订号', `idb=${this.lastAppliedRevision} gm=${gmRevision}，尝试补消费`);
+                // 补消费一次 journal（可能是初始化消费时被修订号门控拒绝的条目）
+                await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
+            }
+        } catch {
+            /* 验证失败不阻塞启动 */
         }
 
         // 5) 启动 MutationObserver 监听动态加载的缩略图
@@ -280,6 +391,12 @@ export class MissavStatusTagPlugin extends BasePlugin {
         );
         if (sideContainer) {
             this.queryAndRender(sideContainer, carMap.size > 0 ? carMap : null, '视频页-侧边推荐');
+        }
+
+        // 兜底：精确选择器均未命中时（missav 改版），用 document.body 全页扫描
+        if (!bottomGrid && !sideContainer) {
+            logWarn('视频页选择器未命中，回退到全页扫描');
+            this.queryAndRender(document.body, carMap.size > 0 ? carMap : null, '视频页-兜底全页');
         }
     }
 
@@ -537,58 +654,23 @@ export class MissavStatusTagPlugin extends BasePlugin {
 
 }
 
-/* ===========================================================================
- * 跨站车号状态同步协议升级 —— missav 端消费侧辅助（featureFlags.crossSiteSyncProtocol 门控，默认关）。
- * 载荷修订号解析 + 增量 journal 读取/排序/校验，均为新增模块级函数，仅 flag 开启时被调用。
- * ========================================================================= */
 
-/** 兼容旧载荷：新协议使用 revision，旧协议回退到 ts（协议升级）。 */
-function getPayloadRevision(payload: { revision?: number; ts: number }): number {
-    const revision = payload.revision ?? payload.ts;
-    return Number.isInteger(revision) && revision >= 0 ? revision : -1;
-}
 
-function isDeltaPayload(value: unknown): value is CarStatusDeltaPayload {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-    const payload = value as Record<string, unknown>;
-    if (payload.action !== 'upsert' && payload.action !== 'delete') return false;
-    if (!Array.isArray(payload.items) || payload.items.length === 0) return false;
-    if (typeof payload.ts !== 'number' || !Number.isInteger(payload.ts) || payload.ts < 0) {
-        return false;
+/**
+ * 清除 IDB sync_meta 中的已应用修订号水位线（强制重新同步用）。
+ * car-status-db.ts 中 clearAppliedRevision 未导出，此处用已导出的 openLocalDB 本地实现。
+ */
+async function clearAppliedRevisionLocal(): Promise<void> {
+    const db = await openLocalDB();
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(MISSAV_DB_META_STORE, 'readwrite');
+            tx.objectStore(MISSAV_DB_META_STORE).delete(MISSAV_SYNC_META_KEY);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('清理同步修订号失败'));
+            tx.onabort = () => reject(tx.error || new Error('清理同步修订号事务中止'));
+        });
+    } finally {
+        db.close();
     }
-    if (
-        payload.revision !== undefined &&
-        (typeof payload.revision !== 'number' || !Number.isInteger(payload.revision) || payload.revision < 0)
-    ) {
-        return false;
-    }
-    return payload.items.every((item) => {
-        if (item === null || typeof item !== 'object' || Array.isArray(item)) return false;
-        const record = item as Record<string, unknown>;
-        if (typeof record.carNum !== 'string' || record.carNum.trim() === '') return false;
-        if (payload.action === 'delete') return true;
-        return (
-            typeof record.status === 'string' &&
-            record.status.trim() !== '' &&
-            STATUS_LIST.includes(record.status as (typeof STATUS_LIST)[number]) &&
-            typeof record.url_path === 'string' &&
-            record.url_path.trim() !== ''
-        );
-    });
-}
-
-/** 读取 GM 中的增量日志，兼容新数组与旧单对象形态（协议升级）。 */
-function readDeltaJournal(value: unknown): CarStatusDeltaJournal {
-    const values: unknown[] = Array.isArray(value) ? value : value ? [value] : [];
-    return values.filter(isDeltaPayload);
-}
-
-function sortDeltaJournal(journal: CarStatusDeltaJournal): CarStatusDeltaJournal {
-    return journal
-        .map((payload, index) => ({ payload, index }))
-        .sort((left, right) => {
-            const revisionDiff = getPayloadRevision(left.payload) - getPayloadRevision(right.payload);
-            return revisionDiff || left.index - right.index;
-        })
-        .map(({ payload }) => payload);
 }

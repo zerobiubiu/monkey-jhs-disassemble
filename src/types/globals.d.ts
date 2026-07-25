@@ -65,6 +65,7 @@ declare const GM_setValue: (key: string, value: string | number | boolean | obje
 declare const GM_getValue: <T = any>(key: string, defaultValue?: T) => T;
 declare const GM_addValueChangeListener: (key: string, callback: (name: string, oldValue: any, newValue: any, remote: boolean) => void) => number;
 declare const GM_registerMenuCommand: (name: string, callback: () => void, accessKey?: string) => number;
+declare const GM_info: { script: { version: string; [key: string]: unknown }; [key: string]: unknown };
 declare const unsafeWindow: any;
 
 // 应用运行时全局（由 main.tsx 启动时挂载到 window）
