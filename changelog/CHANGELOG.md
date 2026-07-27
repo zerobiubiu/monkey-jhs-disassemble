@@ -9,6 +9,14 @@
 
 ---
 
+## v1.37.0
+
+**发布日期**：2026-07-27
+
+### 新增
+
+- **JHS ↔ JavDB 双向增量同步**（doc/213）：清单管理器「收藏同步」升级为双向增量同步。四方向顺序执行：JHS→JavDB 想看、JHS→JavDB 已看（含评分）、JavDB→JHS 想看、JavDB→JHS 已看。冲突（双方状态不一致）仅报告番号不自动处理。原单向按钮保留为兼容入口。模块拆分为 `src/plugins/setting/jhs-sync/` 子目录（sync-common/sync-to-javdb/sync-from-javdb/sync-ui）。
+
 ## v1.36.1
 
 **发布日期**：2026-07-27

@@ -26,7 +26,7 @@ import {
     handleMissavFileChange,
     handleMissavExportClick
 } from './data-import-export';
-import { handleJhsSyncClick, abortJhsSync } from './jhs-to-javdb-sync';
+import { handleJhsSyncClick, handleFullSyncClick, abortSync } from './jhs-sync';
 import { backupDataByWebDav, backupListBtnByWebDav } from './webdav-operations';
 import { saveForm } from './setting-form-load';
 
@@ -105,9 +105,10 @@ export function bindClick(plugin: SettingPlugin): void {
     $('#vlt-import-btn').on('click', () => handleVltImportClick());
     $('#vlt-file-input').on('change', (event: Event) => handleVltFileChange(event));
     $('#vlt-export-btn').on('click', () => handleVltExportClick());
-    // 清单管理器：JHS→JavDB 收藏同步（doc/210）
+    // 清单管理器：JHS↔JavDB 双向同步（doc/213）
+    $('#jhs-sync-full-btn').on('click', () => handleFullSyncClick());
     $('#jhs-sync-btn').on('click', () => handleJhsSyncClick());
-    $('#jhs-sync-abort-btn').on('click', () => abortJhsSync());
+    $('#jhs-sync-abort-btn').on('click', () => abortSync());
 
     // MissAV 同步面板：立即同步 / 导入 / 导出按钮
     $('#missav-sync-btn').on('click', () => handleMissavSync());

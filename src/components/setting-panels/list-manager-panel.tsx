@@ -196,18 +196,21 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                         lineHeight: '1.6'
                     }}
                 >
-                    将「JHS 已收藏但 JavDB 无状态」的番号批量设为 JavDB「想看」（修复历史积压）。
-                    会先核对 JavDB 想看/已看列表：已想看自动跳过；JavDB 已看的跳过并列出（绝不降级）。建议先备份。
+                    双向增量同步「想看」和「已看」：脚本有/网站无 → 补到网站；网站有/脚本无 → 补到脚本。
+                    冲突（双方状态不一致）仅报告番号，不自动处理。建议先备份。
                 </p>
                 <SettingRow
                     label="同步请求间隔(毫秒):"
-                    tooltip="逐个设为想看时的请求间隔；越大越温和、越慢"
+                    tooltip="逐个操作时的请求间隔；越大越温和、越慢"
                 >
                     <SettingInput id="jhsSyncInterval" type="number" min="100" max="5000" />
                 </SettingRow>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
-                    <SettingButton id="jhs-sync-btn" color="primary">
-                        同步 JHS 收藏到 JavDB
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <SettingButton id="jhs-sync-full-btn" color="primary">
+                        双向增量同步
+                    </SettingButton>
+                    <SettingButton id="jhs-sync-btn" color="mint">
+                        仅 JHS→JavDB 想看
                     </SettingButton>
                     <span id="jhs-sync-abort-wrap" style={{ display: 'none' }}>
                         <SettingButton id="jhs-sync-abort-btn" color="danger">
@@ -221,7 +224,9 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                         fontSize: '13px',
                         color: '#6c757d',
                         marginTop: '8px',
-                        whiteSpace: 'pre-wrap'
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: '300px',
+                        overflowY: 'auto'
                     }}
                 />
             </SettingSection>
