@@ -15,6 +15,7 @@ import {
 } from '../../core/auto-backup';
 
 import type { SettingPlugin } from '../setting-plugin';
+import { DEFAULT_LIST_MERGE_PATTERN } from '../detail-page-button/dpb-list-merge';
 import {
     GM_KEY_WEBDAV_URL,
     GM_KEY_WEBDAV_USERNAME,
@@ -92,6 +93,20 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     $('#preload-enable-missAvBtn').prop('checked', enabledSites.includes('missAvBtn'));
     $('#preload-enable-supJavBtn').prop('checked', enabledSites.includes('supJavBtn'));
     refreshPreloadCacheStats(plugin);
+    // 清单收藏合并配置（默认开启）
+    $('#listMergeEnabled').prop(
+        'checked',
+        !settings.listMergeEnabled || settings.listMergeEnabled === YES
+    );
+    $('#listReflowEnabled').prop(
+        'checked',
+        !settings.listReflowEnabled || settings.listReflowEnabled === YES
+    );
+    $('#listMergePattern').val(settings.listMergePattern || DEFAULT_LIST_MERGE_PATTERN);
+    const mergeExcludeNames = Array.isArray(settings.listMergeExcludeNames)
+        ? (settings.listMergeExcludeNames as string[])
+        : [];
+    $('#listMergeExcludeNames').val(mergeExcludeNames.join(', '));
     const titleFilterKeyword = await storageManager.getTitleFilterKeyword();
     if (titleFilterKeyword) {
         titleFilterKeyword.forEach((keyword: string) => {
@@ -157,6 +172,14 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     otherSitePluginForSave.saveEnabledSites(enabledSiteIds);
     settings.enableFavoriteActresses = $('#enableFavoriteActresses').is(':checked') ? YES : NO;
     settings.enableSaveActressCarInfo = $('#enableSaveActressCarInfo').is(':checked') ? YES : NO;
+    // 清单收藏合并配置
+    settings.listMergeEnabled = $('#listMergeEnabled').is(':checked') ? YES : NO;
+    settings.listReflowEnabled = $('#listReflowEnabled').is(':checked') ? YES : NO;
+    settings.listMergePattern = String($('#listMergePattern').val() ?? '').trim();
+    settings.listMergeExcludeNames = String($('#listMergeExcludeNames').val() ?? '')
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean);
     await storageManager.saveSetting(settings);
     const titleFilterKeywordList: string[] = [];
     $('#filterKeywordContainer .keyword-label')

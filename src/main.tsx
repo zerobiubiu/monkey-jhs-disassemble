@@ -58,6 +58,7 @@ import { NewVideoPlugin } from './plugins/new-video-plugin';
 import { HistoryPlugin } from './plugins/history-plugin';
 import { SettingPlugin } from './plugins/setting-plugin';
 import { DetailPageButtonPlugin } from './plugins/detail-page-button-plugin';
+import { ListReflowPlugin } from './plugins/list-reflow/list-reflow-plugin';
 import { ListPagePlugin } from './plugins/list-page-plugin';
 import { PreviewVideoPlugin } from './plugins/preview-video-plugin';
 import { RatingDisplayPlugin } from './plugins/rating-display/rating-display-plugin';
@@ -325,6 +326,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(VideoListsTagPlugin);
         manager.register(CarListReaderPlugin);
         manager.register(VisitHistoryPlugin);
+        manager.register(ListReflowPlugin);
         // 升级新插件（feature flag 可插拔）
         if (featureFlags.translatePlugin) manager.register(TranslatePlugin, 'translatePlugin');
         if (featureFlags.screenShotPlugin) manager.register(ScreenShotPlugin, 'screenShotPlugin');

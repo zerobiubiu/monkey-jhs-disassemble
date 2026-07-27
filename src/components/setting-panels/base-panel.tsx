@@ -61,6 +61,31 @@ export function BasePanel({ panelName, qualityOptionsHtml, isJavdbSite }: BasePa
                 />
             </SettingSection>
 
+            <SettingSection title="清单收藏合并" icon="🗂️">
+                <SettingToggle
+                    id="listMergeEnabled"
+                    label="启用序号清单合并"
+                    tooltip="详情页清单面板中，将「文字+数字」结尾的清单（如 等待更新1/等待更新2）按前缀合并为一行；勾选时自动放入最靠前的未满清单，全满自动新建下一序号清单"
+                />
+                <SettingRow
+                    label="合并匹配正则:"
+                    tooltip="需含两个捕获组：第1组=前缀文字，第2组=末尾序号。留空使用默认规则"
+                >
+                    <SettingInput id="listMergePattern" placeholder="^(.+?)(\d+)$" />
+                </SettingRow>
+                <SettingRow
+                    label="不参与合并的清单名:"
+                    tooltip="逗号分隔；填完整清单名或前缀均可（如 Top10 或 Top），命中后该清单按原名单独显示"
+                >
+                    <SettingInput id="listMergeExcludeNames" placeholder="逗号分隔，如：Top10, 2024" />
+                </SettingRow>
+                <SettingToggle
+                    id="listReflowEnabled"
+                    label="启用清单页编号整理"
+                    tooltip="在 /lists/ 清单页显示「编号清单整理」面板：识别同前缀编号组、生成组内压实计划预览（当前版本只读，不执行搬运）"
+                />
+            </SettingSection>
+
             <SettingSection title="播放与评论" icon="🎬">
                 <SettingRow label="预览视频默认画质:">
                     <SettingSelect

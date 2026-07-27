@@ -24,6 +24,7 @@ import type { KeyPageTurningPlugin } from './key-page-turning-plugin';
 import type { ListPageButtonPlugin } from './list-page-button-plugin';
 import type { ListPagePlugin } from './list-page-plugin';
 import type { ListReadingStatusPlugin } from './list-reading-status-plugin';
+import type { ListReflowPlugin } from './list-reflow/list-reflow-plugin';
 import type { ListWaterfallPlugin } from './list-waterfall-plugin';
 import type { MagnetHubPlugin } from './magnet-hub-plugin';
 import type { MissavQuickCopyPlugin } from './missav-quick-copy-plugin';
@@ -68,6 +69,7 @@ export interface PluginMap {
     ListPageButtonPlugin: ListPageButtonPlugin;
     ListPagePlugin: ListPagePlugin;
     ListReadingStatusPlugin: ListReadingStatusPlugin;
+    ListReflowPlugin: ListReflowPlugin;
     ListWaterfallPlugin: ListWaterfallPlugin;
     MagnetHubPlugin: MagnetHubPlugin;
     MissavQuickCopyPlugin: MissavQuickCopyPlugin;

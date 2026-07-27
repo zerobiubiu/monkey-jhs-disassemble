@@ -84,6 +84,9 @@ import {
     clearListPanelNotice as _clearListPanelNotice
 } from './detail-page-button/dpb-list-panel';
 import type { DetailListPanelElement, DetailListEntry } from './detail-page-button/dpb-list-panel';
+import { compileMergePattern, DEFAULT_LIST_MERGE_PATTERN } from './detail-page-button/dpb-list-merge';
+import type { ListMergeConfig } from './detail-page-button/dpb-list-merge';
+import { loadListMergeConfig } from './detail-page-button/dpb-list-merge-ui';
 import {
     searchXunLeiSubtitle as _searchXunLeiSubtitle,
     previewSubtitle as _previewSubtitle
@@ -123,6 +126,12 @@ export class DetailPageButtonPlugin extends BasePlugin {
     _listPanelPaginationPromise: Promise<void> | null = null;
     /** modal 源条目被替换时递增，阻止旧分页快照覆盖新容器。 */
     _listPanelPaginationGeneration: number = 0;
+    /** 序号清单合并运行时配置（handle 时从设置加载，默认关闭直至加载完成）。 */
+    _listMergeConfig: ListMergeConfig = {
+        enabled: false,
+        pattern: compileMergePattern(DEFAULT_LIST_MERGE_PATTERN),
+        excludeNames: new Set()
+    };
     /** 评分组件重建防抖计时器。 */
     _ratingSyncDebounce: ReturnType<typeof setTimeout> | null = null;
     /** javdb 原生评价操作串行化链（quickSetHasWatch / quickConvertToFav）。 */
@@ -145,6 +154,14 @@ export class DetailPageButtonPlugin extends BasePlugin {
     async handle(): Promise<void> {
         this.hideVideoControls();
         if (window.isDetailPage) {
+            try {
+                this._listMergeConfig = await loadListMergeConfig();
+            } catch (error) {
+                clog.error(
+                    '[JHS] 清单合并配置加载失败，已按关闭处理: ' +
+                        (error instanceof Error ? error.message : String(error))
+                );
+            }
             this.createMenuBtn();
             this.hookWantAndWatchedButtons();
             this.addQuickActionButtons();

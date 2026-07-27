@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -28,10 +28,11 @@ monkey-jhs-disassemble/
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
 │   │   ├── fc2/            # FC2 专属组件（6 个）
+│   │   ├── list-reflow/    # 清单页编号整理组件（1 个）
 │   │   └── setting-panels/ # 设置面板子组件（9 个 + hr-style 辅助）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）
-│   ├── styles/             # CSS 文件（?raw import via initCss）
+│   ├── styles/             # CSS 文件（?raw import via initCss，含 list-reflow/ 子目录）
 │   └── types/              # 类型声明（globals.d.ts）
 ├── archetype/              # 原始脚本 + 独立油猴脚本（只读参考）
 ├── doc/                    # 文档（NN-描述.md，编号递增，不可回头改）
@@ -121,7 +122,7 @@ monkey-jhs-disassemble/
 | Top250Plugin | top250-plugin.tsx | Top250 排行榜 |
 | DetailPagePlugin | detail-page-plugin.ts | 详情页主插件 |
 | ReviewPlugin | review-plugin.tsx | 评论 |
-| DetailPageButtonPlugin | detail-page-button-plugin.tsx（+3 新模块：dpb-list-panel-fetch / dpb-list-panel-render / dpb-rating-api） | 详情页按钮（想看/观看/评分/清单/字幕） |
+| DetailPageButtonPlugin | detail-page-button-plugin.tsx（+5 新模块：dpb-list-panel-fetch / dpb-list-panel-render / dpb-rating-api / dpb-list-merge / dpb-list-merge-ui） | 详情页按钮（想看/观看/评分/清单/字幕/清单序号合并） |
 | HighlightMagnetPlugin | highlight-magnet-plugin.ts | 高亮磁链 |
 | PreviewVideoPlugin | preview-video-plugin.tsx | 预览视频 |
 | ActressInfoPlugin | actress-info-plugin.tsx | 演员信息 |
@@ -159,11 +160,12 @@ monkey-jhs-disassemble/
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2-by-123av-plugin.tsx + fc2-123av/ 子目录（2 模块：fc2-browse / fc2-detail） | fc2By123AvPlugin | 123Av FC2 浏览 |
 
-**新增功能插件（1 个）**：本项目自创（非 archetype 拆分/集成/升级）
+**新增功能插件（2 个）**：本项目自创（非 archetype 拆分/集成/升级）
 
 | 插件 | 文件 | 职责 |
 |------|------|------|
 | VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
+| ListReflowPlugin | list-reflow/（6 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1 只读，doc/202） |
 
 ### 3.4 核心模块 `src/core/`
 
@@ -199,7 +201,7 @@ monkey-jhs-disassemble/
 | sync/ | 跨站同步共享基础设施子目录（doc/195）：sync-lock.ts（withExclusiveLock Web Locks 统一包装，navigator.locks 不可用时降级直接执行）、sync-queue.ts（KeyedQueue 键控串行队列，同 key 串行/异 key 并发 + 队列尾自清理防泄漏）、sync-intent-journal.ts（意图日志 writeIntent/clearIntent/readPendingIntents/cleanStaleIntents，崩溃后下次加载恢复未完成消费，借鉴 VLT pending journal）、index.ts（统一出口） |
 | util/ | 核心工具子目录：broadcast.ts（三重广播总线 GM/localStorage/CustomEvent 三通道统一收发，Wave 3 新增）、back-to-top.ts（回到顶部按钮工厂，rAF 节流滚动监听 + 平滑回顶）、tabulator-factory.ts（Tabulator 表格工厂，中文语言包 + 基础配置）、util-async.ts（withLoading 加载蒙层异步包装）、util-clipboard.ts（copyToClipboard 剪贴板复制）、util-cookie.ts（addCookie 批量写入 cookie）、util-date.ts（getNowStr 日期时间格式化）、util-dom.ts（insertStyle / htmlTo$dom DOM 工具）、util-download.ts（download 文件下载 + MIME 映射）、util-misc.ts（isMobile / sleep / copyObj 杂项工具）、util-popup.ts（q 确认框 / 响应式弹窗区域）、util-retry.ts（retry 带重试异步执行）、util-sort.ts（genericSort 多键排序）、util-status-tag.tsx（STATUS_TAG_CONFIG 状态标签配置与渲染）、util-translate.ts（translateText Google 翻译）、util-url.ts（isUrl / getUrlParam URL 工具）、esc-layer.ts（ESC 层管理：gate + 栈同步 + 全局键监听 + setupEscClose，Wave 4 新增）、logger-panel.tsx（日志面板 DOM 渲染 + 事件绑定 + 过滤 + localStorage 持久化，Wave 4 新增）、util-simple-lists.ts（fetchSimpleListsPage simple_lists 分页获取共享函数，dpb-list-panel-fetch 与 vlt-server-api 双调用方复用，Wave 4 新增） |
 
-### 3.5 组件 `src/components/`（135 个）
+### 3.5 组件 `src/components/`（136 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。
@@ -344,7 +346,7 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
   include vite.config.ts）、`eslint src/`、`vite build` **均不覆盖** `tests/`——测试
   代码不影响用户脚本构建门禁，新增/修改测试不改变产物字节。
 - 被测模块为纯函数，用 `react.createElement` 构造节点（非 JSX），无需 JSX 转换或 DOM。
-- 当前套件（3 个）：`tests/jsx-to-string.test.ts`（doc/151 XSS 转义 + 协议白名单）、
+- 当前套件（6 个）：`tests/jsx-to-string.test.ts`（doc/151 XSS 转义 + 协议白名单）、
   `tests/backup-crypto.test.ts`（doc/137 AES-GCM 往返 + 错口令/篡改拒绝，node 环境）、
   `tests/storage-migration.test.ts`（doc/135/162/163：第一组 `runMigrations` 集成契约
   幂等/门控/全量/缓存失效/失败重试 5 用例 + 第二组附件分析路径正向回归
@@ -354,6 +356,10 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
   in-memory `FakeForage`（`Map` 后端）替代 IndexedDB，无 fake-indexeddb 依赖；
   `beforeEach` 注入 `globalThis.clog`/`globalThis.utils`/`window.clean_cacheSettingObj`
   noop 替身（后者供 `async_merge_other`→`saveSetting` 路径）。
+  另有 `tests/car-status-consume.test.ts`（car-status 消费侧，34 用例）与
+  `tests/dpb-list-merge.test.ts`（doc/200 清单合并纯逻辑：解析/容错/排除/配置/归组/
+  满员/选取/命名/勾选态，33 用例，node 环境）。
+  另有 `tests/lr-planner.test.ts`（doc/202 压实规划：低序优先/去重/就近保留/溢出，8 用例，node 环境）。
 - 可测试性 seam：`StorageManager` 构造函数 `constructor(forageInstance?: unknown)` 允许
   注入存储替身（生产无参调用行为不变），`static __resetForTesting()` 重置单例供用例隔离。
   参数用 `unknown` 而非 `any`，遵守「触及文件时消除新增 any」。

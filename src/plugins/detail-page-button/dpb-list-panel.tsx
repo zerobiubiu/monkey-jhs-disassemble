@@ -5,6 +5,13 @@
 import { jsxToString } from '../../core/jsx-to-string';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
+import {
+    buildListPanelRows,
+    forwardListGroupChange,
+    reflowGroup,
+    syncMergedRowsForListId,
+    toggleGroupDetail
+} from './dpb-list-merge-ui';
 
 import { ListPanel } from '../../components/dpb/list-panel';
 
@@ -89,6 +96,21 @@ export function bindListPanelControls(plugin: DetailPageButtonPlugin, panel: Det
         plugin._initListPanel(true);
     });
 
+    panel.addEventListener('click', (event: MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const toggleButton = target.closest('.jhs-list-group__toggle') as HTMLElement | null;
+        if (toggleButton) {
+            toggleGroupDetail(toggleButton);
+            return;
+        }
+        const reflowButton = target.closest('.jhs-list-group__reflow') as HTMLElement | null;
+        if (reflowButton) {
+            const groupElement = reflowButton.closest('.jhs-list-group') as HTMLElement | null;
+            if (groupElement) void reflowGroup(plugin, panel, groupElement);
+        }
+    });
+
     panel.addEventListener('change', (event: Event) => {
         const displayInput = event.target;
         if (!(displayInput instanceof HTMLInputElement) || displayInput.type !== 'checkbox') {
@@ -100,6 +122,10 @@ export function bindListPanelControls(plugin: DetailPageButtonPlugin, panel: Det
 
 /** 将展示 checkbox 按 data-list-id 映射到隐藏 modal 的权威 checkbox。 */
 export function forwardListPanelChange(plugin: DetailPageButtonPlugin, panel: DetailListPanelElement, displayInput: HTMLInputElement): void {
+    if (displayInput.dataset.listGroup) {
+        forwardListGroupChange(plugin, panel, displayInput);
+        return;
+    }
     const checkedBeforeMutation = !displayInput.checked;
     const listId = displayInput.dataset.listId;
     const listContainer = document.querySelector(
@@ -215,6 +241,7 @@ export function initListPanel(plugin: DetailPageButtonPlugin, forceReload = fals
 export function syncListPanelInputState(plugin: DetailPageButtonPlugin, sourceInput: HTMLInputElement): void {
     const listId = sourceInput.dataset.listId;
     if (!listId) return;
+    syncMergedRowsForListId(listId);
     const displayInput = (Array.from(
         document.querySelectorAll<HTMLInputElement>(
             '.jhs-list-panel input[type="checkbox"][data-list-id]'
@@ -307,7 +334,7 @@ export function renderListPanel(plugin: DetailPageButtonPlugin): void {
         .map((child) => plugin._createListPanelEntry(child))
         .filter((entry): entry is DetailListEntry => entry !== null);
 
-    itemsContainer.replaceChildren(...entries.map((entry) => entry.element));
+    itemsContainer.replaceChildren(...buildListPanelRows(plugin, entries));
     itemsContainer.setAttribute('aria-busy', 'false');
     plugin._clearListPanelLoadTimeout();
     plugin._listPanelIniting = false;

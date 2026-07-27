@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 40 个功能插件（JavDB 38 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
 
 ## 文档清单
 
@@ -311,6 +311,10 @@
 197. `197-fix-gm-redirect-detection.md` — 修复 gmRequest 重定向检测误判：`response.finalUrl` 为可选字段，缺失时 `undefined !== requestUrl` 恒真导致所有 followRedirect 请求被误判为重定向；增加 finalUrl 存在性检查 + reject 后补 return；version 1.30.1→1.30.2
 198. `198-fix-osp-preload-bugs.md` — 修复 osp-preload doPreloadSite 三处 bug：href 解析失败改为 throw（对齐 probeSite）、登录页检测收窄为 title/表单特征（移除宽泛 bodyText.includes('登录')）、catch 块增加"重定向"错误分类；version 1.30.2→1.30.3
 199. `199-fix-cloudflare-nav-headers.md` — 外站探测请求伪装浏览器导航头：新增 buildBrowserNavHeaders 共享函数，为 doPreloadSite/probeSite 补充 Sec-Fetch-Site: same-origin + Referer + Accept-Language 等导航头，尝试绕过 Cloudflare 跨域 403 拦截；version 1.30.3→1.30.4
+200. `200-list-seq-merge.md` — 详情页清单面板序号清单合并 + 自动 overflow：新增 dpb-list-merge（纯逻辑）+ dpb-list-merge-ui（DOM/路由）两模块，同前缀序号清单（等待更新1/2）合并为一行，勾选自动放入最靠前未满清单、满 501 顺延、全满复用 VLT createList 自动新建下一序号；D1 单序号成组 / D2 批量移除 / D3 设置开关 / D4 半选态 / D5 排除名 / 自定义正则 / 展开明细 / 当前影片整理；rating-bar.css 合并行样式；33 个纯逻辑单测；version 1.30.4→1.31.0
+201. `201-list-reflow-feasibility.md` — 清单页跨影片回填（组内压实）期0 只读调查：确认加入/移除端点已由 VLT `postJavdbListMutation`（POST /users/save_video_to_list，页面内 same-origin fetch + CSRF）封装，配套权威校验/恢复日志/串行队列；组发现走 /users/lists，影片枚举走 /lists/{id} 的 .movie-list+.pagination-next；端点逆向风险消解，结论可行，工作量集中于批量执行引擎安全性（预演/中止/续传/限速），约为 doc/200 的 2–3 倍；建议分期1 只读预览 / 期2 写入；纯调查无代码变更
+
+202. `202-list-reflow-phase1.md` — 清单页编号清单整理（组内压实）期1 只读预览：新增 ListReflowPlugin（src/plugins/list-reflow/ 6 模块）+ reflow-panel 组件 + list-reflow/ 样式子目录（首个 CSS 子目录，守 §11 扉平度门禁）；/lists/{id} 识别同前缀编号组（复用 doc/200 分组配置）、展示数量/满员、按需枚举组内影片生成压实计划预览（目标分布/搬运明细/收藏错误审计/溢出）；压实规则：不保留顺序 + 同 base 只留一份 + 不同 base 全保留；期1 纯只读不写数据，执行为期2；listReflowEnabled 开关；8 个规划器单测；version 1.31.0→1.32.0
 
 ## 当前进度概览
 
@@ -321,22 +325,22 @@
   `pagination-state`/`plugin-diagnostics`/`storage-manager`/
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
   `tooltip`/`viewer`/`webdav`/`webdav-crypto`
-- plugins：`base-plugin` + `plugin-manager` + 40 个插件（javdb 38 + missav 2），
-  19 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
+- plugins：`base-plugin` + `plugin-manager` + 41 个插件（javdb 39 + missav 2），
+  20 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`/`icons`
-- styles：37 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
-  无障碍样式），全部清理 `transition: all` 反模式
-- components：135 个 React 函数组件（JSX → jsxToString → HTML 字符串），
-  重组为 25 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels），直接文件数 0
+- styles：39 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
+  无障碍样式 + `list-reflow/` 子目录），全部清理 `transition: all` 反模式
+- components：136 个 React 函数组件（JSX → jsxToString → HTML 字符串），
+  重组为 26 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels/list-reflow），直接文件数 0
 - 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）
 - 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
 - 工具链：`tsc -b`（零错误）+ ESLint（0 errors, 0 warnings）+
   Stylelint（0 errors）三重门禁
-- build：`tsc -b && vite build` 通过，产物 2,071 kB（gzip 479 kB）
+- build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/199（200 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/202（203 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
