@@ -40,6 +40,7 @@ import {
     updateDetailPageCheckboxLabel
 } from './vlt-sync';
 import { setupListMgmtBroadcastListener } from './vlt-remote-sync';
+import { setAutoReconcileDelay } from './vlt-reconcile';
 
 import videoListsTagCssRaw from '../../styles/video-lists-tag.css?raw';
 
@@ -81,6 +82,9 @@ export class VideoListsTagPlugin extends BasePlugin {
     async handle(): Promise<void> {
         // 详情页：checkbox 同步 + 新增清单 UI + 清单管理广播接收
         if (window.isDetailPage) {
+            // doc/206④：从设置注入自动对账巡检延迟（默认 800ms，setAutoReconcileDelay 内校验）
+            const settings = await storageManager.getSetting();
+            setAutoReconcileDelay(Number(settings.autoReconcileDelay));
             setupCheckboxListener();
             setupCreateListButton();
             // 接收清单删除/改名广播：实时移除/更新 checkbox

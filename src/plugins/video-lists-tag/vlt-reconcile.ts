@@ -11,7 +11,16 @@ import { showToast } from './vlt-toast';
 
 const LOG_PREFIX = '[JavDB][清单对账]';
 const MAX_PAGES = 100;
-const AUTO_RECONCILE_DELAY = 350;
+/** 自动对账巡检防抖延迟（ms）。默认 800；可由设置 autoReconcileDelay 经 setAutoReconcileDelay 调整（doc/206④）。 */
+let autoReconcileDelay = 800;
+
+/**
+ * 设置自动对账巡检防抖延迟（doc/206④，供 VLT 插件从设置注入）。
+ * @param ms 延迟毫秒数（需 > 0）
+ */
+export function setAutoReconcileDelay(ms: number): void {
+    if (Number.isFinite(ms) && ms > 0) autoReconcileDelay = ms;
+}
 
 interface ReconcileExpectation {
     expectedCount?: number;
@@ -333,7 +342,7 @@ export async function reconcileListBeforeMutation(
         expectedCount: serverCount,
         designation,
         checked: checkedBeforeMutation,
-        quiet: false
+        quiet: true
     });
 }
 
@@ -373,7 +382,7 @@ async function runAutomaticReconciliation(designation: string): Promise<void> {
                 expectedCount: serverCount,
                 designation,
                 checked: input.checked,
-                quiet: false
+                quiet: true
             });
         }
     } finally {
@@ -391,7 +400,7 @@ export function setupAutomaticListReconciliation(designation: string): void {
         automaticReconciliationTimer = setTimeout(() => {
             automaticReconciliationTimer = null;
             runAutomaticReconciliation(designation).then();
-        }, AUTO_RECONCILE_DELAY);
+        }, autoReconcileDelay);
     };
 
     const attach = (): void => {
