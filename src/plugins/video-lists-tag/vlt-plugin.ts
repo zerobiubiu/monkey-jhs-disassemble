@@ -41,6 +41,7 @@ import {
 } from './vlt-sync';
 import { setupListMgmtBroadcastListener } from './vlt-remote-sync';
 import { setAutoReconcileDelay } from './vlt-reconcile';
+import { setAutoFavCleanupEnabled, setProtectedKeywords } from './vlt-checkbox';
 
 import videoListsTagCssRaw from '../../styles/video-lists-tag.css?raw';
 
@@ -85,6 +86,14 @@ export class VideoListsTagPlugin extends BasePlugin {
             // doc/206④：从设置注入自动对账巡检延迟（默认 800ms，setAutoReconcileDelay 内校验）
             const settings = await storageManager.getSetting();
             setAutoReconcileDelay(Number(settings.autoReconcileDelay));
+            // doc/205：从设置注入自动收藏/移除总开关 + 受保护清单关键词（默认「值得复盘」）
+            setAutoFavCleanupEnabled(settings.autoFavCleanupEnabled !== 'no');
+            setProtectedKeywords(
+                String(settings.protectedListKeywords || '值得复盘')
+                    .split(',')
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+            );
             setupCheckboxListener();
             setupCreateListButton();
             // 接收清单删除/改名广播：实时移除/更新 checkbox

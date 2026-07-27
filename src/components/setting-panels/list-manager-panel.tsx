@@ -86,6 +86,20 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                 />
             </SettingSection>
 
+            <SettingSection title="自动收藏联动" icon="⭐">
+                <SettingToggle
+                    id="autoFavCleanupEnabled"
+                    label="启用自动收藏/移除联动"
+                    tooltip="加入「除受保护清单外」的任意清单自动收藏（想看）；从收藏改为已读星级时，自动从「除受保护清单外」的所有清单移出"
+                />
+                <SettingRow
+                    label="受保护清单关键词:"
+                    tooltip="逗号分隔、包含匹配；命中的清单不自动收藏、已读时不移出（默认「值得复盘」）"
+                >
+                    <SettingInput id="protectedListKeywords" placeholder="逗号分隔，如：值得复盘" />
+                </SettingRow>
+            </SettingSection>
+
             <SettingSection title="对账校准" icon="🔄">
                 <SettingRow
                     label="自动对账延迟(毫秒):"

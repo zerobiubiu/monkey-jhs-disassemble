@@ -106,6 +106,16 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
     $('#listSortBy').val(settings.listSortBy || 'name');
     $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
+    // 自动收藏联动（doc/205）
+    $('#autoFavCleanupEnabled').prop(
+        'checked',
+        !settings.autoFavCleanupEnabled || settings.autoFavCleanupEnabled === YES
+    );
+    $('#protectedListKeywords').val(
+        Array.isArray(settings.protectedListKeywords)
+            ? settings.protectedListKeywords.join(', ')
+            : settings.protectedListKeywords || '值得复盘'
+    );
     $('#listMergePattern').val(settings.listMergePattern || DEFAULT_LIST_MERGE_PATTERN);
     const mergeExcludeNames = Array.isArray(settings.listMergeExcludeNames)
         ? (settings.listMergeExcludeNames as string[])
@@ -183,6 +193,12 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.listDefaultSort = $('#listDefaultSort').val();
     settings.listSortBy = $('#listSortBy').val();
     settings.autoReconcileDelay = Number($('#autoReconcileDelay').val()) || 800;
+    // 自动收藏联动（doc/205）
+    settings.autoFavCleanupEnabled = $('#autoFavCleanupEnabled').is(':checked') ? YES : NO;
+    settings.protectedListKeywords = String($('#protectedListKeywords').val() ?? '')
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean);
     settings.listMergePattern = String($('#listMergePattern').val() ?? '').trim();
     settings.listMergeExcludeNames = String($('#listMergeExcludeNames').val() ?? '')
         .split(',')

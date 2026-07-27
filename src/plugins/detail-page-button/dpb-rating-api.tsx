@@ -7,7 +7,7 @@ import { FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constant
 import { jsxToString } from '../../core/jsx-to-string';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
-import { autoRemoveFromPendingUpdateOnWatch } from '../video-lists-tag/vlt-sync';
+import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
 
 import { QuickBlockConfirmMessage } from '../../components/dpb/quick-block-confirm-message';
 
@@ -21,6 +21,7 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
     // ---- JHS 端更新 ----
     try {
         const carRecord = await storageManager.getCar(pageInfo.carNum);
+        const wasFavorite = carRecord?.status === FAVORITE_ACTION;
         if (carRecord && carRecord.status === FAVORITE_ACTION) {
             await storageManager.removeCar(pageInfo.carNum);
         }
@@ -47,8 +48,8 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
                 ' \u5df2\u6807\u8bb0\u770b\u8fc7 ' +
                 (score > 0 ? '\u2605' + score : '')
         );
-        // 已读/评分后：若在「等待更新」清单中则自动移出（不在则 noop）
-        autoRemoveFromPendingUpdateOnWatch().then();
+        // doc/205 Feature B：从收藏改为已读星级 → 移出所有非受保护清单（含 0 星，D2；未收藏过则不移）
+        if (wasFavorite) removeFromNonProtectedListsOnWatch().then();
     } catch (err: unknown) {
         clog.error('[JHS-快键] 设为已观看失败', err);
         show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));

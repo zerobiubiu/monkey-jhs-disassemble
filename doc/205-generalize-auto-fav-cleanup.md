@@ -1,7 +1,7 @@
 # 205 - 泛化「自动收藏 / 自动移除」清单联动（值得复盘受保护模型）
 
 > **文档类型**：🔧 开发指导
-> **文档状态**：🔧 待执行
+> **文档状态**：✅ 已执行
 
 ## 1. 背景
 
@@ -126,7 +126,27 @@ A/B 是 doc/53/124 的**严格超集**（等待更新旧行为完全保留，范
 - **状态判定依赖 JHS car record**：若本地 car record 缺失/与服务端不一致，「旧态===收藏」门控
   可能误判。建议在门控同时参考原生想看 tag（`.review-buttons`）作双重确认。
 
-## 11. 待实施
+## 11. 执行验证记录（2026-07-27）
 
-本方案已用户确认存档，**尚未实现**。实现时建议先做 Feature A（条件改动小），再做 Feature B
-（双路径 + 门控 + 泛化移除），各步配单测并补执行验证记录，依 migration 原则推进状态。
+Feature A/B 已实现（D1–D5 均采纳）：
+
+- `vlt-checkbox.ts`：新增 `autoFavCleanupEnabled`/`protectedKeywords` 配置 + `isProtectedList`
+  + setter；Feature A 将 `autoFavoriteIfPendingUpdate` 触发改为「除受保护清单外均自动收藏」；
+  抽出谓词核心 `uncheckListsMatching`/`findCurrentMovieListsMatching`（doc/125 等待更新与
+  doc/205 非保护复用）；新增 Feature B 入口 `removeFromNonProtectedListsOnWatch`（取代 doc/124
+  等待更新专属移除）；`handleCheckboxChange` 自动化受总开关门控，doc/125 逻辑保留。
+- `dpb-rating-api.tsx`（脚本评分条路径）与 `dpb-want-watched.ts`（原生「我看過」路径）均加
+  「旧态===收藏」门控调 Feature B（双路径互斥，含 0 星）。
+- `vlt-plugin.ts` handle 从设置注入总开关 + 受保护关键词；`vlt-sync.tsx` 重导出更新。
+- 清单管理器增「⭐ 自动收藏联动」分区（`autoFavCleanupEnabled` + `protectedListKeywords`），
+  `setting-form-load.ts` 增读写。
+
+```
+$ bun run build      # tsc -b 零错误，✓ built
+$ bun run test       # 103 passed
+$ bun run lint       # 0 errors / 0 warnings
+$ bun run check:structure   # OK
+```
+
+`isProtectedList` 为 3 行纯逻辑但依赖整个 VLT 子树（IDB/DOM），单测需 jsdom 且易脆，
+故未单独加测，由构建 + 实测验证。版本 1.33.0→1.34.0（minor）。

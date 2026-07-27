@@ -320,9 +320,9 @@
 
 204. `204-list-reflow-phase2-plan.md` — 清单页编号整理期2 组内压实实写执行方案（🔧待执行）：四条不变式（永不丢片/幂等可重入/不超上限/可中止可恢复）+ 「先加后删」安全核心；回退策略（单步/批次/全局/整次撤销）+ 降级策略（指数退避降速/跳步/暂停/停止续传/降级校验）+ 恢复日志幂等续传 + 预检漂移比对 + 试运行闸；串行 + 间隔400ms + 批20 + 试运行K=10 + 并发锁1；复用 postJavdbListMutation/fetchAuthoritativeCheckboxState；分期 2a 核心写路径 / 2b 韧性层含整次撤销 / 2c 体验层；用户确认存档，暂不实现
 
-205. `205-generalize-auto-fav-cleanup.md` — 泛化「自动收藏/自动移除」清单联动（值得复盘受保护模型，🔧待执行）：Feature A 加入除值得复盘*外任意清单→自动收藏（超集取代 doc/53）；Feature B 从收藏改为任意已读星级（含0星）→移出所有非值得复盘*清单（超集取代 doc/124）；双路径（脚本评分条+原生我看過按钮）互斥不重复；保留 doc/125；protectedListKeywords 可配置（默认值得复盘）+ autoFavCleanupEnabled 总开关；用户确认 D1–D5 存档，暂不实现
+205. `205-generalize-auto-fav-cleanup.md` — 泛化「自动收藏/自动移除」清单联动（值得复盘受保护模型，🔧待执行）：Feature A 加入除值得复盘*外任意清单→自动收藏（超集取代 doc/53）；Feature B 从收藏改为任意已读星级（含0星）→移出所有非值得复盘*清单（超集取代 doc/124）；双路径（脚本评分条+原生我看過按钮）互斥不重复；保留 doc/125；protectedListKeywords 可配置（默认值得复盘）+ autoFavCleanupEnabled 总开关；用户确认 D1–D5 存档，已实现（version 1.33.0→1.34.0）
 
-206. `206-silence-opportunistic-reconcile.md` — 消除「清单自动校准失败」良性噪音（🔧待执行）：根因为对账拿滞后的「显示数量」当预期，与真实服务端数量不一致误报（本地镜像已由权威校验路径正确校准，失败对账仅为冗余补校）；方案：①静默后台巡检对账 runAutomaticReconciliation + ②静默变更前预校 reconcileListBeforeMutation（均 quiet:true）+ ③保留真兑底 reconcileAfterConfirmedMutation 告警 + ④AUTO_RECONCILE_DELAY 350→800ms；零数据行为变更（snapshotMatchesExpectation/双快照校验原样保留，clog.error 照常），用户确认①②③④全做，暂不实现
+206. `206-silence-opportunistic-reconcile.md` — 消除「清单自动校准失败」良性噪音（🔧待执行）：根因为对账拿滞后的「显示数量」当预期，与真实服务端数量不一致误报（本地镜像已由权威校验路径正确校准，失败对账仅为冗余补校）；方案：①静默后台巡检对账 runAutomaticReconciliation + ②静默变更前预校 reconcileListBeforeMutation（均 quiet:true）+ ③保留真兑底 reconcileAfterConfirmedMutation 告警 + ④AUTO_RECONCILE_DELAY 350→800ms；零数据行为变更（snapshotMatchesExpectation/双快照校验原样保留，clog.error 照常），用户确认①②③④全做，已实现（version 1.32.1→1.33.0）
 
 207. `207-list-manager-settings.md` — 清单管理器设置页重构 + 可配置项整理：将「收藏清单关系」(vlt-panel)升级为「📋 清单管理器」专页，集中管理清单配置——序号合并（listMerge*/listReflow* 自基础配置迁入）/排序显示（新增 listDefaultSort 默认排序方式 + listSortBy 排序字段名称/数量/序号）/编号整理/对账校准/数据管理（保留导入导出）；详情页清单排序下拉改由设置驱动；同步落地 doc/206 对账消噪（机会性对账静默 + autoReconcileDelay 可配置）；version 1.32.1→1.33.0
 

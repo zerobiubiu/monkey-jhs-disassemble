@@ -14,7 +14,7 @@
 export { getMovieInfo, getListInfo } from './vlt-helpers';
 export type { MovieInfo, ListInfo } from './vlt-helpers';
 
-export { handleCheckboxChange, autoRemoveFromPendingUpdateOnWatch } from './vlt-checkbox';
+export { handleCheckboxChange, removeFromNonProtectedListsOnWatch } from './vlt-checkbox';
 
 export { setupCheckboxListener } from './vlt-server';
 

@@ -7,6 +7,7 @@ import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { broadcastSend, broadcastSubscribe } from '../../core/util/broadcast';
 
+import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import type { WantWatchedState, WantWatchedSyncPayload } from './dpb-types';
 
@@ -148,6 +149,7 @@ export async function onWatchedAdded(plugin: DetailPageButtonPlugin): Promise<vo
     const pageInfo = plugin.getPageInfo();
     try {
         const carRecord = await storageManager.getCar(pageInfo.carNum!);
+        const wasFavorite = carRecord?.status === FAVORITE_ACTION;
         if (carRecord && carRecord.status === HAS_WATCH_ACTION) {
             // 已为 hasWatch，不重复写
         } else {
@@ -165,6 +167,8 @@ export async function onWatchedAdded(plugin: DetailPageButtonPlugin): Promise<vo
             });
             show.ok(`${pageInfo.carNum} 已标记看过`);
         }
+        // doc/205 Feature B（原生「我看過」按钮路径，D1）：从收藏改为已看 → 移出所有非受保护清单
+        if (wasFavorite) removeFromNonProtectedListsOnWatch().then();
     } catch (err: unknown) {
         clog.error('[JHS-观看自动同步] 写入失败', err);
     }

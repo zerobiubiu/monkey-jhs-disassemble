@@ -25,6 +25,27 @@ import {
 import type { ListInfo, MovieInfo } from './vlt-helpers';
 import { enqueueServerCheckboxMutation } from './vlt-server';
 
+// ── doc/205 自动化配置（由 VLT 插件 handle 从设置注入） ──
+/** 自动收藏/移除总开关（doc/205 D5，默认开）。 */
+let autoFavCleanupEnabled = true;
+/** 受保护清单关键词（doc/205 D4，包含匹配，默认「值得复盘」）。 */
+let protectedKeywords: string[] = ['值得复盘'];
+
+/** 设置自动收藏/移除总开关。 */
+export function setAutoFavCleanupEnabled(enabled: boolean): void {
+    autoFavCleanupEnabled = enabled;
+}
+
+/** 设置受保护清单关键词（空数组不覆盖默认）。 */
+export function setProtectedKeywords(keywords: string[]): void {
+    if (keywords.length > 0) protectedKeywords = keywords;
+}
+
+/** 清单名是否受保护（含任一受保护关键词则不自动收藏/不移出，doc/205）。 */
+export function isProtectedList(name: string): boolean {
+    return protectedKeywords.some((kw) => kw !== '' && name.includes(kw));
+}
+
 /** association → toast 映射。 */
 const ASSOC_TOAST: Record<
     string,
@@ -96,7 +117,9 @@ async function syncMoviesLists(
  * 当向名称包含「等待更新」的清单添加视频时，自动将未收藏视频收藏。
  */
 async function autoFavoriteIfPendingUpdate(movieInfo: MovieInfo, lname: string): Promise<void> {
-    if (!lname.includes(AUTO_FAVORITE_KEYWORD)) return;
+    // doc/205 Feature A：除受保护清单外的任意清单均自动收藏（泛化自 doc/53 的等待更新专属）
+    if (!autoFavCleanupEnabled) return;
+    if (isProtectedList(lname)) return;
 
     const des = movieInfo.designation;
     try {
@@ -177,8 +200,14 @@ export async function handleCheckboxChange(
         }
     }
 
-    if (checked && !options.skipAutomation && result.association !== 'limit_exceeded') {
+    if (
+        checked &&
+        !options.skipAutomation &&
+        result.association !== 'limit_exceeded' &&
+        autoFavCleanupEnabled
+    ) {
         autoFavoriteIfPendingUpdate(movieInfo, lname).then();
+        // doc/125 保留：加入非等待更新清单时移出等待更新（等待更新专属逻辑）
         if (!lname.includes(AUTO_FAVORITE_KEYWORD)) {
             uncheckPendingUpdateListCheckboxes();
         }
@@ -191,21 +220,23 @@ export async function handleCheckboxChange(
 }
 
 /**
- * 评分/已读（0–5 星）后：若当前视频在名称含「等待更新」的清单中，自动移出。
+ * doc/205 Feature B：收藏→已读星级后，移出所有非受保护清单（泛化自 doc/124 的等待更新专属）。
+ * DOM 优先（取消勾选派发 change），DOM 不可用时退而查 VltDb 直接服务端移除。
  */
-export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
+export async function removeFromNonProtectedListsOnWatch(): Promise<void> {
+    if (!autoFavCleanupEnabled) return;
     try {
-        if (uncheckPendingUpdateListCheckboxes() > 0) return;
+        if (uncheckNonProtectedListCheckboxes() > 0) return;
 
-        const pending = await findPendingUpdateListsForCurrentMovie();
+        const pending = await findCurrentMovieListsMatching((name) => !isProtectedList(name));
         if (pending.length === 0) return;
 
         for (let i = 0; i < 15; i++) {
             await new Promise((r) => setTimeout(r, 200));
-            if (uncheckPendingUpdateListCheckboxes() > 0) return;
+            if (uncheckNonProtectedListCheckboxes() > 0) return;
         }
 
-        // DOM 仍不可用：仍先请求 JavDB，确认成功后才删除本地关联
+        // DOM 仍不可用：直接请求 JavDB 服务端移除
         for (const item of pending) {
             const movieInfo = getMovieInfo(item.videoId);
             if (!movieInfo) continue;
@@ -216,15 +247,16 @@ export async function autoRemoveFromPendingUpdateOnWatch(): Promise<void> {
             await enqueueServerCheckboxMutation(movieInfo, listInfo, false, null, true);
         }
     } catch (err: unknown) {
-        clog.error(`${LOG_PREFIX} 评分后移出「等待更新」失败`, err);
+        clog.error(`${LOG_PREFIX} 评分后移出非受保护清单失败`, err);
     }
 }
 
 /**
- * 取消勾选名称含「等待更新」且已勾选的清单 checkbox。
+ * 取消勾选符合谓词的已勾选清单 checkbox（doc/125 等待更新 / doc/205 非保护 共用核心）。
+ * @param predicate 清单名判定（true 则取消勾选）
  * @returns 成功触发取消的清单数量（按 listId 去重）
  */
-function uncheckPendingUpdateListCheckboxes(): number {
+function uncheckListsMatching(predicate: (name: string) => boolean): number {
     const inputs = document.querySelectorAll(
         '#modal-save-list input[type="checkbox"][data-action="change->list#listCheckboxChanged"]'
     ) as NodeListOf<HTMLInputElement>;
@@ -237,7 +269,7 @@ function uncheckPendingUpdateListCheckboxes(): number {
         const listId = input.dataset.listId || '';
         if (!listId || seen.has(listId)) continue;
         const name = getListName(listId);
-        if (!name.includes(AUTO_FAVORITE_KEYWORD)) continue;
+        if (!predicate(name)) continue;
 
         seen.add(listId);
         count++;
@@ -249,18 +281,29 @@ function uncheckPendingUpdateListCheckboxes(): number {
         ) as HTMLInputElement | null;
         if (panelCb) panelCb.checked = false;
 
-        console.log(`${LOG_PREFIX} 评分后取消勾选「${name}」(listId=${listId})`);
+        console.log(`${LOG_PREFIX} 取消勾选「${name}」(listId=${listId})`);
     }
 
     return count;
 }
 
+/** doc/125：取消勾选名称含「等待更新」的已勾选清单。 */
+function uncheckPendingUpdateListCheckboxes(): number {
+    return uncheckListsMatching((name) => name.includes(AUTO_FAVORITE_KEYWORD));
+}
+
+/** doc/205 Feature B：取消勾选所有非受保护清单的已勾选清单。 */
+function uncheckNonProtectedListCheckboxes(): number {
+    return uncheckListsMatching((name) => !isProtectedList(name));
+}
+
 /**
- * 从 VltDb 查询当前详情页影片是否关联名称含「等待更新」的清单。
+ * 从 VltDb 查询当前详情页影片关联的符合谓词的清单（doc/125/doc/205 共用核心）。
+ * @param predicate 清单名判定（true 则纳入）
  */
-async function findPendingUpdateListsForCurrentMovie(): Promise<
-    { videoId: string; listId: string; name: string; url: string }[]
-> {
+async function findCurrentMovieListsMatching(
+    predicate: (name: string) => boolean
+): Promise<{ videoId: string; listId: string; name: string; url: string }[]> {
     const m = window.location.pathname.match(/\/v\/([^/?#]+)/);
     const videoId = m?.[1];
     if (!videoId) return [];
@@ -273,7 +316,7 @@ async function findPendingUpdateListsForCurrentMovie(): Promise<
     const result: { videoId: string; listId: string; name: string; url: string }[] = [];
 
     for (const item of lists) {
-        if (!item.name.includes(AUTO_FAVORITE_KEYWORD)) continue;
+        if (!predicate(item.name)) continue;
         const listId = item.url?.match(/\/lists\/([^/?#]+)/)?.[1];
         if (!listId) continue;
         result.push({
