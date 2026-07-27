@@ -21,6 +21,7 @@ import { DomainPanel } from '.././setting-panels/domain-panel';
 import { CachePanel } from '.././setting-panels/cache-panel';
 import { SyncPanel } from '.././setting-panels/sync-panel';
 import { ListManagerPanel } from '.././setting-panels/list-manager-panel';
+import { FavSyncPanel } from '.././setting-panels/fav-sync-panel';
 import { PreloadPanel } from '.././setting-panels/preload-panel';
 import { DiagnosticsPanel } from '.././setting-panels/diagnostics-panel';
 
@@ -100,6 +101,13 @@ export function SettingDialog({
                     📋 清单管理器
                 </div>
                 <div
+                    className={`side-menu-item ${panelName === 'fav-sync-panel' ? 'active' : ''}`}
+                    data-panel="fav-sync-panel"
+                    title="JHS ↔ JavDB 双向增量同步"
+                >
+                    🔄 收藏同步
+                </div>
+                <div
                     className={`side-menu-item ${panelName === 'missav-panel' ? 'active' : ''}`}
                     data-panel="missav-panel"
                 >
@@ -143,6 +151,7 @@ export function SettingDialog({
                     <DomainPanel panelName={panelName} />
                     <CachePanel panelName={panelName} cacheItemsHtml={cacheItemsHtml} />
                     <ListManagerPanel panelName={panelName} />
+                    <FavSyncPanel panelName={panelName} />
                     <SyncPanel
                         panelId="missav-panel"
                         panelName={panelName}

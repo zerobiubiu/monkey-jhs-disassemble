@@ -336,6 +336,7 @@
 
 212. `212-fix-check-structure-types.md` — 修复 scripts/check-structure.ts 编辑器类型报错：装 @types/node + 新增独立 scripts/tsconfig.json（types:["node"]，不被根 tsconfig 引用故不接入 tsc -b，仅供编辑器解析）；tsconfig.app.json 已有 types:["react"] 故 src/ 不受污染；archetype「文件被忽略」为只读参考脚本的预期提示无需处理；非 src/ 改动不升版本
 213. `213-bidirectional-sync.md` — JHS↔JavDB 双向增量同步：清单管理器「收藏同步」升级为四方向双向同步（JHS→JavDB 想看/已看 + JavDB→JHS 想看/已看），冲突仅报告不自动处理，已看同步携带评分；模块拆分为 src/plugins/setting/jhs-sync/ 子目录（sync-common/sync-to-javdb/sync-from-javdb/sync-ui）；version 1.36.1→1.37.0
+214. `214-fav-sync-independent-page.md` — 收藏同步独立设置页 + 引擎重写：从清单管理器拆出为独立侧栏页（🔄 收藏同步），引擎重写为 tick 驱动状态机（分页抓取/断点续接/后台处理/暂停继续），支持 5 万+ 条目；UI 含进度条+四格统计+详细报告；version 1.37.0→1.38.0
 
 ## 当前进度概览
 
@@ -361,7 +362,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/213（214 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/214（215 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

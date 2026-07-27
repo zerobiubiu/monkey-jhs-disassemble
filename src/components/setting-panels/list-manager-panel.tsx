@@ -186,50 +186,6 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                     style={{ display: 'none' }}
                 />
             </SettingSection>
-
-            <SettingSection title="收藏同步" icon="⬆️">
-                <p
-                    style={{
-                        margin: '0 0 12px 0',
-                        color: '#6c757d',
-                        fontSize: '13px',
-                        lineHeight: '1.6'
-                    }}
-                >
-                    双向增量同步「想看」和「已看」：脚本有/网站无 → 补到网站；网站有/脚本无 → 补到脚本。
-                    冲突（双方状态不一致）仅报告番号，不自动处理。建议先备份。
-                </p>
-                <SettingRow
-                    label="同步请求间隔(毫秒):"
-                    tooltip="逐个操作时的请求间隔；越大越温和、越慢"
-                >
-                    <SettingInput id="jhsSyncInterval" type="number" min="100" max="5000" />
-                </SettingRow>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
-                    <SettingButton id="jhs-sync-full-btn" color="primary">
-                        双向增量同步
-                    </SettingButton>
-                    <SettingButton id="jhs-sync-btn" color="mint">
-                        仅 JHS→JavDB 想看
-                    </SettingButton>
-                    <span id="jhs-sync-abort-wrap" style={{ display: 'none' }}>
-                        <SettingButton id="jhs-sync-abort-btn" color="danger">
-                            中止
-                        </SettingButton>
-                    </span>
-                </div>
-                <div
-                    id="jhs-sync-status"
-                    style={{
-                        fontSize: '13px',
-                        color: '#6c757d',
-                        marginTop: '8px',
-                        whiteSpace: 'pre-wrap',
-                        maxHeight: '300px',
-                        overflowY: 'auto'
-                    }}
-                />
-            </SettingSection>
         </div>
     );
 }

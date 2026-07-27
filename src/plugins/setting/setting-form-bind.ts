@@ -26,7 +26,7 @@ import {
     handleMissavFileChange,
     handleMissavExportClick
 } from './data-import-export';
-import { handleJhsSyncClick, handleFullSyncClick, abortSync } from './jhs-sync';
+import { bindFavSyncPanel } from './jhs-sync/fav-sync-bind';
 import { backupDataByWebDav, backupListBtnByWebDav } from './webdav-operations';
 import { saveForm } from './setting-form-load';
 
@@ -47,6 +47,9 @@ export function bindClick(plugin: SettingPlugin): void {
             $('#saveBtn').show();
             $('#clean-all').hide();
         } else if (panelName === 'missav-panel') {
+            $('#saveBtn').hide();
+            $('#clean-all').hide();
+        } else if (panelName === 'fav-sync-panel') {
             $('#saveBtn').hide();
             $('#clean-all').hide();
         } else if (panelName === 'preload-panel') {
@@ -105,10 +108,8 @@ export function bindClick(plugin: SettingPlugin): void {
     $('#vlt-import-btn').on('click', () => handleVltImportClick());
     $('#vlt-file-input').on('change', (event: Event) => handleVltFileChange(event));
     $('#vlt-export-btn').on('click', () => handleVltExportClick());
-    // 清单管理器：JHS↔JavDB 双向同步（doc/213）
-    $('#jhs-sync-full-btn').on('click', () => handleFullSyncClick());
-    $('#jhs-sync-btn').on('click', () => handleJhsSyncClick());
-    $('#jhs-sync-abort-btn').on('click', () => abortSync());
+    // 收藏同步面板（doc/214：独立页 + 引擎驱动）
+    bindFavSyncPanel();
 
     // MissAV 同步面板：立即同步 / 导入 / 导出按钮
     $('#missav-sync-btn').on('click', () => handleMissavSync());
