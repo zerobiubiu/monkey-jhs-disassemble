@@ -11,8 +11,9 @@ import { jsxToString } from '../../core/jsx-to-string';
 import { LIST_FULL_THRESHOLD } from '../detail-page-button/dpb-list-merge';
 import type { ListMergeConfig } from '../detail-page-button/dpb-list-merge';
 import { discoverGroup, fetchAllUserLists, getCurrentListId } from './lr-data';
+import { executeCompactionPlan } from './lr-execute';
 import { runPlanPreview } from './lr-plan';
-import type { ReflowGroup } from './lr-types';
+import type { CompactionPlan, ReflowGroup } from './lr-types';
 
 import { ReflowPanel } from '../../components/list-reflow/reflow-panel';
 
@@ -84,7 +85,18 @@ export function initReflowPanel(config: ListMergeConfig): void {
     const planElement = panel.querySelector<HTMLElement>('[data-reflow-plan]');
     const identifyButton = panel.querySelector<HTMLButtonElement>('[data-reflow-identify]');
     const planButton = panel.querySelector<HTMLButtonElement>('[data-reflow-plan-btn]');
-    if (!statusElement || !listsElement || !planElement || !identifyButton || !planButton) return;
+    const execButton = panel.querySelector<HTMLButtonElement>('[data-reflow-exec-btn]');
+    const abortButton = panel.querySelector<HTMLButtonElement>('[data-reflow-abort-btn]');
+    if (
+        !statusElement ||
+        !listsElement ||
+        !planElement ||
+        !identifyButton ||
+        !planButton ||
+        !execButton ||
+        !abortButton
+    )
+        return;
 
     const setStatus = (message: string, stateClass = ''): void => {
         statusElement.textContent = message;
@@ -93,6 +105,8 @@ export function initReflowPanel(config: ListMergeConfig): void {
     };
 
     let group: ReflowGroup | null = null;
+    let plan: CompactionPlan | null = null;
+    let execSignal: { aborted: boolean } = { aborted: false };
 
     identifyButton.addEventListener('click', () => {
         identifyButton.disabled = true;
@@ -130,7 +144,12 @@ export function initReflowPanel(config: ListMergeConfig): void {
     planButton.addEventListener('click', () => {
         if (!group) return;
         planButton.disabled = true;
+        execButton.hidden = true;
         void runPlanPreview(panel, group, setStatus)
+            .then((result) => {
+                plan = result;
+                if (plan && plan.moves.length > 0) execButton.hidden = false;
+            })
             .catch((error: unknown) => {
                 setStatus(
                     '生成计划失败：' + (error instanceof Error ? error.message : String(error)),
@@ -140,5 +159,100 @@ export function initReflowPanel(config: ListMergeConfig): void {
             .finally(() => {
                 planButton.disabled = false;
             });
+    });
+
+    const finishExecution = (): void => {
+        execButton.disabled = false;
+        execButton.hidden = false;
+        abortButton.hidden = true;
+    };
+
+    const runExecution = async (thePlan: CompactionPlan): Promise<void> => {
+        execSignal = { aborted: false };
+        execButton.disabled = true;
+        execButton.hidden = true;
+        abortButton.hidden = false;
+        const settings = await storageManager.getSetting();
+        const interval = Number(settings.reflowInterval) || 400;
+        const trialCount = Number(settings.reflowTrialCount) || 10;
+        const nameOf = (id: string): string =>
+            thePlan.targets.find((t) => t.listId === id)?.name ?? id;
+        const onProgress = (p: { done: number; total: number; videoId: string }): void =>
+            setStatus(`执行中 ${p.done + 1}/${p.total}：${p.videoId}`);
+
+        const trial = await executeCompactionPlan(thePlan, {
+            startIndex: 0,
+            count: trialCount,
+            interval,
+            signal: execSignal,
+            onProgress,
+            nameOf
+        });
+        if (trial.status === 'aborted') {
+            setStatus(`已中止（完成 ${trial.completed}，失败 ${trial.failed}）`, 'is-error');
+            finishExecution();
+            return;
+        }
+        if (trial.status === 'done') {
+            setStatus(
+                `完成：成功 ${trial.completed}，失败 ${trial.failed}`,
+                trial.failed > 0 ? 'is-error' : 'is-ok'
+            );
+            if (trial.errors.length > 0)
+                clog.error('[编号整理] 执行失败明细', trial.errors.join(' | '));
+            finishExecution();
+            return;
+        }
+        // 试运行切片跑完仍有剩余 → 确认继续
+        utils.q(
+            null,
+            `试运行完成：成功 ${trial.completed}，失败 ${trial.failed}。继续剩余 ${
+                thePlan.moves.length - trial.nextIndex
+            } 个？`,
+            () => {
+                void (async () => {
+                    const rest = await executeCompactionPlan(thePlan, {
+                        startIndex: trial.nextIndex,
+                        count: Infinity,
+                        interval,
+                        signal: execSignal,
+                        onProgress,
+                        nameOf
+                    });
+                    const completed = trial.completed + rest.completed;
+                    const failed = trial.failed + rest.failed;
+                    const allErrors = [...trial.errors, ...rest.errors];
+                    setStatus(
+                        rest.status === 'aborted'
+                            ? `已中止（完成 ${completed}，失败 ${failed}）`
+                            : `完成：成功 ${completed}，失败 ${failed}`,
+                        rest.status === 'aborted' || failed > 0 ? 'is-error' : 'is-ok'
+                    );
+                    if (allErrors.length > 0)
+                        clog.error('[编号整理] 执行失败明细', allErrors.join(' | '));
+                    finishExecution();
+                })();
+            },
+            () => {
+                setStatus(`试运行后取消（已完成 ${trial.completed}）`);
+                finishExecution();
+            }
+        );
+    };
+
+    execButton.addEventListener('click', () => {
+        if (!plan || plan.moves.length === 0) return;
+        utils.q(
+            null,
+            `将搬运 ${plan.moves.length} 部影片（先试运行，确认无误后继续）。确认开始？`,
+            () => {
+                void runExecution(plan!);
+            }
+        );
+    });
+
+    abortButton.addEventListener('click', () => {
+        execSignal.aborted = true;
+        setStatus('正在中止…');
     });
 }

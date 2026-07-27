@@ -112,9 +112,9 @@ export async function runPlanPreview(
     panel: HTMLElement,
     group: ReflowGroup,
     setStatus: (message: string, stateClass?: string) => void
-): Promise<void> {
+): Promise<CompactionPlan | null> {
     const planElement = panel.querySelector<HTMLElement>('[data-reflow-plan]');
-    if (!planElement) return;
+    if (!planElement) return null;
     planElement.hidden = false;
     planElement.replaceChildren(div('jhs-reflow-plan__summary', '正在枚举组内影片…'));
 
@@ -134,4 +134,5 @@ export async function runPlanPreview(
     const plan = planCompaction(group.base, inputs);
     renderPlan(planElement, plan);
     setStatus(`计划已生成：需搬运 ${plan.moves.length} 部`, 'is-ok');
+    return plan;
 }

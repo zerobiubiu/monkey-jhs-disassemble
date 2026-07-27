@@ -86,6 +86,33 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                 />
             </SettingSection>
 
+            <SettingSection title="压实执行" icon="🚀">
+                <SettingRow
+                    label="请求间隔(毫秒):"
+                    tooltip="压实搬运时每个加入/移除请求之间的间隔；越大越温和、越慢，建议 300–800"
+                >
+                    <SettingInput id="reflowInterval" type="number" min="100" max="5000" />
+                </SettingRow>
+                <SettingRow
+                    label="试运行数量:"
+                    tooltip="执行整理时先搬运这么多部并暂停，确认无误后再继续剩余"
+                >
+                    <SettingInput id="reflowTrialCount" type="number" min="1" max="100" />
+                </SettingRow>
+                <SettingRow
+                    label="每批数量:"
+                    tooltip="断点续传的检查点粒度（每搬运这么多部存一次进度，期2b 生效）"
+                >
+                    <SettingInput id="reflowBatchSize" type="number" min="1" max="200" />
+                </SettingRow>
+                <SettingRow
+                    label="连续失败上限:"
+                    tooltip="连续失败达到该次数后暂停并提示（期2b 自适应退避生效）"
+                >
+                    <SettingInput id="reflowMaxRetry" type="number" min="1" max="20" />
+                </SettingRow>
+            </SettingSection>
+
             <SettingSection title="自动收藏联动" icon="⭐">
                 <SettingToggle
                     id="autoFavCleanupEnabled"

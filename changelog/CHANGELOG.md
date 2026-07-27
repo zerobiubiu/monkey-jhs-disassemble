@@ -9,6 +9,14 @@
 
 ---
 
+## v1.35.0
+
+**发布日期**：2026-07-27
+
+### 新增
+
+- **清单压实执行引擎（doc/204 期2a）**：编号清单整理面板增「执行整理/中止」入口，将压实计划真正写入 JavDB。核心安全：串行执行 + **先加后删**（加入目标清单经权威校验成功后才移除来源，加入被拒/未确认则不删来源——保证永不丢片）+ 步间间隔限速 + 可中止 + 试运行闸（先跑 K 个确认后继续）。复用 VLT `postJavdbListMutation`/`fetchAuthoritativeCheckboxState`。清单管理器增「🚀 压实执行」分区（`reflowInterval`/`reflowTrialCount`/`reflowBatchSize`/`reflowMaxRetry`）。附 8 个执行引擎单测。期2b（韧性/续传/撤销）、期2c（UI 完善）待续。
+
 ## v1.34.0
 
 **发布日期**：2026-07-27

@@ -318,7 +318,7 @@
 
 203. `203-fix-reflow-group-discovery.md` — 修复清单页编号组识别失败：fetchAllUserLists 误用 a[href*="/lists/"] 匹配 /users/lists 原始链接（原始 href 为 ?id=xxx 查询参形式，/lists/xxx 是客户端改写），致匹配不到任何清单、识别恒失败；改用 div.column.is-10 > a 标题链接 + 新增 extractListId（?id= 与 /lists/ 双形式）+ clog 诊断；version 1.32.0→1.32.1
 
-204. `204-list-reflow-phase2-plan.md` — 清单页编号整理期2 组内压实实写执行方案（🔧待执行）：四条不变式（永不丢片/幂等可重入/不超上限/可中止可恢复）+ 「先加后删」安全核心；回退策略（单步/批次/全局/整次撤销）+ 降级策略（指数退避降速/跳步/暂停/停止续传/降级校验）+ 恢复日志幂等续传 + 预检漂移比对 + 试运行闸；串行 + 间隔400ms + 批20 + 试运行K=10 + 并发锁1；复用 postJavdbListMutation/fetchAuthoritativeCheckboxState；分期 2a 核心写路径 / 2b 韧性层含整次撤销 / 2c 体验层；用户确认存档，暂不实现
+204. `204-list-reflow-phase2-plan.md` — 清单页编号整理期2 组内压实实写执行方案（🔧待执行）：四条不变式（永不丢片/幂等可重入/不超上限/可中止可恢复）+ 「先加后删」安全核心；回退策略（单步/批次/全局/整次撤销）+ 降级策略（指数退避降速/跳步/暂停/停止续传/降级校验）+ 恢复日志幂等续传 + 预检漂移比对 + 试运行闸；串行 + 间隔400ms + 批20 + 试运行K=10 + 并发锁1；复用 postJavdbListMutation/fetchAuthoritativeCheckboxState；分期 2a 核心写路径 / 2b 韧性层含整次撤销 / 2c 体验层；用户确认存档，期2a 已实现（version 1.34.0→1.35.0），2b、2c 待续
 
 205. `205-generalize-auto-fav-cleanup.md` — 泛化「自动收藏/自动移除」清单联动（值得复盘受保护模型，🔧待执行）：Feature A 加入除值得复盘*外任意清单→自动收藏（超集取代 doc/53）；Feature B 从收藏改为任意已读星级（含0星）→移出所有非值得复盘*清单（超集取代 doc/124）；双路径（脚本评分条+原生我看過按钮）互斥不重复；保留 doc/125；protectedListKeywords 可配置（默认值得复盘）+ autoFavCleanupEnabled 总开关；用户确认 D1–D5 存档，已实现（version 1.33.0→1.34.0）
 

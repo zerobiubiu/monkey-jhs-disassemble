@@ -195,7 +195,28 @@ credentials: 'same-origin'                 # 页面内原生 fetch，继承登�
 
 每期独立可验证：2a 验「写得对」，2b 叠「扛得住」，2c 叠「好用」。
 
-## 15. 待实施
+## 15. 期2a 执行记录（2026-07-27）
 
-本方案已用户确认存档，**尚未实现**。实现自期2a 始，届时按 §14 分期推进，各期完成后
-补「执行验证记录」并依 migration 原则推进状态。
+**期2a（核心写路径）已实现**：
+
+- 新增 `lr-execute.ts` 执行引擎：`executeCompactionPlan`（串行 + 切片/试运行 + 间隔限速 +
+  可中止）+ `executeMove`（**先加后删**：加入目标清单经权威校验成功后才移除来源；加入被拒/
+  未确认则不删来源——不变式1 永不丢片）。复用 VLT `postJavdbListMutation`/
+  `fetchAuthoritativeCheckboxState`。
+- `reflow-panel.tsx` 增「执行整理/中止」按钮；`lr-plan.ts` `runPlanPreview` 返回计划；
+  `lr-panel.tsx` 接线执行（试运行 K 个 → 确认 → 续跑，`utils.q` 确认 + 中止信号）。
+- 清单管理器增「🚀 压实执行」分区：`reflowInterval`/`reflowTrialCount`/`reflowBatchSize`/
+  `reflowMaxRetry`（后两者期2b 生效），`setting-form-load.ts` 增读写。
+- 新增 `tests/lr-execute.test.ts`（8 用例，vi.mock 隔离 VLT 网络层，验证先加后删/不丢片/
+  切片/中止）。
+
+```
+$ bun run build      # tsc -b 零错误，391 modules，✓ built
+$ bun run test       # 111 passed
+$ bun run lint       # 0 errors / 0 warnings
+$ bun run check:structure   # OK
+```
+
+**期2b（韧性层：自适应退避 + 恢复日志/续传 + 批检查点 + 整次撤销）与期2c（执行 UI 完善 +
+汇总报告）待实施**。建议先在小号/小组真实跑极少量验证期2a 写路径，再继续 2b/2c。
+本文档状态保持 🔧待执行，待 2b/2c 完成后整体置 ✅。

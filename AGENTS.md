@@ -165,7 +165,7 @@ monkey-jhs-disassemble/
 | 插件 | 文件 | 职责 |
 |------|------|------|
 | VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
-| ListReflowPlugin | list-reflow/（6 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1 只读，doc/202） |
+| ListReflowPlugin | list-reflow/（7 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1，doc/202）+ 压实执行引擎（期2a 先加后删，doc/204） |
 
 ### 3.4 核心模块 `src/core/`
 

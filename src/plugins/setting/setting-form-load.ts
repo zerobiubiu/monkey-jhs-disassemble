@@ -106,6 +106,11 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
     $('#listSortBy').val(settings.listSortBy || 'name');
     $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
+    // 压实执行（doc/204 期2）
+    $('#reflowInterval').val(settings.reflowInterval ?? 400);
+    $('#reflowTrialCount').val(settings.reflowTrialCount ?? 10);
+    $('#reflowBatchSize').val(settings.reflowBatchSize ?? 20);
+    $('#reflowMaxRetry').val(settings.reflowMaxRetry ?? 3);
     // 自动收藏联动（doc/205）
     $('#autoFavCleanupEnabled').prop(
         'checked',
@@ -193,6 +198,11 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.listDefaultSort = $('#listDefaultSort').val();
     settings.listSortBy = $('#listSortBy').val();
     settings.autoReconcileDelay = Number($('#autoReconcileDelay').val()) || 800;
+    // 压实执行（doc/204 期2）
+    settings.reflowInterval = Number($('#reflowInterval').val()) || 400;
+    settings.reflowTrialCount = Number($('#reflowTrialCount').val()) || 10;
+    settings.reflowBatchSize = Number($('#reflowBatchSize').val()) || 20;
+    settings.reflowMaxRetry = Number($('#reflowMaxRetry').val()) || 3;
     // 自动收藏联动（doc/205）
     settings.autoFavCleanupEnabled = $('#autoFavCleanupEnabled').is(':checked') ? YES : NO;
     settings.protectedListKeywords = String($('#protectedListKeywords').val() ?? '')
