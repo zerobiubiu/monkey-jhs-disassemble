@@ -285,33 +285,7 @@ export function getActressNames(): string {
     }
 }
 
-/**
- * 通过 DetailPageButtonPlugin 调用 JavDB API 设为「想看」并刷新星标评分组件。
- */
-export function triggerJavdbWantAndSyncRatingBar(carNum: string): Promise<void> {
-    try {
-        const detailPlugin = pluginManager?.getBean?.('DetailPageButtonPlugin');
-        if (!detailPlugin) {
-            console.warn(`${LOG_PREFIX} DetailPageButtonPlugin 未注册，跳过星标评分联动`);
-            return Promise.resolve();
-        }
-        const task = (detailPlugin._reviewChain || Promise.resolve()).then(async () => {
-            detailPlugin._wantWatchedSyncing = true;
-            try {
-                await detailPlugin._triggerJavdbWant();
-                detailPlugin._syncRatingBar();
-            } finally {
-                detailPlugin._wantWatchedSyncing = false;
-            }
-        });
-        // _reviewChain 不因单次失败中断；本次错误向上抛出供调用方感知（doc/208）
-        detailPlugin._reviewChain = task.catch(() => {});
-        return task;
-    } catch (err: unknown) {
-        clog.error(`${LOG_PREFIX} 星标评分联动失败: ${carNum}`, err);
-        return Promise.reject(err instanceof Error ? err : new Error(String(err)));
-    }
-}
+
 
 /**
  * 刷新 `.jhs-list-panel` 平铺面板：从 modal 内最新 listContainer 克隆全部

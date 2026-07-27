@@ -9,6 +9,14 @@
 
 ---
 
+## v1.35.2
+
+**发布日期**：2026-07-27
+
+### 修复
+
+- **自动收藏 JavDB 端失效**（doc/209）：根因是 doc/55 的 `triggerJavdbWantAndSyncRatingBar` 通过 `pluginManager.getBean` 取插件实例，而 `pluginManager` 是 main.tsx 模块级 const、非运行时全局，抛 `pluginManager is not defined`（doc/208 暴露）。改为自动收藏直接点击脚本收藏按钮（`.jhs-fav-btn` → `quickConvertToFav`，插件实例由闭包持有，等价手动操作），先确认无状态再点击避免误判「已是已收藏」；删除失效的 `triggerJavdbWantAndSyncRatingBar`。
+
 ## v1.35.1
 
 **发布日期**：2026-07-27

@@ -328,6 +328,8 @@
 
 208. `208-list-manager-fixes.md` — 清单管理器三项优化：①排序「默认方式+字段」合并为单个 6 选项下拉（名称/数量/序号×降/升），applyListPanelView 直接解析下拉值修复改字段不生效；②自动收藏 JavDB 端修复（triggerJavdbWantAndSyncRatingBar 返回 Promise 并报错，autoFavoriteIfPendingUpdate await 触发）；③「不参与合并清单名/受保护关键词」改标签化输入（参考屏蔽关键词）；version 1.35.0→1.35.1
 
+209. `209-fix-auto-fav-pluginmanager.md` — 修复自动收藏 JavDB 端失效：根因 doc/55 的 triggerJavdbWantAndSyncRatingBar 通过 pluginManager.getBean 取插件，而 pluginManager 是 main.tsx 模块级 const、非运行时全局，抛 pluginManager is not defined（doc/208 暴露）；改为自动收藏直接点脚本收藏按钮（.jhs-fav-btn→quickConvertToFav，插件实例由闭包持有，等价手动），先确认无状态再点击避免误判「已是已收藏」；删除失效函数；version 1.35.1→1.35.2
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -352,7 +354,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/208（209 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/209（210 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

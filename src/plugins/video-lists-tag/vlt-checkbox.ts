@@ -13,14 +13,12 @@ import { FAVORITE_ACTION } from '../../constants/status';
 import { VltDb } from './vlt-db';
 import type { SyncResult } from './vlt-db';
 import { showToast } from './vlt-toast';
-import { broadcastSyncComplete, broadcastWantWatchedSync } from './vlt-broadcast';
+import { broadcastSyncComplete } from './vlt-broadcast';
 import {
     AUTO_FAVORITE_KEYWORD,
-    getActressNames,
     getListName,
     getMovieInfo,
-    LOG_PREFIX,
-    triggerJavdbWantAndSyncRatingBar
+    LOG_PREFIX
 } from './vlt-helpers';
 import type { ListInfo, MovieInfo } from './vlt-helpers';
 import { enqueueServerCheckboxMutation } from './vlt-server';
@@ -131,23 +129,22 @@ async function autoFavoriteIfPendingUpdate(movieInfo: MovieInfo, lname: string):
             showToast(`ℹ️ [${des}] 已标记为「${carRecord.status}」，跳过自动收藏`, 'info');
             return;
         }
-        await storageManager.saveCar({
-            carNum: des,
-            url: movieInfo.info.href,
-            names: getActressNames(),
-            actionType: FAVORITE_ACTION,
-            publishTime: movieInfo.info.release_date
-        });
-        broadcastWantWatchedSync(des, FAVORITE_ACTION, 'add');
-        // doc/208：JavDB 端收藏（等价手动点想看按钮），await 确保触发并暴露失败
-        await triggerJavdbWantAndSyncRatingBar(des);
-        showToast(`⭐ [${des}] 已自动收藏（添加至「${lname}」）`, 'success');
-        console.log(`${LOG_PREFIX} 自动收藏: ${des}（触发清单：${lname}）`);
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '未知错误';
-        clog.error(`${LOG_PREFIX} 自动收藏失败: ${des}`, err);
-        showToast(`✗ [${des}] 脚本已收藏但 JavDB 端失败：${message}`, 'error');
+        clog.error(`${LOG_PREFIX} 自动收藏前读取状态失败: ${des}`, err);
+        return;
     }
+
+    // doc/209：复用脚本「收藏」按钮（.jhs-fav-btn → quickConvertToFav，含 JHS 收藏 + JavDB 端想看 +
+    // 评分条同步）。直接点击等价手动操作，规避 pluginManager 模块作用域不可达——doc/55 的
+    // triggerJavdbWantAndSyncRatingBar 因 pluginManager 非运行时全局而失效（doc/208 暴露）。
+    // 须先确认无状态再点击，避免 quickConvertToFav 误判「已是已收藏」而跳过 JavDB 端。
+    const favBtn = document.querySelector<HTMLButtonElement>('.jhs-fav-btn');
+    if (!favBtn) {
+        console.warn(`${LOG_PREFIX} 未找到收藏按钮，跳过自动收藏: ${des}`);
+        return;
+    }
+    favBtn.click();
+    console.log(`${LOG_PREFIX} 自动收藏: ${des}（触发清单：${lname}）`);
 }
 
 /**
