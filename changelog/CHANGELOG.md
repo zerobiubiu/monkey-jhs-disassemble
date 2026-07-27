@@ -9,6 +9,14 @@
 
 ---
 
+## v1.36.1
+
+**发布日期**：2026-07-27
+
+### 修复
+
+- **CSS line-clamp 兼容性警告**（doc/211）：`rating-bar.css` `.jhs-list-item__name` 在 `-webkit-line-clamp: 2` 后补标准 `line-clamp: 2`。archetype 「文件被忽略」为只读参考脚本的预期提示，无需处理。
+
 ## v1.36.0
 
 **发布日期**：2026-07-27

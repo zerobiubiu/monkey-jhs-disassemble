@@ -332,6 +332,8 @@
 
 210. `210-jhs-to-javdb-sync.md` — JHS 收藏→JavDB 想看批量同步工具：清单管理器增「收藏同步」分区，将「JHS 已收藏但 JavDB 无状态」番号（修复 doc/208/209 历史积压）批量设为 JavDB 想看；先核对 JavDB 想看/已看列表（已想看跳过、已看跳过并列出绝不降级），逐个 POST /v/{id}/reviews/want_to_watch（限速 500ms 可调 + 可中止 + 进度/汇总）；新增 jhs-to-javdb-sync.ts + jhsSyncInterval 设置；version 1.35.2→1.36.0
 
+211. `211-css-line-clamp.md` — 修复 CSS line-clamp 兼容性警告：rating-bar.css .jhs-list-item__name 补标准 line-clamp:2；archetype「文件被忽略」为只读参考脚本的预期提示无需处理；version 1.36.0→1.36.1
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -356,7 +358,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/210（211 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/211（212 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
