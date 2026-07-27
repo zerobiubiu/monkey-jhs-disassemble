@@ -186,6 +186,45 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                     style={{ display: 'none' }}
                 />
             </SettingSection>
+
+            <SettingSection title="收藏同步" icon="⬆️">
+                <p
+                    style={{
+                        margin: '0 0 12px 0',
+                        color: '#6c757d',
+                        fontSize: '13px',
+                        lineHeight: '1.6'
+                    }}
+                >
+                    将「JHS 已收藏但 JavDB 无状态」的番号批量设为 JavDB「想看」（修复历史积压）。
+                    会先核对 JavDB 想看/已看列表：已想看自动跳过；JavDB 已看的跳过并列出（绝不降级）。建议先备份。
+                </p>
+                <SettingRow
+                    label="同步请求间隔(毫秒):"
+                    tooltip="逐个设为想看时的请求间隔；越大越温和、越慢"
+                >
+                    <SettingInput id="jhsSyncInterval" type="number" min="100" max="5000" />
+                </SettingRow>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
+                    <SettingButton id="jhs-sync-btn" color="primary">
+                        同步 JHS 收藏到 JavDB
+                    </SettingButton>
+                    <span id="jhs-sync-abort-wrap" style={{ display: 'none' }}>
+                        <SettingButton id="jhs-sync-abort-btn" color="danger">
+                            中止
+                        </SettingButton>
+                    </span>
+                </div>
+                <div
+                    id="jhs-sync-status"
+                    style={{
+                        fontSize: '13px',
+                        color: '#6c757d',
+                        marginTop: '8px',
+                        whiteSpace: 'pre-wrap'
+                    }}
+                />
+            </SettingSection>
         </div>
     );
 }

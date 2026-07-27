@@ -330,6 +330,8 @@
 
 209. `209-fix-auto-fav-pluginmanager.md` — 修复自动收藏 JavDB 端失效：根因 doc/55 的 triggerJavdbWantAndSyncRatingBar 通过 pluginManager.getBean 取插件，而 pluginManager 是 main.tsx 模块级 const、非运行时全局，抛 pluginManager is not defined（doc/208 暴露）；改为自动收藏直接点脚本收藏按钮（.jhs-fav-btn→quickConvertToFav，插件实例由闭包持有，等价手动），先确认无状态再点击避免误判「已是已收藏」；删除失效函数；version 1.35.1→1.35.2
 
+210. `210-jhs-to-javdb-sync.md` — JHS 收藏→JavDB 想看批量同步工具：清单管理器增「收藏同步」分区，将「JHS 已收藏但 JavDB 无状态」番号（修复 doc/208/209 历史积压）批量设为 JavDB 想看；先核对 JavDB 想看/已看列表（已想看跳过、已看跳过并列出绝不降级），逐个 POST /v/{id}/reviews/want_to_watch（限速 500ms 可调 + 可中止 + 进度/汇总）；新增 jhs-to-javdb-sync.ts + jhsSyncInterval 设置；version 1.35.2→1.36.0
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -354,7 +356,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/209（210 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/210（211 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

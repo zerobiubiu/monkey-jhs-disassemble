@@ -132,6 +132,7 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     // 清单管理器：排序显示 + 对账延迟（doc/207）
     $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
     $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
+    $('#jhsSyncInterval').val(settings.jhsSyncInterval ?? 500);
     // 压实执行（doc/204 期2）
     $('#reflowInterval').val(settings.reflowInterval ?? 400);
     $('#reflowTrialCount').val(settings.reflowTrialCount ?? 10);
@@ -224,6 +225,7 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     // 清单管理器：排序显示 + 对账延迟（doc/207）
     settings.listDefaultSort = $('#listDefaultSort').val();
     settings.autoReconcileDelay = Number($('#autoReconcileDelay').val()) || 800;
+    settings.jhsSyncInterval = Number($('#jhsSyncInterval').val()) || 500;
     // 压实执行（doc/204 期2）
     settings.reflowInterval = Number($('#reflowInterval').val()) || 400;
     settings.reflowTrialCount = Number($('#reflowTrialCount').val()) || 10;
