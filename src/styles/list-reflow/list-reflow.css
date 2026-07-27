@@ -235,3 +235,121 @@
     color: var(--jhs-reflow-muted);
     font-size: 11px;
 }
+
+/* ── 期2b/2c：执行按钮 + 进度条 + 报告区 ─────────── */
+
+.jhs-reflow-panel__exec-btn,
+.jhs-reflow-panel__abort-btn,
+.jhs-reflow-panel__resume-btn,
+.jhs-reflow-panel__undo-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid var(--jhs-reflow-accent);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--jhs-reflow-accent);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.jhs-reflow-panel__exec-btn:hover,
+.jhs-reflow-panel__resume-btn:hover {
+    background: var(--jhs-reflow-accent);
+    color: #fff;
+}
+
+.jhs-reflow-panel__abort-btn {
+    border-color: #f14668;
+    color: #f14668;
+}
+
+.jhs-reflow-panel__abort-btn:hover {
+    background: #f14668;
+    color: #fff;
+}
+
+.jhs-reflow-panel__undo-btn {
+    border-color: #ff9800;
+    color: #ff9800;
+}
+
+.jhs-reflow-panel__undo-btn:hover {
+    background: #ff9800;
+    color: #fff;
+}
+
+.jhs-reflow-panel__exec-btn:disabled,
+.jhs-reflow-panel__abort-btn:disabled,
+.jhs-reflow-panel__resume-btn:disabled,
+.jhs-reflow-panel__undo-btn:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.jhs-reflow-panel__exec-btn[hidden],
+.jhs-reflow-panel__abort-btn[hidden],
+.jhs-reflow-panel__resume-btn[hidden],
+.jhs-reflow-panel__undo-btn[hidden] {
+    display: none !important;
+}
+
+.jhs-reflow-panel__progress {
+    margin-top: 10px;
+}
+
+.jhs-reflow-panel__progress[hidden] {
+    display: none !important;
+}
+
+.jhs-reflow-panel__progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.jhs-reflow-panel__progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    background: #48c774;
+    transition: width 0.3s ease;
+}
+
+.jhs-reflow-panel__progress-text {
+    display: block;
+    margin-top: 4px;
+    color: var(--jhs-reflow-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.jhs-reflow-panel__report {
+    margin-top: 10px;
+}
+
+.jhs-reflow-panel__report[hidden] {
+    display: none !important;
+}
+
+.jhs-reflow-panel__report-text {
+    max-height: 200px;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow-y: auto;
+    background: #f9fafb;
+    color: #374151;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

@@ -1,17 +1,22 @@
 /**
- * 编号清单整理面板挂载与交互（doc/202，期1 只读）。
+ * 编号清单整理面板挂载与交互（doc/202 期1 + doc/204 期2a/2b/2c）。
  *
  * 在 /lists/{id} 清单页注入 ReflowPanel 外壳，按需：
  * - 「识别编号组」→ 抓 /users/lists 发现同 base 编号组，渲染各清单数量/满员行。
  * - 「生成整理计划」→ 枚举组内影片 + 规划，渲染只读压实预览（lr-plan）。
- * 全部只读，不写任何数据。
+ * - 「执行整理」→ 期2a 先加后删写路径 + 试运行闸。
+ * - 「继续上次整理」→ 期2b 恢复日志续传。
+ * - 「撤销本次整理」→ 期2b 回滚日志逆序反向搬运。
+ * - 进度条 + 汇总报告 → 期2c 体验层。
  */
 import { jsxToString } from '../../core/jsx-to-string';
 
 import { LIST_FULL_THRESHOLD } from '../detail-page-button/dpb-list-merge';
 import type { ListMergeConfig } from '../detail-page-button/dpb-list-merge';
 import { discoverGroup, fetchAllUserLists, getCurrentListId } from './lr-data';
-import { executeCompactionPlan } from './lr-execute';
+import { executeCompactionPlan, undoSession } from './lr-execute';
+import type { ExecuteResult } from './lr-execute';
+import { hasResumableJournal, loadJournal, clearJournal } from './lr-journal';
 import { runPlanPreview } from './lr-plan';
 import type { CompactionPlan, ReflowGroup } from './lr-types';
 
@@ -63,6 +68,50 @@ function renderMemberRows(listsElement: HTMLElement, group: ReflowGroup): void {
     }
 }
 
+/** 渲染汇总报告（期2c）。 */
+function renderReport(reportElement: HTMLElement, result: ExecuteResult): void {
+    reportElement.replaceChildren();
+    reportElement.hidden = false;
+
+    const lines: string[] = [];
+    lines.push(`✓ 成功：${result.completed}`);
+    if (result.failed > 0) lines.push(`✗ 失败：${result.failed}`);
+    if (result.pendingCleanup.length > 0) {
+        lines.push(`⚠ 待清理重复：${result.pendingCleanup.length}（${result.pendingCleanup.join('、')}）`);
+    }
+    if (result.errors.length > 0) {
+        lines.push('');
+        lines.push('失败明细：');
+        for (const err of result.errors.slice(0, 20)) {
+            lines.push(`  ${err}`);
+        }
+        if (result.errors.length > 20) {
+            lines.push(`  …共 ${result.errors.length} 条`);
+        }
+    }
+
+    const pre = document.createElement('pre');
+    pre.className = 'jhs-reflow-panel__report-text';
+    pre.textContent = lines.join('\n');
+    reportElement.append(pre);
+}
+
+/** 更新进度条（期2c）。 */
+function updateProgress(
+    progressElement: HTMLElement,
+    fillElement: HTMLElement,
+    textElement: HTMLElement,
+    done: number,
+    total: number,
+    backoffLevel: number
+): void {
+    progressElement.hidden = false;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    fillElement.style.width = `${pct}%`;
+    const backoffLabel = backoffLevel > 0 ? `（退避 ×${Math.pow(2, backoffLevel)}）` : '';
+    textElement.textContent = `${done}/${total} (${pct}%)${backoffLabel}`;
+}
+
 /**
  * 在当前清单页挂载整理面板并绑定交互。幂等（已存在则跳过）。
  * @param config 合并配置（复用 listMergePattern / listMergeExcludeNames 分组规则）
@@ -83,18 +132,30 @@ export function initReflowPanel(config: ListMergeConfig): void {
     const statusElement = panel.querySelector<HTMLElement>('[data-reflow-status]');
     const listsElement = panel.querySelector<HTMLElement>('[data-reflow-lists]');
     const planElement = panel.querySelector<HTMLElement>('[data-reflow-plan]');
+    const progressElement = panel.querySelector<HTMLElement>('[data-reflow-progress]');
+    const progressFill = panel.querySelector<HTMLElement>('[data-reflow-progress-fill]');
+    const progressText = panel.querySelector<HTMLElement>('[data-reflow-progress-text]');
+    const reportElement = panel.querySelector<HTMLElement>('[data-reflow-report]');
     const identifyButton = panel.querySelector<HTMLButtonElement>('[data-reflow-identify]');
     const planButton = panel.querySelector<HTMLButtonElement>('[data-reflow-plan-btn]');
     const execButton = panel.querySelector<HTMLButtonElement>('[data-reflow-exec-btn]');
     const abortButton = panel.querySelector<HTMLButtonElement>('[data-reflow-abort-btn]');
+    const resumeButton = panel.querySelector<HTMLButtonElement>('[data-reflow-resume-btn]');
+    const undoButton = panel.querySelector<HTMLButtonElement>('[data-reflow-undo-btn]');
     if (
         !statusElement ||
         !listsElement ||
         !planElement ||
+        !progressElement ||
+        !progressFill ||
+        !progressText ||
+        !reportElement ||
         !identifyButton ||
         !planButton ||
         !execButton ||
-        !abortButton
+        !abortButton ||
+        !resumeButton ||
+        !undoButton
     )
         return;
 
@@ -107,6 +168,16 @@ export function initReflowPanel(config: ListMergeConfig): void {
     let group: ReflowGroup | null = null;
     let plan: CompactionPlan | null = null;
     let execSignal: { aborted: boolean } = { aborted: false };
+    let lastSessionId: string | null = null;
+
+    // 期2b：检测可续传的恢复日志
+    if (hasResumableJournal()) {
+        resumeButton.hidden = false;
+        const journal = loadJournal();
+        if (journal) {
+            setStatus(`检测到上次未完成的整理（${journal.base}，已完成 ${journal.completed}/${journal.totalMoves}）`);
+        }
+    }
 
     identifyButton.addEventListener('click', () => {
         identifyButton.disabled = true;
@@ -161,36 +232,65 @@ export function initReflowPanel(config: ListMergeConfig): void {
             });
     });
 
-    const finishExecution = (): void => {
+    const finishExecution = (result?: ExecuteResult): void => {
         execButton.disabled = false;
         execButton.hidden = false;
         abortButton.hidden = true;
+        resumeButton.hidden = true;
+        if (result) {
+            lastSessionId = result.sessionId;
+            if (result.completed > 0) {
+                undoButton.hidden = false;
+            }
+            renderReport(reportElement, result);
+        }
     };
 
-    const runExecution = async (thePlan: CompactionPlan): Promise<void> => {
+    const runExecution = async (thePlan: CompactionPlan, startIndex: number): Promise<void> => {
         execSignal = { aborted: false };
         execButton.disabled = true;
         execButton.hidden = true;
         abortButton.hidden = false;
+        resumeButton.hidden = true;
+        undoButton.hidden = true;
+        reportElement.hidden = true;
+        progressElement.hidden = false;
+
         const settings = await storageManager.getSetting();
         const interval = Number(settings.reflowInterval) || 400;
         const trialCount = Number(settings.reflowTrialCount) || 10;
+        const batchSize = Number(settings.reflowBatchSize) || 20;
+        const maxRetry = Number(settings.reflowMaxRetry) || 3;
         const nameOf = (id: string): string =>
             thePlan.targets.find((t) => t.listId === id)?.name ?? id;
-        const onProgress = (p: { done: number; total: number; videoId: string }): void =>
-            setStatus(`执行中 ${p.done + 1}/${p.total}：${p.videoId}`);
 
+        const onProgress = (p: { done: number; total: number; videoId: string; currentInterval: number; backoffLevel: number }): void => {
+            updateProgress(progressElement, progressFill, progressText, p.done, p.total, p.backoffLevel);
+            setStatus(`执行中 ${p.done + 1}/${p.total}：${p.videoId}`);
+        };
+
+        // 试运行切片
         const trial = await executeCompactionPlan(thePlan, {
-            startIndex: 0,
-            count: trialCount,
+            startIndex,
+            count: startIndex === 0 ? trialCount : Infinity,
             interval,
             signal: execSignal,
             onProgress,
-            nameOf
+            nameOf,
+            batchSize,
+            maxRetry,
+            base: thePlan.base
         });
+
         if (trial.status === 'aborted') {
             setStatus(`已中止（完成 ${trial.completed}，失败 ${trial.failed}）`, 'is-error');
-            finishExecution();
+            finishExecution(trial);
+            return;
+        }
+        if (trial.status === 'suspended') {
+            setStatus(`连续失败暂停（完成 ${trial.completed}，失败 ${trial.failed}）`, 'is-error');
+            resumeButton.hidden = false;
+            finishExecution(trial);
             return;
         }
         if (trial.status === 'done') {
@@ -198,11 +298,10 @@ export function initReflowPanel(config: ListMergeConfig): void {
                 `完成：成功 ${trial.completed}，失败 ${trial.failed}`,
                 trial.failed > 0 ? 'is-error' : 'is-ok'
             );
-            if (trial.errors.length > 0)
-                clog.error('[编号整理] 执行失败明细', trial.errors.join(' | '));
-            finishExecution();
+            finishExecution(trial);
             return;
         }
+
         // 试运行切片跑完仍有剩余 → 确认继续
         utils.q(
             null,
@@ -217,25 +316,33 @@ export function initReflowPanel(config: ListMergeConfig): void {
                         interval,
                         signal: execSignal,
                         onProgress,
-                        nameOf
+                        nameOf,
+                        batchSize,
+                        maxRetry,
+                        base: thePlan.base,
+                        sessionId: trial.sessionId
                     });
-                    const completed = trial.completed + rest.completed;
-                    const failed = trial.failed + rest.failed;
-                    const allErrors = [...trial.errors, ...rest.errors];
+                    const merged: ExecuteResult = {
+                        status: rest.status === 'aborted' ? 'aborted' : 'done',
+                        completed: trial.completed + rest.completed,
+                        failed: trial.failed + rest.failed,
+                        nextIndex: rest.nextIndex,
+                        errors: [...trial.errors, ...rest.errors],
+                        sessionId: rest.sessionId,
+                        pendingCleanup: [...trial.pendingCleanup, ...rest.pendingCleanup]
+                    };
                     setStatus(
-                        rest.status === 'aborted'
-                            ? `已中止（完成 ${completed}，失败 ${failed}）`
-                            : `完成：成功 ${completed}，失败 ${failed}`,
-                        rest.status === 'aborted' || failed > 0 ? 'is-error' : 'is-ok'
+                        merged.status === 'aborted'
+                            ? `已中止（完成 ${merged.completed}，失败 ${merged.failed}）`
+                            : `完成：成功 ${merged.completed}，失败 ${merged.failed}`,
+                        merged.status === 'aborted' || merged.failed > 0 ? 'is-error' : 'is-ok'
                     );
-                    if (allErrors.length > 0)
-                        clog.error('[编号整理] 执行失败明细', allErrors.join(' | '));
-                    finishExecution();
+                    finishExecution(merged);
                 })();
             },
             () => {
                 setStatus(`试运行后取消（已完成 ${trial.completed}）`);
-                finishExecution();
+                finishExecution(trial);
             }
         );
     };
@@ -246,7 +353,7 @@ export function initReflowPanel(config: ListMergeConfig): void {
             null,
             `将搬运 ${plan.moves.length} 部影片（先试运行，确认无误后继续）。确认开始？`,
             () => {
-                void runExecution(plan!);
+                void runExecution(plan!, 0);
             }
         );
     });
@@ -254,5 +361,63 @@ export function initReflowPanel(config: ListMergeConfig): void {
     abortButton.addEventListener('click', () => {
         execSignal.aborted = true;
         setStatus('正在中止…');
+    });
+
+    // 期2b：续传按钮
+    resumeButton.addEventListener('click', () => {
+        const journal = loadJournal();
+        if (!journal) {
+            setStatus('无可续传的会话');
+            return;
+        }
+        if (!plan) {
+            setStatus('请先生成整理计划再续传', 'is-error');
+            return;
+        }
+        utils.q(
+            null,
+            `检测到上次未完成的整理（已完成 ${journal.completed}/${journal.totalMoves}），从第 ${journal.nextIndex + 1} 步继续？`,
+            () => {
+                void runExecution(plan!, journal.nextIndex);
+            }
+        );
+    });
+
+    // 期2b：撤销按钮
+    undoButton.addEventListener('click', () => {
+        if (!lastSessionId) return;
+        utils.q(
+            null,
+            '确定撤销本次整理？将按回滚日志逆序执行反向搬运（同样先加后删 + 限速）。',
+            () => {
+                undoButton.disabled = true;
+                setStatus('正在撤销…');
+                execSignal = { aborted: false };
+                abortButton.hidden = false;
+                void (async () => {
+                    const settings = await storageManager.getSetting();
+                    const interval = Number(settings.reflowInterval) || 400;
+                    const nameOf = (id: string): string =>
+                        plan?.targets.find((t) => t.listId === id)?.name ?? id;
+                    const result = await undoSession(lastSessionId!, {
+                        interval,
+                        signal: execSignal,
+                        nameOf,
+                        onProgress: (p) => {
+                            setStatus(`撤销中 ${p.done + 1}/${p.total}：${p.videoId}`);
+                            updateProgress(progressElement, progressFill, progressText, p.done, p.total, 0);
+                        }
+                    });
+                    setStatus(
+                        `撤销完成：成功 ${result.undone}，失败 ${result.failed}`,
+                        result.failed > 0 ? 'is-error' : 'is-ok'
+                    );
+                    undoButton.disabled = false;
+                    undoButton.hidden = true;
+                    abortButton.hidden = true;
+                    clearJournal();
+                })();
+            }
+        );
     });
 }

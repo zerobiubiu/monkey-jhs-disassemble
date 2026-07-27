@@ -19,6 +19,14 @@ vi.mock('../src/plugins/video-lists-tag/server/vlt-server-api', () => ({
     fetchAuthoritativeCheckboxState: vi.fn()
 }));
 
+vi.mock('../src/plugins/list-reflow/lr-journal', () => ({
+    appendRollback: vi.fn(),
+    clearJournal: vi.fn(),
+    createSessionId: vi.fn(() => 'test-session'),
+    loadRollback: vi.fn(() => []),
+    saveJournal: vi.fn()
+}));
+
 const mockPost = vi.mocked(postJavdbListMutation);
 const mockAuth = vi.mocked(fetchAuthoritativeCheckboxState);
 
