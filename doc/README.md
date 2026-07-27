@@ -316,6 +316,8 @@
 
 202. `202-list-reflow-phase1.md` — 清单页编号清单整理（组内压实）期1 只读预览：新增 ListReflowPlugin（src/plugins/list-reflow/ 6 模块）+ reflow-panel 组件 + list-reflow/ 样式子目录（首个 CSS 子目录，守 §11 扉平度门禁）；/lists/{id} 识别同前缀编号组（复用 doc/200 分组配置）、展示数量/满员、按需枚举组内影片生成压实计划预览（目标分布/搬运明细/收藏错误审计/溢出）；压实规则：不保留顺序 + 同 base 只留一份 + 不同 base 全保留；期1 纯只读不写数据，执行为期2；listReflowEnabled 开关；8 个规划器单测；version 1.31.0→1.32.0
 
+203. `203-fix-reflow-group-discovery.md` — 修复清单页编号组识别失败：fetchAllUserLists 误用 a[href*="/lists/"] 匹配 /users/lists 原始链接（原始 href 为 ?id=xxx 查询参形式，/lists/xxx 是客户端改写），致匹配不到任何清单、识别恒失败；改用 div.column.is-10 > a 标题链接 + 新增 extractListId（?id= 与 /lists/ 双形式）+ clog 诊断；version 1.32.0→1.32.1
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -340,7 +342,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/202（203 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/203（204 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

@@ -32,6 +32,27 @@ function absoluteNextUrl(doc: Document, baseUrl: string): string | null {
     return new URL(href, baseUrl).href;
 }
 
+/**
+ * 从清单链接 href 提取清单 ID。
+ *
+ * 原始 JavDB `/users/lists` 页的清单标题链接 href 为 `?id=xxx` 查询参形式
+ * （如 `/users/list_detail?id=xxx`），`/lists/xxx` 是客户端改写后的短地址
+ * （见 modMyListOpenWay）。故优先取 `?id=` 参，同时兼容 `/lists/xxx` 路径形式。
+ *
+ * @param href 链接 href（相对或绝对）
+ * @returns 清单 ID；无法解析时返回 null
+ */
+function extractListId(href: string): string | null {
+    const pathMatch = href.match(/\/lists\/([^/?#]+)/);
+    if (pathMatch && pathMatch[1]) return pathMatch[1];
+    try {
+        const id = new URL(href, window.location.origin).searchParams.get('id');
+        return id || null;
+    } catch {
+        return null;
+    }
+}
+
 /** 当前清单详情页的清单 ID（非 /lists/{id} 返回 null）。 */
 export function getCurrentListId(): string | null {
     return window.location.pathname.match(/\/lists\/([^/?#]+)/)?.[1] ?? null;
@@ -54,19 +75,19 @@ export async function fetchAllUserLists(): Promise<DiscoveredList[]> {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const items = doc.querySelectorAll('#lists > ul > li');
         items.forEach((li) => {
-            const anchor = li.querySelector('a[href*="/lists/"]') as HTMLAnchorElement | null;
+            // 标题链接：div.column.is-10 > a（modMyListOpenWay / list-waterfall 验证），
+            // 其原始 href 为 ?id=xxx 形式，非 /lists/xxx
+            const anchor = (li.querySelector('div.column.is-10 > a') ||
+                li.querySelector('a')) as HTMLAnchorElement | null;
             if (!anchor) return;
-            const href = anchor.getAttribute('href') || '';
-            const matched = href.match(/\/lists\/([^/?#]+)/);
-            if (!matched) return;
-            const listId = matched[1];
+            const listId = extractListId(anchor.getAttribute('href') || '');
             if (!listId || listId === 'users' || listId === 'new' || seenIds.has(listId)) return;
             seenIds.add(listId);
             const text = (anchor.textContent || '').trim();
             const countMatch = text.match(/\((\d+)\)\s*$/);
             const count = countMatch ? Number(countMatch[1]) : null;
             const name = text.replace(/\s*\(\d+\)\s*$/, '').trim();
-            lists.push({ listId, name, count });
+            if (name) lists.push({ listId, name, count });
         });
         url = absoluteNextUrl(doc, url);
     }

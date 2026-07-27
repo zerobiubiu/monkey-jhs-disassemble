@@ -116,3 +116,9 @@ lightningcss 的 `Unexpected token Semicolon` 全部来自 `layer.css` IE hack�
 实写执行：复用 `postJavdbListMutation` 增删 + `fetchAuthoritativeCheckboxState` 复核，
 带限速/中止/续传（借鉴 `vlt-server.ts` 恢复日志管线）、先移除后加入避开 501 卡口、
 overflow 自动新建清单（复用 `createList`）。需先定期2 细节：批量大小、退避策略。
+
+## 7. 用户实测验证（2026-07-27）
+
+用户登录 JavDB 实测确认：编号组识别、各清单数量/满员展示、生成整理计划（枚举 +
+压实预览）均正常，期1 只读预览符合预期，未发生任何服务端写入。（识别链路曾因
+ doc/203 的链接形式误判失败，修复后验证通过。）

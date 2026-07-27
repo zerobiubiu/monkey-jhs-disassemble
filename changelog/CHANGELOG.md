@@ -9,6 +9,14 @@
 
 ---
 
+## v1.32.1
+
+**发布日期**：2026-07-27
+
+### 修复
+
+- **清单页编号组识别失败**（doc/203）：`fetchAllUserLists` 误用 `a[href*="/lists/"]` 匹配 `/users/lists` 原始 HTML 的清单链接，但原始链接 href 为 `?id=xxx` 查询参形式（`/lists/xxx` 是客户端改写的短地址），导致匹配不到任何清单、编号组识别恒失败。改用 archetype 验证的 `div.column.is-10 > a` 标题链接 + 新增 `extractListId`（`?id=` 与 `/lists/` 双形式兼容）；识别流程加 clog 诊断。
+
 ## v1.32.0
 
 **发布日期**：2026-07-27

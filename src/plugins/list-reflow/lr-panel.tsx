@@ -100,8 +100,12 @@ export function initReflowPanel(config: ListMergeConfig): void {
         void (async () => {
             try {
                 const allLists = await fetchAllUserLists();
+                clog.log(`[编号整理] /users/lists 识别到 ${allLists.length} 个清单`);
                 group = discoverGroup(currentListId, allLists, config);
                 if (!group) {
+                    clog.log(
+                        `[编号整理] 当前清单 ${currentListId} 未归入编号组（名称未匹配序号规则或被排除）`
+                    );
                     listsElement.hidden = true;
                     planButton.hidden = true;
                     if (planElement) planElement.hidden = true;
