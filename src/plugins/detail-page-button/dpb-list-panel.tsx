@@ -32,6 +32,19 @@ const DETAIL_LIST_COLLATOR = new Intl.Collator('zh-CN', {
     numeric: true,
     sensitivity: 'base'
 });
+
+/** 读取清单项数量（.jhs-list-item__count 文本）；未知返回 -1（排序时靠前）。 */
+function readItemCount(item: HTMLElement): number {
+    const text = item.querySelector('.jhs-list-item__count')?.textContent || '';
+    const matched = text.match(/\d+/);
+    return matched ? Number(matched[0]) : -1;
+}
+
+/** 读取清单名末尾序号（doc/207 按序号排序）；无序号返回 -1。 */
+function readItemNum(item: HTMLElement): number {
+    const matched = (item.dataset.listName || '').match(/(\d+)\s*$/);
+    return matched ? Number(matched[1]) : -1;
+}
 const LIST_PANEL_INIT_TIMEOUT_MS = 10000;
 /** 等待 #otherSiteBox 的最大时间（ms）。超时后回退挂载到 nav 末尾。 */
 const DETAIL_DOM_WAIT_TIMEOUT_MS = 15_000;
@@ -63,6 +76,13 @@ export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: HTMLElement
     }
     const listPanel = nav.querySelector('.jhs-list-panel') as DetailListPanelElement | null;
     if (!listPanel) return;
+    // doc/207：按设置初始化排序下拉默认值 + 排序字段（一次性）
+    const displayConfig = plugin._listDisplayConfig;
+    const sortSelectInit = listPanel.querySelector(
+        '.jhs-list-panel__sort-select'
+    ) as HTMLSelectElement | null;
+    if (sortSelectInit) sortSelectInit.value = displayConfig.defaultSort;
+    listPanel.dataset.listSortBy = displayConfig.sortBy;
     plugin._bindListPanelControls(listPanel);
     listPanel.__jhsRefresh = () => plugin._scheduleListPanelSync(0);
     plugin._initListPanel();
@@ -373,15 +393,28 @@ export function applyListPanelView(panel: DetailListPanelElement): void {
     const sort: DetailListSort = sortSelect.value === 'name-asc' ? 'name-asc' : 'name-desc';
     if (sortSelect.value !== sort) sortSelect.value = sort;
     const direction = sort === 'name-asc' ? 1 : -1;
+    const sortBy = panel.dataset.listSortBy || 'name';
     const items = Array.from(
         itemsContainer.querySelectorAll<HTMLElement>('.jhs-list-item')
     );
     items.sort((left, right) => {
-        const nameResult = DETAIL_LIST_COLLATOR.compare(
+        let primary: number;
+        if (sortBy === 'count') {
+            primary = readItemCount(left) - readItemCount(right);
+        } else if (sortBy === 'num') {
+            primary = readItemNum(left) - readItemNum(right);
+        } else {
+            primary = DETAIL_LIST_COLLATOR.compare(
+                left.dataset.listName || '',
+                right.dataset.listName || ''
+            );
+        }
+        if (primary !== 0) return primary * direction;
+        const byName = DETAIL_LIST_COLLATOR.compare(
             left.dataset.listName || '',
             right.dataset.listName || ''
         );
-        if (nameResult !== 0) return nameResult * direction;
+        if (byName !== 0) return byName;
         return DETAIL_LIST_COLLATOR.compare(
             left.dataset.listId || '',
             right.dataset.listId || ''

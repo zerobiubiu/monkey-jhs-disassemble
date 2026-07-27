@@ -42,7 +42,8 @@ export function bindClick(plugin: SettingPlugin): void {
             $('#clean-all').show();
             refreshAllCacheStats(plugin);
         } else if (panelName === 'vlt-panel') {
-            $('#saveBtn').hide();
+            // doc/207：清单管理器现有配置项需保存→显示 saveBtn；导入导出按钮独立保留
+            $('#saveBtn').show();
             $('#clean-all').hide();
         } else if (panelName === 'missav-panel') {
             $('#saveBtn').hide();

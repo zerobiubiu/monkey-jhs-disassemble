@@ -102,6 +102,10 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
         'checked',
         !settings.listReflowEnabled || settings.listReflowEnabled === YES
     );
+    // 清单管理器：排序显示 + 对账延迟（doc/207）
+    $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
+    $('#listSortBy').val(settings.listSortBy || 'name');
+    $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
     $('#listMergePattern').val(settings.listMergePattern || DEFAULT_LIST_MERGE_PATTERN);
     const mergeExcludeNames = Array.isArray(settings.listMergeExcludeNames)
         ? (settings.listMergeExcludeNames as string[])
@@ -175,6 +179,10 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     // 清单收藏合并配置
     settings.listMergeEnabled = $('#listMergeEnabled').is(':checked') ? YES : NO;
     settings.listReflowEnabled = $('#listReflowEnabled').is(':checked') ? YES : NO;
+    // 清单管理器：排序显示 + 对账延迟（doc/207）
+    settings.listDefaultSort = $('#listDefaultSort').val();
+    settings.listSortBy = $('#listSortBy').val();
+    settings.autoReconcileDelay = Number($('#autoReconcileDelay').val()) || 800;
     settings.listMergePattern = String($('#listMergePattern').val() ?? '').trim();
     settings.listMergeExcludeNames = String($('#listMergeExcludeNames').val() ?? '')
         .split(',')

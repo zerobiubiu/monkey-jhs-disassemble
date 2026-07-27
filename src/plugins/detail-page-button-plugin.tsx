@@ -92,7 +92,7 @@ import {
     previewSubtitle as _previewSubtitle
 } from './detail-page-button/dpb-subtitle';
 import { waitForDomChange as _waitForDomChange, waitForEl as _waitForEl } from './detail-page-button/dpb-helpers';
-import type { WantWatchedState, WantWatchedSyncPayload } from './detail-page-button/dpb-types';
+import type { WantWatchedState, WantWatchedSyncPayload, ListDisplayConfig } from './detail-page-button/dpb-types';
 
 import { DetailMenuButtons } from '../components/dpb/detail-menu-buttons';
 import { MagnetHubMountBox } from '../components/magnet-hub/magnet-hub-mount-box';
@@ -132,6 +132,11 @@ export class DetailPageButtonPlugin extends BasePlugin {
         pattern: compileMergePattern(DEFAULT_LIST_MERGE_PATTERN),
         excludeNames: new Set()
     };
+    /** 详情页清单面板显示配置（doc/207：默认排序 + 排序字段，handle 时加载）。 */
+    _listDisplayConfig: ListDisplayConfig = {
+        defaultSort: 'name-desc',
+        sortBy: 'name'
+    };
     /** 评分组件重建防抖计时器。 */
     _ratingSyncDebounce: ReturnType<typeof setTimeout> | null = null;
     /** javdb 原生评价操作串行化链（quickSetHasWatch / quickConvertToFav）。 */
@@ -159,6 +164,21 @@ export class DetailPageButtonPlugin extends BasePlugin {
             } catch (error) {
                 clog.error(
                     '[JHS] 清单合并配置加载失败，已按关闭处理: ' +
+                        (error instanceof Error ? error.message : String(error))
+                );
+            }
+            try {
+                const settings = await storageManager.getSetting();
+                this._listDisplayConfig = {
+                    defaultSort: settings.listDefaultSort === 'name-asc' ? 'name-asc' : 'name-desc',
+                    sortBy:
+                        settings.listSortBy === 'count' || settings.listSortBy === 'num'
+                            ? settings.listSortBy
+                            : 'name'
+                };
+            } catch (error) {
+                clog.error(
+                    '[JHS] 清单显示配置加载失败，已按默认处理: ' +
                         (error instanceof Error ? error.message : String(error))
                 );
             }

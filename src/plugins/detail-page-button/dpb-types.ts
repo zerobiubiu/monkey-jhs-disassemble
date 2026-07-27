@@ -15,3 +15,11 @@ export interface WantWatchedSyncPayload {
     /** 评分 1-5（仅 hasWatch+add 携带；0/未评分/想看/收藏不带） */
     score?: number;
 }
+
+/** 详情页清单面板显示配置（doc/207：默认排序方式 + 排序字段）。 */
+export interface ListDisplayConfig {
+    /** 默认排序方式：名称降序 / 名称升序。 */
+    defaultSort: 'name-desc' | 'name-asc';
+    /** 排序字段：名称 / 数量 / 序号。 */
+    sortBy: 'name' | 'count' | 'num';
+}

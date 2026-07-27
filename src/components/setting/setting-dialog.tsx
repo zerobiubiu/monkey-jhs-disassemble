@@ -20,6 +20,7 @@ import { FilterPanel } from '.././setting-panels/filter-panel';
 import { DomainPanel } from '.././setting-panels/domain-panel';
 import { CachePanel } from '.././setting-panels/cache-panel';
 import { SyncPanel } from '.././setting-panels/sync-panel';
+import { ListManagerPanel } from '.././setting-panels/list-manager-panel';
 import { PreloadPanel } from '.././setting-panels/preload-panel';
 import { DiagnosticsPanel } from '.././setting-panels/diagnostics-panel';
 
@@ -96,7 +97,7 @@ export function SettingDialog({
                     className={`side-menu-item ${panelName === 'vlt-panel' ? 'active' : ''}`}
                     data-panel="vlt-panel"
                 >
-                    📋 收藏清单关系
+                    📋 清单管理器
                 </div>
                 <div
                     className={`side-menu-item ${panelName === 'missav-panel' ? 'active' : ''}`}
@@ -141,27 +142,7 @@ export function SettingDialog({
                     <FilterPanel panelName={panelName} />
                     <DomainPanel panelName={panelName} />
                     <CachePanel panelName={panelName} cacheItemsHtml={cacheItemsHtml} />
-                    <SyncPanel
-                        panelId="vlt-panel"
-                        panelName={panelName}
-                        title="收藏清单关系"
-                        icon="📋"
-                        description={
-                            <>
-                                管理影片与清单的关联数据（本地 IndexedDB，随 WebDav 备份）。
-                                <br />
-                                <strong>导入</strong>：从 JSON 文件导入数据（如 PostgreSQL 迁移数据）。
-                                <br />
-                                <strong>导出</strong>：将当前数据导出为 JSON 文件（备份/迁移）。
-                            </>
-                        }
-                        buttons={[
-                            { id: 'vlt-import-btn', text: '导入数据', color: 'primary' },
-                            { id: 'vlt-export-btn', text: '导出数据', color: 'success' }
-                        ]}
-                        statusId="vlt-status"
-                        fileInputId="vlt-file-input"
-                    />
+                    <ListManagerPanel panelName={panelName} />
                     <SyncPanel
                         panelId="missav-panel"
                         panelName={panelName}
