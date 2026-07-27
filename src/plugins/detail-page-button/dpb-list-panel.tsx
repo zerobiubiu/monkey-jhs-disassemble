@@ -15,8 +15,6 @@ import {
 
 import { ListPanel } from '../../components/dpb/list-panel';
 
-type DetailListSort = 'name-desc' | 'name-asc';
-
 export interface DetailListPanelElement extends HTMLElement {
     __jhsListControlsBound?: boolean;
     __jhsRefresh?: () => void;
@@ -76,13 +74,11 @@ export function ensureListPanel(plugin: DetailPageButtonPlugin, nav: HTMLElement
     }
     const listPanel = nav.querySelector('.jhs-list-panel') as DetailListPanelElement | null;
     if (!listPanel) return;
-    // doc/207：按设置初始化排序下拉默认值 + 排序字段（一次性）
-    const displayConfig = plugin._listDisplayConfig;
+    // doc/207/208：按设置初始化排序下拉默认值（「字段-方向」组合，一次性）
     const sortSelectInit = listPanel.querySelector(
         '.jhs-list-panel__sort-select'
     ) as HTMLSelectElement | null;
-    if (sortSelectInit) sortSelectInit.value = displayConfig.defaultSort;
-    listPanel.dataset.listSortBy = displayConfig.sortBy;
+    if (sortSelectInit) sortSelectInit.value = plugin._listDisplayConfig.defaultSort;
     plugin._bindListPanelControls(listPanel);
     listPanel.__jhsRefresh = () => plugin._scheduleListPanelSync(0);
     plugin._initListPanel();
@@ -390,18 +386,19 @@ export function applyListPanelView(panel: DetailListPanelElement): void {
     const empty = panel.querySelector('.jhs-list-panel__empty') as HTMLElement | null;
     if (!itemsContainer || !sortSelect || !searchInput || !summary || !empty) return;
 
-    const sort: DetailListSort = sortSelect.value === 'name-asc' ? 'name-asc' : 'name-desc';
-    if (sortSelect.value !== sort) sortSelect.value = sort;
-    const direction = sort === 'name-asc' ? 1 : -1;
-    const sortBy = panel.dataset.listSortBy || 'name';
+    // doc/208：排序下拉值为「字段-方向」组合（name/count/num × desc/asc）
+    const sortValue = sortSelect.value || 'name-desc';
+    const dashIndex = sortValue.lastIndexOf('-');
+    const field = dashIndex > 0 ? sortValue.slice(0, dashIndex) : 'name';
+    const direction = sortValue.slice(dashIndex + 1) === 'asc' ? 1 : -1;
     const items = Array.from(
         itemsContainer.querySelectorAll<HTMLElement>('.jhs-list-item')
     );
     items.sort((left, right) => {
         let primary: number;
-        if (sortBy === 'count') {
+        if (field === 'count') {
             primary = readItemCount(left) - readItemCount(right);
-        } else if (sortBy === 'num') {
+        } else if (field === 'num') {
             primary = readItemNum(left) - readItemNum(right);
         } else {
             primary = DETAIL_LIST_COLLATOR.compare(

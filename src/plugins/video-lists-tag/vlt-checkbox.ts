@@ -139,13 +139,14 @@ async function autoFavoriteIfPendingUpdate(movieInfo: MovieInfo, lname: string):
             publishTime: movieInfo.info.release_date
         });
         broadcastWantWatchedSync(des, FAVORITE_ACTION, 'add');
+        // doc/208：JavDB 端收藏（等价手动点想看按钮），await 确保触发并暴露失败
+        await triggerJavdbWantAndSyncRatingBar(des);
         showToast(`⭐ [${des}] 已自动收藏（添加至「${lname}」）`, 'success');
         console.log(`${LOG_PREFIX} 自动收藏: ${des}（触发清单：${lname}）`);
-        triggerJavdbWantAndSyncRatingBar(des);
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : '未知错误';
         clog.error(`${LOG_PREFIX} 自动收藏失败: ${des}`, err);
-        showToast(`✗ [${des}] 自动收藏失败：${message}`, 'error');
+        showToast(`✗ [${des}] 脚本已收藏但 JavDB 端失败：${message}`, 'error');
     }
 }
 

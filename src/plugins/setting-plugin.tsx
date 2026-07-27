@@ -332,13 +332,13 @@ export class SettingPlugin extends BasePlugin {
     }
 
     /** 在关键词容器内添加一个关键词标签（带删除按钮）。 */
-    addLabelTag(containerSelector: string, keyword: string): void {
-        addLabelTag(containerSelector, keyword);
+    addLabelTag(containerSelector: string, keyword: string, noun = '屏蔽词'): void {
+        addLabelTag(containerSelector, keyword, noun);
     }
 
     /** 从输入框读取关键词并添加为标签。 */
-    addKeyword(containerSelector: string): void {
-        addKeyword(containerSelector);
+    addKeyword(containerSelector: string, noun = '屏蔽词'): void {
+        addKeyword(containerSelector, noun);
     }
 
     /**

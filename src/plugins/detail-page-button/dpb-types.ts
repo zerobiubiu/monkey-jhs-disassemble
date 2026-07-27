@@ -16,10 +16,8 @@ export interface WantWatchedSyncPayload {
     score?: number;
 }
 
-/** 详情页清单面板显示配置（doc/207：默认排序方式 + 排序字段）。 */
+/** 详情页清单面板显示配置（doc/207/208：默认排序方式，字段-方向组合）。 */
 export interface ListDisplayConfig {
-    /** 默认排序方式：名称降序 / 名称升序。 */
-    defaultSort: 'name-desc' | 'name-asc';
-    /** 排序字段：名称 / 数量 / 序号。 */
-    sortBy: 'name' | 'count' | 'num';
+    /** 默认排序方式：字段-方向组合（name/count/num × desc/asc，如 count-desc）。 */
+    defaultSort: string;
 }

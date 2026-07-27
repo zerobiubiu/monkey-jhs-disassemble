@@ -326,6 +326,8 @@
 
 207. `207-list-manager-settings.md` — 清单管理器设置页重构 + 可配置项整理：将「收藏清单关系」(vlt-panel)升级为「📋 清单管理器」专页，集中管理清单配置——序号合并（listMerge*/listReflow* 自基础配置迁入）/排序显示（新增 listDefaultSort 默认排序方式 + listSortBy 排序字段名称/数量/序号）/编号整理/对账校准/数据管理（保留导入导出）；详情页清单排序下拉改由设置驱动；同步落地 doc/206 对账消噪（机会性对账静默 + autoReconcileDelay 可配置）；version 1.32.1→1.33.0
 
+208. `208-list-manager-fixes.md` — 清单管理器三项优化：①排序「默认方式+字段」合并为单个 6 选项下拉（名称/数量/序号×降/升），applyListPanelView 直接解析下拉值修复改字段不生效；②自动收藏 JavDB 端修复（triggerJavdbWantAndSyncRatingBar 返回 Promise 并报错，autoFavoriteIfPendingUpdate await 触发）；③「不参与合并清单名/受保护关键词」改标签化输入（参考屏蔽关键词）；version 1.35.0→1.35.1
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -350,7 +352,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/207（208 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/208（209 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

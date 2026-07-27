@@ -12,8 +12,8 @@ import { jsxToString } from '../../core/jsx-to-string';
 
 import { KeywordLabel } from '../../components/misc/keyword-label';
 
-/** 在关键词容器内添加一个关键词标签（带删除按钮）。 */
-export function addLabelTag(containerSelector: string, keyword: string): void {
+/** 在关键词容器内添加一个关键词标签（带删除按钮）。noun 用于移除确认文案。 */
+export function addLabelTag(containerSelector: string, keyword: string, noun = '屏蔽词'): void {
     const $tagBox = $(`${containerSelector} .tag-box`);
     let $label: JQuery;
     const bgColor = '#cbd5e1';
@@ -51,7 +51,7 @@ export function addLabelTag(containerSelector: string, keyword: string): void {
             .closest('.keyword-label')
             .attr('data-keyword') ?? '')
             .split(' ')[0];
-        utils.q(event, `是否移除屏蔽词  ${removeKeyword}?`, async () => {
+        utils.q(event, `是否移除${noun}  ${removeKeyword}?`, async () => {
             $removeBtn.parent().remove();
         });
     });
@@ -59,11 +59,11 @@ export function addLabelTag(containerSelector: string, keyword: string): void {
 }
 
 /** 从输入框读取关键词并添加为标签。 */
-export function addKeyword(containerSelector: string): void {
+export function addKeyword(containerSelector: string, noun = '屏蔽词'): void {
     const $input = $(`${containerSelector} .keyword-input`);
     const keyword = String($input.val() ?? '').trim();
     if (keyword) {
-        addLabelTag(containerSelector, keyword);
+        addLabelTag(containerSelector, keyword, noun);
         $input.val('');
     }
 }

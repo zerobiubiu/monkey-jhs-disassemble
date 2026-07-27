@@ -134,8 +134,7 @@ export class DetailPageButtonPlugin extends BasePlugin {
     };
     /** 详情页清单面板显示配置（doc/207：默认排序 + 排序字段，handle 时加载）。 */
     _listDisplayConfig: ListDisplayConfig = {
-        defaultSort: 'name-desc',
-        sortBy: 'name'
+        defaultSort: 'name-desc'
     };
     /** 评分组件重建防抖计时器。 */
     _ratingSyncDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -169,12 +168,18 @@ export class DetailPageButtonPlugin extends BasePlugin {
             }
             try {
                 const settings = await storageManager.getSetting();
+                const validListSorts = [
+                    'name-desc',
+                    'name-asc',
+                    'count-desc',
+                    'count-asc',
+                    'num-desc',
+                    'num-asc'
+                ];
                 this._listDisplayConfig = {
-                    defaultSort: settings.listDefaultSort === 'name-asc' ? 'name-asc' : 'name-desc',
-                    sortBy:
-                        settings.listSortBy === 'count' || settings.listSortBy === 'num'
-                            ? settings.listSortBy
-                            : 'name'
+                    defaultSort: validListSorts.includes(settings.listDefaultSort)
+                        ? settings.listDefaultSort
+                        : 'name-desc'
                 };
             } catch (error) {
                 clog.error(

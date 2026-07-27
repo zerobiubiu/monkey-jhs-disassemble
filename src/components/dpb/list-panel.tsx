@@ -48,6 +48,10 @@ export function ListPanel() {
                     >
                         <option value="name-desc">名称降序</option>
                         <option value="name-asc">名称升序</option>
+                        <option value="count-desc">数量降序</option>
+                        <option value="count-asc">数量升序</option>
+                        <option value="num-desc">序号降序</option>
+                        <option value="num-asc">序号升序</option>
                     </select>
                 </label>
             </header>

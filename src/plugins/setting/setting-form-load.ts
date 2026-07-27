@@ -24,6 +24,33 @@ import {
 } from './setting-keys';
 import { refreshPreloadCacheStats } from './cache-management';
 
+/** 绑定关键词容器的「添加」按钮与回车添加（doc/208 抽取复用）。 */
+function bindKeywordContainer(plugin: SettingPlugin, containerSelector: string, noun: string): void {
+    $(`${containerSelector} .add-tag-btn`).on('click', () =>
+        plugin.addKeyword(containerSelector, noun)
+    );
+    $(`${containerSelector} .keyword-input`).on('keypress', (event: KeyboardEvent) => {
+        if (event.key === 'Enter') plugin.addKeyword(containerSelector, noun);
+    });
+}
+
+/** 读取关键词容器内所有标签文本（去除删除按钮的 ×，doc/208 抽取复用）。 */
+function readKeywordLabels(containerSelector: string): string[] {
+    const list: string[] = [];
+    $(`${containerSelector} .keyword-label`)
+        .toArray()
+        .forEach((label: HTMLElement) => {
+            const keyword = $(label)
+                .text()
+                .replace('×', '')
+                .replace(/[\r\n]+/g, ' ')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (keyword) list.push(keyword);
+        });
+    return list;
+}
+
 /** 从 storageManager 加载设置并回填到设置表单各输入项。对应原 L9664-9747。 */
 export async function loadForm(plugin: SettingPlugin): Promise<void> {
     const settings = await storageManager.getSetting();
@@ -104,7 +131,6 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     );
     // 清单管理器：排序显示 + 对账延迟（doc/207）
     $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
-    $('#listSortBy').val(settings.listSortBy || 'name');
     $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
     // 压实执行（doc/204 期2）
     $('#reflowInterval').val(settings.reflowInterval ?? 400);
@@ -116,30 +142,31 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
         'checked',
         !settings.autoFavCleanupEnabled || settings.autoFavCleanupEnabled === YES
     );
-    $('#protectedListKeywords').val(
-        Array.isArray(settings.protectedListKeywords)
-            ? settings.protectedListKeywords.join(', ')
-            : settings.protectedListKeywords || '值得复盘'
-    );
     $('#listMergePattern').val(settings.listMergePattern || DEFAULT_LIST_MERGE_PATTERN);
-    const mergeExcludeNames = Array.isArray(settings.listMergeExcludeNames)
-        ? (settings.listMergeExcludeNames as string[])
-        : [];
-    $('#listMergeExcludeNames').val(mergeExcludeNames.join(', '));
+    // 屏蔽关键词（原有标签容器）
     const titleFilterKeyword = await storageManager.getTitleFilterKeyword();
     if (titleFilterKeyword) {
         titleFilterKeyword.forEach((keyword: string) => {
             plugin.addLabelTag('#filterKeywordContainer', keyword);
         });
     }
-    $('#filterKeywordContainer .add-tag-btn').on('click', () =>
-        plugin.addKeyword('#filterKeywordContainer')
+    bindKeywordContainer(plugin, '#filterKeywordContainer', '屏蔽词');
+    // 不参与合并的清单名（doc/208 标签化）
+    const mergeExcludeNames = Array.isArray(settings.listMergeExcludeNames)
+        ? (settings.listMergeExcludeNames as string[])
+        : [];
+    mergeExcludeNames.forEach((name: string) =>
+        plugin.addLabelTag('#listMergeExcludeNamesContainer', name, '清单名')
     );
-    $('#filterKeywordContainer .keyword-input').on('keypress', (event: KeyboardEvent) => {
-        if (event.key === 'Enter') {
-            plugin.addKeyword('#filterKeywordContainer');
-        }
-    });
+    bindKeywordContainer(plugin, '#listMergeExcludeNamesContainer', '清单名');
+    // 受保护清单关键词（doc/208 标签化）
+    const protectedKeywords = Array.isArray(settings.protectedListKeywords)
+        ? (settings.protectedListKeywords as string[])
+        : ['值得复盘'];
+    protectedKeywords.forEach((kw: string) =>
+        plugin.addLabelTag('#protectedListKeywordsContainer', kw, '关键词')
+    );
+    bindKeywordContainer(plugin, '#protectedListKeywordsContainer', '关键词');
 }
 
 /** 保存设置表单到 storageManager 并刷新页面/相关插件。对应原 L10132-10207。 */
@@ -196,7 +223,6 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.listReflowEnabled = $('#listReflowEnabled').is(':checked') ? YES : NO;
     // 清单管理器：排序显示 + 对账延迟（doc/207）
     settings.listDefaultSort = $('#listDefaultSort').val();
-    settings.listSortBy = $('#listSortBy').val();
     settings.autoReconcileDelay = Number($('#autoReconcileDelay').val()) || 800;
     // 压实执行（doc/204 期2）
     settings.reflowInterval = Number($('#reflowInterval').val()) || 400;
@@ -205,28 +231,12 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.reflowMaxRetry = Number($('#reflowMaxRetry').val()) || 3;
     // 自动收藏联动（doc/205）
     settings.autoFavCleanupEnabled = $('#autoFavCleanupEnabled').is(':checked') ? YES : NO;
-    settings.protectedListKeywords = String($('#protectedListKeywords').val() ?? '')
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean);
     settings.listMergePattern = String($('#listMergePattern').val() ?? '').trim();
-    settings.listMergeExcludeNames = String($('#listMergeExcludeNames').val() ?? '')
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean);
+    // doc/208：标签容器读取（不参与合并清单名 / 受保护关键词）
+    settings.listMergeExcludeNames = readKeywordLabels('#listMergeExcludeNamesContainer');
+    settings.protectedListKeywords = readKeywordLabels('#protectedListKeywordsContainer');
     await storageManager.saveSetting(settings);
-    const titleFilterKeywordList: string[] = [];
-    $('#filterKeywordContainer .keyword-label')
-        .toArray()
-        .forEach((label: HTMLElement) => {
-            const keyword = $(label)
-                .text()
-                .replace('×', '')
-                .replace(/[\r\n]+/g, ' ')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-            titleFilterKeywordList.push(keyword);
-        });
+    const titleFilterKeywordList = readKeywordLabels('#filterKeywordContainer');
     await storageManager.saveTitleFilterKeyword(titleFilterKeywordList);
     show.ok('保存成功');
     refresh();

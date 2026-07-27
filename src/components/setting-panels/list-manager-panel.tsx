@@ -48,32 +48,37 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                 >
                     <SettingInput id="listMergePattern" placeholder="^(.+?)(\d+)$" />
                 </SettingRow>
-                <SettingRow
-                    label="不参与合并的清单名:"
-                    tooltip="逗号分隔；填完整清单名或前缀均可（如 Top10 或 Top），命中后该清单按原名单独显示"
-                >
-                    <SettingInput id="listMergeExcludeNames" placeholder="逗号分隔，如：Top10, 2024" />
-                </SettingRow>
+                <div style={{ margin: '12px 0 4px', fontWeight: 600, fontSize: '13px', color: '#3d4652' }}>
+                    不参与合并的清单名:
+                </div>
+                <div id="listMergeExcludeNamesContainer" className="filter-keyword-container">
+                    <div className="tag-box"></div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <input
+                            type="text"
+                            className="keyword-input"
+                            placeholder="输入清单名或前缀后按回车添加"
+                            style={{ flex: 1 }}
+                        />
+                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                            添加
+                        </a>
+                    </div>
+                </div>
             </SettingSection>
 
             <SettingSection title="排序显示" icon="📐">
                 <SettingRow
                     label="默认排序方式:"
-                    tooltip="详情页清单面板打开时的默认排序方向（仍可在面板内临时切换）"
+                    tooltip="详情页清单面板打开时的默认排序（字段+方向，仍可在面板内临时切换）"
                 >
                     <SettingSelect id="listDefaultSort">
                         <option value="name-desc">名称降序</option>
                         <option value="name-asc">名称升序</option>
-                    </SettingSelect>
-                </SettingRow>
-                <SettingRow
-                    label="排序字段:"
-                    tooltip="按名称 / 清单数量 / 清单名末尾序号排序（无序号的清单按序号排时靠前）"
-                >
-                    <SettingSelect id="listSortBy">
-                        <option value="name">按名称</option>
-                        <option value="count">按数量</option>
-                        <option value="num">按序号</option>
+                        <option value="count-desc">数量降序</option>
+                        <option value="count-asc">数量升序</option>
+                        <option value="num-desc">序号降序</option>
+                        <option value="num-asc">序号升序</option>
                     </SettingSelect>
                 </SettingRow>
             </SettingSection>
@@ -119,12 +124,23 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                     label="启用自动收藏/移除联动"
                     tooltip="加入「除受保护清单外」的任意清单自动收藏（想看）；从收藏改为已读星级时，自动从「除受保护清单外」的所有清单移出"
                 />
-                <SettingRow
-                    label="受保护清单关键词:"
-                    tooltip="逗号分隔、包含匹配；命中的清单不自动收藏、已读时不移出（默认「值得复盘」）"
-                >
-                    <SettingInput id="protectedListKeywords" placeholder="逗号分隔，如：值得复盘" />
-                </SettingRow>
+                <div style={{ margin: '12px 0 4px', fontWeight: 600, fontSize: '13px', color: '#3d4652' }}>
+                    受保护清单关键词:
+                </div>
+                <div id="protectedListKeywordsContainer" className="filter-keyword-container">
+                    <div className="tag-box"></div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <input
+                            type="text"
+                            className="keyword-input"
+                            placeholder="输入关键词后按回车添加（包含匹配）"
+                            style={{ flex: 1 }}
+                        />
+                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                            添加
+                        </a>
+                    </div>
+                </div>
             </SettingSection>
 
             <SettingSection title="对账校准" icon="🔄">
