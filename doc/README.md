@@ -334,6 +334,8 @@
 
 211. `211-css-line-clamp.md` — 修复 CSS line-clamp 兼容性警告：rating-bar.css .jhs-list-item__name 补标准 line-clamp:2；archetype「文件被忽略」为只读参考脚本的预期提示无需处理；version 1.36.0→1.36.1
 
+212. `212-fix-check-structure-types.md` — 修复 scripts/check-structure.ts 编辑器类型报错：装 @types/node + 新增独立 scripts/tsconfig.json（types:["node"]，不被根 tsconfig 引用故不接入 tsc -b，仅供编辑器解析）；tsconfig.app.json 已有 types:["react"] 故 src/ 不受污染；archetype「文件被忽略」为只读参考脚本的预期提示无需处理；非 src/ 改动不升版本
+
 ## 当前进度概览
 
 - core：29 个模块 + `sync/` 子目录（`withExclusiveLock` Web Lock 统一包装 / `KeyedQueue` 键控串行队列 / `sync-intent-journal` 意图日志），含 `_jquery-global`/`async-task-queue`/`auto-backup`/
@@ -358,7 +360,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/211（212 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/212（213 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

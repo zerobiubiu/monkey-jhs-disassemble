@@ -30,6 +30,7 @@
         "@types/jquery": "^4.0.1",
         "@types/layui-layer": "^1.0.5",
         "@types/localforage": "^0.0.34",
+        "@types/node": "^26.1.1",
         "@types/react": "^19.2.14",
         "@types/tabulator-tables": "^6.3.6",
         "@types/toastify-js": "^1.12.4",
