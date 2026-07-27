@@ -95,6 +95,9 @@ export function setupListManagementListener(): void {
             editing.listId = listId;
             editing.oldName = nameEl?.textContent?.trim() || '';
             console.log(`${LOG_PREFIX} 编辑清单快照: listId=${listId} oldName=${editing.oldName}`);
+            // doc/215：自行打开弹窗，不依赖 JavDB 原生 Stimulus handler
+            // （瀑布流追加的 DOM 节点未被原生 handler 绑定，导致修改按钮无响应）
+            openEditModal(listId, editing.oldName);
         },
         true
     );
@@ -134,6 +137,27 @@ export function setupListManagementListener(): void {
         },
         true
     );
+}
+
+/**
+ * 打开编辑弹窗并填充输入框（doc/215）。
+ *
+ * 瀑布流（listWaterfall）追加的清单条目未被 JavDB 原生 Stimulus handler 绑定，
+ * 点击「修改」按钮无法触发原生弹窗。此函数自行打开弹窗，确保所有条目均可编辑。
+ * 对原生已绑定的条目，重复打开是幂等的（is-active 已存在则无副作用）。
+ *
+ * @param listId 清单 ID
+ * @param listName 清单名称（填充到输入框）
+ */
+function openEditModal(listId: string, listName: string): void {
+    const modal = document.querySelector('#modal-edit-list');
+    if (!modal) return;
+    const nameInput = modal.querySelector('[data-list-target="inputName"]') as HTMLInputElement | null;
+    const idInput = modal.querySelector('[data-list-target="inputId"]') as HTMLInputElement | null;
+    if (nameInput) nameInput.value = listName;
+    if (idInput) idInput.value = listId;
+    modal.classList.add('is-active');
+    document.documentElement.classList.add('is-clipped');
 }
 
 /**
