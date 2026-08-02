@@ -1,7 +1,8 @@
 /**
  * BackupPanel —— 数据备份面板（React 函数组件，JSX）。
  *
- * 导入/导出按钮、WebDav 配置、备份口令、自动备份设置。基于 setting/
+ * 导入/导出按钮、WebDav 配置、Git 备份配置（GitHub 兼容族，doc/217）、
+ * 备份口令、自动备份设置（含 WebDav/Git 通道开关）。基于 setting/
  * 原子组件构建；密码输入依赖浏览器原生显示/隐藏按钮（无自定义切换）。
  */
 
@@ -71,9 +72,50 @@ export function BackupPanel({ panelName }: BackupPanelProps) {
                 </SettingRow>
             </SettingSection>
 
+            <SettingSection title="Git 备份（GitHub 兼容）" icon="🔀">
+                <SettingRow label="Git备份">
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <SettingButton id="gitBackupListBtn" color="primary">
+                            查看备份
+                        </SettingButton>
+                        <SettingButton id="gitBackupBtn" color="success">
+                            备份数据
+                        </SettingButton>
+                    </div>
+                </SettingRow>
+                <SettingRow label="API 地址:">
+                    <SettingInput
+                        id="gitApiUrl"
+                        placeholder="默认 https://api.github.com（自建 Gitea 填 …/api/v1）"
+                    />
+                </SettingRow>
+                <SettingRow label="仓库:">
+                    <SettingInput id="gitRepo" placeholder="owner/repo（请先建好私有仓库）" />
+                </SettingRow>
+                <SettingRow label="分支:">
+                    <SettingInput id="gitBranch" placeholder="默认 main" />
+                </SettingRow>
+                <SettingRow label="Token:">
+                    <SettingInput
+                        id="gitToken"
+                        type="password"
+                        placeholder="PAT（仅需仓库内容读写权限）"
+                    />
+                </SettingRow>
+            </SettingSection>
+
             <SettingSection title="自动备份" icon="⏰">
                 <SettingRow label="启用自动备份">
-                    <SettingCheckbox id="enableAutoBackup" label="开启后按频率自动备份到 WebDav" />
+                    <SettingCheckbox
+                        id="enableAutoBackup"
+                        label="开启后按频率自动备份到已启用的通道"
+                    />
+                </SettingRow>
+                <SettingRow label="备份通道:">
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <SettingCheckbox id="enableWebdavChannel" label="WebDav" />
+                        <SettingCheckbox id="enableGitChannel" label="Git" />
+                    </div>
                 </SettingRow>
                 <SettingRow label="备份频率:">
                     <SettingSelect id="autoBackupFrequency">

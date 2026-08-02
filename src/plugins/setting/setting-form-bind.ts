@@ -28,6 +28,7 @@ import {
 } from './data-import-export';
 import { bindFavSyncPanel } from './jhs-sync/fav-sync-bind';
 import { backupDataByWebDav, backupListBtnByWebDav } from './webdav-operations';
+import { backupDataByGit, backupListBtnByGit } from './git-operations';
 import { saveForm } from './setting-form-load';
 
 /** 绑定设置弹层内各按钮/输入的点击/输入事件。对应原 L10066-10131。 */
@@ -69,6 +70,8 @@ export function bindClick(plugin: SettingPlugin): void {
     $('#exportBtn').on('click', () => exportData(plugin));
     $('#webdavBackupBtn').on('click', () => backupDataByWebDav(plugin));
     $('#webdavBackupListBtn').on('click', () => backupListBtnByWebDav(plugin));
+    $('#gitBackupBtn').on('click', () => backupDataByGit(plugin));
+    $('#gitBackupListBtn').on('click', () => backupListBtnByGit(plugin));
     $('#saveBtn').on('click', () => saveForm(plugin));
     // ===== 插件诊断面板事件绑定 =====
     $('#copy-diagnostics-btn').on('click', () => {

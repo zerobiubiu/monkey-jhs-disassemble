@@ -339,6 +339,7 @@
 214. `214-fav-sync-independent-page.md` — 收藏同步独立设置页 + 引擎重写：从清单管理器拆出为独立侧栏页（🔄 收藏同步），引擎重写为 tick 驱动状态机（分页抓取/断点续接/后台处理/暂停继续），支持 5 万+ 条目；UI 含进度条+四格统计+详细报告；version 1.37.0→1.38.0
 215. `215-fix-waterfall-list-edit-button.md` — 修复 /users/lists 瀑布流追加条目「修改」按钮失效：根因是追加的第 2 页清单未被 JavDB 原生 Stimulus handler 绑定，VLT 监听器改为记录快照后自行打开弹窗（填充输入框+显示 modal）；version 1.38.0→1.38.1
 216. `216-reflow-phase2bc.md` — 编号清单整理期2b/2c：韧性层（自适应退避/恢复日志续传/批检查点/整次撤销）+ 体验层（进度条/汇总报告/续传撤销按钮）；新增 lr-journal.ts，重写 lr-execute.ts + lr-panel.tsx；version 1.38.1→1.39.0
+217. `217-git-backup-channel.md` — Git 备份通道（GitHub 兼容族）：Contents API 备份提供方（GitHub / GitHub Enterprise / 自建 Gitea/Forgejo，每次备份一个 commit 自带版本历史）；BackupProvider 抽象 + GitBackupClient + git-operations；文件列表弹层泛化双通道共享；备份面板 Git 分区 + 自动备份通道双开关；autoBackup 双通道分发；21 个单测；version 1.39.0→1.40.0
 
 ## 当前进度概览
 
@@ -364,7 +365,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/216（217 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/217（218 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

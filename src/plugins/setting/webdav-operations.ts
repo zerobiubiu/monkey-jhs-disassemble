@@ -11,9 +11,9 @@ import { withLoading } from '../../core/util/util-async';
 import { isBackupV2, decryptBackupV2 } from '../../core/backup-crypto';
 import { stripBackupExtras, applyBackupExtras } from '../../core/backup-extra-storage';
 import { jsxToString } from '../../core/jsx-to-string';
-import type { WebDavClient, WebDavFileItem } from '../../core/webdav';
 
 import type { SettingPlugin } from '../setting-plugin';
+import type { BackupFileItem, BackupProvider } from './backup-provider';
 import {
     GM_KEY_WEBDAV_URL,
     GM_KEY_WEBDAV_USERNAME,
@@ -118,11 +118,14 @@ interface TabulatorCell {
     getElement(): HTMLElement;
 }
 
-/** 打开备份文件列表弹层（Tabulator 表格，含删除/下载/导入操作）。对应原 L10353-10552。 */
+/**
+ * 打开备份文件列表弹层（Tabulator 表格，含删除/下载/导入操作）。对应原 L10353-10552。
+ * doc/217：客户端参数泛化为 BackupProvider，WebDav / Git 通道共享本弹层。
+ */
 export function openFileListDialog(
     plugin: SettingPlugin,
-    backupList: WebDavFileItem[],
-    webdavClient: WebDavClient,
+    backupList: BackupFileItem[],
+    provider: BackupProvider,
     titlePrefix: string
 ): void {
     layer.open({
@@ -208,8 +211,8 @@ export function openFileListDialog(
                                                 layer.close(layerIndex);
                                                 try {
                                                     await withLoading(async () => {
-                                                        await webdavClient.deleteFile(rowData.fileId);
-                                                        const newList = await webdavClient.getBackupList(
+                                                        await provider.deleteFile(rowData.fileId);
+                                                        const newList = await provider.getBackupList(
                                                             plugin.folderName
                                                         );
                                                         table.replaceData(newList);
@@ -229,7 +232,7 @@ export function openFileListDialog(
                                     $primaryBtn.addEventListener('click', async () => {
                                         try {
                                             await withLoading(async () => {
-                                                const fileContent = await webdavClient.getFileContent(
+                                                const fileContent = await provider.getFileContent(
                                                     rowData.fileId
                                                 );
                                                 const backupPassword = GM_getValue(
@@ -275,7 +278,7 @@ export function openFileListDialog(
                                                 try {
                                                     await withLoading(async () => {
                                                         let fileContent =
-                                                            await webdavClient.getFileContent(
+                                                            await provider.getFileContent(
                                                                 rowData.fileId
                                                             );
                                                         show.info('解密文件内容...');

@@ -63,6 +63,7 @@ import {
     openFileListDialog,
     getWebDavCredentialsFromGm
 } from './setting/webdav-operations';
+import { getGitCredentialsFromGm, buildGitClient } from './setting/git-operations';
 import { addLabelTag, addKeyword } from './setting/setting-tag-ops';
 
 import { SettingDialog } from '../components/setting/setting-dialog';
@@ -342,11 +343,13 @@ export class SettingPlugin extends BasePlugin {
     }
 
     /**
-     * 自动备份（增量滚动覆盖）。
+     * 自动备份（增量滚动覆盖，多通道分发；doc/217 由单 WebDav 扩展为 WebDav + Git 双通道）。
      *
      * 文件名固定为 `auto_<credentialId>.json`，一个浏览器只保留一份，
      * 每次自动备份覆盖该文件（不堆叠历史）。备份内容含 credentialId
-     * 与 autoBackupConfig。静默执行，失败仅 console.warn 不打扰用户。
+     * 与 autoBackupConfig。通道由 settings.backupChannels 开关控制
+     * （缺省 WebDav 开、Git 关）；任一通道成功即标记完成，
+     * 全部失败则下次打开重试。静默执行，失败仅 console.warn 不打扰用户。
      *
      * 由 main.tsx 启动序列在插件执行后调用。
      */
@@ -354,20 +357,49 @@ export class SettingPlugin extends BasePlugin {
         const settings = await storageManager.getSetting();
         const config: AutoBackupConfig = settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
         if (!shouldAutoBackup(config)) return;
-        const creds = getWebDavCredentialsFromGm();
-        if (!creds) return; // 未配置 WebDav，静默跳过
-        try {
-            const exportText = JSON.stringify(await this.buildBackupPayload(settings));
-            const webdavClient = new window.WebDavClient(creds.url, creds.username, creds.password);
-            await webdavClient.backup(this.folderName, getAutoBackupFileName(), exportText);
-            markAutoBackupDone();
-            console.log('[JHS 自动备份] 完成');
-        } catch (err: unknown) {
-            console.warn(
-                '[JHS 自动备份] 失败:',
-                err instanceof Error ? err.message : String(err)
-            );
+        const channels = (settings.backupChannels || { webdav: true, git: false }) as {
+            webdav?: boolean;
+            git?: boolean;
+        };
+        const webdavCreds = channels.webdav !== false ? getWebDavCredentialsFromGm() : null;
+        const gitCreds = channels.git === true ? getGitCredentialsFromGm() : null;
+        if (!webdavCreds && !gitCreds) return; // 无可用通道，静默跳过
+        const exportText = JSON.stringify(await this.buildBackupPayload(settings));
+        const fileName = getAutoBackupFileName();
+        let succeeded = false;
+        // WebDav 通道
+        if (webdavCreds) {
+            try {
+                const webdavClient = new window.WebDavClient(
+                    webdavCreds.url,
+                    webdavCreds.username,
+                    webdavCreds.password
+                );
+                await webdavClient.backup(this.folderName, fileName, exportText);
+                succeeded = true;
+                console.log('[JHS 自动备份] WebDav 通道完成');
+            } catch (err: unknown) {
+                console.warn(
+                    '[JHS 自动备份] WebDav 通道失败:',
+                    err instanceof Error ? err.message : String(err)
+                );
+            }
         }
+        // Git 通道（GitHub 兼容族）
+        if (gitCreds) {
+            try {
+                const gitClient = buildGitClient(gitCreds);
+                await gitClient.backup(this.folderName, fileName, exportText);
+                succeeded = true;
+                console.log('[JHS 自动备份] Git 通道完成');
+            } catch (err: unknown) {
+                console.warn(
+                    '[JHS 自动备份] Git 通道失败:',
+                    err instanceof Error ? err.message : String(err)
+                );
+            }
+        }
+        if (succeeded) markAutoBackupDone();
     }
 
     // ===== 表单绑定（委托至 setting/setting-form-binder） =====

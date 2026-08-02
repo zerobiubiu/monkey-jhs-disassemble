@@ -20,7 +20,11 @@ import {
     GM_KEY_WEBDAV_URL,
     GM_KEY_WEBDAV_USERNAME,
     GM_KEY_WEBDAV_PASSWORD,
-    GM_KEY_BACKUP_PASSWORD
+    GM_KEY_BACKUP_PASSWORD,
+    GM_KEY_GIT_API_URL,
+    GM_KEY_GIT_REPO,
+    GM_KEY_GIT_BRANCH,
+    GM_KEY_GIT_TOKEN
 } from './setting-keys';
 import { refreshPreloadCacheStats } from './cache-management';
 
@@ -84,11 +88,23 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     $('#webDavUsername').val(webDavUsername);
     $('#webDavPassword').val(webDavPassword);
     $('#backupPassword').val(backupPwd);
+    // Git 备份凭据（GM 私有存储，不进备份；doc/217）
+    $('#gitApiUrl').val(GM_getValue(GM_KEY_GIT_API_URL, ''));
+    $('#gitRepo').val(GM_getValue(GM_KEY_GIT_REPO, ''));
+    $('#gitBranch').val(GM_getValue(GM_KEY_GIT_BRANCH, ''));
+    $('#gitToken').val(GM_getValue(GM_KEY_GIT_TOKEN, ''));
     // 自动备份配置
     const autoBackupConfig: AutoBackupConfig =
         settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG;
     $('#enableAutoBackup').prop('checked', autoBackupConfig.enabled);
     $('#autoBackupFrequency').val(autoBackupConfig.frequency);
+    // 自动备份通道开关（缺省 WebDav 开、Git 关；doc/217）
+    const backupChannels = (settings.backupChannels || { webdav: true, git: false }) as {
+        webdav?: boolean;
+        git?: boolean;
+    };
+    $('#enableWebdavChannel').prop('checked', backupChannels.webdav !== false);
+    $('#enableGitChannel').prop('checked', backupChannels.git === true);
     // 本机凭证 ID（只读显示，不进入备份系统）
     $('#credentialIdDisplay').val(getCredentialId());
     $('#enableFavoriteActresses').prop(
@@ -194,6 +210,11 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     GM_setValue(GM_KEY_WEBDAV_USERNAME, $('#webDavUsername').val() || '');
     GM_setValue(GM_KEY_WEBDAV_PASSWORD, $('#webDavPassword').val() || '');
     GM_setValue(GM_KEY_BACKUP_PASSWORD, $('#backupPassword').val() || '');
+    // Git 备份凭据写入 GM 私有存储（不进备份；doc/217）
+    GM_setValue(GM_KEY_GIT_API_URL, $('#gitApiUrl').val() || '');
+    GM_setValue(GM_KEY_GIT_REPO, $('#gitRepo').val() || '');
+    GM_setValue(GM_KEY_GIT_BRANCH, $('#gitBranch').val() || '');
+    GM_setValue(GM_KEY_GIT_TOKEN, $('#gitToken').val() || '');
     // 清除旧凭据字段（一次性迁移）
     delete settings.webDavUrl;
     delete settings.webDavUsername;
@@ -202,6 +223,11 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.autoBackupConfig = {
         enabled: $('#enableAutoBackup').is(':checked'),
         frequency: $('#autoBackupFrequency').val() as AutoBackupFrequency
+    };
+    // 自动备份通道开关（doc/217）
+    settings.backupChannels = {
+        webdav: $('#enableWebdavChannel').is(':checked'),
+        git: $('#enableGitChannel').is(':checked')
     };
     settings.missAvUrl = String($('#missAvUrl').val() ?? '').replace(/\/$/, '');
     settings.supJavUrl = String($('#supJavUrl').val() ?? '').replace(/\/$/, '');

@@ -9,6 +9,12 @@
 
 ---
 
+## v1.40.0
+
+### 新增
+
+- **Git 备份通道（GitHub 兼容族）**（doc/217）：备份存储目的地新增 Git 仓库，基于 GitHub Contents API 实现（兼容 GitHub / GitHub Enterprise / 自建 Gitea/Forgejo，API 基址可配，兼作自建反代入口）。每次备份产生一个 commit，服务端天然保留版本历史（网页端可 diff/回滚）。新增 `backup-provider.ts`（BackupProvider 抽象）+ `git-backup-client.ts`（GitBackupClient + base64/UTF-8 编解码 + GitHttpError）+ `git-operations.ts`（凭据校验/手动备份/列表查看）；`openFileListDialog` 客户端参数泛化为 BackupProvider，WebDav/Git 共享文件列表弹层（删除/下载/导入零改造复用）。数据备份面板新增「🔀 Git 备份（GitHub 兼容）」分区（查看备份/备份数据 + API 地址/仓库/分支/Token）；自动备份分区新增「备份通道」双开关（`settings.backupChannels`，缺省 WebDav 开/Git 关，随备份迁移）；`autoBackup()` 改为双通道分发——任一通道成功即标记完成，全部失败下次打开重试。Git 凭据存 GM 私有存储、不进备份（与 WebDav 密码同等待遇）；明文上传与 WebDav 一致，UI 引导私有仓库。新增 21 个单测（编解码往返/路径编码/请求构造/响应解析/缺省值/错误传播）。
+
 ## v1.39.0
 
 **发布日期**：2026-07-27

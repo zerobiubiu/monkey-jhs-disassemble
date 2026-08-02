@@ -11,3 +11,11 @@ export const GM_KEY_WEBDAV_USERNAME = 'jhs_webdav_username';
 export const GM_KEY_WEBDAV_PASSWORD = 'jhs_webdav_password';
 /** 备份加密口令。 */
 export const GM_KEY_BACKUP_PASSWORD = 'jhs_backup_password';
+/** Git 备份 API 基址（GitHub 兼容族；doc/217）。 */
+export const GM_KEY_GIT_API_URL = 'jhs_git_api_url';
+/** Git 备份仓库（owner/repo；doc/217）。 */
+export const GM_KEY_GIT_REPO = 'jhs_git_repo';
+/** Git 备份分支（doc/217）。 */
+export const GM_KEY_GIT_BRANCH = 'jhs_git_branch';
+/** Git 备份个人访问令牌（doc/217）。 */
+export const GM_KEY_GIT_TOKEN = 'jhs_git_token';
