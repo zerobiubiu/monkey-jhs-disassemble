@@ -207,11 +207,14 @@ export class MissavStatusTagPlugin extends BasePlugin {
             /* ignore */
         }
 
-        // 4) 页面加载时读取当前 GM 存储全量数据初始化
+        // 4) 先启动渲染（用 IDB 已有数据立即渲染首屏，不阻塞于全量/增量消费）
+        this.observeAndProcess();
+
+        // 5) 页面加载时读取当前 GM 存储全量数据初始化
         await this.consumeFull(undefined);
         await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
 
-        // 4.5) 消费验证：对比 GM 存储最新修订号与 IDB 水位线
+        // 5.5) 消费验证：对比 GM 存储最新修订号与 IDB 水位线
         try {
             const gmRevision = GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0) as number;
             if (typeof gmRevision === 'number' && gmRevision > 0 && this.lastAppliedRevision < gmRevision) {
@@ -223,7 +226,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
             /* 验证失败不阻塞启动 */
         }
 
-        // 4.6) 意图日志恢复：处理上次未完成消费的载荷（doc/195）
+        // 5.6) 意图日志恢复：处理上次未完成消费的载荷（doc/195）
         const pending = readPendingIntents();
         if (pending.length > 0) {
             logInfo('恢复未完成消费', `${pending.length} 条待处理意图`);
@@ -237,9 +240,6 @@ export class MissavStatusTagPlugin extends BasePlugin {
             }
         }
         cleanStaleIntents();
-
-        // 5) 启动 MutationObserver 监听动态加载的缩略图
-        this.observeAndProcess();
     }
 
     /**
@@ -374,7 +374,8 @@ export class MissavStatusTagPlugin extends BasePlugin {
             }
         };
 
-        setTimeout(tryProcess, 1500);
+        // 立即尝试一次：DOM 已就绪时零延迟渲染；未就绪由内部 500ms 重试链接管
+        tryProcess();
 
         let debounceTimer: ReturnType<typeof setTimeout> | null = null;
         const observer = new MutationObserver((mutations: MutationRecord[]) => {
