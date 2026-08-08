@@ -166,7 +166,7 @@
 | `219-missav-tag-render-optimization-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 标签首屏渲染提速：①渲染与消费解耦（observeAndProcess 提前 + 首次尝试立即执行）②增量消费合并 processAll（逐条刷新→批处理后一次）③renderBadges 去 getComputedStyle；不变量：修订号门控/消费顺序/意图日志/GM 键不变；三个任务 subagent 执行 + 逐任务审查 Approved；version 1.40.1→1.40.2 |
 | `220-missav-auto-page-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 列表页瀑布流加载：Camoufox 实测确认无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、同源 fetch 抓页 200 不被 Cloudflare 拦；新插件 missav-auto-page/ 3 模块（map-selectors 纯函数+11 测试 / map-fetch / 主类，isVideoPage 守卫）+ 注册；审查回环 Camoufox 实测解除 I-1/I-2、修复 I-3；执行后 version 1.40.2→1.41.0 |
 | `221-missav-auto-page-interaction-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 瀑布流加载模式改造 + 封面修复：①封面根因（服务端 img src=占位图、真实 URL 在 data-src，追加节点不触发站点懒加载）→ liftDataSrcToSrc 提升（Camoufox 实测 naturalWidth 330）②加载模式改 click（底部「点击加载下一页」按钮）+「加载全部」浮动按钮 +「回到顶部」（复用 createBackToTopButton，样式复用 back-to-top-button.css）；styles 建 missav-auto-page/ 子目录守 §11.1；+3 测试；执行后 version 1.41.0→1.42.0 |
-| `222-missav-status-filter-plan.md` | 🔧开发指导 | 🔧待执行 | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status（跨站同步数据现成）→ 筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签 芯片 OR 过滤）；挂载点实测（grid 上方「过滤: 所有」行）；filter-chip-base.css 扩展第四个前缀；data-mstf-hidden 协同安全；新插件 missav-status-filter/ 3 模块 + 测试；执行后 version 1.42.0→1.43.0 |
+| `222-missav-status-filter-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status（跨站同步数据现成）→ 筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签 芯片 OR 过滤）；挂载点实测（grid 上方「过滤: 所有」行）；filter-chip-base.css 扩展第四前缀；data-mstf-hidden 协同安全；新插件 missav-status-filter/ 3 模块 + 14 纯函数测试 + 1 接线测试；执行后 version 1.42.0→1.43.0 |
 
 ## 类型图例
 
@@ -349,7 +349,7 @@
 219. `219-missav-tag-render-optimization-plan.md` — MissAV 标签首屏渲染提速（✅已执行）：渲染与消费解耦 + 增量消费合并 processAll + 去 getComputedStyle 三项改动；实时链路零改动；三任务 subagent 执行全 Approved；version 1.40.1→1.40.2
 220. `220-missav-auto-page-plan.md` — MissAV 列表页瀑布流（✅已执行）：Camoufox 实测确认服务端分页 `?page=N` + 同源 fetch 200 可行；新插件 missav-auto-page/ 3 模块 + isVideoPage 守卫；审查回环实测解除 I-1/I-2、修复 I-3；version 1.40.2→1.41.0
 221. `221-missav-auto-page-interaction-fix.md` — MissAV 瀑布流加载模式改造 + 封面修复（✅已执行）：封面根因（data-src 懒加载追加不触发）→ liftDataSrcToSrc；加载模式改 click 按钮 + 加载全部 + 回到顶部；styles/missav-auto-page/ 子目录；version 1.41.0→1.42.0
-222. `222-missav-status-filter-plan.md` — MissAV 状态标签筛选计划（🔧待执行）：读 .missav-status-tag dataset.status → 芯片筛选栏 OR 过滤；挂载点实测；filter-chip-base.css 扩展第四前缀；执行后 version 1.42.0→1.43.0
+222. `222-missav-status-filter-plan.md` — MissAV 状态标签筛选（✅已执行）：读 .missav-status-tag dataset.status → 芯片筛选栏 OR 过滤；挂载点实测；filter-chip-base.css 扩展第四前缀；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；version 1.42.0→1.43.0
 
 ## 当前进度概览
 
@@ -360,12 +360,12 @@
   `pagination-state`/`plugin-diagnostics`/`storage-manager`/
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
   `tooltip`/`viewer`/`webdav`/`webdav-crypto`
-- plugins：`base-plugin` + `plugin-manager` + 42 个插件（javdb 39 + missav 3），
+- plugins：`base-plugin` + `plugin-manager` + 43 个插件（javdb 39 + missav 4），
   20 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`/`icons`
-- styles：40 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
-  无障碍样式 + `list-reflow/` 与 `missav-auto-page/` 子目录），全部清理 `transition: all` 反模式
+- styles：41 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
+  无障碍样式 + `list-reflow/` 与 `missav-auto-page/` 与 `missav-status-filter/` 子目录），全部清理 `transition: all` 反模式
 - components：136 个 React 函数组件（JSX → jsxToString → HTML 字符串），
   重组为 26 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels/list-reflow），直接文件数 0
 - 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）

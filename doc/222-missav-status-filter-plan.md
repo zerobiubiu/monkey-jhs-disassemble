@@ -1,9 +1,10 @@
 # MissAV 状态标签筛选实施计划
 
 > **文档类型**：🔧 开发指导
-> **文档状态**：🔧 待执行
-> **版本**：计划实施后 1.42.0 → 1.43.0（新增功能插件，minor）
+> **文档状态**：✅ 已执行
+> **版本**：1.42.0 → 1.43.0（新增功能插件，minor）
 > **前置调研**：Camoufox 实测确认挂载点（doc/220 会话 + 本会话 probe9）
+> **执行方式**：subagent-driven development（2 任务 + 1 审查回环修复，审查 Approved）
 
 ## 1. 背景与需求
 
@@ -317,3 +318,65 @@ export class MissavStatusFilterPlugin extends BasePlugin {
 
 - 屏蔽/黑名单过滤（按关键词/黑名单隐藏 missav 内容）；
 - 筛选状态持久化（localStorage 记住已选芯片）。
+
+## 7. 执行验证记录
+
+### 执行环境
+
+Windows + Bun + Chrome（构建/静态验证）。
+
+### 验证命令
+
+```text
+$ bun run build          # = tsc -b && vite build
+$ bun run lint           # eslint src/
+$ bun run test           # vitest run
+$ bun run check:structure
+```
+
+### 实际输出
+
+```text
+$ bun run build
+✓ 407 modules transformed.
+[lightningcss minify] …（layer.css IE hack 警告，已知无害项）
+dist/monkey-jhs-disassemble.user.js  … kB │ gzip: … kB
+✓ built in ~1.4s
+产物头部 @version 1.43.0（已核对）
+
+$ bun run lint
+（无输出 = 0 errors / 0 warnings）
+
+$ bun run test
+ Test Files  11 passed (11)
+      Tests  161 passed (161)   ← 含 mstf 纯函数 14 + 接线 1 用例
+
+$ bun run check:structure
+check-structure: OK (364 files, 62 dirs within limits)
+```
+
+### 审查回环（关键发现与修复）
+
+subagent 审查发现 3 项并已修复（复审 Approved）：
+
+| 级别 | 问题 | 修复 |
+|------|------|------|
+| Critical | `renderChips` 的 `chip.dataset.value` 存显示 label（'⭐ 已收藏'），而 `applyFilter` 按原始 `dataset.status` key（'favorite'）匹配 → 点击芯片会把全部卡片隐藏 | 遍历 `STATUS_ORDER` 原始 key，`dataset.value = status`（文本仍显示 label）；+接线测试 `missav-status-filter-ui.test.ts` |
+| Important | observer 无门控，renderChips 重建触发自身 → 每 150ms 一次死循环 | `observerNeedsRefresh` 门控：仅 `.thumbnail.group`/`.missav-status-tag` 新增/删除或 `data-status` 属性变更才刷新 |
+| Minor | `tryBuild()` 失败无重试（挂载点迟到时筛选栏永不出现） | observer 回调门控通过后先 `tryBuild()`；removedNodes 检查补充 |
+
+### 前端或调用方验证
+
+- 挂载点 `div.flex.justify-between.mb-6`（Camoufox probe9 实测 grid 上方「过滤: 所有」行）→ afterend 插入筛选栏；降级 `h1` 后 / grid 父链；
+- 与瀑布流（MissavAutoPagePlugin 追加新缩略图）/ 标签渲染（MissavStatusTagPlugin 跨站同步消费后渲染）协同：observer 门控覆盖新增/删除/`data-status` 变更，自动刷新计数并重应用筛选；
+- 与 javdb 版 StatusTagFilterPlugin 的差异：javdb 用文本匹配（value=标签文本），missav 用属性匹配（dataset.status 原始 key）——审查回环发现并修正了这个移植差异。
+
+### 验证结论
+
+✅ 通过。两个任务 + 审查回环修复全部 Approved；构建/lint/161 测试/结构门禁全绿；产物 `@version 1.43.0`。
+
+### 已知限制（需用户浏览器实测）
+
+1. **筛选栏交互**：需在真实 Tampermonkey 环境确认芯片计数正确、点击 OR 过滤、与瀑布流新缩略图协同；
+2. **挂载视觉**：筛选栏插入「过滤: 所有」行后的布局需目视确认（无挤压/错位）；
+3. **无状态标签**：跨站同步尚未覆盖的番号计入「无状态标签」芯片。

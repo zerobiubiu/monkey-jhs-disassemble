@@ -9,6 +9,12 @@
 
 ---
 
+## v1.43.0
+
+### 新增
+
+- **MissAV 状态标签筛选器**（doc/222）：新增 MissavStatusFilterPlugin（`src/plugins/missav-status-filter/` 3 模块），在 missav 列表页 grid 上方（原生「过滤: 所有」行之后）挂载筛选栏——「状态: ⭐ 已收藏 / 🔍 已观看 / 🚫 已屏蔽 / 💾 已下载 / 无状态标签」芯片，点击按 OR 过滤缩略图（`data-mstf-hidden` 协同安全）。数据直接读 `.missav-status-tag` 的 `dataset.status`（跨站同步已渲染），零新数据源；观察器门控（新增/删除/`data-status` 变更）防自触发，与瀑布流追加、标签渲染自动协同。复用 `filter-chip-base.css` 共享基础扩展第四前缀。新增 14 个纯函数单测 + 1 个接线集成测试（审查回环修复 chip-value 与 applyFilter 的 key 契约 + 观察器自触发死循环）。
+
 ## v1.42.0
 
 ### 新增

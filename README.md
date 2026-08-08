@@ -8,7 +8,7 @@
 ## ✨ 功能总览
 
 脚本在 **JavDB** 与 **MissAV** 两个站点运行，覆盖列表页、详情页、演员页、清单页等场景，
-提供 **42 个功能插件**（JavDB 39 + MissAV 3）。
+提供 **43 个功能插件**（JavDB 39 + MissAV 4）。
 
 ### 📋 列表页增强
 
@@ -139,7 +139,7 @@ bun run build    # = tsc -b && vite build
 | 站点 | 域名 | 功能 |
 |------|------|------|
 | JavDB | `javdb.com` | 全部 39 个插件 |
-| MissAV | `missav.ws` / `missav.live` / `missav.ai` | 状态标签 + 快速复制 + 列表页瀑布流 |
+| MissAV | `missav.ws` / `missav.live` / `missav.ai` | 状态标签 + 状态筛选 + 快速复制 + 列表页瀑布流 |
 
 ## 🔧 技术架构
 
@@ -198,10 +198,10 @@ saveCar → callback                    jhs_car_status_delta        GM_addValueC
 
 ```
 src/
-├── main.tsx              # 入口：17 步启动序列 + 注册 42 插件
+├── main.tsx              # 入口：17 步启动序列 + 注册 43 插件
 ├── core/                 # 核心模块（29 个 + sync/ 子目录）
 │   └── sync/             # 跨站同步共享基础设施（Web Lock / 队列 / 意图日志）
-├── plugins/              # 插件模块（42 个，含 car-status-sync/ 和 video-lists-tag/ 子目录）
+├── plugins/              # 插件模块（43 个，含 car-status-sync/ 和 video-lists-tag/ 子目录）
 ├── components/           # React 函数组件（135 个，25 个子目录）
 ├── constants/            # 常量
 ├── resources/            # 资源（icons SVG）
@@ -212,7 +212,7 @@ src/
 ### 测试
 
 ```bash
-bun run test             # vitest run（9 个测试套件，143 个用例）
+bun run test             # vitest run（11 个测试套件，161 个用例）
 ```
 
 ### 文档
