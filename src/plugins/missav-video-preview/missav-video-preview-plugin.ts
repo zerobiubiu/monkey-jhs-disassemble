@@ -17,7 +17,17 @@
 import { TaskSupervisor } from '../../core/task-supervisor';
 
 import { BasePlugin } from '../base-plugin';
+import { isVideoDetailPath } from '../missav-status-filter/mstf-collect';
 import { CARD_SEL, findDetailUrl, isPlainLeftClick } from './mv-selectors';
+
+/**
+ * 列表页顶部固定条选择器（div.fixed.z-max，56px 高）。
+ *
+ * Camoufox 实测其 z-index 为 2147483647（CSS 整数最大值），而 layer 弹窗默认
+ * 仅 19891014——弹窗打开时顶部条会盖在弹窗上方。弹窗打开期间隐藏该元素、
+ * 关闭时恢复（layer 的 end 回调在所有关闭路径触发）。
+ */
+const TOP_BAR_SEL = 'div.fixed.z-max.w-full.bg-gradient-to-b.from-darkest';
 
 /**
  * MissAV 视频流 iframe 详情弹窗插件。
@@ -71,11 +81,26 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                 e.preventDefault();
                 e.stopPropagation();
                 const width = Math.min(1023, window.innerWidth - 40);
+                // 列表页顶部条 z-index 2147483647 高于 layer 弹窗（19891014），弹窗打开期间
+                // 隐藏之（关闭时通过 layer end 回调恢复）；iframe 视频页内嵌套弹窗保留顶部条
+                // （用户确认 doc/228「顶部条不隐藏」）。
+                let topBar: HTMLElement | null = null;
+                let topBarPrevDisplay = '';
+                if (!isVideoDetailPath(location.pathname)) {
+                    topBar = document.querySelector<HTMLElement>(TOP_BAR_SEL);
+                    if (topBar) {
+                        topBarPrevDisplay = topBar.style.display;
+                        topBar.style.display = 'none';
+                    }
+                }
                 layer.open({
                     type: 2,
                     content: url,
                     scrollbar: false,
-                    area: [`${width}px`, '100%']
+                    area: [`${width}px`, '100%'],
+                    end: () => {
+                        if (topBar) topBar.style.display = topBarPrevDisplay;
+                    }
                 });
             },
             { capture: true }
