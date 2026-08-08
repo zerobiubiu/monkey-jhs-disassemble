@@ -349,7 +349,7 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
   include vite.config.ts）、`eslint src/`、`vite build` **均不覆盖** `tests/`——测试
   代码不影响用户脚本构建门禁，新增/修改测试不改变产物字节。
 - 被测模块为纯函数，用 `react.createElement` 构造节点（非 JSX），无需 JSX 转换或 DOM。
-- 当前套件（8 个）：`tests/jsx-to-string.test.ts`（doc/151 XSS 转义 + 协议白名单）、
+- 当前套件（11 个）：`tests/jsx-to-string.test.ts`（doc/151 XSS 转义 + 协议白名单）、
   `tests/backup-crypto.test.ts`（doc/137 AES-GCM 往返 + 错口令/篡改拒绝，node 环境）、
   `tests/storage-migration.test.ts`（doc/135/162/163：第一组 `runMigrations` 集成契约
   幂等/门控/全量/缓存失效/失败重试 5 用例 + 第二组附件分析路径正向回归
@@ -366,6 +366,8 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
   另有 `tests/lr-execute.test.ts`（doc/216 压实执行引擎，8 用例，node 环境）。
   另有 `tests/git-backup-client.test.ts`（doc/217 Git 备份客户端：stub GM_xmlhttpRequest 验证
   请求构造/响应解析/base64-UTF-8 往返/路径编码/缺省回退/错误传播，21 用例，node 环境）。
+  另有 `tests/missav-auto-page.test.ts`（doc/220 瀑布流：findNextUrl/extractThumbs/collectCarNums/liftDataSrcToSrc，14 用例，jsdom）。
+  另有 `tests/missav-status-filter.test.ts`（doc/222 状态筛选：shouldShow/statusToLabel/getItemStatus/collectStatusCounts/applyFilter，14 用例，jsdom）与 `tests/missav-status-filter-ui.test.ts`（接线：chip dataset.value 契约 + 点击 OR 过滤，1 用例，jsdom）。
 - 可测试性 seam：`StorageManager` 构造函数 `constructor(forageInstance?: unknown)` 允许
   注入存储替身（生产无参调用行为不变），`static __resetForTesting()` 重置单例供用例隔离。
   参数用 `unknown` 而非 `any`，遵守「触及文件时消除新增 any」。

@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 42 个功能插件（JavDB 39 + MissAV 3）。
+形成 JavDB / MissAV 双站增强工具箱，共 43 个功能插件（JavDB 39 + MissAV 4）。
 
 ## 文档清单
 
