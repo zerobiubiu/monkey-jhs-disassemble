@@ -369,6 +369,9 @@
 233. `233-missav-video-preview-no-anim.md` — MissAV 视频预览弹窗去除过渡动画（✅已执行）：对齐 javdb openPage 参数 isOutAnim:false + anim:-1，弹窗直接弹出/关闭无动画（过渡浪费性能无作用）；version 1.44.4→1.44.5
 234. `234-eval-review-list-auto-sync.md` — 评价/收藏/清单与 JavDB 状态自动校验同步（✅已执行）：打开影片时核实脚本与服务器状态——评分/已读/收藏脚本已写但服务器未同步时自动补推（新模块 dpb-review-sync.ts，服务器有而脚本无则反向拉取，冲突跳过）；修复「同分再点被拦截」「已收藏再点被拦截」误拦截 bug（拦截条件改看服务器 DOM）；清单本地独有关联自动补推（pushLocalOnlyAssociation）+ 恢复日志重推用户期望状态；autoServerSync 设置开关（默认开）；version 1.44.5→1.45.0
 235. `235-review-conflict-dialog.md` — 评价状态冲突弹窗（✅已执行）：doc/234 方向 3 冲突（脚本与服务器均有状态但不一致）由「跳过+日志」改为弹窗让用户选择——使用脚本记录（推送/覆盖 JavDB）/ 使用网站数据（拉取覆盖本地）/ 取消；新组件 review-conflict-dialog.tsx（layer type:1 内容弹窗 + data-conflict-choice 按钮契约，layer 无 btn3 故自绘）；dpb-review-sync.ts 重命名 .tsx；version 1.45.0→1.45.1
+236. `236-fix-waterfall-cloudflare-403.md` — 修复 javdb 瀑布流被 Cloudflare 403 拦截（✅已执行）：现场诊断确认 GM_xmlhttpRequest 缺浏览器指纹头被 Cloudflare 返回 403 + Managed Challenge（页面 fetch 可正常通过）；新增共享工具 util-fetch-html.ts（fetchJavdbPageHtml：同源 fetch credentials:include + 429/502/503/504 退避重试 + 验证页/登录页兜底检测）；AutoPagePlugin 瀑布流改走页面 fetch（已确认故障点）+ ListWaterfallPlugin 删裸 GM_xmlhttpRequest（同根因）+ vlt-reconcile fetchHtmlDocument 重构复用（行为不变）；version 1.45.1→1.45.2
+237. `237-revert-missav-request-headers.md` — 回退 MissAV 请求头为原始脚本方式（✅已执行）：详情页探测与列表页预加载移除 buildBrowserNavHeaders，恢复为 gmHttp.get(searchUrl, undefined, siteConfig.headers, true)；缓存、TTL、列表页预加载队列、登录检测和 followRedirect 均不变；version 1.45.2→1.45.3
+238. `238-remove-missav-login-guard.md` — 删除 MissAV 搜索页登录保护性判断（✅已执行）：删除详情页和列表页预加载中后续新增的登录表单/密码框/登录关键词检测及“搜索页需要登录，跳过预加载”提示，恢复原始脚本请求后直接按 .text-secondary 解析的行为；缓存、TTL、队列、请求方式与其他错误处理不变；version 1.45.3→1.45.4
 
 ## 当前进度概览
 
@@ -394,7 +397,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/235（236 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/238（239 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

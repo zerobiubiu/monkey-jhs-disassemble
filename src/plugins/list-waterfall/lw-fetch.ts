@@ -1,10 +1,13 @@
 /**
  * 清单瀑布流翻页抓取 —— 从 list-waterfall-plugin.ts 拆出的 loadNextPage 方法
- * 及其依赖的纯工具函数（gmGet / findNextUrl / toAbsolute / rewriteItemLinks）。
+ * 及其依赖的纯工具函数（findNextUrl / toAbsolute / rewriteItemLinks）。
  *
- * loadNextPage：GM_xmlhttpRequest 抓取下一页 HTML → DOMParser 解析 →
- * 提取 li → 去重 → append → 链接重写 → 替换分页 nav → 记录 pageItems。
+ * loadNextPage：fetchJavdbPageHtml（页面 fetch，doc/236）抓取下一页 HTML →
+ * DOMParser 解析 → 提取 li → 去重 → append → 链接重写 → 替换分页 nav →
+ * 记录 pageItems。
  */
+import { fetchJavdbPageHtml } from '../../core/util/util-fetch-html';
+
 import type { ListWaterfallPlugin } from '../list-waterfall-plugin';
 
 /** 日志前缀。 */
@@ -72,31 +75,6 @@ function rewriteItemLinks(container: Element): void {
 }
 
 /**
- * 发起 GM_xmlhttpRequest GET 请求。对应原 L220-237。
- *
- * @param url 请求 URL
- * @returns Promise<string> responseText
- */
-function gmGet(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url,
-            timeout: 30000,
-            onload: (resp: { status: number; responseText: string }) => {
-                if (resp.status >= 200 && resp.status < 300) {
-                    resolve(resp.responseText);
-                } else {
-                    reject(new Error(`HTTP ${resp.status}`));
-                }
-            },
-            onerror: () => reject(new Error('network error')),
-            ontimeout: () => reject(new Error('timeout'))
-        });
-    });
-}
-
-/**
  * 设置状态条样式与文本。对应原 L463-467。
  *
  * @param plugin ListWaterfallPlugin 实例
@@ -126,7 +104,7 @@ export async function loadNextPage(plugin: ListWaterfallPlugin): Promise<void> {
     setState(plugin, 'loading', '加载中...');
 
     try {
-        const html = await gmGet(plugin.nextUrl);
+        const html = await fetchJavdbPageHtml(plugin.nextUrl);
         const doc = new DOMParser().parseFromString(html, 'text/html');
 
         const remoteUl = doc.querySelector(SEL.box);

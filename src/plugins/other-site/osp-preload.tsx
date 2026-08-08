@@ -13,7 +13,7 @@ import { jsxToString } from '../../core/jsx-to-string';
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
 import { ensureFilterBar, refreshFilterBar } from './osp-filter-bar';
-import { buildBrowserNavHeaders, evictStaleCache, isCacheEntryValid } from './osp-helpers';
+import { evictStaleCache, isCacheEntryValid } from './osp-helpers';
 import type { SiteConfig, SiteResult } from './osp-types';
 
 import {
@@ -177,26 +177,14 @@ async function doPreloadSite(
     try {
         const baseUrl = await siteConfig.getBaseUrl();
         const searchUrl = siteConfig.searchPath(baseUrl, carNum);
-        const htmlContent = await gmHttp.get(searchUrl, undefined, {
-            ...buildBrowserNavHeaders(baseUrl),
-            ...siteConfig.headers
-        }, true);
+        const htmlContent = await gmHttp.get(
+            searchUrl,
+            undefined,
+            siteConfig.headers,
+            true
+        );
         const $dom = utils.htmlTo$dom(String(htmlContent));
 
-        // 登录页检测：仅检测整页是否为登录页，避免匹配搜索结果页导航栏的"登录"按钮
-        const bodyText = $dom.text() || '';
-        const titleText = $dom.find('title').text() || '';
-        const hasLoginForm = $dom.find('form[action*="login"], form[action*="signin"], input[type="password"]').length > 0;
-        if (hasLoginForm
-            || /登录|登陆|登入|sign\s*in|log\s*in/i.test(titleText)
-            || bodyText.includes('登入你的帳戶')
-            || bodyText.includes('註冊一個新帳戶')) {
-            updatePreloadStatus(plugin, $item, siteConfig.id, 'failed');
-            console.warn(
-                `${PRELOAD_LOG} ⚠ ${siteConfig.id.replace('Btn', '')} 搜索页需要登录，跳过预加载`
-            );
-            return;
-        }
 
         const detailHrefs: string[] = [];
         $dom.find(siteConfig.itemSelector).each((_index: number, element: HTMLElement) => {

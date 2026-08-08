@@ -4,8 +4,8 @@
  * （原脚本整体 L1-510，独立油猴脚本 `JavDB 清单瀑布流` v0.1.0）。
  *
  * 功能：为「我的清单」和「收藏的清单」页面启用瀑布流自动翻页，滚动接近底部
- * 自动加载下一页。GM_xmlhttpRequest 抓取下一页 HTML → DOMParser 解析 →
- * 提取 `#lists > ul` 的 li → 去重（id 集合）→ append 到当前容器 → 链接重写
+ * 自动加载下一页。fetchJavdbPageHtml（页面 fetch，doc/236）抓取下一页 HTML →
+ * DOMParser 解析 → 提取 `#lists > ul` 的 li → 去重（id 集合）→ append 到当前容器 → 链接重写
  * （target=_blank + /lists/{id} 短地址）→ 替换分页 nav → 同步地址栏 URL
  * （replaceState）。含状态条三态（loading/error/no-more）+ 回到顶部按钮。
  *
@@ -29,7 +29,7 @@
  * 1. isEnabled() 读 GM_getValue 开关（默认开启）；toggleEnabled 切换 + confirm 刷新
  * 2. ALLOWED_PATHS 路径白名单（/users/lists + /users/favorite_lists）
  * 3. init 查找容器 → 记录首屏 li id（去重集合）→ 创建 loader → 绑定 scroll
- * 4. loadNextPage：gmGet 抓 HTML → DOMParser 解析 → 提取 li → 去重 → append →
+ * 4. loadNextPage：fetchJavdbPageHtml 抓 HTML → DOMParser 解析 → 提取 li → 去重 → append →
  *    rewriteItemLinks → 替换分页 nav → 记录 pageItems 滚动定位
  * 5. checkLoad：loader 距视口底部 PRELOAD_DISTANCE(800px) 时触发加载
  * 6. updateCurrentPageFromScroll：滚动时同步内部页码（不改地址栏）

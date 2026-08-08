@@ -6,6 +6,8 @@
  */
 import { currentHref, isJavdbSite } from '../../constants/site';
 
+import { fetchJavdbPageHtml } from '../../core/util/util-fetch-html';
+
 import type { BasePlugin } from '../base-plugin';
 import type { AutoPagePlugin } from '../auto-page-plugin';
 
@@ -62,9 +64,9 @@ export async function loadNextPage(plugin: AutoPagePlugin): Promise<void> {
                 return;
             }
         }
-        const responseHtml = await gmHttp.get(plugin.nextUrl);
+        const responseHtml = await fetchJavdbPageHtml(plugin.nextUrl);
         clog.log('请求下一页内容:', plugin.nextUrl);
-        const $dom = utils.htmlTo$dom(String(responseHtml));
+        const $dom = utils.htmlTo$dom(responseHtml);
         const items = $dom.find(plugin.getSelector().requestDomItemSelector);
         const existingList = plugin.getBoxCarInfoList();
         const newList = plugin.getBoxCarInfoList(items);

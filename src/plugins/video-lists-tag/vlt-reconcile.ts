@@ -5,6 +5,8 @@
  * 只有完整分页、总数、唯一性和二次首页稳定性全部通过后才允许写入本地。
  */
 
+import { fetchJavdbPageHtml } from '../../core/util/util-fetch-html';
+
 import { VltDb } from './vlt-db';
 import type { ListReconcileSnapshot, MovieRecord } from './vlt-db';
 import { showToast } from './vlt-toast';
@@ -88,34 +90,8 @@ function getDisplayedListName(input: HTMLInputElement): string {
 }
 
 async function fetchHtmlDocument(url: string): Promise<Document> {
-    let response: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-        response = await fetch(url, {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { Accept: 'text/html,application/xhtml+xml' }
-        });
-        if (response.ok) break;
-        if (![429, 502, 503, 504].includes(response.status) || attempt === 2) {
-            throw new Error(`清单页面请求失败：HTTP ${response.status}`);
-        }
-        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
-    }
-    if (!response?.ok) throw new Error('清单页面请求失败');
-
-    const html = await response.text();
-    const documentNode = new DOMParser().parseFromString(html, 'text/html');
-    const title = normalizeText(documentNode.title).toLowerCase();
-    if (
-        !documentNode.body ||
-        title.includes('cloudflare') ||
-        title.includes('just a moment') ||
-        documentNode.querySelector('form[action*="sign_in"]')
-    ) {
-        throw new Error('清单页面被登录页或人机验证页替代');
-    }
-    return documentNode;
+    const html = await fetchJavdbPageHtml(url);
+    return new DOMParser().parseFromString(html, 'text/html');
 }
 
 function parseExpectedCountAndName(documentNode: Document): {

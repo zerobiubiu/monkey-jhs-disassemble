@@ -9,7 +9,7 @@ import { AsyncTaskQueue } from '../../core/async-task-queue';
 import { jsxToString } from '../../core/jsx-to-string';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
-import { buildBrowserNavHeaders, evictStaleCache, isCacheEntryValid } from './osp-helpers';
+import { evictStaleCache, isCacheEntryValid } from './osp-helpers';
 import type { SiteConfig, SiteResult } from './osp-types';
 
 import { SiteResultTag } from '../../components/other-site/site-result-tag';
@@ -81,31 +81,13 @@ export async function probeSite(
             const baseUrl = await siteConfig.getBaseUrl();
             const searchUrl = siteConfig.searchPath(baseUrl, carNum);
             buttonEl.attr('href', searchUrl);
-            const htmlContent = await gmHttp.get(searchUrl, undefined, {
-                ...buildBrowserNavHeaders(baseUrl),
-                ...siteConfig.headers
-            }, true);
+            const htmlContent = await gmHttp.get(
+                searchUrl,
+                undefined,
+                siteConfig.headers,
+                true
+            );
             const $dom = utils.htmlTo$dom(String(htmlContent));
-            const siteName = siteConfig.id.replace('Btn', '');
-
-            // 登录页检测：missav 等站点现在需要登录才能看搜索结果
-            const bodyText = $dom.text() || '';
-            if (bodyText.includes('登入你的帳戶') || bodyText.includes('登录') || bodyText.includes('註冊一個新帳戶') || bodyText.includes('登入你的帳戶')) {
-                buttonEl.attr('title', '请求失败：搜索页需要登录');
-                buttonEl.css('backgroundColor', plugin.warnBackgroundColor);
-                clog.warn(`检测第三方资源失败, ${siteName} 搜索页需要登录`);
-                return;
-            }
-
-            // 检测登录页：missav 等站点未登录时返回登录页而非搜索结果
-            const isLoginPage = $dom.find('form[action*="login"], form[action*="signin"], form[id*="login"], input[name*="password"], input[type="password"]').length > 0
-                || /\u767b\u5f55|\u767b\u9646|\u767b\u5165|sign\s*in|log\s*in/i.test($dom.text());
-            if (isLoginPage) {
-                buttonEl.attr('title', '该站点需登录后才能搜索');
-                buttonEl.css('backgroundColor', plugin.warnBackgroundColor);
-                clog.warn(`检测到登录页，跳过 ${siteConfig.id.replace('Btn', '')}`);
-                return;
-            }
 
             const detailHrefs: string[] = [];
             $dom.find(siteConfig.itemSelector).each((_index: number, element: HTMLElement) => {

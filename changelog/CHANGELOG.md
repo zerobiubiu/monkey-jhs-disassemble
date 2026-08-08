@@ -9,6 +9,30 @@
 
 ---
 
+## v1.45.4
+
+### 调整
+
+- **删除 MissAV 搜索页登录保护性判断**（doc/238）：恢复原始脚本行为，详情页和列表页预加载不再检测登录表单、密码框或登录关键词，也不再输出“搜索页需要登录，跳过预加载”；请求后直接按 `.text-secondary` 解析，缓存、TTL、队列和其他错误处理保持不变。
+
+---
+
+## v1.45.3
+
+### 调整
+
+- **MissAV 请求方式回退为原始脚本行为**（doc/237）：详情页探测与列表页预加载移除 `buildBrowserNavHeaders`，恢复为 `gmHttp.get(searchUrl, undefined, siteConfig.headers, true)`；缓存、TTL、预加载队列、登录页检测和重定向处理均保持不变，用于对比测试原始请求方式。
+
+---
+
+## v1.45.2
+
+### 修复
+
+- **javdb 瀑布流被 Cloudflare 403 拦截**（doc/236）：诊断确认 `GM_xmlhttpRequest` 缺浏览器指纹头（sec-ch-ua/sec-fetch-*）被 Cloudflare 返回 403 + Managed Challenge，而页面 fetch 可正常通过。新增共享工具 `util-fetch-html.ts`（`fetchJavdbPageHtml`：同源 fetch + 退避重试 + 验证页/登录页兜底检测），列表页/清单详情页瀑布流（AutoPagePlugin）与清单页瀑布流（ListWaterfallPlugin）改走页面 fetch，vlt-reconcile 抓取重构复用（行为不变）。
+
+---
+
 ## v1.45.1
 
 ### 新增
