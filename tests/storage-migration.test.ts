@@ -20,17 +20,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // ---- in-memory fake forage ----
 class FakeForage {
-    private store = new Map<string, any>();
+    private store = new Map<string, unknown>();
 
-    seed(key: string, value: any): void {
+    seed(key: string, value: unknown): void {
         this.store.set(key, value);
     }
 
-    async getItem(key: string): Promise<any> {
+    async getItem(key: string): Promise<unknown> {
         return this.store.has(key) ? this.store.get(key) : null;
     }
 
-    async setItem(key: string, value: any): Promise<void> {
+    async setItem(key: string, value: unknown): Promise<void> {
         this.store.set(key, value);
     }
 
@@ -46,42 +46,55 @@ class FakeForage {
         return this.store.has(key);
     }
 
-    get(key: string): any {
+    get(key: string): unknown {
         return this.store.get(key);
     }
 }
 
 // ---- globals stub ----
-const savedGlobals: Record<string, any> = {};
+/** globalThis 上运行时全局的类型化视图（globals.d.ts 声明，测试中暂存/注入 stub）。 */
+const g = globalThis as unknown as {
+    clog?: unknown;
+    utils?: unknown;
+    window?: Window & { clean_cacheSettingObj?: unknown };
+};
+
+interface SavedGlobals {
+    clog?: unknown;
+    utils?: unknown;
+    windowClean?: unknown;
+}
+
+const savedGlobals: SavedGlobals = {};
 
 function stubGlobals(): void {
-    savedGlobals.clog = (globalThis as any).clog;
-    savedGlobals.utils = (globalThis as any).utils;
-    savedGlobals.windowClean = (globalThis as any).window?.clean_cacheSettingObj;
-    (globalThis as any).clog = {
+    savedGlobals.clog = g.clog;
+    savedGlobals.utils = g.utils;
+    savedGlobals.windowClean = g.window?.clean_cacheSettingObj;
+    g.clog = {
         log: () => {},
         warn: () => {},
         error: () => {},
         debug: () => {}
     };
-    (globalThis as any).utils = {
-        copyObj: (x: any) => JSON.parse(JSON.stringify(x)),
-        deepFreeze: (x: any) => x
+    g.utils = {
+        copyObj: <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T,
+        deepFreeze: <T>(x: T): T => x
     };
     // async_merge_other 的 saveSetting 路径会调用 window.clean_cacheSettingObj()
-    if ((globalThis as any).window) {
-        (globalThis as any).window.clean_cacheSettingObj = () => {};
+    if (g.window) {
+        g.window.clean_cacheSettingObj = () => {};
     }
 }
 
 function restoreGlobals(): void {
-    (globalThis as any).clog = savedGlobals.clog;
-    (globalThis as any).utils = savedGlobals.utils;
-    if ((globalThis as any).window) {
+    g.clog = savedGlobals.clog;
+    g.utils = savedGlobals.utils;
+    if (g.window) {
         if (savedGlobals.windowClean === undefined) {
-            delete (globalThis as any).window.clean_cacheSettingObj;
+            delete g.window.clean_cacheSettingObj;
         } else {
-            (globalThis as any).window.clean_cacheSettingObj = savedGlobals.windowClean;
+            g.window.clean_cacheSettingObj = savedGlobals.windowClean;
         }
     }
 }
@@ -113,7 +126,7 @@ describe('StorageManager.runMigrations', () => {
     it('幂等性：version=6 时零步骤执行', async () => {
         forage.seed(SCHEMA_KEY, 6);
         forage.seed('car_list', [{ carNum: 'ABC-123', names: ['X'], status: 1 }]);
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.runMigrations();
         expect(await forage.getItem(SCHEMA_KEY)).toBe(6);
         // car_list 未被触碰
@@ -135,13 +148,13 @@ describe('StorageManager.runMigrations', () => {
         // 设置无废弃键（步骤 3 不执行 saveSetting → 不需 window stub）
         forage.seed('setting', {});
 
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.runMigrations();
 
         expect(await forage.getItem(SCHEMA_KEY)).toBe(6);
 
         // 步骤 4：isActor → role
-        const bl = await forage.getItem('blacklist');
+        const bl = (await forage.getItem('blacklist')) as Array<Record<string, unknown>>;
         expect(bl[0].role).toBeDefined();
         expect(bl[0].isActor).toBeUndefined();
         expect(bl[0].starId).toBe('ABC'); // 从 URL pathname 提取
@@ -149,16 +162,16 @@ describe('StorageManager.runMigrations', () => {
         expect(bl[0].movieType).toBeDefined();
 
         // 步骤 5：dbId → starId
-        const fav = await forage.getItem('favorite_actresses');
+        const fav = (await forage.getItem('favorite_actresses')) as Array<Record<string, unknown>>;
         expect(fav[0].starId).toBe('999');
         expect(fav[0].dbId).toBeUndefined();
 
         // 步骤 6：actress → names
-        const cars = await forage.getItem('car_list');
+        const cars = (await forage.getItem('car_list')) as Array<Record<string, unknown>>;
         expect(cars[0].names).toBe('Alice');
         expect(cars[0].actress).toBeUndefined();
 
-        const blCars = await forage.getItem('blacklist_car_list');
+        const blCars = (await forage.getItem('blacklist_car_list')) as Array<Record<string, unknown>>;
         expect(blCars[0].names).toBe('Alice');
         expect(blCars[0].actress).toBeUndefined();
     });
@@ -172,7 +185,7 @@ describe('StorageManager.runMigrations', () => {
         // 步骤 3 的设置（无废弃键）
         forage.seed('setting', {});
 
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.runMigrations();
 
         expect(await forage.getItem(SCHEMA_KEY)).toBe(6);
@@ -183,15 +196,15 @@ describe('StorageManager.runMigrations', () => {
         expect(forage.has('car_list_filter_actor_actress')).toBe(false);
 
         // 新键已填充
-        const bl = await forage.getItem('blacklist');
+        const bl = (await forage.getItem('blacklist')) as Array<Record<string, unknown>>;
         expect(bl.length).toBe(1);
         expect(bl[0].name).toBe('Carol');
 
-        const fav = await forage.getItem('favorite_actresses');
+        const fav = (await forage.getItem('favorite_actresses')) as Array<Record<string, unknown>>;
         expect(fav.length).toBe(1);
         expect(fav[0].starId).toBe('111');
 
-        const blCars = await forage.getItem('blacklist_car_list');
+        const blCars = (await forage.getItem('blacklist_car_list')) as Array<Record<string, unknown>>;
         expect(blCars.length).toBe(1);
         expect(blCars[0].names).toBe('Carol');
     });
@@ -203,13 +216,13 @@ describe('StorageManager.runMigrations', () => {
         forage.seed('car_list', []);
         forage.seed('setting', {});
 
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.runMigrations();
 
         // 迁移后 actress → names
         const blCars = await sm.getBlacklistCarList();
         expect(blCars[0].names).toBe('Eve');
-        expect((blCars[0] as any).actress).toBeUndefined();
+        expect((blCars[0] as { actress?: unknown }).actress).toBeUndefined();
     });
 
     it('失败步骤保留版本号，下次重试', async () => {
@@ -225,13 +238,13 @@ describe('StorageManager.runMigrations', () => {
                 callCount++;
                 if (callCount === 1) {
                     // 返回一个使 .map 抛错的值（非数组）
-                    return 'not-an-array' as any;
+                    return 'not-an-array';
                 }
             }
             return origGetItem(key);
         };
 
-        const sm = new StorageManager(badForage as any);
+        const sm = new StorageManager(badForage);
         await sm.runMigrations();
 
         // 步骤 4 失败 → version 停留在 3
@@ -265,16 +278,16 @@ describe('StorageManager 迁移步骤行为（附件分析路径的正向回归�
             { carNum: 'C3' }
         ]);
 
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.clean_no_url_blacklist();
 
         // 番号侧：C2（actress 不在演员 nameSet）被清除
-        const cars = await forage.getItem('blacklist_car_list');
-        expect(cars.map((c: any) => c.carNum)).toEqual(['C1', 'C3']);
+        const cars = (await forage.getItem('blacklist_car_list')) as Array<{ carNum: string }>;
+        expect(cars.map((c) => c.carNum)).toEqual(['C1', 'C3']);
 
         // 演员侧：Orphan（name 不在保留番号的 actressSet）被清除；
         // Alice 的 key/recordTime 被删除，recordTime 迁移为 createTime
-        const bl = await forage.getItem('blacklist');
+        const bl = (await forage.getItem('blacklist')) as Array<Record<string, unknown>>;
         expect(bl).toHaveLength(1);
         expect(bl[0].name).toBe('Alice');
         expect(bl[0].createTime).toBe(1000);
@@ -290,10 +303,10 @@ describe('StorageManager 迁移步骤行为（附件分析路径的正向回归�
             downPath115: '/old/path' // 废弃键
         });
 
-        const sm = new StorageManager(forage as any);
+        const sm = new StorageManager(forage);
         await sm.async_merge_other();
 
-        const setting = await forage.getItem('setting');
+        const setting = (await forage.getItem('setting')) as Record<string, unknown>;
         expect(setting.theme).toBe('dark');
         expect('enableCheckBlacklist' in setting).toBe(false);
         expect('checkRequestSleep' in setting).toBe(false);
