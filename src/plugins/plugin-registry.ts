@@ -30,6 +30,7 @@ import type { MagnetHubPlugin } from './magnet-hub-plugin';
 import type { MissavAutoPagePlugin } from './missav-auto-page/missav-auto-page-plugin';
 import type { MissavQuickCopyPlugin } from './missav-quick-copy-plugin';
 import type { MissavStatusFilterPlugin } from './missav-status-filter/missav-status-filter-plugin';
+import type { MissavVideoPreviewPlugin } from './missav-video-preview/missav-video-preview-plugin';
 import type { ModalListDisablerPlugin } from './modal-list-disabler-plugin';
 import type { ModMyListOpenWayPlugin } from './mod-my-list-open-way-plugin';
 import type { NavBarPlugin } from './nav-bar-plugin';
@@ -78,6 +79,7 @@ export interface PluginMap {
     MissavQuickCopyPlugin: MissavQuickCopyPlugin;
     MissavStatusFilterPlugin: MissavStatusFilterPlugin;
     MissavStatusTagPlugin: MissavStatusTagPlugin;
+    MissavVideoPreviewPlugin: MissavVideoPreviewPlugin;
     ModalListDisablerPlugin: ModalListDisablerPlugin;
     ModMyListOpenWayPlugin: ModMyListOpenWayPlugin;
     NavBarPlugin: NavBarPlugin;
