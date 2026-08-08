@@ -8,7 +8,7 @@
 ## ✨ 功能总览
 
 脚本在 **JavDB** 与 **MissAV** 两个站点运行，覆盖列表页、详情页、演员页、清单页等场景，
-提供 **40 个功能插件**（JavDB 38 + MissAV 2）。
+提供 **42 个功能插件**（JavDB 39 + MissAV 3）。
 
 ### 📋 列表页增强
 
@@ -139,7 +139,7 @@ bun run build    # = tsc -b && vite build
 | 站点 | 域名 | 功能 |
 |------|------|------|
 | JavDB | `javdb.com` | 全部 38 个插件 |
-| MissAV | `missav.ws` / `missav.live` / `missav.ai` | 状态标签 + 快速复制 |
+| MissAV | `missav.ws` / `missav.live` / `missav.ai` | 状态标签 + 快速复制 + 列表页瀑布流 |
 
 ## 🔧 技术架构
 

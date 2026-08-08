@@ -289,7 +289,7 @@ setupLayerWrapper();
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 40 插件（javdb 38 [33 常驻 + 5 feature-flagged] + missav 2） =====
+// ===== 启动序列：PluginManager + 注册 42 插件（javdb 39 [34 常驻 + 5 feature-flagged] + missav 3） =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
     // pluginManager 仅通过模块级 const + this.pluginManager 内部访问，不暴露到 unsafeWindow

@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 42 个功能插件（JavDB 39 + MissAV 3）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -23,7 +23,7 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 2）
+│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 3）
 │   ├── core/               # 核心模块（含 feature-flags）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
@@ -63,7 +63,7 @@ monkey-jhs-disassemble/
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册 40 插件**（javdb 38 + missav 2，在 `if (isJavdbSite)` / `if (isMissavSite)` 块内）
+9. **PluginManager 实例化 + 注册 42 插件**（javdb 39 + missav 3，在 `if (isJavdbSite)` / `if (isMissavSite)` 块内）
 10. **页面判定**（`initPageContext()` → `window.isDetailPage/isListPage/isFc2Page`）— **先于 CSS**
 11. `await processCss()` — 并发执行所有插件 initCss（按 `pageTypes` 过滤不匹配插件）
 12. `await storageManager.runMigrations()` — 版本化数据迁移（javdb only，后续启动仅读版本号 ~1ms）
@@ -160,12 +160,13 @@ monkey-jhs-disassemble/
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2-by-123av-plugin.tsx + fc2-123av/ 子目录（2 模块：fc2-browse / fc2-detail） | fc2By123AvPlugin | 123Av FC2 浏览 |
 
-**新增功能插件（2 个）**：本项目自创（非 archetype 拆分/集成/升级）
+**新增功能插件（3 个）**：本项目自创（非 archetype 拆分/集成/升级）
 
 | 插件 | 文件 | 职责 |
 |------|------|------|
 | VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
 | ListReflowPlugin | list-reflow/（7 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1，doc/202）+ 压实执行引擎（期2a 先加后删，doc/204） |
+| MissavAutoPagePlugin | missav-auto-page/（3 模块：map-selectors / map-fetch / 主类） | MissAV 列表页瀑布流：滚动触底抓取下一页 HTML 自动追加缩略图（Camoufox 实测无原生无限滚动，服务端分页 `?page=N`；视频页守卫） |
 
 ### 3.4 核心模块 `src/core/`
 

@@ -9,6 +9,12 @@
 
 ---
 
+## v1.41.0
+
+### 新增
+
+- **MissAV 列表页瀑布流**（doc/220）：新增 MissavAutoPagePlugin（`src/plugins/missav-auto-page/` 3 模块），滚动接近底部自动抓取下一页 HTML 追加缩略图，替代手工点击分页。基于 Camoufox 真实浏览器调研：missav 无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、英文站「Next」/中文站「下一页」。复用 `PaginationStateMachine` + `TaskSupervisor` + `normalizeCarNum`；番号去重防重复；视频播搜页经 `isVideoPage()` 守卫跳过；新缩略图自动被 MissavStatusTagPlugin 的 MutationObserver 挂状态标签（渲染层零改动）。新增 11 个纯函数单测（node + jsdom）。
+
 ## v1.40.2
 
 ### 优化

@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 41 个功能插件（JavDB 39 + MissAV 2）。
+形成 JavDB / MissAV 双站增强工具箱，共 42 个功能插件（JavDB 39 + MissAV 3）。
 
 ## 文档清单
 
@@ -164,7 +164,7 @@
 | `173-settings-ui-overhaul-and-vlt-final-split.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 统一化（CSS Grid 表单布局 + 统一控件样式 + iOS toggle + 8 个原子表单组件 + 9 面板重构 + 120 选择器审计 + 独立预览页）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel + 5 新模块）；version 1.28.13→1.28.14 |
 | `218-add-missav-ai-support.md` | 🔧开发指导 | ✅已执行 | MissAV 站点新增 `missav.ai` 域名支持（与 missav.ws 一致）：`isMissavSite` 正则新增 `ai` + `userscript.match` 增加 `https://missav.ai/*`；README 支持站点表同步；4 行代码改动，无插件/网络/配置额外变更；version 1.40.0→1.40.1 |
 | `219-missav-tag-render-optimization-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 标签首屏渲染提速：①渲染与消费解耦（observeAndProcess 提前 + 首次尝试立即执行）②增量消费合并 processAll（逐条刷新→批处理后一次）③renderBadges 去 getComputedStyle；不变量：修订号门控/消费顺序/意图日志/GM 键不变；三个任务 subagent 执行 + 逐任务审查 Approved；version 1.40.1→1.40.2 |
-| `220-missav-auto-page-plan.md` | 🔧开发指导 | 🔧待执行 | MissAV 列表页瀑布流加载：Camoufox 实测确认无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、同源 fetch 抓页 200 不被 Cloudflare 拦；复用 AutoPagePlugin 模式（滚动触底→抓 HTML→DOMParser→去重追加→更新链接）；新插件 missav-auto-page/ 3 模块 + 注册 + 纯函数测试；执行后 version 1.40.2→1.41.0 |
+| `220-missav-auto-page-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 列表页瀑布流加载：Camoufox 实测确认无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、同源 fetch 抓页 200 不被 Cloudflare 拦；新插件 missav-auto-page/ 3 模块（map-selectors 纯函数+11 测试 / map-fetch / 主类，isVideoPage 守卫）+ 注册；审查回环 Camoufox 实测解除 I-1/I-2、修复 I-3；执行后 version 1.40.2→1.41.0 |
 
 ## 类型图例
 
@@ -345,7 +345,7 @@
 217. `217-git-backup-channel.md` — Git 备份通道（GitHub 兼容族）：Contents API 备份提供方（GitHub / GitHub Enterprise / 自建 Gitea/Forgejo，每次备份一个 commit 自带版本历史）；BackupProvider 抽象 + GitBackupClient + git-operations；文件列表弹层泛化双通道共享；备份面板 Git 分区 + 自动备份通道双开关；autoBackup 双通道分发；21 个单测；version 1.39.0→1.40.0
 218. `218-add-missav-ai-support.md` — MissAV 站点新增 missav.ai 域名支持（与 missav.ws 一致）：isMissavSite 正则 + userscript.match 同步新增 ai；插件无域名硬编码/无站内网络请求，无需额外改动；version 1.40.0→1.40.1
 219. `219-missav-tag-render-optimization-plan.md` — MissAV 标签首屏渲染提速（✅已执行）：渲染与消费解耦 + 增量消费合并 processAll + 去 getComputedStyle 三项改动；实时链路零改动；三任务 subagent 执行全 Approved；version 1.40.1→1.40.2
-220. `220-missav-auto-page-plan.md` — MissAV 列表页瀑布流加载计划（🔧待执行）：Camoufox 实测确认服务端分页 `?page=N` + 同源 fetch 200 可行；复用 AutoPagePlugin 模式新建 missav-auto-page/ 插件；执行后 version 1.40.2→1.41.0
+220. `220-missav-auto-page-plan.md` — MissAV 列表页瀑布流（✅已执行）：Camoufox 实测确认服务端分页 `?page=N` + 同源 fetch 200 可行；新插件 missav-auto-page/ 3 模块 + isVideoPage 守卫；审查回环实测解除 I-1/I-2、修复 I-3；version 1.40.2→1.41.0
 
 ## 当前进度概览
 
@@ -356,7 +356,7 @@
   `pagination-state`/`plugin-diagnostics`/`storage-manager`/
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
   `tooltip`/`viewer`/`webdav`/`webdav-crypto`
-- plugins：`base-plugin` + `plugin-manager` + 41 个插件（javdb 39 + missav 2），
+- plugins：`base-plugin` + `plugin-manager` + 42 个插件（javdb 39 + missav 3），
   20 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`/`icons`

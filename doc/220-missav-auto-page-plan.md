@@ -1,9 +1,10 @@
 # MissAV 列表页瀑布流加载实施计划
 
 > **文档类型**：🔧 开发指导
-> **文档状态**：🔧 待执行
-> **版本**：计划实施后 1.40.2 → 1.41.0（新增功能插件，minor）
+> **文档状态**：✅ 已执行
+> **版本**：1.40.2 → 1.41.0（新增功能插件，minor）
 > **前置调研**：Camoufox 真实浏览器实测（本会话，探针脚本 `.superpowers/camoufox-missav/`）
+> **执行方式**：subagent-driven development（2 任务 + 1 修复回环，逐任务审查 Approved）
 
 ## 1. 背景与需求
 
@@ -225,3 +226,72 @@ export async function fetchNextPage(plugin: MissavAutoPagePlugin): Promise<void>
 
 - 设置项（瀑布流开关 / 预加载距离 / 每页项数提示）；
 - 视频播放页底部推荐也可瀑布流（.thumbnail.group 同样存在，需验证分页链接）。
+
+## 7. 执行验证记录
+
+### 执行环境
+
+Windows + Bun + Chrome（构建/静态验证）；Camoufox（反检测 Firefox，经 `uv run --with camoufox` 驱动）真实浏览器实测。
+
+### 验证命令
+
+```text
+$ bun run build          # = tsc -b && vite build
+$ bun run lint           # eslint src/
+$ bun run test           # vitest run（9 文件 143 用例，含新增 missav-auto-page 11 用例）
+$ bun run check:structure
+```
+
+### 实际输出
+
+```text
+$ bun run build
+✓ 399 modules transformed.
+[lightningcss minify] …（layer.css IE hack 警告，已知无害项）
+dist/monkey-jhs-disassemble.user.js … kB │ gzip: … kB
+✓ built in ~1.5s
+产物头部 @version 1.41.0（已核对）
+
+$ bun run lint
+（无输出 = 0 errors / 0 warnings）
+
+$ bun run test
+ Test Files  9 passed (9)
+      Tests  143 passed (143)
+
+$ bun run check:structure
+check-structure: OK
+```
+
+### 前端或调用方验证（Camoufox 实测，本会话探针脚本 .superpowers/camoufox-missav/）
+
+实施前调研（probe1-4）确认：missav 无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、
+同源 fetch 抓页 200 不被 Cloudflare 拦、英文站「Next」中文站「下一页」、搜索页无分页。
+
+实施后审查回环（probe5-6）确认：
+
+| 审查项 | 实测结果 | 结论 |
+|--------|----------|------|
+| 去重 alt 可用性 | 当前页 DOM 12/12 缩略图均有 `a[alt]`；服务端 HTML 含大量 alt 属性 | I-1 解除 |
+| 主选择器命中 | `div.grid.grid-cols-2.md:grid-cols-3.xl:grid-cols-4.gap-5` 在真实页面命中（12 项） | 容器选择器可用 |
+| 降级父链 | `.thumbnail.group` → 无 class DIV → grid（1 层包装），`parentElement.parentElement` 恰好命中 grid | I-2 解除 |
+| 视频页 | 视频页有同款 grid（底部推荐 16 项）但**无分页链接**；已加 `isVideoPage()` 守卫跳过 | I-3 修复（9df58c0） |
+| 追加布局 | grid 直接子元素是 12 个无样式包装 DIV（display:block），追加缩略图本身为 grid 项，视觉需真实浏览器确认 | 已知限制 |
+| Alpine 预览 | 服务端 HTML 缩略图含 `@mouseenter/@click` Alpine 指令，append 后不会自动初始化（预览功能可能失效） | 已知限制 |
+
+### 验证结论
+
+✅ 通过。两个任务 + 一个修复回环全部 Approved；构建/lint/143 测试/结构门禁全绿；
+产物 `@version 1.41.0`。
+
+### 已知限制（需用户浏览器实测）
+
+1. **滚动加载实测**：需在真实 Tampermonkey 环境确认列表页滚动触底自动加载第 2 页、
+   缩略图追加且状态标签自动出现（MissavStatusTagPlugin 的 Observer 自动覆盖）；
+2. **Alpine 预览指令**：瀑布流追加的缩略图悬停预览（`@mouseenter` setPreview）可能不生效
+   （追加节点不触发 Alpine init）；点击跳转（`@click`）如失效则追加项无法点入详情页——
+   若实测确认，后续需在 append 后调用 `Alpine.initTree(container)` 或剥离指令；
+3. **追加布局**：追加缩略图直接作为 grid 子项（现有项隔一层无样式包装 DIV），视觉应与
+   原布局一致，但需真实页面确认无错位；
+4. **Cloudflare 频率限制**：探针期间短时密集请求曾遇一次 403（临时限流），GM_xmlhttpRequest
+   真实使用频率低，风险低；若遇拦截可用 `buildBrowserNavHeaders` 兜底。
