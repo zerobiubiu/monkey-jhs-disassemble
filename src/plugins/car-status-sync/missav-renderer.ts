@@ -129,10 +129,8 @@ export function renderBadges(
         const thumbDiv = item.querySelector<HTMLElement>('div.relative');
         if (!thumbDiv) continue;
 
-        // 确保容器可定位
-        if (window.getComputedStyle(thumbDiv).position === 'static') {
-            thumbDiv.style.position = 'relative';
-        }
+        // 确保容器可定位（无条件设置，幂等；避免 getComputedStyle 强制同步布局）
+        thumbDiv.style.position = 'relative';
 
         // 创建并挂载标签
         const badge = createBadge(record.status, record.url);
