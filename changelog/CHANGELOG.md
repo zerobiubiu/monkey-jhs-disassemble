@@ -9,6 +9,12 @@
 
 ---
 
+## v1.40.2
+
+### 优化
+
+- **MissAV 标签首屏渲染提速**（doc/219）：三项改动——①渲染与消费解耦：`observeAndProcess()` 从 `handle()` 末尾提前到全量/增量消费之前，首屏用 IDB 已有数据立即渲染，不再被 600KB 全量解压 + 5.5 万条对账写入阻塞；首次尝试由固定 1.5s 延迟改为立即执行（内部 500ms 重试链兜底）。②增量消费合并刷新：`processAll()` 从「每条 applyDelta 末尾」移到「consumeDeltaJournal 批处理后」一次，消除 journal 积压 256 条时逐条全页重扫。③`renderBadges` 消除 `getComputedStyle` 强制同步布局（无条件幂等设置 `position:relative`）。实时链路（GM 监听/修订号门控/意图日志/Web Lock）零改动，javdb 修改标签后 missav 仍毫秒级实时更新。
+
 ## v1.40.1
 
 ### 新增

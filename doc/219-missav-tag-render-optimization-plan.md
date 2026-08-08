@@ -1,9 +1,10 @@
 # MissAV 标签首屏渲染提速优化实施计划
 
 > **文档类型**：🔧 开发指导
-> **文档状态**：🔧 待执行
-> **版本**：计划实施后 1.40.1 → 1.40.2（patch，性能优化）
+> **文档状态**：✅ 已执行
+> **版本**：1.40.1 → 1.40.2（patch，性能优化）
 > **前置分析**：doc/218 会话分析——missav 标签延迟出现的根因
+> **执行方式**：subagent-driven development（3 个任务各派发独立 subagent + 逐任务审查，全部 Approved）
 
 ## 1. 背景与问题定位
 
@@ -215,19 +216,66 @@ bun run build && bun run lint && bun run test && bun run check:structure
 
 浏览器实测：缩略图批量渲染时标签定位与改前一致（右上角），无样式回归。
 
-## 5. 执行验证记录（待实施后填写）
+## 5. 执行验证记录
 
 ### 执行环境
 
+Windows + Bun + Chrome（构建/静态验证），missav 页面浏览器实测待用户环境（见已知限制）。
+
 ### 验证命令
+
+```text
+$ bun run build          # = tsc -b && vite build
+$ bun run lint           # eslint src/
+$ bun run test           # vitest run
+$ bun run check:structure
+```
 
 ### 实际输出
 
+```text
+$ bun run build
+✓ 399 modules transformed.
+[lightningcss minify] Unexpected token Semicolon …（layer.css IE hack 警告 ×10，已知无害项）
+dist/monkey-jhs-disassemble.user.js  2,179.55 kB │ gzip: 504.75 kB
+✓ built in 1.63s
+
+$ bun run lint
+（无输出 = 0 errors / 0 warnings）
+
+$ bun run test
+ Test Files  8 passed (8)
+      Tests  132 passed (132)
+
+$ bun run check:structure
+check-structure: OK (358 files, 58 dirs within limits; 4 file-ceilings, 3 dir-ceilings in ratchet)
+```
+
+三个任务各自实施时均独立跑过上述四项验证并全绿（各任务报告见
+`.superpowers/sdd/task-1/2/3-report.md`）；收尾统一跑过 `bun run build` 确认产物
+`@version 1.40.2`。
+
 ### 前端或调用方验证
+
+- 实时链路：监听注册位置未动、修订号门控/意图日志/Web Lock/GM 键均未变更，
+  javdb 修改标签后 missav 仍实时更新（单条增量 = 一次消费 = 一次 processAll，
+  与改前行为一致）；
+- 首屏渲染：IDB 已有数据立即渲染，消费完成后由 applyFull/applyDelta 路径刷新；
+- 静态验证覆盖：`consumeDeltaJournal` 全部 5 个调用点（handle 初始化 / 消费验证补消费 /
+  GM 增量监听 / 意图恢复 / 强制重同步）均走统一刷新，无刷新点丢失。
 
 ### 验证结论
 
+✅ 通过。三项改动全部 Approved，构建/ lint / 132 测试 / 结构门禁全绿。
+
 ### 已知限制
+
+- **missav 页面浏览器实测未执行**：无真实站点环境。需人工确认三点：①首屏标签在
+  DOM 就绪后立即出现（不再等全量/增量消费）；②javdb 连续操作 20+ 条后切 missav，
+  控制台「渲染标签」日志从「每条一次」降为「每次消费一次」；③缩略图标签定位仍为
+  右上角、无样式回归。
+- 强制重同步菜单路径存在既有双重刷新（consumeDeltaJournal 后显式 processAll，
+  Task 2 前已有），非本次回归，未处理。
 
 ## 6. 评估与风险
 
