@@ -1,7 +1,7 @@
 # MissAV 视频流 iframe 详情弹窗实施计划
 
 > **文档类型**：🔧 开发指导
-> **文档状态**：🔧 待执行
+> **文档状态**：✅ 已执行
 > **版本**：1.43.5 → 1.44.0（新增功能插件，minor）
 > **前置调研**：Camoufox 真实浏览器实测（本会话，探针脚本 `.superpowers/camoufox-missav/`）
 > **执行方式**：subagent-driven development（计划 3 任务，逐任务审查）
@@ -212,3 +212,60 @@ async handle(): Promise<void> {
 
 - 设置项（弹窗开关 / 宽高比）；
 - javdb 列表页点击卡片也改弹窗（现有 dialogOpenDetail 设置已支持，无需改）。
+
+## 7. 执行验证记录
+
+### 执行环境
+
+Windows + Bun（构建/静态验证）；Camoufox 真实浏览器实测（探针 `.superpowers/camoufox-missav/probe-preview.py` 等，见 §1.1）。
+
+### 验证命令
+
+```text
+$ bun run build          # = tsc -b && vite build
+$ bun run lint           # eslint src/
+$ bun run test           # vitest run（12 文件 177 用例，含新增 missav-video-preview 9 用例）
+$ bun run check:structure
+```
+
+### 实际输出
+
+```text
+$ bun run build
+✓ 409 modules transformed.
+dist/monkey-jhs-disassemble.user.js  2,198.15 kB │ gzip: 509.58 kB
+✓ built in ~1.4s（产物头部 @version 1.44.0 已核对）
+
+$ bun run lint
+（无输出 = 0 errors / 0 warnings）
+
+$ bun run test
+ Test Files  12 passed (12)
+      Tests  177 passed (177)   ← 含 missav-video-preview 9 用例
+
+$ bun run check:structure
+check-structure: OK
+```
+
+### 前端或调用方验证（Camoufox 实测）
+
+| 项 | 结果 | 结论 |
+|----|------|------|
+| 列表页卡片拦截 | 捕获阶段 click 拦截 + preventDefault + stopPropagation → 点击 `a[href]` 后 `location.href` 不变（Alpine clickPreview 不触发） | §1.1 已实测确认 |
+| 900px iframe 弹窗 | iframe 加载详情页 → 右侧栏自动隐藏（<1024 响应式）、左侧占满、Plyr 播放器加载、标题正确 | §1.1 已实测确认 |
+| 修饰键 / 中键 / 右键 | 保留原生 behavior（新标签打开）——`isPlainLeftClick` 守卫 | 逻辑层保证，待用户浏览器确认 |
+| 嵌套弹窗 | iframe 视频页内点击底部推荐缩略图 → 内层 layer 弹窗（iframe 文档内层叠，与 javdb 一致） | 待用户浏览器确认 |
+| 关闭弹窗后列表页 | 瀑布流/筛选器正常（layer-wrapper ESC/closeBtn 基建；插件零侵入） | 待用户浏览器确认 |
+
+### 验证结论
+
+✅ 通过。三个任务全部完成并逐任务审查 Approved；构建/lint/177 测试/结构门禁全绿；
+产物 `@version 1.44.0`。
+
+### 已知限制（需用户浏览器实测）
+
+1. **弹窗交互实测**：Camoufox 探针已实测列表页卡片拦截 + 900px iframe 右侧自动隐藏 +
+   Plyr 加载（§1.1），但**真实 Tampermonkey 环境**下的弹窗交互需用户浏览器实测——
+   左键弹窗 / 修饰键新标签 / 嵌套弹窗 / 关闭后瀑布流正常四项；
+2. **Alpine 兜底**：若 Alpine 在捕获阶段另有 document 级监听（未实测到），需在卡片上
+   直接挂 click 监听（§5 风险缓解，未触发）。

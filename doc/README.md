@@ -3,7 +3,7 @@
 本项目（对外名称 **JavDB Power Tools**）将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为
 基于 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目，
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 43 个功能插件（JavDB 39 + MissAV 4）。
+形成 JavDB / MissAV 双站增强工具箱，共 44 个功能插件（JavDB 39 + MissAV 5）。
 
 ## 文档清单
 
@@ -172,6 +172,7 @@
 | `225-loader-class-prefix-and-tests-tsconfig.md` | 🔧开发指导 | ✅已执行 | 瀑布流 loader 类名前缀修复 + tests 语言服务归属：①`fetchNextPage` setLoader 类名统一 `jhs-map-` 前缀（doc/223 CSS 已改前缀但调用点未同步，loading/error/no-more 样式失效的 bug）；②新建 tests/tsconfig.json（bundler + react/node types + paths，不接入构建）解决语言服务对 tests/ import 的 Cannot find module 误报；③map-fetch 删除重建触发重新索引；语言服务诊断全项目干净；执行后 version 1.43.2→1.43.3 |
 | `226-missav-video-actions-layout.md` | 🔧开发指导 | ✅已执行 | MissAV 视频页自定义按钮独立分组 + 样式对齐：不再 prepend/append 进原生工具栏（避免与收藏/片单/下载/分享混排），改在工具栏后插独立 `.jhs-video-actions` 按钮组；按钮 class 与原生逐字对齐（去 shadow-sm/mr-2）；图标尺寸改响应式 h-3 w-3 xs:h-4 xs:w-4（原固定 16/24px）；幂等防重复；Camoufox 实测样式/布局对齐；执行后 version 1.43.3→1.43.4（⚠️ 按钮分组被 doc/227 回退） |
 | `227-missav-video-actions-and-filter-guard.md` | 🔧开发指导 | ✅已执行 | MissAV 视频页三调整：①按钮恢复 prepend/append 回原生工具栏一行（回退 doc/226 独立分组，样式对齐保留）；②筛选器视频页守卫——`#sprite-plyr` 延迟 ~1.5s 渲染致 isVideoPage() 时序不可靠，新增 `isVideoDetailPath` URL 特征判定（末段连字符番号 + 排除 /search/），MissavAutoPagePlugin 同步；③筛选栏去 border-bottom 改 padding 间距；+5 测试；执行后 version 1.43.4→1.43.5 |
+| `228-missav-video-preview-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 视频流 iframe 详情弹窗：左键点击列表页卡片 → layer.open type:2 iframe 弹窗加载完整详情页（900px < 1024 站点响应式自动隐藏右侧栏、顶部条保留）；捕获阶段 click 拦截 + stopPropagation 阻断 Alpine clickPreview；修饰键/中键/右键保留原生新标签；iframe 内推荐区可嵌套弹窗；新插件 missav-video-preview/ 2 模块（mv-selectors 纯函数 + 主类）+ 9 测试；执行后 version 1.43.5→1.44.0 |
 
 ## 类型图例
 
@@ -360,6 +361,7 @@
 225. `225-loader-class-prefix-and-tests-tsconfig.md` — 瀑布流 loader 类名前缀修复 + tests 语言服务归属（✅已执行）：setLoader 类名统一 jhs-map- 前缀（修复 loading/error/no-more 样式失效）；tests/tsconfig.json 解决语言服务误报 else 交由删除重建；诊断全干净；version 1.43.2→1.43.3
 226. `226-missav-video-actions-layout.md` — MissAV 视频页自定义按钮独立分组 + 样式对齐（✅已执行）：复制番号/转JavDB 按钮移出原生工具栏，独立 `.jhs-video-actions` 按钮组；class/图标尺寸对齐原生；Camoufox 实测；version 1.43.3→1.43.4（⚠️ 分组已被 doc/227 回退）
 227. `227-missav-video-actions-and-filter-guard.md` — MissAV 视频页三调整（✅已执行）：按钮恢复回原生工具栏一行；筛选器 URL 特征守卫（#sprite-plyr 延迟致 isVideoPage 时序不可靠）；筛选栏去分割线改间距；version 1.43.4→1.43.5
+228. `228-missav-video-preview-plan.md` — MissAV 视频流 iframe 详情弹窗（✅已执行）：左键点卡片 → layer.open type:2 iframe 弹窗（900px<1024 右侧自动隐藏、顶部条保留、完整详情页）；捕获阶段 click 拦截阻断 Alpine clickPreview；修饰键保留原生新标签；iframe 内推荐区嵌套弹窗；mv-selectors 纯函数 + 主类 2 模块 + 9 测试；version 1.43.5→1.44.0
 
 ## 当前进度概览
 
@@ -370,7 +372,7 @@
   `pagination-state`/`plugin-diagnostics`/`storage-manager`/
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
   `tooltip`/`viewer`/`webdav`/`webdav-crypto`
-- plugins：`base-plugin` + `plugin-manager` + 43 个插件（javdb 39 + missav 4），
+- plugins：`base-plugin` + `plugin-manager` + 44 个插件（javdb 39 + missav 5），
   20 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`/`icons`
@@ -382,10 +384,10 @@
 - 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
 - 工具链：`tsc -b`（零错误）+ ESLint（0 errors, 0 warnings）+
   Stylelint（0 errors）三重门禁
-- build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
+- build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/227（228 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/228（229 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

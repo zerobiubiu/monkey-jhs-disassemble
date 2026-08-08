@@ -9,7 +9,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猟脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 43 个功能插件（JavDB 39 + MissAV 4）。
+形成 JavDB / MissAV 双站增强工具箱，共 44 个功能插件（JavDB 39 + MissAV 5）。
 
 - **构建工具**：Vite 8 + vite-plugin-monkey 8
 - **语言**：TypeScript 6（strict 模式，全量去 @ts-nocheck）
@@ -23,7 +23,7 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 4）
+│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 5）
 │   ├── core/               # 核心模块（含 feature-flags）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串）
@@ -64,7 +64,7 @@ monkey-jhs-disassemble/
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册 43 插件**（javdb 39 + missav 4，在 `if (isJavdbSite)` / `if (isMissavSite)` 块内）
+9. **PluginManager 实例化 + 注册 44 插件**（javdb 39 + missav 5，在 `if (isJavdbSite)` / `if (isMissavSite)` 块内）
 10. **页面判定**（`initPageContext()` → `window.isDetailPage/isListPage/isFc2Page`）— **先于 CSS**
 11. `await processCss()` — 并发执行所有插件 initCss（按 `pageTypes` 过滤不匹配插件）
 12. `await storageManager.runMigrations()` — 版本化数据迁移（javdb only，后续启动仅读版本号 ~1ms）
@@ -161,7 +161,7 @@ monkey-jhs-disassemble/
 | ImageRecognitionPlugin | image-recognition-plugin.tsx | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2-by-123av-plugin.tsx + fc2-123av/ 子目录（2 模块：fc2-browse / fc2-detail） | fc2By123AvPlugin | 123Av FC2 浏览 |
 
-**新增功能插件（4 个）**：本项目自创（非 archetype 拆分/集成/升级）
+**新增功能插件（5 个）**：本项目自创（非 archetype 拆分/集成/升级）
 
 | 插件 | 文件 | 职责 |
 |------|------|------|
@@ -169,6 +169,7 @@ monkey-jhs-disassemble/
 | ListReflowPlugin | list-reflow/（7 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1，doc/202）+ 压实执行引擎（期2a 先加后删，doc/204） |
 | MissavAutoPagePlugin | missav-auto-page/（3 模块：map-selectors / map-fetch / 主类） | MissAV 列表页瀑布流：底部「点击加载下一页」按钮 + 「加载全部」+「回到顶部」（对齐 javdb 视频流交互，doc/221 改 click 模式）；追加缩略图修复站点懒加载封面（data-src→src，Camoufox 实测根因）；视频页守卫 |
 | MissavStatusFilterPlugin | missav-status-filter/（3 模块：mstf-collect / mstf-apply / 主类） | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status → 芯片筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签，OR 过滤，data-mstf-hidden 协同）；nord 暗色独立样式（doc/223 撤共享基础）；grid cell 级显隐（doc/223 隐藏外层包装使网格重排）；观察器门控防自触发 |
+| MissavVideoPreviewPlugin | missav-video-preview/（2 模块：mv-selectors / 主类） | MissAV 列表页视频流 iframe 详情弹窗：左键点击卡片 → layer.open type:2 iframe 弹窗加载完整详情页（900px < 1024 站点响应式自动隐藏右侧栏、顶部条保留，doc/228）；捕获阶段 click 拦截 + stopPropagation 阻断 Alpine clickPreview；中键/右键/Ctrl+点击保留原生新标签（isPlainLeftClick 守卫）；iframe 视频页内推荐缩略图可嵌套弹窗；TaskSupervisor 管理监听器 |
 
 ### 3.4 核心模块 `src/core/`
 
