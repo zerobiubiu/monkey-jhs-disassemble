@@ -363,6 +363,7 @@
 227. `227-missav-video-actions-and-filter-guard.md` — MissAV 视频页三调整（✅已执行）：按钮恢复回原生工具栏一行；筛选器 URL 特征守卫（#sprite-plyr 延迟致 isVideoPage 时序不可靠）；筛选栏去分割线改间距；version 1.43.4→1.43.5
 228. `228-missav-video-preview-plan.md` — MissAV 视频流 iframe 详情弹窗（✅已执行）：左键点卡片 → layer.open type:2 iframe 弹窗（900px<1024 右侧自动隐藏、顶部条保留、完整详情页）；捕获阶段 click 拦截阻断 Alpine clickPreview；修饰键保留原生新标签；iframe 内推荐区嵌套弹窗；mv-selectors 纯函数 + 主类 2 模块 + 9 测试；version 1.43.5→1.44.0
 229. `229-missav-video-preview-width-max.md` — MissAV 视频预览弹窗宽度最大化至 1023px（✅已执行）：宽度上限 900→1023（<1024 极限，右侧栏仍自动隐藏），高度 90% 不变；version 1.44.0→1.44.1
+230. `230-missav-video-preview-height-full.md` — MissAV 视频预览弹窗高度铺满 100%（✅已执行）：高度 90%→100%（上下留白消除，宽度保持 1023 极限不变）；version 1.44.1→1.44.2
 
 ## 当前进度概览
 
@@ -388,7 +389,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/229（230 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/230（231 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

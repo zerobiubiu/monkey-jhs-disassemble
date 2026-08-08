@@ -5,7 +5,7 @@
  * 阻止浏览器默认跳转并以 layer iframe 弹窗（type: 2）打开完整详情页 URL，
  * 支持站内预览详情而无需离开当前页（交互对齐 javdb 的 openPage 机制）。
  *
- * - 弹窗宽度 = min(1023, 视口宽 - 40)px、高度 90%：<1024px 触发站点
+ * - 弹窗尺寸 = min(1023, 视口宽 - 40)px × 100%高：<1024px 触发站点
  *   响应式隐藏右侧推荐栏（doc/228 Camoufox 实测 1023px 仍隐藏、1024px 起显示），
  *   无需额外 CSS
  * - 中键 / 右键 / 修饰键（Ctrl/Cmd/Shift/Alt）点击放行浏览器原生行为（新标签）
@@ -75,7 +75,7 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                     type: 2,
                     content: url,
                     scrollbar: false,
-                    area: [`${width}px`, '90%']
+                    area: [`${width}px`, '100%']
                 });
             },
             { capture: true }
