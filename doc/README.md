@@ -168,6 +168,7 @@
 | `221-missav-auto-page-interaction-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 瀑布流加载模式改造 + 封面修复：①封面根因（服务端 img src=占位图、真实 URL 在 data-src，追加节点不触发站点懒加载）→ liftDataSrcToSrc 提升（Camoufox 实测 naturalWidth 330）②加载模式改 click（底部「点击加载下一页」按钮）+「加载全部」浮动按钮 +「回到顶部」（复用 createBackToTopButton，样式复用 back-to-top-button.css）；styles 建 missav-auto-page/ 子目录守 §11.1；+3 测试；执行后 version 1.41.0→1.42.0 |
 | `222-missav-status-filter-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status（跨站同步数据现成）→ 筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签 芯片 OR 过滤）；挂载点实测（grid 上方「过滤: 所有」行）；data-mstf-hidden 协同安全；新插件 missav-status-filter/ 3 模块 + 14 纯函数测试 + 1 接线测试；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；执行后 version 1.42.0→1.43.0 |
 | `223-missav-status-filter-ui-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 状态筛选修复：①UI 暗色化——missav 是 Tailwind nord 暗色主题，撤出 filter-chip-base.css 浅色共享基础改为独立 nord 样式（bar/芯片底色 #2e3440/边框 #4c566a/文字 #d8dee9）；②cell 级显隐——隐藏 grid cell（初始页 `grid>包装DIV>缩略图` 隐藏外层包装、瀑布流追加项隐藏自身，className 判定避免 CSS 转义坑）使网格无缝重排；applyFilter 用例 2→4 + afterEach 清理；执行后 version 1.43.0→1.43.1 |
+| `224-load-all-btn-position-and-theme.md` | 🔧开发指导 | ✅已执行 | 加载全部按钮改左下角 + MissAV 暗色化：`.jhs-map-load-all-btn`（missav）渐变蓝→nord 暗色（#2e3440/#4c566a/#d8dee9）且 `right`→`left`；`.jhs-load-all-btn`（javdb 浅色主题）渐变蓝保留仅 `right`→`left`——两层与右下回到顶部彻底错开；执行后 version 1.43.1→1.43.2 |
 
 ## 类型图例
 
@@ -352,6 +353,7 @@
 221. `221-missav-auto-page-interaction-fix.md` — MissAV 瀑布流加载模式改造 + 封面修复（✅已执行）：封面根因（data-src 懒加载追加不触发）→ liftDataSrcToSrc；加载模式改 click 按钮 + 加载全部 + 回到顶部；styles/missav-auto-page/ 子目录；version 1.41.0→1.42.0
 222. `222-missav-status-filter-plan.md` — MissAV 状态标签筛选（✅已执行）：读 .missav-status-tag dataset.status → 芯片筛选栏 OR 过滤；挂载点实测；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；version 1.42.0→1.43.0
 223. `223-missav-status-filter-ui-fix.md` — MissAV 状态筛选 UI 暗色化 + cell 级显隐（✅已执行）：撤出 filter-chip-base 浅色共享改独立 nord 暗色样式；隐藏目标改 grid cell（包装 DIV/缩略图自身）使网格无缝重排；className 判定避 CSS 转义坑；version 1.43.0→1.43.1
+224. `224-load-all-btn-position-and-theme.md` — 加载全部按钮改左下角 + MissAV 暗色化（✅已执行）：missav 渐变蓝→nord 暗色、javdb 渐变蓝保留，均 right→left 与回到顶部错开；version 1.43.1→1.43.2
 
 ## 当前进度概览
 
@@ -377,7 +379,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/223（224 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/224（225 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

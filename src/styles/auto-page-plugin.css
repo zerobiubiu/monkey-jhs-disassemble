@@ -30,7 +30,7 @@
 
 .jhs-load-all-btn {
     position: fixed;
-    right: 20px;
+    left: 20px;
     bottom: 80px;
     z-index: var(--jhs-z-page);
     padding: 10px 20px;

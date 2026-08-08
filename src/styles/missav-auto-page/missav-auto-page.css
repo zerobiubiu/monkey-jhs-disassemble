@@ -37,15 +37,16 @@
     text-decoration: underline;
 }
 
-/* 「加载全部」浮动按钮（右下角，与回到顶部按钮上下错开） */
+/* 「加载全部」浮动按钮（左下角，避开右侧回到顶部按钮；nord 暗色与 missav 页面融合） */
 .jhs-map-load-all-btn {
     position: fixed;
-    right: 20px;
+    left: 20px;
     bottom: 80px;
     z-index: var(--jhs-z-page);
     padding: 10px 20px;
-    background: linear-gradient(to right, #5d87c2, #4a90d9);
-    color: #fff;
+    background: #2e3440; /* nord0 */
+    border: 1px solid #4c566a; /* nord3 */
+    color: #d8dee9; /* nord4 */
     border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
@@ -53,12 +54,16 @@
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease,
+        border-color 0.2s ease,
+        background-color 0.2s ease,
         opacity 0.5s ease;
 }
 
 .jhs-map-load-all-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+    background: #3b4252; /* nord1 */
+    border-color: #81a1c1; /* frost */
 }
 
 .jhs-map-load-all-btn.jhs-map-load-all-disabled {
