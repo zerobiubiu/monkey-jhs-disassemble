@@ -373,7 +373,7 @@
   `storage-revision`/`style-injector`/`task-supervisor`/`toast`/
   `tooltip`/`viewer`/`webdav`/`webdav-crypto`
 - plugins：`base-plugin` + `plugin-manager` + 44 个插件（javdb 39 + missav 5），
-  20 个声明 `pageTypes`，9 个使用 `TaskSupervisor`
+  20 个声明 `pageTypes`，10 个使用 `TaskSupervisor`
 - constants：`site`/`status`/`video-quality`/`api`
 - resources：`gfriends`/`icons`
 - styles：41 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
