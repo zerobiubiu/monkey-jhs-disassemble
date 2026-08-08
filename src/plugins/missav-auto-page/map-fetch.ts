@@ -48,7 +48,7 @@ function gmGet(url: string): Promise<string> {
 export async function fetchNextPage(plugin: MissavAutoPagePlugin): Promise<void> {
     if (!plugin.pagination.canLoad || !plugin.nextUrl) return;
     plugin.pagination.startLoading();
-    plugin.setLoader('loading', '加载中...');
+    plugin.setLoader('jhs-map-loading', '加载中...');
     try {
         const html = await gmGet(plugin.nextUrl);
         const doc = new DOMParser().parseFromString(String(html), 'text/html');

@@ -9,6 +9,16 @@
 
 ---
 
+## v1.43.3
+
+### 修复
+
+- **MissAV 瀑布流 loader 状态样式失效**（doc/225）：`fetchNextPage` 的 `setLoader` 调用使用无前缀类名（`loading`/`error`/`no-more`），而 doc/223 后 CSS 已统一为 `jhs-map-` 前缀（`.jhs-map-loader.jhs-map-loading` 等）——类名不匹配导致「加载中/加载失败/已经到底了」状态无样式。统一为带前缀类名后与 click 态一致。
+
+### 优化
+
+- **tests 语言服务归属**（doc/225）：新建 `tests/tsconfig.json`（模仿 scripts/tsconfig.json 先例：moduleResolution bundler + react/node types + paths 指向 src shim，不接入根 references、不参与构建门禁），解决编辑器中 tests/ 文件 import src 模块的 `Cannot find module` 误报。
+
 ## v1.43.2
 
 ### 优化
