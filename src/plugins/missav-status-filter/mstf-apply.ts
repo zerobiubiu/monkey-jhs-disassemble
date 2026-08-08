@@ -1,4 +1,6 @@
 // mstf-apply.ts —— 状态筛选过滤逻辑
+//
+// shouldShow：OR 判定；applyFilter：对 grid cell（外层包装或缩略图自身）显隐。
 import { NO_TAG_VALUE } from './mstf-collect';
 
 export function shouldShow(itemStatus: string | null, activeValues: Set<string>): boolean {

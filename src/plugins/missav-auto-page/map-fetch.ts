@@ -5,6 +5,8 @@
  * 提取缩略图 → 封面 data-src 提升 → 番号去重检查 → 追加到容器 → 更新
  * nextUrl 与分页状态机。与 list-waterfall/lw-fetch.ts 的 loadNextPage 模式
  * 一致，但选择器与去重策略换用 map-selectors.ts（番号去重）。
+ *
+ * 依赖：missav-auto-page-plugin（主类类型）、map-selectors（纯函数）。
  */
 import type { MissavAutoPagePlugin } from './missav-auto-page-plugin';
 import { collectCarNums, extractThumbs, findNextUrl, liftDataSrcToSrc } from './map-selectors';

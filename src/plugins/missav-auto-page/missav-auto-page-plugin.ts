@@ -7,6 +7,8 @@
  *
  * 番号去重防重复追加；追加缩略图时修复站点懒加载（data-src → src）。
  * 无设置项、无 pageTypes 覆写：isMissavSite 站点注册即激活。
+ *
+ * 模块依赖：map-selectors（选择器/纯函数）、map-fetch（抓取追加）。
  */
 import { PaginationStateMachine } from '../../core/pagination-state';
 import { TaskSupervisor } from '../../core/task-supervisor';
