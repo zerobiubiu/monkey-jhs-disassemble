@@ -27,6 +27,7 @@ import type { ListReadingStatusPlugin } from './list-reading-status-plugin';
 import type { ListReflowPlugin } from './list-reflow/list-reflow-plugin';
 import type { ListWaterfallPlugin } from './list-waterfall-plugin';
 import type { MagnetHubPlugin } from './magnet-hub-plugin';
+import type { MissavAutoPagePlugin } from './missav-auto-page/missav-auto-page-plugin';
 import type { MissavQuickCopyPlugin } from './missav-quick-copy-plugin';
 import type { ModalListDisablerPlugin } from './modal-list-disabler-plugin';
 import type { ModMyListOpenWayPlugin } from './mod-my-list-open-way-plugin';
@@ -72,6 +73,7 @@ export interface PluginMap {
     ListReflowPlugin: ListReflowPlugin;
     ListWaterfallPlugin: ListWaterfallPlugin;
     MagnetHubPlugin: MagnetHubPlugin;
+    MissavAutoPagePlugin: MissavAutoPagePlugin;
     MissavQuickCopyPlugin: MissavQuickCopyPlugin;
     MissavStatusTagPlugin: MissavStatusTagPlugin;
     ModalListDisablerPlugin: ModalListDisablerPlugin;
