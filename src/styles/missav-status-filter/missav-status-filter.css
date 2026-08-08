@@ -1,15 +1,76 @@
-/* 状态标签筛选 active 配色 + no-tag 变体（基础样式由 filter-chip-base.css 顶层注入） */
+/* MissAV 状态标签筛选栏 —— missav 是 Tailwind nord 暗色主题，样式独立定义
+ * （不参与 filter-chip-base.css 的 javdb 浅色共享基础，doc/223）。
+ * 配色参考 missav 页面 Tailwind nord 令牌：nord0 #2e3440 / nord1 #3b4252 /
+ * nord3 #4c566a / nord4 #d8dee9 / frost #81a1c1。
+ */
+
+/* ---------- 筛选栏容器 ---------- */
+.missav-status-filter-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0 12px 0;
+    border-bottom: 1px solid #3b4252; /* nord1 */
+}
+
+/* ---------- 筛选栏标签 ---------- */
+.missav-status-filter-label {
+    flex-shrink: 0;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #d8dee9; /* nord4 */
+    line-height: 1.8;
+    margin-right: 4px;
+}
+
+/* ---------- 芯片容器 ---------- */
+.missav-status-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* ---------- 芯片基础 ---------- */
+.missav-status-filter-chip {
+    display: inline-block;
+    padding: 0.25em 0.7em;
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.5;
+    border-radius: 50rem;
+    cursor: pointer;
+    user-select: none;
+    border: 1.5px solid #4c566a; /* nord3 */
+    background: #2e3440; /* nord0 */
+    color: #d8dee9; /* nord4 */
+    transition:
+        color 0.15s ease,
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+/* ---------- 芯片悬停 ---------- */
+.missav-status-filter-chip:hover {
+    border-color: #81a1c1; /* frost */
+    background: #3b4252; /* nord1 */
+}
+
+/* ---------- 芯片选中 ---------- */
 .missav-status-filter-chip.active {
     background: #5d87c2;
     border-color: #5d87c2;
+    border-style: solid;
     color: #fff;
 }
+
+/* ---------- 无状态标签芯片 ---------- */
 .missav-status-filter-chip.no-status {
-    color: #6c757d;
+    color: #7c8794;
     border-style: dashed;
 }
+
 .missav-status-filter-chip.no-status.active {
-    background: #6c757d;
-    border-color: #6c757d;
-    color: #fff;
+    background: #8fbcbb; /* aurora frost */
+    border-color: #8fbcbb;
+    color: #1a1a1a;
 }

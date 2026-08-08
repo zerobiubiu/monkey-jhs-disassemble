@@ -168,7 +168,7 @@ monkey-jhs-disassemble/
 | VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
 | ListReflowPlugin | list-reflow/（7 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1，doc/202）+ 压实执行引擎（期2a 先加后删，doc/204） |
 | MissavAutoPagePlugin | missav-auto-page/（3 模块：map-selectors / map-fetch / 主类） | MissAV 列表页瀑布流：底部「点击加载下一页」按钮 + 「加载全部」+「回到顶部」（对齐 javdb 视频流交互，doc/221 改 click 模式）；追加缩略图修复站点懒加载封面（data-src→src，Camoufox 实测根因）；视频页守卫 |
-| MissavStatusFilterPlugin | missav-status-filter/（3 模块：mstf-collect / mstf-apply / 主类） | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status → 芯片筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签，OR 过滤，data-mstf-hidden 协同）；filter-chip-base.css 第四前缀；观察器门控防自触发 |
+| MissavStatusFilterPlugin | missav-status-filter/（3 模块：mstf-collect / mstf-apply / 主类） | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status → 芯片筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签，OR 过滤，data-mstf-hidden 协同）；nord 暗色独立样式（doc/223 撤共享基础）；grid cell 级显隐（doc/223 隐藏外层包装使网格重排）；观察器门控防自触发 |
 
 ### 3.4 核心模块 `src/core/`
 

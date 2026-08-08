@@ -1,7 +1,10 @@
 /**
  * 筛选栏 + 芯片共享基础样式 —— status-tag-filter / video-lists-tag / preload-status-badge
- * / missav-status-filter 四个插件的筛选栏布局与芯片基础样式逐字节相同，此处以分组
- * 选择器统一，各插件 CSS 仅保留 active 配色与 no-tag 变体。
+ * 三个插件的筛选栏布局与芯片基础样式逐字节相同，此处以分组选择器统一，
+ * 各插件 CSS 仅保留 active 配色与 no-tag 变体。
+ *
+ * 注意：missav-status-filter 不在此共享基础内——missav 是 Tailwind nord 暗色主题，
+ * 浅色基础样式与其风格冲突（doc/223），由 missav-status-filter.css 独立定义暗色样式。
  *
  * 注入方式：main.tsx 顶层 injectCss（始终注入，与 design-tokens.css 同级）。
  */
@@ -9,8 +12,7 @@
 /* ---------- 筛选栏容器 ---------- */
 .status-tag-filter-bar,
 .jhs-vlt-filter-bar,
-.preload-filter-bar,
-.missav-status-filter-bar {
+.preload-filter-bar {
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -21,8 +23,7 @@
 /* ---------- 筛选栏标签 ---------- */
 .status-tag-filter-label,
 .jhs-vlt-filter-label,
-.preload-filter-label,
-.missav-status-filter-label {
+.preload-filter-label {
     flex-shrink: 0;
     font-size: 0.8em;
     font-weight: 600;
@@ -34,8 +35,7 @@
 /* ---------- 芯片容器 ---------- */
 .status-tag-filter-chips,
 .jhs-vlt-filter-chips,
-.preload-filter-chips,
-.missav-status-filter-chips {
+.preload-filter-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -44,8 +44,7 @@
 /* ---------- 芯片基础 ---------- */
 .status-tag-filter-chip,
 .jhs-vlt-filter-chip,
-.preload-filter-chip,
-.missav-status-filter-chip {
+.preload-filter-chip {
     display: inline-block;
     padding: 0.25em 0.7em;
     font-size: 0.75em;
@@ -63,8 +62,7 @@
 /* ---------- 芯片悬停 ---------- */
 .status-tag-filter-chip:hover,
 .jhs-vlt-filter-chip:hover,
-.preload-filter-chip:hover,
-.missav-status-filter-chip:hover {
+.preload-filter-chip:hover {
     border-color: #adb5bd;
     background: #f8f9fa;
 }

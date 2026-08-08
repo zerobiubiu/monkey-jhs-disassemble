@@ -166,7 +166,8 @@
 | `219-missav-tag-render-optimization-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 标签首屏渲染提速：①渲染与消费解耦（observeAndProcess 提前 + 首次尝试立即执行）②增量消费合并 processAll（逐条刷新→批处理后一次）③renderBadges 去 getComputedStyle；不变量：修订号门控/消费顺序/意图日志/GM 键不变；三个任务 subagent 执行 + 逐任务审查 Approved；version 1.40.1→1.40.2 |
 | `220-missav-auto-page-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 列表页瀑布流加载：Camoufox 实测确认无原生无限滚动、服务端分页 `?page=N`（每页 12 项）、同源 fetch 抓页 200 不被 Cloudflare 拦；新插件 missav-auto-page/ 3 模块（map-selectors 纯函数+11 测试 / map-fetch / 主类，isVideoPage 守卫）+ 注册；审查回环 Camoufox 实测解除 I-1/I-2、修复 I-3；执行后 version 1.40.2→1.41.0 |
 | `221-missav-auto-page-interaction-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 瀑布流加载模式改造 + 封面修复：①封面根因（服务端 img src=占位图、真实 URL 在 data-src，追加节点不触发站点懒加载）→ liftDataSrcToSrc 提升（Camoufox 实测 naturalWidth 330）②加载模式改 click（底部「点击加载下一页」按钮）+「加载全部」浮动按钮 +「回到顶部」（复用 createBackToTopButton，样式复用 back-to-top-button.css）；styles 建 missav-auto-page/ 子目录守 §11.1；+3 测试；执行后 version 1.41.0→1.42.0 |
-| `222-missav-status-filter-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status（跨站同步数据现成）→ 筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签 芯片 OR 过滤）；挂载点实测（grid 上方「过滤: 所有」行）；filter-chip-base.css 扩展第四前缀；data-mstf-hidden 协同安全；新插件 missav-status-filter/ 3 模块 + 14 纯函数测试 + 1 接线测试；执行后 version 1.42.0→1.43.0 |
+| `222-missav-status-filter-plan.md` | 🔧开发指导 | ✅已执行 | MissAV 状态标签筛选器：读 .missav-status-tag dataset.status（跨站同步数据现成）→ 筛选栏（已收藏/已观看/已屏蔽/已下载/无状态标签 芯片 OR 过滤）；挂载点实测（grid 上方「过滤: 所有」行）；data-mstf-hidden 协同安全；新插件 missav-status-filter/ 3 模块 + 14 纯函数测试 + 1 接线测试；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；执行后 version 1.42.0→1.43.0 |
+| `223-missav-status-filter-ui-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 状态筛选修复：①UI 暗色化——missav 是 Tailwind nord 暗色主题，撤出 filter-chip-base.css 浅色共享基础改为独立 nord 样式（bar/芯片底色 #2e3440/边框 #4c566a/文字 #d8dee9）；②cell 级显隐——隐藏 grid cell（初始页 `grid>包装DIV>缩略图` 隐藏外层包装、瀑布流追加项隐藏自身，className 判定避免 CSS 转义坑）使网格无缝重排；applyFilter 用例 2→4 + afterEach 清理；执行后 version 1.43.0→1.43.1 |
 
 ## 类型图例
 
@@ -349,7 +350,8 @@
 219. `219-missav-tag-render-optimization-plan.md` — MissAV 标签首屏渲染提速（✅已执行）：渲染与消费解耦 + 增量消费合并 processAll + 去 getComputedStyle 三项改动；实时链路零改动；三任务 subagent 执行全 Approved；version 1.40.1→1.40.2
 220. `220-missav-auto-page-plan.md` — MissAV 列表页瀑布流（✅已执行）：Camoufox 实测确认服务端分页 `?page=N` + 同源 fetch 200 可行；新插件 missav-auto-page/ 3 模块 + isVideoPage 守卫；审查回环实测解除 I-1/I-2、修复 I-3；version 1.40.2→1.41.0
 221. `221-missav-auto-page-interaction-fix.md` — MissAV 瀑布流加载模式改造 + 封面修复（✅已执行）：封面根因（data-src 懒加载追加不触发）→ liftDataSrcToSrc；加载模式改 click 按钮 + 加载全部 + 回到顶部；styles/missav-auto-page/ 子目录；version 1.41.0→1.42.0
-222. `222-missav-status-filter-plan.md` — MissAV 状态标签筛选（✅已执行）：读 .missav-status-tag dataset.status → 芯片筛选栏 OR 过滤；挂载点实测；filter-chip-base.css 扩展第四前缀；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；version 1.42.0→1.43.0
+222. `222-missav-status-filter-plan.md` — MissAV 状态标签筛选（✅已执行）：读 .missav-status-tag dataset.status → 芯片筛选栏 OR 过滤；挂载点实测；审查回环修复 chip-value 接线 Critical + observer 自触发 Important；version 1.42.0→1.43.0
+223. `223-missav-status-filter-ui-fix.md` — MissAV 状态筛选 UI 暗色化 + cell 级显隐（✅已执行）：撤出 filter-chip-base 浅色共享改独立 nord 暗色样式；隐藏目标改 grid cell（包装 DIV/缩略图自身）使网格无缝重排；className 判定避 CSS 转义坑；version 1.43.0→1.43.1
 
 ## 当前进度概览
 
@@ -375,7 +377,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/222（223 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/223（224 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

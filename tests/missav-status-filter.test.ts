@@ -14,7 +14,7 @@
  * document.querySelectorAll，直接设置 document.body.innerHTML。
  * environment: jsdom（文件级 pragma）——被测函数依赖 querySelectorAll / DOMParser。
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     NO_TAG_VALUE,
@@ -26,6 +26,11 @@ import {
 import { applyFilter, shouldShow } from '../src/plugins/missav-status-filter/mstf-apply';
 
 const parse = (html: string): Document => new DOMParser().parseFromString(html, 'text/html');
+
+// jsdom 环境测试用例间共享 document，清理 body 防止 DOM 残留串扰（doc/223 补）
+afterEach(() => {
+    document.body.innerHTML = '';
+});
 
 describe('导出常量', () => {
     it('NO_TAG_VALUE / STATUS_ORDER 与 Task 2 依赖签名一致', () => {
@@ -103,34 +108,68 @@ describe('collectStatusCounts', () => {
 });
 
 describe('applyFilter', () => {
-    it('OR 过滤：命中任一状态显示，其余隐藏 + data-mstf-hidden 标记', () => {
+    it('无 grid 容器（异常 DOM）：隐藏缩略图自身', () => {
         document.body.innerHTML =
             '<div class="thumbnail group"><span class="missav-status-tag" data-status="favorite"></span></div>' +
-            '<div class="thumbnail group"><span class="missav-status-tag" data-status="hasWatch"></span></div>' +
-            '<div class="thumbnail group"></div>';
-        applyFilter(new Set(['favorite', NO_TAG_VALUE]));
+            '<div class="thumbnail group"><span class="missav-status-tag" data-status="hasWatch"></span></div>';
+        applyFilter(new Set(['favorite']));
         const items = Array.from(document.querySelectorAll<HTMLElement>('.thumbnail.group'));
-        // favorite 命中 → 显示
         expect(items[0].style.display).toBe('');
-        expect(items[0].getAttribute('data-mstf-hidden')).toBeNull();
-        // hasWatch 未命中 → 隐藏 + 标记
         expect(items[1].style.display).toBe('none');
         expect(items[1].getAttribute('data-mstf-hidden')).toBe('yes');
-        // 无标签命中（NO_TAG_VALUE）→ 显示
-        expect(items[2].style.display).toBe('');
-        expect(items[2].getAttribute('data-mstf-hidden')).toBeNull();
     });
 
-    it('空 active → 全部恢复显示，清除隐藏标记', () => {
-        document.body.innerHTML =
-            '<div class="thumbnail group" data-mstf-hidden="yes" style="display:none">' +
-            '<span class="missav-status-tag" data-status="hasDown"></span></div>' +
-            '<div class="thumbnail group" data-mstf-hidden="yes" style="display:none"></div>';
-        applyFilter(new Set());
+    it('初始页结构（grid > 包装DIV > 缩略图）：隐藏 grid cell（外层包装），grid 自动重排不留空洞', () => {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5';
+        const wrap1 = document.createElement('div');
+        wrap1.innerHTML = '<div class="thumbnail group"><span class="missav-status-tag" data-status="favorite"></span></div>';
+        const wrap2 = document.createElement('div');
+        wrap2.innerHTML = '<div class="thumbnail group"><span class="missav-status-tag" data-status="hasWatch"></span></div>';
+        grid.append(wrap1, wrap2);
+        document.body.appendChild(grid);
+
+        applyFilter(new Set(['favorite']));
+
+        // favorite 命中 → 包装 DIV 显示
+        expect(wrap1.style.display).toBe('');
+        expect(wrap1.getAttribute('data-mstf-hidden')).toBeNull();
+        // hasWatch 未命中 → 包装 DIV 隐藏（而非缩略图），grid 项移除流中自动重排
+        expect(wrap2.style.display).toBe('none');
+        expect(wrap2.getAttribute('data-mstf-hidden')).toBe('yes');
+        // 缩略图自身不受影响
+        const thumbs = Array.from(document.querySelectorAll<HTMLElement>('.thumbnail.group'));
+        expect(thumbs[1].style.display).toBe('');
+        expect(thumbs[1].getAttribute('data-mstf-hidden')).toBeNull();
+    });
+
+    it('瀑布流追加结构（grid > 缩略图）：隐藏缩略图自身（grid 直接子项）', () => {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5';
+        grid.innerHTML =
+            '<div class="thumbnail group"><span class="missav-status-tag" data-status="favorite"></span></div>' +
+            '<div class="thumbnail group"><span class="missav-status-tag" data-status="hasWatch"></span></div>';
+        document.body.appendChild(grid);
+
+        applyFilter(new Set(['favorite']));
         const items = Array.from(document.querySelectorAll<HTMLElement>('.thumbnail.group'));
         expect(items[0].style.display).toBe('');
-        expect(items[0].getAttribute('data-mstf-hidden')).toBeNull();
-        expect(items[1].style.display).toBe('');
-        expect(items[1].getAttribute('data-mstf-hidden')).toBeNull();
+        expect(items[1].style.display).toBe('none');
+        expect(items[1].getAttribute('data-mstf-hidden')).toBe('yes');
+    });
+
+    it('空 active → 全部恢复显示，清除隐藏标记（含 grid cell 包装）', () => {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5';
+        const wrap = document.createElement('div');
+        wrap.setAttribute('data-mstf-hidden', 'yes');
+        wrap.style.display = 'none';
+        wrap.innerHTML = '<div class="thumbnail group"><span class="missav-status-tag" data-status="hasDown"></span></div>';
+        grid.appendChild(wrap);
+        document.body.appendChild(grid);
+
+        applyFilter(new Set());
+        expect(wrap.style.display).toBe('');
+        expect(wrap.getAttribute('data-mstf-hidden')).toBeNull();
     });
 });

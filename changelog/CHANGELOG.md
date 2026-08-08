@@ -9,6 +9,12 @@
 
 ---
 
+## v1.43.1
+
+### 优化
+
+- **MissAV 状态筛选 UI 暗色化 + 网格 cell 级显隐**（doc/223）：①筛选栏撤出 javdb 浅色共享基础（filter-chip-base.css 回滚第四前缀），改为独立 Tailwind nord 暗色样式（芯片底色 #2e3440 / 边框 #4c566a / 文字 #d8dee9 / hover frost）与 missav 页面融合；②显隐目标从 `.thumbnail.group` 改为 grid cell——初始页 `grid > 包装DIV > 缩略图` 隐藏外层包装 DIV（隐藏后网格无缝重排不留空洞）、瀑布流追加项隐藏缩略图自身，className 判定规避 `md\:grid-cols` CSS 转义在部分环境的匹配问题。applyFilter 测试用例 2→4（含 cell 级断言）+ 测试文件 afterEach body 清理。
+
 ## v1.43.0
 
 ### 新增
