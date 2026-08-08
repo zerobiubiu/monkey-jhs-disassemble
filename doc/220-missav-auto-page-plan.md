@@ -246,9 +246,9 @@ $ bun run check:structure
 
 ```text
 $ bun run build
-✓ 399 modules transformed.
+✓ 402 modules transformed.
 [lightningcss minify] …（layer.css IE hack 警告，已知无害项）
-dist/monkey-jhs-disassemble.user.js … kB │ gzip: … kB
+dist/monkey-jhs-disassemble.user.js  2,183.83 kB │ gzip: 506.01 kB
 ✓ built in ~1.5s
 产物头部 @version 1.41.0（已核对）
 
