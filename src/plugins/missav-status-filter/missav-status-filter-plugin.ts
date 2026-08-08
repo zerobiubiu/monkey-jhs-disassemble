@@ -212,6 +212,17 @@ export class MissavStatusFilterPlugin extends BasePlugin {
                     return true;
                 }
             }
+            // 删除节点同样需刷新（上游 renderBadges 状态清除时移除旧徽章）
+            for (const node of mutation.removedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                const el = node as HTMLElement;
+                if (
+                    el.matches?.('.thumbnail.group, .missav-status-tag') ||
+                    el.querySelector?.('.thumbnail.group, .missav-status-tag')
+                ) {
+                    return true;
+                }
+            }
         }
         return false;
     }
