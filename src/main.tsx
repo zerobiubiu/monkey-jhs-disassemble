@@ -337,7 +337,7 @@ const pluginManager: PluginManager = (function () {
         if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin, 'imageRecognitionPlugin');
         if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin, 'fc2By123AvPlugin');
     }
-    // MissAV 站点单独注册 missav 专属插件（不注册 javdb 的 33 个插件）
+    // MissAV 站点单独注册 missav 专属插件（不注册 javdb 的 39 个插件）
     if (isMissavSite) {
         manager.register(MissavStatusTagPlugin);
         manager.register(MissavQuickCopyPlugin);

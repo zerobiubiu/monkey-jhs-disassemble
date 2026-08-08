@@ -63,6 +63,8 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                 const target = e.target as Element | null;
                 const card = target?.closest<HTMLElement>(CARD_SEL);
                 if (!card || !isPlainLeftClick(e)) return;
+                // 放行状态徽章（.missav-status-tag，target=_blank 跳转 javdb）的原生行为，避免被弹窗拦截吞掉
+                if (target?.closest('.missav-status-tag')) return;
                 const url = findDetailUrl(card);
                 if (!url) return;
                 e.preventDefault();
