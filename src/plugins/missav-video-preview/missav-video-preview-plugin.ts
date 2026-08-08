@@ -96,6 +96,10 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                     content: url,
                     scrollbar: false,
                     area: [`${width}px`, '100%'],
+                    // 无过渡动画（对齐 javdb openPage 的 isOutAnim:false + anim:-1）：
+                    // 过渡动画浪费性能且无作用，直接弹出（用户要求）
+                    isOutAnim: false,
+                    anim: -1,
                     end: () => {
                         if (topBar) topBar.style.display = topBarPrevDisplay;
                     }
