@@ -5,8 +5,9 @@
  * 阻止浏览器默认跳转并以 layer iframe 弹窗（type: 2）打开完整详情页 URL，
  * 支持站内预览详情而无需离开当前页（交互对齐 javdb 的 openPage 机制）。
  *
- * - 弹窗宽度 = min(900, 视口宽 - 40)px、高度 90%：900px < 1024px 触发站点
- *   响应式隐藏右侧推荐栏（doc/228 Camoufox 实测），无需额外 CSS
+ * - 弹窗宽度 = min(1023, 视口宽 - 40)px、高度 90%：<1024px 触发站点
+ *   响应式隐藏右侧推荐栏（doc/228 Camoufox 实测 1023px 仍隐藏、1024px 起显示），
+ *   无需额外 CSS
  * - 中键 / 右键 / 修饰键（Ctrl/Cmd/Shift/Alt）点击放行浏览器原生行为（新标签）
  * - 无独立 CSS、无设置项、无 pageTypes 覆写：isMissavSite 站点注册即激活
  * - iframe 视频页底部推荐区（同款卡片）点击同样弹窗（嵌套 layer，与 javdb 一致）
@@ -69,7 +70,7 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                 if (!url) return;
                 e.preventDefault();
                 e.stopPropagation();
-                const width = Math.min(900, window.innerWidth - 40);
+                const width = Math.min(1023, window.innerWidth - 40);
                 layer.open({
                     type: 2,
                     content: url,
