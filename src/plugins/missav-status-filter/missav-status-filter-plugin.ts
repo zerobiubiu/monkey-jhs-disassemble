@@ -126,16 +126,19 @@ export class MissavStatusFilterPlugin extends BasePlugin {
         );
         chips.innerHTML = '';
         const counts = collectStatusCounts();
-        const ordered = [...STATUS_ORDER.map(statusToLabel), ...(counts[NO_TAG_VALUE] ? [NO_TAG_VALUE] : [])];
-        for (const name of ordered) {
-            const c = counts[name] ?? 0;
+        // 遍历原始 status key（STATUS_ORDER），计数键为 label（collectStatusCounts
+        // 按显示名聚合）；dataset.value 必须存原始 key 供 applyFilter 匹配（审查修复 1）。
+        const ordered = [...STATUS_ORDER, ...(counts[NO_TAG_VALUE] ? [NO_TAG_VALUE] : [])];
+        for (const status of ordered) {
+            const label = statusToLabel(status);
+            const c = counts[label] ?? 0;
             if (c === 0) continue;
             const chip = document.createElement('span');
             chip.className = 'missav-status-filter-chip';
-            if (name === NO_TAG_VALUE) chip.classList.add('no-status');
-            chip.textContent = name === NO_TAG_VALUE ? `无状态标签 ${c}` : `${name} ${c}`;
-            chip.dataset.value = name;
-            if (active.has(name)) chip.classList.add('active');
+            if (status === NO_TAG_VALUE) chip.classList.add('no-status');
+            chip.textContent = status === NO_TAG_VALUE ? `无状态标签 ${c}` : `${label} ${c}`;
+            chip.dataset.value = status;
+            if (active.has(status)) chip.classList.add('active');
             chips.appendChild(chip);
         }
     }
@@ -156,26 +159,61 @@ export class MissavStatusFilterPlugin extends BasePlugin {
 
     /**
      * 启动 MutationObserver：监听 .thumbnail.group 的 data-status 属性变化
-     * （MissAVStatusTagPlugin 异步注入标签）与子节点增删。防抖 150ms 后
-     * 先取 active 再重建芯片 + 重应用筛选。
+     * （MissAVStatusTagPlugin 异步注入标签）与子节点增删。回调先经门控过滤
+     * （observerNeedsRefresh），仅网格/状态标签相关变更才防抖 150ms 后
+     * 先取 active 再重建芯片 + 重应用筛选；chips 容器自身重建不触发，避免自刷新死循环。
      */
     private startObserving(): void {
-        this.supervisor.observe(document.body, () => {
+        this.supervisor.observe(document.body, (mutations) => {
+            // 门控：仅当变更涉及缩略图/状态标签（新增节点匹配/包含，或 data-status
+            // 属性变更）才刷新；chips 子节点重建不命中，杜绝自触发循环（审查修复 2）。
+            if (!this.observerNeedsRefresh(mutations)) return;
+            // 挂载点迟到：先尝试构建筛选栏（tryBuild 幂等），失败由后续批次重试（审查修复 3）。
+            if (!this.filterBar) this.tryBuild();
             clearTimeout(this.observerDebounce);
             this.observerDebounce = this.supervisor.setTimeout(() => {
-                if (!this.filterBar) return;
-                const chips = this.filterBar.querySelector('.missav-status-filter-chips');
+                const bar = this.filterBar;
+                if (!bar) return;
+                const chips = bar.querySelector<HTMLDivElement>('.missav-status-filter-chips');
                 if (chips) {
                     const active = new Set(
                         Array.from(chips.querySelectorAll('.missav-status-filter-chip.active')).map(
                             (c) => (c as HTMLElement).dataset.value || ''
                         )
                     );
-                    this.renderChips(chips as HTMLDivElement);
+                    this.renderChips(chips);
                     applyFilter(active);
                 }
             }, 150);
         }, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-status'] });
+    }
+
+    /**
+     * 观察器门控：判断 mutation 批次是否与网格/状态标签相关。
+     * childList：新增节点匹配或包含 .thumbnail.group / .missav-status-tag；
+     * attributes：data-status 属性变更。chips 子节点重建不命中。
+     *
+     * @param mutations observer 回调收到的变更批次
+     * @returns 是否需要刷新筛选栏
+     */
+    private observerNeedsRefresh(mutations: MutationRecord[]): boolean {
+        for (const mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'data-status') {
+                return true;
+            }
+            if (mutation.type !== 'childList') continue;
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                const el = node as HTMLElement;
+                if (
+                    el.matches?.('.thumbnail.group, .missav-status-tag') ||
+                    el.querySelector?.('.thumbnail.group, .missav-status-tag')
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** 销毁插件：一次性清理所有 supervisor 管理的资源。 */
