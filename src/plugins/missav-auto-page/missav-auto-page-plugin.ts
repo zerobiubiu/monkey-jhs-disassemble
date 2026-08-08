@@ -9,6 +9,7 @@ import { PaginationStateMachine } from '../../core/pagination-state';
 import { TaskSupervisor } from '../../core/task-supervisor';
 
 import { BasePlugin } from '../base-plugin';
+import { isVideoPage } from '../car-status-sync/missav-renderer';
 import { fetchNextPage } from './map-fetch';
 import { MAP_SEL, collectCarNums, extractThumbs, findNextUrl } from './map-selectors';
 
@@ -62,6 +63,9 @@ export class MissavAutoPagePlugin extends BasePlugin {
      * @returns Promise<void>；容器缺失时静默返回，不抛出
      */
     async handle(): Promise<void> {
+        // 视频播放页不启用瀑布流（底部推荐区有同款 grid，Camoufox 实测无分页链接，跳过避免注入无意义 loader）
+        if (isVideoPage()) return;
+
         let container = document.querySelector(MAP_SEL.grid);
         if (!container) {
             // 降级：按探针实测父链取缩略图容器
