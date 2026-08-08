@@ -139,7 +139,7 @@ bun run build    # = tsc -b && vite build
 | 站点 | 域名 | 功能 |
 |------|------|------|
 | JavDB | `javdb.com` | 全部 38 个插件 |
-| MissAV | `missav.ws` / `missav.live` | 状态标签 + 快速复制 |
+| MissAV | `missav.ws` / `missav.live` / `missav.ai` | 状态标签 + 快速复制 |
 
 ## 🔧 技术架构
 

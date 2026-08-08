@@ -13,7 +13,7 @@ export const currentHref: string = window.location.href;
 export const isJavdbSite: boolean = currentHref.includes('javdb');
 
 /** 是否为 MissAV 站点（car-status-sync 集成新增） */
-export const isMissavSite: boolean = /missav\.(ws|live|com)/.test(currentHref);
+export const isMissavSite: boolean = /missav\.(ws|live|com|ai)/.test(currentHref);
 
 /** 是否为搜索/用户页（原 c） */
 export const isSearchOrUserPage: boolean =

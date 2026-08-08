@@ -9,6 +9,12 @@
 
 ---
 
+## v1.40.1
+
+### 新增
+
+- **MissAV 站点新增 `missav.ai` 域名支持**（doc/218）：`isMissavSite` 正则与 `userscript.match` 同步新增 `ai`，脚本在 missav.ai 上与 missav.ws 完全一致运行（状态标签 + 快速复制）。missav 插件无站点域名硬编码、无站内网络请求（跨站同步走 GM 存储），无需其它改动。
+
 ## v1.40.0
 
 ### 新增

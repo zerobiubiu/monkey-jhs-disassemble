@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.40.0',
+                version: '1.40.1',
                                 author: 'zerobiubiu',
                 copyright: '2024-2026 zerobiubiu (https://github.com/zerobiubiu) — 基于 JAV-JHS 3.3.6 (MIT) 二次开发',
                 license: 'MIT',
@@ -29,7 +29,7 @@ export default defineConfig({
                     'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav/Git云备份、演员信息、清单管理、截图墙、磁链聚合、以图识图等功能插件',
                 homepageURL: 'https://github.com/zerobiubiu/javdb-tools',
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
-                match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*'],
+                match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*', 'https://missav.ai/*'],
                 'run-at': 'document-idle',
                 connect: [
                     'xunlei.com',
