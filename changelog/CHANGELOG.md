@@ -13,7 +13,7 @@
 
 ### 新增
 
-- **MissAV 视频流 iframe 详情弹窗**（doc/228）：新增 MissavVideoPreviewPlugin（`src/plugins/missav-video-preview/` 2 模块：mv-selectors 纯函数 + 插件主类），missav 列表页左键点击视频卡片 → `layer.open` type:2 iframe 弹窗加载完整详情页（900px 宽 < 1024 站点响应式自动隐藏右侧推荐栏、顶部条保留，播放器/收藏/片单/下载/分享/复制番号全部可用）；捕获阶段 click 拦截 + `stopPropagation` 阻断 Alpine clickPreview；中键/右键/Ctrl+点击保留原生新标签行为；iframe 视频页内底部推荐缩略图可嵌套弹窗（与 javdb iframe 行为一致）；TaskSupervisor 管理捕获监听器，destroy 时清理。新增 9 个 mv-selectors 纯函数单测。
+- **MissAV 视频流 iframe 详情弹窗**（doc/228）：新增 MissavVideoPreviewPlugin，列表页左键点击视频卡片（`.thumbnail.group`）→ layer iframe 弹窗（`min(900, 视口-40)px × 90%`）加载完整详情页——900px < 1024px 触发站点响应式自动隐藏右侧推荐栏，左侧播放器区自然突出，顶部条保留；中键/右键/Ctrl/Cmd/Shift/Alt 点击保留原生行为（新标签）；iframe 视频页底部推荐区点击可嵌套弹窗；状态徽章（`.missav-status-tag`，跳转 javdb）点击豁免放行。Camoufox 实测拦截可行性 + 900px iframe 右侧自动隐藏 + Plyr 加载；发布前最终审查修复（徽章豁免 + 计数注释）。新增 9 个纯函数单测。
 
 ## v1.43.5
 

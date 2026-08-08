@@ -269,3 +269,17 @@ check-structure: OK
    左键弹窗 / 修饰键新标签 / 嵌套弹窗 / 关闭后瀑布流正常四项；
 2. **Alpine 兜底**：若 Alpine 在捕获阶段另有 document 级监听（未实测到），需在卡片上
    直接挂 click 监听（§5 风险缓解，未触发）。
+
+### 最终审查修复（追加记录）
+
+最终全分支审查发现并修复 1 个 Important + 2 个 Minor（commit 3a2f656 / 1e0c64a）：
+
+- **I-1（Important）**：状态徽章 `.missav-status-tag`（`<a target="_blank" href="javdb详情">`，
+  由 car-status-sync/missav-renderer 的 createBadge 挂到卡片内部）的左键点击会被视频预览
+  捕获拦截吞掉（preventDefault + 弹 missav 预览窗），徽章「点击跳转 javdb」核心交互失效；
+  修复为 handler 内 `target?.closest('.missav-status-tag')` 命中即 return（放行原生跳转）；
+- **M-1**：TaskSupervisor 使用插件计数实为 11（grep 全量确认），文档 10 → 11；
+- **M-2**：main.tsx L340 注释「javdb 的 33 个插件」陈旧 → 39（javdb 块实际注册 39）。
+
+修复后复审通过（三个修复点全部核验，无遗留）。版本保持 1.44.0（修复在发布前审查
+回环内，用户未安装，与 doc/222 发布前修复先例一致）。
