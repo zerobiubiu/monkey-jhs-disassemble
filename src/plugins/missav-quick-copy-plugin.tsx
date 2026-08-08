@@ -139,8 +139,12 @@ function openInNewTab(url: string): boolean {
 }
 
 /**
- * 创建通用按钮（原生 DOM，tailwind class）。
+ * 创建通用按钮（原生 DOM，tailwind class 与 missav 原生播放页按钮对齐）。
  * 对应原脚本 createButton 函数。
+ *
+ * 样式对齐：原生按钮 class 为 `inline-flex items-center whitespace-nowrap
+ * text-sm text-nord4 leading-4 font-medium focus:outline-none hover:text-nord6`，
+ * 间距由外层 space-x 控制（自定义按钮组独立成组后不再依赖 mr-2）。
  *
  * @param label 按钮文本
  * @param svgElement SVG 图标元素
@@ -151,7 +155,7 @@ function createButton(label: string, svgElement: Node, onClick: () => void): HTM
     const button = document.createElement('button');
     button.type = 'button';
     button.className =
-        'inline-flex items-center whitespace-nowrap shadow-sm text-sm text-nord4 leading-4 font-medium focus:outline-none hover:text-nord6 mr-2';
+        'inline-flex items-center whitespace-nowrap text-sm text-nord4 leading-4 font-medium focus:outline-none hover:text-nord6';
     button.appendChild(svgElement);
     button.appendChild(document.createTextNode(label));
     button.addEventListener('click', (e: MouseEvent) => {
@@ -166,15 +170,16 @@ function createButton(label: string, svgElement: Node, onClick: () => void): HTM
  * 创建剪贴板 SVG 图标（原生 createElementNS）。
  * 对应原脚本 createSVGClipboard 函数。
  *
+ * 尺寸用 tailwind class 对齐原生图标（h-3 w-3 xs:h-4 xs:w-4 响应式），
+ * 不用固定 width/height 属性。
+ *
  * @returns SVGSVGElement 剪贴板图标
  */
 function createSVGClipboard(): SVGSVGElement {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    svg.setAttribute('width', '16');
-    svg.setAttribute('height', '16');
     svg.setAttribute('fill', 'currentColor');
-    svg.setAttribute('class', 'bi bi-clipboard-check mr-1');
+    svg.setAttribute('class', 'mr-1 md:mr-2 h-3 w-3 xs:h-4 xs:w-4');
     svg.setAttribute('viewBox', '0 0 16 16');
 
     const path1 = document.createElementNS(svg.namespaceURI, 'path');
@@ -206,33 +211,52 @@ function createSVGClipboard(): SVGSVGElement {
  * 创建 JavDB SVG 图标（JavDBIcon 组件经 jsxToString 渲染后由 template 解析提取 svg 节点）。
  * 对应原脚本 createSVGJavDB 函数。
  *
+ * 解析后移除固定 width/height（tabler 24px），改用 tailwind class 对齐原生图标尺寸。
+ *
  * @returns Node JavDB 字母 J 图标
  */
 function createSVGJavDB(): Node {
     const html = jsxToString(<JavDBIcon />);
     const template = document.createElement('template');
     template.innerHTML = html;
-    return template.content.querySelector('svg') as Node;
+    const svg = template.content.querySelector('svg');
+    if (svg instanceof SVGElement) {
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        svg.setAttribute('class', 'mr-1 md:mr-2 h-3 w-3 xs:h-4 xs:w-4');
+    }
+    return svg as Node;
 }
 
 /**
- * 在目标工具栏插入复制番号 + 跳转 JavDB 两个按钮。
+ * 在原生工具栏之后插入独立自定义按钮组（复制番号 + 跳转 JavDB）。
  * 对应原脚本 insertButtons 函数。
  *
- * @param menuBar 工具栏 DOM 元素
+ * 布局调整（doc/226）：不再把按钮 prepend/append 进原生工具栏（避免与原生
+ * 「收藏/片单/下载/分享」按钮混排、样式不一致），改为在工具栏后插入独立按钮组，
+ * 样式与原生按钮对齐（tailwind class + 响应式图标尺寸）。
+ *
+ * @param menuBar 原生工具栏 DOM 元素
  */
 function insertButtons(menuBar: Element): void {
+    // 幂等：已插入过则跳过（observer 与 existing 双路径避免重复）
+    if (document.querySelector('.jhs-video-actions')) return;
+
     const fanhao = extractCode(window.location.pathname);
 
-    // 复制番号按钮，插到最前
+    // 独立按钮组容器（tailwind class 与原生工具栏同风格）
+    const bar = document.createElement('div');
+    bar.className = 'jhs-video-actions flex flex-wrap justify-center space-x-4 md:space-x-6 py-4';
+
+    // 复制番号按钮
     const copyBtn = createButton('复制番号', createSVGClipboard(), () => {
         copyToClipboard(fanhao).then((success: boolean) => {
             showToast(success ? `番号 ${fanhao} 已复制` : '复制失败');
         });
     });
-    menuBar.prepend(copyBtn);
+    bar.appendChild(copyBtn);
 
-    // 跳转 JavDB 按钮，放到最后
+    // 跳转 JavDB 按钮
     const javdbBtn = createButton('转到JavDB搜索', createSVGJavDB(), () => {
         const javdbUrl = `https://javdb.com/search?q=${encodeURIComponent(fanhao)}&f=all`;
         console.log(`${LOG} 尝试打开 JavDB 链接:`, javdbUrl);
@@ -250,9 +274,10 @@ function insertButtons(menuBar: Element): void {
             });
         }
     });
-    menuBar.appendChild(javdbBtn);
-    console.log(`${LOG} ✅ Copy 和 JavDB 按钮已插入 menu_bar`);
+    bar.appendChild(javdbBtn);
 
+    menuBar.insertAdjacentElement('afterend', bar);
+    console.log(`${LOG} ✅ Copy 和 JavDB 按钮已插入工具栏后独立按钮组`);
 }
 
 /**

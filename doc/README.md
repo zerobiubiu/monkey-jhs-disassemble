@@ -170,6 +170,7 @@
 | `223-missav-status-filter-ui-fix.md` | 🔧开发指导 | ✅已执行 | MissAV 状态筛选修复：①UI 暗色化——missav 是 Tailwind nord 暗色主题，撤出 filter-chip-base.css 浅色共享基础改为独立 nord 样式（bar/芯片底色 #2e3440/边框 #4c566a/文字 #d8dee9）；②cell 级显隐——隐藏 grid cell（初始页 `grid>包装DIV>缩略图` 隐藏外层包装、瀑布流追加项隐藏自身，className 判定避免 CSS 转义坑）使网格无缝重排；applyFilter 用例 2→4 + afterEach 清理；执行后 version 1.43.0→1.43.1 |
 | `224-load-all-btn-position-and-theme.md` | 🔧开发指导 | ✅已执行 | 加载全部按钮改左下角 + MissAV 暗色化：`.jhs-map-load-all-btn`（missav）渐变蓝→nord 暗色（#2e3440/#4c566a/#d8dee9）且 `right`→`left`；`.jhs-load-all-btn`（javdb 浅色主题）渐变蓝保留仅 `right`→`left`——两层与右下回到顶部彻底错开；执行后 version 1.43.1→1.43.2 |
 | `225-loader-class-prefix-and-tests-tsconfig.md` | 🔧开发指导 | ✅已执行 | 瀑布流 loader 类名前缀修复 + tests 语言服务归属：①`fetchNextPage` setLoader 类名统一 `jhs-map-` 前缀（doc/223 CSS 已改前缀但调用点未同步，loading/error/no-more 样式失效的 bug）；②新建 tests/tsconfig.json（bundler + react/node types + paths，不接入构建）解决语言服务对 tests/ import 的 Cannot find module 误报；③map-fetch 删除重建触发重新索引；语言服务诊断全项目干净；执行后 version 1.43.2→1.43.3 |
+| `226-missav-video-actions-layout.md` | 🔧开发指导 | ✅已执行 | MissAV 视频页自定义按钮独立分组 + 样式对齐：不再 prepend/append 进原生工具栏（避免与收藏/片单/下载/分享混排），改在工具栏后插独立 `.jhs-video-actions` 按钮组；按钮 class 与原生逐字对齐（去 shadow-sm/mr-2）；图标尺寸改响应式 h-3 w-3 xs:h-4 xs:w-4（原固定 16/24px）；幂等防重复；Camoufox 实测样式/布局对齐；执行后 version 1.43.3→1.43.4 |
 
 ## 类型图例
 
@@ -356,6 +357,7 @@
 223. `223-missav-status-filter-ui-fix.md` — MissAV 状态筛选 UI 暗色化 + cell 级显隐（✅已执行）：撤出 filter-chip-base 浅色共享改独立 nord 暗色样式；隐藏目标改 grid cell（包装 DIV/缩略图自身）使网格无缝重排；className 判定避 CSS 转义坑；version 1.43.0→1.43.1
 224. `224-load-all-btn-position-and-theme.md` — 加载全部按钮改左下角 + MissAV 暗色化（✅已执行）：missav 渐变蓝→nord 暗色、javdb 渐变蓝保留，均 right→left 与回到顶部错开；version 1.43.1→1.43.2
 225. `225-loader-class-prefix-and-tests-tsconfig.md` — 瀑布流 loader 类名前缀修复 + tests 语言服务归属（✅已执行）：setLoader 类名统一 jhs-map- 前缀（修复 loading/error/no-more 样式失效）；tests/tsconfig.json 解决语言服务误报 else 交由删除重建；诊断全干净；version 1.43.2→1.43.3
+226. `226-missav-video-actions-layout.md` — MissAV 视频页自定义按钮独立分组 + 样式对齐（✅已执行）：复制番号/转JavDB 按钮移出原生工具栏，独立 `.jhs-video-actions` 按钮组；class/图标尺寸对齐原生；Camoufox 实测；version 1.43.3→1.43.4
 
 ## 当前进度概览
 
@@ -381,7 +383,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/225（226 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/226（227 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
