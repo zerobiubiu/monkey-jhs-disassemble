@@ -423,6 +423,10 @@ export class MissavStatusTagPlugin extends BasePlugin {
         for (const delta of journal) {
             await this.consumeQueue.enqueue('consume', () => this.applyDelta(delta));
         }
+        // 批量消费完成后统一刷新一次页面（避免每条增量触发一次全页扫描）
+        if (journal.length > 0) {
+            await this.processAll();
+        }
     }
 
     /** 全量消费入口：串行队列 + 修订号门控 + 条件回滚。 */
@@ -473,7 +477,6 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 return;
             }
             this.markApplied(revision, 'delta');
-            await this.processAll();
             clearIntent(revision);
         } catch (err: unknown) {
             logErr('增量消费失败', err instanceof Error ? err.message : String(err));
