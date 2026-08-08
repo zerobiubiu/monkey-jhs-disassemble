@@ -17,15 +17,17 @@
 import { TaskSupervisor } from '../../core/task-supervisor';
 
 import { BasePlugin } from '../base-plugin';
-import { isVideoDetailPath } from '../missav-status-filter/mstf-collect';
 import { CARD_SEL, findDetailUrl, isPlainLeftClick } from './mv-selectors';
 
 /**
- * 列表页顶部固定条选择器（div.fixed.z-max，56px 高）。
+ * 当前文档顶部固定条选择器（div.fixed.z-max，56px 高）。
  *
  * Camoufox 实测其 z-index 为 2147483647（CSS 整数最大值），而 layer 弹窗默认
  * 仅 19891014——弹窗打开时顶部条会盖在弹窗上方。弹窗打开期间隐藏该元素、
  * 关闭时恢复（layer 的 end 回调在所有关闭路径触发）。
+ *
+ * 列表页与 iframe 视频页的顶部条为同一 class（doc/231 实测：body > div:nth-child(2)
+ * 与 body > div:nth-child(3) 均指向此 class），本选择器在两种文档中都能命中。
  */
 const TOP_BAR_SEL = 'div.fixed.z-max.w-full.bg-gradient-to-b.from-darkest';
 
@@ -81,17 +83,13 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                 e.preventDefault();
                 e.stopPropagation();
                 const width = Math.min(1023, window.innerWidth - 40);
-                // 列表页顶部条 z-index 2147483647 高于 layer 弹窗（19891014），弹窗打开期间
-                // 隐藏之（关闭时通过 layer end 回调恢复）；iframe 视频页内嵌套弹窗保留顶部条
-                // （用户确认 doc/228「顶部条不隐藏」）。
-                let topBar: HTMLElement | null = null;
-                let topBarPrevDisplay = '';
-                if (!isVideoDetailPath(location.pathname)) {
-                    topBar = document.querySelector<HTMLElement>(TOP_BAR_SEL);
-                    if (topBar) {
-                        topBarPrevDisplay = topBar.style.display;
-                        topBar.style.display = 'none';
-                    }
+                // 当前文档顶部条 z-index 2147483647 高于 layer 弹窗（19891014），弹窗打开期间
+                // 隐藏之（关闭时通过 layer end 回调恢复）。列表页弹窗隐藏列表页顶部条，
+                // iframe 视频页内二级弹窗隐藏 iframe 文档顶部条（doc/231 实测两处同 class）。
+                const topBar = document.querySelector<HTMLElement>(TOP_BAR_SEL);
+                const topBarPrevDisplay = topBar ? topBar.style.display : '';
+                if (topBar) {
+                    topBar.style.display = 'none';
                 }
                 layer.open({
                     type: 2,

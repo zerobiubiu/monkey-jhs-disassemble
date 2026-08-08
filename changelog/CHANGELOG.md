@@ -9,6 +9,12 @@
 
 ---
 
+## v1.44.4
+
+### 修复
+
+- **MissAV 视频预览二级弹窗被 iframe 文档顶部条遮挡**（doc/232）：列表页与 iframe 视频页顶部条为同一 class（`div.fixed.z-max`，z-index 2147483647），doc/231 的 `isVideoDetailPath` 守卫使 iframe 内二级弹窗跳过隐藏致顶部条盖住弹窗；移除守卫改为无条件隐藏当前文档顶部条（列表页弹窗/iframe 二级弹窗各自生效），一级弹窗 iframe 详情页顶部条（独立文档）保留。
+
 ## v1.44.3
 
 ### 修复

@@ -365,6 +365,7 @@
 229. `229-missav-video-preview-width-max.md` — MissAV 视频预览弹窗宽度最大化至 1023px（✅已执行）：宽度上限 900→1023（<1024 极限，右侧栏仍自动隐藏），高度 90% 不变；version 1.44.0→1.44.1
 230. `230-missav-video-preview-height-full.md` — MissAV 视频预览弹窗高度铺满 100%（✅已执行）：高度 90%→100%（上下留白消除，宽度保持 1023 极限不变）；version 1.44.1→1.44.2
 231. `231-missav-video-preview-cover-top-bar.md` — MissAV 视频预览弹窗覆盖列表页顶部条（✅已执行）：列表页顶部条 z-index 2147483647（CSS 最大值）高于 layer 弹窗 19891014，弹窗打开期间隐藏顶部条 + end 回调恢复；iframe 嵌套弹窗保留顶部条；version 1.44.2→1.44.3
+232. `232-missav-video-preview-cover-iframe-top-bar.md` — MissAV 视频预览二级弹窗覆盖 iframe 文档顶部条（✅已执行）：列表页与 iframe 视频页顶部条同一 class（fixed z-max），移除 isVideoDetailPath 守卫改无条件隐藏当前文档顶部条（列表页弹窗/iframe 二级弹窗各自生效，一级弹窗 iframe 详情页顶部条独立文档保留）；version 1.44.3→1.44.4
 
 ## 当前进度概览
 
@@ -390,7 +391,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/231（232 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/232（233 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
