@@ -76,6 +76,7 @@ import { VisitHistoryPlugin } from './plugins/visit-history-plugin';
 import { MissavStatusTagPlugin } from './plugins/car-status-sync/missav-status-tag-plugin';
 import { MissavQuickCopyPlugin } from './plugins/missav-quick-copy-plugin';
 import { MissavAutoPagePlugin } from './plugins/missav-auto-page/missav-auto-page-plugin';
+import { MissavStatusFilterPlugin } from './plugins/missav-status-filter/missav-status-filter-plugin';
 import { TranslatePlugin } from './plugins/translate-plugin';
 import { ScreenShotPlugin } from './plugins/screenshot-plugin';
 import { MagnetHubPlugin } from './plugins/magnet-hub-plugin';
@@ -340,6 +341,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(MissavStatusTagPlugin);
         manager.register(MissavQuickCopyPlugin);
         manager.register(MissavAutoPagePlugin);
+        manager.register(MissavStatusFilterPlugin);
     }
     return manager;
 })();

@@ -1,0 +1,15 @@
+/* 状态标签筛选 active 配色 + no-tag 变体（基础样式由 filter-chip-base.css 顶层注入） */
+.missav-status-filter-chip.active {
+    background: #5d87c2;
+    border-color: #5d87c2;
+    color: #fff;
+}
+.missav-status-filter-chip.no-status {
+    color: #6c757d;
+    border-style: dashed;
+}
+.missav-status-filter-chip.no-status.active {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+}

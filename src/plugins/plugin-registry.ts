@@ -29,6 +29,7 @@ import type { ListWaterfallPlugin } from './list-waterfall-plugin';
 import type { MagnetHubPlugin } from './magnet-hub-plugin';
 import type { MissavAutoPagePlugin } from './missav-auto-page/missav-auto-page-plugin';
 import type { MissavQuickCopyPlugin } from './missav-quick-copy-plugin';
+import type { MissavStatusFilterPlugin } from './missav-status-filter/missav-status-filter-plugin';
 import type { ModalListDisablerPlugin } from './modal-list-disabler-plugin';
 import type { ModMyListOpenWayPlugin } from './mod-my-list-open-way-plugin';
 import type { NavBarPlugin } from './nav-bar-plugin';
@@ -75,6 +76,7 @@ export interface PluginMap {
     MagnetHubPlugin: MagnetHubPlugin;
     MissavAutoPagePlugin: MissavAutoPagePlugin;
     MissavQuickCopyPlugin: MissavQuickCopyPlugin;
+    MissavStatusFilterPlugin: MissavStatusFilterPlugin;
     MissavStatusTagPlugin: MissavStatusTagPlugin;
     ModalListDisablerPlugin: ModalListDisablerPlugin;
     ModMyListOpenWayPlugin: ModMyListOpenWayPlugin;
