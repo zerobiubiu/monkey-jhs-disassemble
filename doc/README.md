@@ -163,6 +163,7 @@
 | `172-big-file-splits-and-components-reorg.md` | 🔧开发指导 | ✅已执行 | 5 个大文件职责拆分（detail-page-button 2043→413 / other-site 1178→510 / list-reading-status 1103→275 / common-util 1094→519 / vlt-sync 上轮已拆）+ src/components/ 120+ 平铺文件重组为 25 个子目录（直接文件数 0，144 处 import 更新）+ check-structure.ts 门禁更新；version 1.28.12→1.28.13 |
 | `173-settings-ui-overhaul-and-vlt-final-split.md` | 🔧开发指导 | ✅已执行 | 设置面板 UI 统一化（CSS Grid 表单布局 + 统一控件样式 + iOS toggle + 8 个原子表单组件 + 9 面板重构 + 120 选择器审计 + 独立预览页）+ vlt-sync.tsx 最终拆分（2259→27 行 barrel + 5 新模块）；version 1.28.13→1.28.14 |
 | `218-add-missav-ai-support.md` | 🔧开发指导 | ✅已执行 | MissAV 站点新增 `missav.ai` 域名支持（与 missav.ws 一致）：`isMissavSite` 正则新增 `ai` + `userscript.match` 增加 `https://missav.ai/*`；README 支持站点表同步；4 行代码改动，无插件/网络/配置额外变更；version 1.40.0→1.40.1 |
+| `219-missav-tag-render-optimization-plan.md` | 🔧开发指导 | 🔧待执行 | MissAV 标签首屏渲染提速计划：主因是渲染入口被串行消费阻塞（observeAndProcess 在 handle() 末尾）；三项低风险改动——①渲染与消费解耦（observeAndProcess 提前 + 首次尝试立即执行）②增量消费合并 processAll（逐条刷新→批处理后一次）③renderBadges 去 getComputedStyle；不变量：修订号门控/消费顺序/意图日志/GM 键不变；执行后 version 1.40.1→1.40.2 |
 
 ## 类型图例
 
@@ -342,6 +343,7 @@
 216. `216-reflow-phase2bc.md` — 编号清单整理期2b/2c：韧性层（自适应退避/恢复日志续传/批检查点/整次撤销）+ 体验层（进度条/汇总报告/续传撤销按钮）；新增 lr-journal.ts，重写 lr-execute.ts + lr-panel.tsx；version 1.38.1→1.39.0
 217. `217-git-backup-channel.md` — Git 备份通道（GitHub 兼容族）：Contents API 备份提供方（GitHub / GitHub Enterprise / 自建 Gitea/Forgejo，每次备份一个 commit 自带版本历史）；BackupProvider 抽象 + GitBackupClient + git-operations；文件列表弹层泛化双通道共享；备份面板 Git 分区 + 自动备份通道双开关；autoBackup 双通道分发；21 个单测；version 1.39.0→1.40.0
 218. `218-add-missav-ai-support.md` — MissAV 站点新增 missav.ai 域名支持（与 missav.ws 一致）：isMissavSite 正则 + userscript.match 同步新增 ai；插件无域名硬编码/无站内网络请求，无需额外改动；version 1.40.0→1.40.1
+219. `219-missav-tag-render-optimization-plan.md` — MissAV 标签首屏渲染提速计划（🔧待执行）：渲染与消费解耦 + 增量消费合并 processAll + 去 getComputedStyle 三项低风险改动；执行后 version 1.40.1→1.40.2
 
 ## 当前进度概览
 
@@ -367,7 +369,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,095 kB（gzip 484 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/218（219 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/219（220 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 
