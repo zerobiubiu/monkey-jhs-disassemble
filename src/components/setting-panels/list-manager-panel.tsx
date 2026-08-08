@@ -144,6 +144,11 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
             </SettingSection>
 
             <SettingSection title="对账校准" icon="🔄">
+                <SettingToggle
+                    id="autoServerSync"
+                    label="打开页面时自动校验同步"
+                    tooltip="打开影片详情页时核实脚本与 JavDB 的状态：评分/已读/收藏或清单关联如果脚本已写入但服务器未同步（如网络失败），自动按脚本记录补推 JavDB；服务器有而脚本无则拉取补齐。勾选状态与服务器冲突时跳过，避免误覆盖"
+                />
                 <SettingRow
                     label="自动对账延迟(毫秒):"
                     tooltip="详情页清单弹窗变动后，触发本地镜像自动对账的防抖延迟；过小易与服务端写入竞速产生良性校准提示，建议 600–1500"

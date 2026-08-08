@@ -40,7 +40,10 @@ import {
     updateDetailPageCheckboxLabel
 } from './vlt-sync';
 import { setupListMgmtBroadcastListener } from './vlt-remote-sync';
-import { setAutoReconcileDelay } from './vlt-reconcile';
+import {
+    setAutoReconcileDelay,
+    setAutoServerSyncEnabled
+} from './vlt-reconcile';
 import { setAutoFavCleanupEnabled, setProtectedKeywords } from './vlt-checkbox';
 
 import videoListsTagCssRaw from '../../styles/video-lists-tag.css?raw';
@@ -86,6 +89,8 @@ export class VideoListsTagPlugin extends BasePlugin {
             // doc/206④：从设置注入自动对账巡检延迟（默认 800ms，setAutoReconcileDelay 内校验）
             const settings = await storageManager.getSetting();
             setAutoReconcileDelay(Number(settings.autoReconcileDelay));
+            // doc/234：从设置注入打开页面时「本地独有关联 → JavDB」自动补推开关（默认开启）
+            setAutoServerSyncEnabled(settings.autoServerSync !== 'no');
             // doc/205：从设置注入自动收藏/移除总开关 + 受保护清单关键词（默认「值得复盘」）
             setAutoFavCleanupEnabled(settings.autoFavCleanupEnabled !== 'no');
             setProtectedKeywords(

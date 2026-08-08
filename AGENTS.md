@@ -123,7 +123,7 @@ monkey-jhs-disassemble/
 | Top250Plugin | top250-plugin.tsx | Top250 排行榜 |
 | DetailPagePlugin | detail-page-plugin.ts | 详情页主插件 |
 | ReviewPlugin | review-plugin.tsx | 评论 |
-| DetailPageButtonPlugin | detail-page-button-plugin.tsx（+5 新模块：dpb-list-panel-fetch / dpb-list-panel-render / dpb-rating-api / dpb-list-merge / dpb-list-merge-ui） | 详情页按钮（想看/观看/评分/清单/字幕/清单序号合并） |
+| DetailPageButtonPlugin | detail-page-button-plugin.tsx（+6 新模块：dpb-list-panel-fetch / dpb-list-panel-render / dpb-rating-api / dpb-list-merge / dpb-list-merge-ui / dpb-review-sync） | 详情页按钮（想看/观看/评分/清单/字幕/清单序号合并/评价状态自动校验同步） |
 | HighlightMagnetPlugin | highlight-magnet-plugin.ts | 高亮磁链 |
 | PreviewVideoPlugin | preview-video-plugin.tsx | 预览视频 |
 | ActressInfoPlugin | actress-info-plugin.tsx | 演员信息 |
@@ -205,7 +205,7 @@ monkey-jhs-disassemble/
 | sync/ | 跨站同步共享基础设施子目录（doc/195）：sync-lock.ts（withExclusiveLock Web Locks 统一包装，navigator.locks 不可用时降级直接执行）、sync-queue.ts（KeyedQueue 键控串行队列，同 key 串行/异 key 并发 + 队列尾自清理防泄漏）、sync-intent-journal.ts（意图日志 writeIntent/clearIntent/readPendingIntents/cleanStaleIntents，崩溃后下次加载恢复未完成消费，借鉴 VLT pending journal）、index.ts（统一出口） |
 | util/ | 核心工具子目录：broadcast.ts（三重广播总线 GM/localStorage/CustomEvent 三通道统一收发，Wave 3 新增）、back-to-top.ts（回到顶部按钮工厂，rAF 节流滚动监听 + 平滑回顶）、tabulator-factory.ts（Tabulator 表格工厂，中文语言包 + 基础配置）、util-async.ts（withLoading 加载蒙层异步包装）、util-clipboard.ts（copyToClipboard 剪贴板复制）、util-cookie.ts（addCookie 批量写入 cookie）、util-date.ts（getNowStr 日期时间格式化）、util-dom.ts（insertStyle / htmlTo$dom DOM 工具）、util-download.ts（download 文件下载 + MIME 映射）、util-misc.ts（isMobile / sleep / copyObj 杂项工具）、util-popup.ts（q 确认框 / 响应式弹窗区域）、util-retry.ts（retry 带重试异步执行）、util-sort.ts（genericSort 多键排序）、util-status-tag.tsx（STATUS_TAG_CONFIG 状态标签配置与渲染）、util-translate.ts（translateText Google 翻译）、util-url.ts（isUrl / getUrlParam URL 工具）、esc-layer.ts（ESC 层管理：gate + 栈同步 + 全局键监听 + setupEscClose，Wave 4 新增）、logger-panel.tsx（日志面板 DOM 渲染 + 事件绑定 + 过滤 + localStorage 持久化，Wave 4 新增）、util-simple-lists.ts（fetchSimpleListsPage simple_lists 分页获取共享函数，dpb-list-panel-fetch 与 vlt-server-api 双调用方复用，Wave 4 新增） |
 
-### 3.5 组件 `src/components/`（137 个）
+### 3.5 组件 `src/components/`（139 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。

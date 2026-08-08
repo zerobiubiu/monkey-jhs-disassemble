@@ -9,6 +9,7 @@
  * 方法实现已按功能域拆分至 ./detail-page-button/ 子目录：
  * - dpb-want-watched.ts — 想看/已观看 MutationObserver 同步 + 广播
  * - dpb-rating.ts — 星星评分组件 + javdb 原生评价 API
+ * - dpb-review-sync.ts — 评价状态自动校验同步（doc/234）
  * - dpb-list-panel.ts — 清单平铺面板（ensure/init/分页/渲染）
  * - dpb-subtitle.ts — 迅雷字幕搜索与预览
  * - dpb-helpers.ts — 纯 DOM 轮询辅助
@@ -62,6 +63,7 @@ import {
     triggerJavdbReview as _triggerJavdbReview,
     triggerJavdbWant as _triggerJavdbWant
 } from './detail-page-button/dpb-rating';
+import { setupAutoReviewSync as _setupAutoReviewSync } from './detail-page-button/dpb-review-sync';
 import {
     ensureListPanel as _ensureListPanel,
     bindListPanelControls as _bindListPanelControls,
@@ -140,6 +142,8 @@ export class DetailPageButtonPlugin extends BasePlugin {
     _ratingSyncDebounce: ReturnType<typeof setTimeout> | null = null;
     /** javdb 原生评价操作串行化链（quickSetHasWatch / quickConvertToFav）。 */
     _reviewChain: Promise<void> | null = null;
+    /** 评价状态自动校验是否已执行（setupAutoReviewSync 单页只校验一次）。 */
+    _autoSyncChecked: boolean = false;
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L5119-5121。 */
     getName(): string {
@@ -191,6 +195,16 @@ export class DetailPageButtonPlugin extends BasePlugin {
             this.hookWantAndWatchedButtons();
             this.addQuickActionButtons();
             this.setupWantWatchedSyncListener();
+            // doc/234：打开页面时自动校验「评分/已读/收藏」脚本与服务器状态并同步（autoServerSync 开关）
+            try {
+                const syncSettings = await storageManager.getSetting('autoServerSync', YES);
+                _setupAutoReviewSync(this, syncSettings !== NO);
+            } catch (error) {
+                clog.error(
+                    '[JHS] 评价状态自动校验配置加载失败，已按默认开启处理: ' +
+                        (error instanceof Error ? error.message : String(error))
+                );
+            }
         }
     }
 

@@ -8,11 +8,20 @@
 import { VltDb } from './vlt-db';
 import type { ListReconcileSnapshot, MovieRecord } from './vlt-db';
 import { showToast } from './vlt-toast';
+import { enqueueAssociationTask } from './vlt-lock-queue';
+import {
+    getListInfo,
+    getMovieInfo,
+    setListDisplayedCount
+} from './vlt-helpers';
+import { postJavdbListMutation } from './server/vlt-server-api';
 
 const LOG_PREFIX = '[JavDB][清单对账]';
 const MAX_PAGES = 100;
 /** 自动对账巡检防抖延迟（ms）。默认 800；可由设置 autoReconcileDelay 经 setAutoReconcileDelay 调整（doc/206④）。 */
 let autoReconcileDelay = 800;
+/** 打开页面时自动将「本地有关联、服务器未勾选」的清单关系补推到 JavDB（doc/234）。默认开启；可由设置 autoServerSync 调整。 */
+let autoServerSyncEnabled = true;
 
 /**
  * 设置自动对账巡检防抖延迟（doc/206④，供 VLT 插件从设置注入）。
@@ -20,6 +29,14 @@ let autoReconcileDelay = 800;
  */
 export function setAutoReconcileDelay(ms: number): void {
     if (Number.isFinite(ms) && ms > 0) autoReconcileDelay = ms;
+}
+
+/**
+ * 设置打开页面时自动补推清单关系到 JavDB 的开关（doc/234，供 VLT 插件从设置注入）。
+ * @param enabled 是否启用
+ */
+export function setAutoServerSyncEnabled(enabled: boolean): void {
+    autoServerSyncEnabled = enabled;
 }
 
 interface ReconcileExpectation {
@@ -355,6 +372,47 @@ export function reconcileAfterConfirmedMutation(
     return reconcileListWithJavdb(listId, { designation, checked, quiet: false });
 }
 
+/**
+ * 将「本地有关联、服务器未勾选」的清单关系补推到 JavDB（doc/234）。
+ * 修复脚本已写入本地镜像但服务器未写入的数据错位：本地记录优先，补推失败时
+ * 保留本地记录并提示，避免被反向校准覆盖。
+ * @param listId 清单 ID
+ * @param designation 番号
+ */
+async function pushLocalOnlyAssociation(listId: string, designation: string): Promise<void> {
+    const videoIdMatch = window.location.pathname.match(/\/v\/([^/?#]+)/);
+    const videoId = videoIdMatch?.[1];
+    if (!videoId) return;
+    const movieInfo = getMovieInfo(videoId);
+    const listInfo = getListInfo(listId);
+    if (!movieInfo || !listInfo.info.name) return;
+
+    await enqueueAssociationTask(`${designation}::${listId}`, async () => {
+        try {
+            const result = await postJavdbListMutation(videoId, listId, true);
+            if (result.kind === 'confirmed') {
+                const state = await VltDb.getListReconcileState(listId);
+                if (state.inventory && state.actualCount !== null) {
+                    setListDisplayedCount(listId, state.actualCount);
+                }
+                console.log(
+                    `${LOG_PREFIX} 已补推本地独有关联：${designation} → ${listInfo.info.name} (listId=${listId})`
+                );
+                showToast(`✓ [${designation}] 已补推至「${listInfo.info.name}」（服务器未同步）`, 'success');
+            } else {
+                showToast(
+                    `⚠ [${designation}] 补推至「${listInfo.info.name}」未确认：${result.message}`,
+                    'warning'
+                );
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(`${LOG_PREFIX} 补推本地独有关联失败：${designation} → ${listId}`, error);
+            showToast(`⚠ [${designation}] 补推至「${listInfo.info.name}」失败：${message}`, 'warning');
+        }
+    });
+}
+
 async function runAutomaticReconciliation(designation: string): Promise<void> {
     if (automaticReconciliationRunning) return;
     automaticReconciliationRunning = true;
@@ -372,8 +430,41 @@ async function runAutomaticReconciliation(designation: string): Promise<void> {
             const state = await VltDb.getListReconcileState(listId, designation);
             // 未登记过的清单沿用按用户操作逐条建立本地镜像，避免首次运行下载全部清单。
             if (!state.inventory) continue;
-            if (state.actualCount === serverCount && state.hasDesignation === input.checked) continue;
 
+            const membershipOk = state.hasDesignation === input.checked;
+            if (membershipOk) {
+                if (state.actualCount === serverCount) continue;
+                // 数量不一致但当前影片归属一致 → 既有全量校准（服务器 → 本地）
+                console.warn(
+                    `${LOG_PREFIX} 页面加载发现差异「${getDisplayedListName(input)}」 ` +
+                        `local=${state.actualCount} server=${serverCount}`
+                );
+                await reconcileListWithJavdb(listId, {
+                    expectedCount: serverCount,
+                    designation,
+                    checked: input.checked,
+                    quiet: true
+                });
+                continue;
+            }
+
+            if (state.hasDesignation && !input.checked) {
+                // 本地有关联、服务器未勾选 → 本地 → 服务器 补推（doc/234：脚本已写入但服务器未写入）
+                if (autoServerSyncEnabled) {
+                    console.warn(
+                        `${LOG_PREFIX} 页面加载发现本地独有关联「${getDisplayedListName(input)}」 ` +
+                            `${designation} local=关联 server=未勾选，补推 JavDB`
+                    );
+                    await pushLocalOnlyAssociation(listId, designation);
+                } else {
+                    console.warn(
+                        `${LOG_PREFIX} 自动补推已关闭，跳过本地独有关联「${getDisplayedListName(input)}」 ${designation}`
+                    );
+                }
+                continue;
+            }
+
+            // 服务器已勾选、本地无关联 → 既有全量校准（服务器 → 本地）
             console.warn(
                 `${LOG_PREFIX} 页面加载发现差异「${getDisplayedListName(input)}」 ` +
                     `local=${state.actualCount} server=${serverCount}`

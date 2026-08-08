@@ -148,6 +148,8 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     // 清单管理器：排序显示 + 对账延迟（doc/207）
     $('#listDefaultSort').val(settings.listDefaultSort || 'name-desc');
     $('#autoReconcileDelay').val(settings.autoReconcileDelay ?? 800);
+    // doc/234：打开页面时自动校验同步（默认开启）
+    $('#autoServerSync').prop('checked', !settings.autoServerSync || settings.autoServerSync === YES);
     $('#favSyncInterval').val(settings.jhsSyncInterval ?? 500);
     // 压实执行（doc/204 期2）
     $('#reflowInterval').val(settings.reflowInterval ?? 400);
@@ -259,6 +261,8 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.reflowMaxRetry = Number($('#reflowMaxRetry').val()) || 3;
     // 自动收藏联动（doc/205）
     settings.autoFavCleanupEnabled = $('#autoFavCleanupEnabled').is(':checked') ? YES : NO;
+    // doc/234：打开页面时自动校验同步（默认开启）
+    settings.autoServerSync = $('#autoServerSync').is(':checked') ? YES : NO;
     settings.listMergePattern = String($('#listMergePattern').val() ?? '').trim();
     // doc/208：标签容器读取（不参与合并清单名 / 受保护关键词）
     settings.listMergeExcludeNames = readKeywordLabels('#listMergeExcludeNamesContainer');

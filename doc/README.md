@@ -367,6 +367,8 @@
 231. `231-missav-video-preview-cover-top-bar.md` — MissAV 视频预览弹窗覆盖列表页顶部条（✅已执行）：列表页顶部条 z-index 2147483647（CSS 最大值）高于 layer 弹窗 19891014，弹窗打开期间隐藏顶部条 + end 回调恢复；iframe 嵌套弹窗保留顶部条；version 1.44.2→1.44.3
 232. `232-missav-video-preview-cover-iframe-top-bar.md` — MissAV 视频预览二级弹窗覆盖 iframe 文档顶部条（✅已执行）：列表页与 iframe 视频页顶部条同一 class（fixed z-max），移除 isVideoDetailPath 守卫改无条件隐藏当前文档顶部条（列表页弹窗/iframe 二级弹窗各自生效，一级弹窗 iframe 详情页顶部条独立文档保留）；version 1.44.3→1.44.4
 233. `233-missav-video-preview-no-anim.md` — MissAV 视频预览弹窗去除过渡动画（✅已执行）：对齐 javdb openPage 参数 isOutAnim:false + anim:-1，弹窗直接弹出/关闭无动画（过渡浪费性能无作用）；version 1.44.4→1.44.5
+234. `234-eval-review-list-auto-sync.md` — 评价/收藏/清单与 JavDB 状态自动校验同步（✅已执行）：打开影片时核实脚本与服务器状态——评分/已读/收藏脚本已写但服务器未同步时自动补推（新模块 dpb-review-sync.ts，服务器有而脚本无则反向拉取，冲突跳过）；修复「同分再点被拦截」「已收藏再点被拦截」误拦截 bug（拦截条件改看服务器 DOM）；清单本地独有关联自动补推（pushLocalOnlyAssociation）+ 恢复日志重推用户期望状态；autoServerSync 设置开关（默认开）；version 1.44.5→1.45.0
+235. `235-review-conflict-dialog.md` — 评价状态冲突弹窗（✅已执行）：doc/234 方向 3 冲突（脚本与服务器均有状态但不一致）由「跳过+日志」改为弹窗让用户选择——使用脚本记录（推送/覆盖 JavDB）/ 使用网站数据（拉取覆盖本地）/ 取消；新组件 review-conflict-dialog.tsx（layer type:1 内容弹窗 + data-conflict-choice 按钮契约，layer 无 btn3 故自绘）；dpb-review-sync.ts 重命名 .tsx；version 1.45.0→1.45.1
 
 ## 当前进度概览
 
@@ -383,7 +385,7 @@
 - resources：`gfriends`/`icons`
 - styles：41 个 CSS 文件（含 `design-tokens.css` 设计令牌 + `accessibility.css`
   无障碍样式 + `list-reflow/` 与 `missav-auto-page/` 与 `missav-status-filter/` 子目录），全部清理 `transition: all` 反模式
-- components：136 个 React 函数组件（JSX → jsxToString → HTML 字符串），
+- components：139 个 React 函数组件（JSX → jsxToString → HTML 字符串），
   重组为 26 个子目录（review/related/blacklist/dialogs/fc2/magnet-hub/actress/history/setting/top250/dpb/hit-show/image-preview/image-recognition/nav/log/other-site/preview-video/screen/subtitle/movie/want-watched/misc/setting-panels/list-reflow），直接文件数 0
 - 入口：`src/main.tsx`（17 步启动序列，页面判定先于 CSS/插件）
 - 类型：全量去 `@ts-nocheck`，GM API 已类型化（`GMXmlHttpRequestDetails` 接口）
@@ -392,7 +394,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/233（234 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/235（236 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

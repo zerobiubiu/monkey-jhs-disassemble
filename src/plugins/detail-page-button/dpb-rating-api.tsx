@@ -6,6 +6,8 @@ import { FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constant
 
 import { jsxToString } from '../../core/jsx-to-string';
 
+import { readServerReviewState } from './dpb-review-sync';
+
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
 
@@ -22,12 +24,15 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
     try {
         const carRecord = await storageManager.getCar(pageInfo.carNum);
         const wasFavorite = carRecord?.status === FAVORITE_ACTION;
-        if (carRecord && carRecord.status === FAVORITE_ACTION) {
-            await storageManager.removeCar(pageInfo.carNum);
-        }
-        if (carRecord && carRecord.status === HAS_WATCH_ACTION && carRecord.score === score) {
+        // 修复（doc/234）：拦截条件改为「服务器已确认相同状态」。
+        // 原实现只看本地记录——脚本已写入但服务器未同步时，再点相同评分会被误拦截。
+        const serverState = readServerReviewState();
+        if (serverState.watched && serverState.score === score) {
             show.ok(pageInfo.carNum + ' 评分未变化');
             return;
+        }
+        if (carRecord && carRecord.status === FAVORITE_ACTION) {
+            await storageManager.removeCar(pageInfo.carNum);
         }
         await storageManager.saveCar({
             carNum: pageInfo.carNum,
@@ -140,11 +145,14 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
     const pageInfo = plugin.getPageInfo();
     if (!pageInfo.carNum) return;
     try {
-        const carRecord = await storageManager.getCar(pageInfo.carNum);
-        if (carRecord && carRecord.status === FAVORITE_ACTION) {
+        // 修复（doc/234）：拦截条件改为「服务器已确认想看状态」。
+        // 原实现只看本地记录——脚本已收藏但服务器未同步时，再点收藏会被误拦截。
+        const serverState = readServerReviewState();
+        if (serverState.want) {
             show.ok(pageInfo.carNum + ' 已是已收藏');
             return;
         }
+        const carRecord = await storageManager.getCar(pageInfo.carNum);
         if (carRecord) await storageManager.removeCar(pageInfo.carNum);
         await storageManager.saveCar({
             carNum: pageInfo.carNum,

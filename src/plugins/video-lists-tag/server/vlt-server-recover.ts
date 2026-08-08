@@ -19,6 +19,7 @@ import {
 import type { ListInfo } from '../vlt-helpers';
 import {
     fetchAuthoritativeCheckboxState,
+    postJavdbListMutation,
     readPendingJournals,
     removePendingJournal
 } from './vlt-server-api';
@@ -29,6 +30,32 @@ export async function commitAuthoritativeState(
     authoritative: AuthoritativeCheckboxState,
     notify: boolean
 ): Promise<boolean> {
+    // doc/234：权威状态与用户期望相反 → 服务器大概率未写入该变更（网络抖动等），
+    // 按「脚本记录优先」重试推送用户期望状态；重推确认后才以期望状态提交本地。
+    if (authoritative.checked !== entry.desiredChecked) {
+        const retry = await postJavdbListMutation(
+            entry.videoId,
+            entry.listInfo.list_id,
+            entry.desiredChecked
+        );
+        if (retry.kind !== 'confirmed') {
+            console.warn(
+                `${LOG_PREFIX} 权威状态与期望相反且重推未确认，保留恢复日志：` +
+                    `${entry.movieInfo.designation} ${entry.listInfo.list_id}`
+            );
+            return false;
+        }
+        const recheck = await fetchAuthoritativeCheckboxState(entry.videoId, entry.listInfo.list_id);
+        if (!recheck || recheck.checked !== entry.desiredChecked) {
+            console.warn(
+                `${LOG_PREFIX} 重推后仍无法确认期望状态，保留恢复日志：` +
+                    `${entry.movieInfo.designation} ${entry.listInfo.list_id}`
+            );
+            return false;
+        }
+        authoritative = recheck;
+    }
+
     const listInfo: ListInfo = {
         ...entry.listInfo,
         info: {
