@@ -31,3 +31,25 @@ export function collectCarNums(thumbs: HTMLElement[]): string[] {
         return a ? normalizeCarNum(a.getAttribute('alt') || '') : '';
     }).filter(Boolean);
 }
+
+/**
+ * 将缩略图内 `<img>` 的 `data-src` 提升到 `src`（封面懒加载修复）。
+ *
+ * MissAV 服务端渲染缩略图时 `src` 为 1x1 占位图、真实封面在 `data-src`，
+ * 由站点懒加载 JS 在初始渲染时填充；瀑布流追加的新节点不会触发该初始化，
+ * 需手动提升（Camoufox 实测根因）。
+ *
+ * @param container 含缩略图的容器（可含未追加的 DOMParser 文档节点）
+ * @returns 提升的图片数量
+ */
+export function liftDataSrcToSrc(container: ParentNode): number {
+    let lifted = 0;
+    container.querySelectorAll<HTMLImageElement>('img').forEach((img) => {
+        const dataSrc = img.getAttribute('data-src');
+        if (dataSrc) {
+            img.src = dataSrc;
+            lifted++;
+        }
+    });
+    return lifted;
+}

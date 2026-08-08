@@ -1,0 +1,71 @@
+/* MissAV 列表页瀑布流（MissavAutoPagePlugin）—— loader / 加载全部按钮样式。
+ * 回到顶部按钮样式复用 back-to-top-button.css（initCss 拼接注入）。
+ */
+
+/* 底部 loader：空闲透明占位，click 态显示「点击加载下一页」按钮 */
+.jhs-map-loader {
+    text-align: center;
+    padding: 16px;
+    color: #888;
+    user-select: none;
+}
+
+.jhs-map-loader.jhs-map-loading {
+    color: #000;
+    cursor: default;
+}
+
+.jhs-map-loader.jhs-map-error {
+    color: #f44336;
+    cursor: pointer;
+}
+
+.jhs-map-loader.jhs-map-no-more {
+    color: #4caf50;
+    cursor: default;
+    font-size: 13px;
+}
+
+.jhs-map-loader.jhs-map-click {
+    color: #1976d2;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.jhs-map-loader.jhs-map-click:hover {
+    color: #0d47a1;
+    text-decoration: underline;
+}
+
+/* 「加载全部」浮动按钮（右下角，与回到顶部按钮上下错开） */
+.jhs-map-load-all-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 80px;
+    z-index: var(--jhs-z-page);
+    padding: 10px 20px;
+    background: linear-gradient(to right, #5d87c2, #4a90d9);
+    color: #fff;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.5s ease;
+}
+
+.jhs-map-load-all-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+}
+
+.jhs-map-load-all-btn.jhs-map-load-all-disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.jhs-map-load-all-btn.jhs-map-load-all-fadeout {
+    opacity: 0;
+}

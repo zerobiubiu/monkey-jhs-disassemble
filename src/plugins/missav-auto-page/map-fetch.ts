@@ -2,12 +2,12 @@
  * MissAV 列表页瀑布流 —— 下一页抓取模块。
  *
  * fetchNextPage：GM_xmlhttpRequest 抓取下一页 HTML → DOMParser 解析 →
- * 提取缩略图 → 番号去重检查 → 追加到容器 → 更新 nextUrl 与分页状态机。
- * 与 list-waterfall/lw-fetch.ts 的 loadNextPage 模式一致，但选择器与去重
- * 策略换用 map-selectors.ts（番号去重）。
+ * 提取缩略图 → 封面 data-src 提升 → 番号去重检查 → 追加到容器 → 更新
+ * nextUrl 与分页状态机。与 list-waterfall/lw-fetch.ts 的 loadNextPage 模式
+ * 一致，但选择器与去重策略换用 map-selectors.ts（番号去重）。
  */
 import type { MissavAutoPagePlugin } from './missav-auto-page-plugin';
-import { collectCarNums, extractThumbs, findNextUrl } from './map-selectors';
+import { collectCarNums, extractThumbs, findNextUrl, liftDataSrcToSrc } from './map-selectors';
 
 /**
  * 发起 GM_xmlhttpRequest GET 请求。参考 list-waterfall/lw-fetch.ts 的 gmGet。
@@ -35,7 +35,10 @@ function gmGet(url: string): Promise<string> {
 }
 
 /**
- * 加载下一页：抓取 HTML → 解析 → 去重 → 追加缩略图 → 更新 nextUrl。
+ * 加载下一页：抓取 HTML → 解析 → 封面修复 → 去重 → 追加缩略图 → 更新 nextUrl。
+ *
+ * 封面修复：站点懒加载只对初始节点生效，追加节点需手动把 img 的 data-src
+ * 提升为 src（Camoufox 实测根因，见 map-selectors.liftDataSrcToSrc）。
  *
  * @param plugin MissavAutoPagePlugin 实例
  * @returns Promise<void>；抓取失败时切换错误态，不抛出
@@ -54,21 +57,29 @@ export async function fetchNextPage(plugin: MissavAutoPagePlugin): Promise<void>
         if (carNums.length > 0 && plugin.loadedCarNums.has(carNums[0])) {
             plugin.nextUrl = null;
             plugin.pagination.loadSuccess(false);
-            plugin.setLoader('no-more', '已经到底了');
+            plugin.setLoader('jhs-map-no-more', '已经到底了');
             return;
         }
         carNums.forEach((c) => c && plugin.loadedCarNums.add(c));
+        // 封面懒加载修复：data-src → src
+        liftDataSrcToSrc(doc);
         const fragment = document.createDocumentFragment();
         thumbs.forEach((t) => fragment.appendChild(t));
         plugin.container!.appendChild(fragment);
+        plugin.loadedPages += 1;
         const next = findNextUrl(doc);
         plugin.nextUrl = next;
         plugin.pagination.loadSuccess(!!next);
         plugin.setLoader('', '');
-        if (!plugin.nextUrl) plugin.setLoader('no-more', '已经到底了');
+        if (!plugin.nextUrl) plugin.setLoader('jhs-map-no-more', '已经到底了');
     } catch (err) {
         clog.error('[MissAV 瀑布流] 加载失败:', err);
         plugin.pagination.loadError();
-        plugin.setLoader('error', '加载失败，点击重试');
+        plugin.setLoader('jhs-map-error', '加载失败，点击重试');
+    } finally {
+        // click 模式：本页加载完若仍在底部，再次显示「点击加载下一页」按钮
+        if (!plugin.pagination.isLoading && plugin.pagination.hasMore && plugin.nextUrl) {
+            plugin.checkLoad();
+        }
     }
 }

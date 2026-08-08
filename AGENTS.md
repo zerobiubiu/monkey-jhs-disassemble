@@ -32,7 +32,7 @@ monkey-jhs-disassemble/
 │   │   └── setting-panels/ # 设置面板子组件（10 个 + hr-style 辅助）
 │   ├── constants/          # 常量（site/status/video-quality/api）
 │   ├── resources/          # 资源（icons SVG）
-│   ├── styles/             # CSS 文件（?raw import via initCss，含 list-reflow/ 子目录）
+│   ├── styles/             # CSS 文件（?raw import via initCss，含 list-reflow/ 与 missav-auto-page/ 子目录）
 │   └── types/              # 类型声明（globals.d.ts）
 ├── archetype/              # 原始脚本 + 独立油猴脚本（只读参考）
 ├── doc/                    # 文档（NN-描述.md，编号递增，不可回头改）
@@ -166,7 +166,7 @@ monkey-jhs-disassemble/
 |------|------|------|
 | VisitHistoryPlugin | visit-history-plugin.ts | 访问记录：记录所有打开过的 javdb 页面，详情页元数据链接悬浮显示「最近打开时间」（复用全局 tooltip） |
 | ListReflowPlugin | list-reflow/（7 模块） | 清单页编号清单整理：识别同前缀编号组、生成组内压实计划预览（期1，doc/202）+ 压实执行引擎（期2a 先加后删，doc/204） |
-| MissavAutoPagePlugin | missav-auto-page/（3 模块：map-selectors / map-fetch / 主类） | MissAV 列表页瀑布流：滚动触底抓取下一页 HTML 自动追加缩略图（Camoufox 实测无原生无限滚动，服务端分页 `?page=N`；视频页守卫） |
+| MissavAutoPagePlugin | missav-auto-page/（3 模块：map-selectors / map-fetch / 主类） | MissAV 列表页瀑布流：底部「点击加载下一页」按钮 + 「加载全部」+「回到顶部」（对齐 javdb 视频流交互，doc/221 改 click 模式）；追加缩略图修复站点懒加载封面（data-src→src，Camoufox 实测根因）；视频页守卫 |
 
 ### 3.4 核心模块 `src/core/`
 

@@ -22,6 +22,7 @@ import {
     findNextUrl,
     extractThumbs,
     collectCarNums,
+    liftDataSrcToSrc,
     MAP_SEL
 } from '../src/plugins/missav-auto-page/map-selectors';
 
@@ -112,12 +113,46 @@ describe('collectCarNums', () => {
 
 describe('MAP_SEL', () => {
     it('grid 常量值正确（CSS 转义冒号）', () => {
-        // 源码中 \\: 是 CSS 选择器转义，字符串值应为 \: 字面量
+        // 源码中 \: 是 CSS 选择器转义，字符串值应为 \: 字面量
         expect(MAP_SEL.grid).toBe('div.grid.grid-cols-2.md\\:grid-cols-3.xl\\:grid-cols-4.gap-5');
     });
 
     it('thumb / nextLink 常量值正确', () => {
         expect(MAP_SEL.thumb).toBe('.thumbnail.group');
         expect(MAP_SEL.nextLink).toBe("a[href*='page=']");
+    });
+});
+
+describe('liftDataSrcToSrc', () => {
+    it('有 data-src 的 img：提升到 src', () => {
+        const doc = parse(
+            '<div class="thumbnail group"><img src="data:image/png;base64,xxx" data-src="https://fourhoi.com/abc-123/cover-t.jpg"></div>'
+        );
+        const lifted = liftDataSrcToSrc(doc);
+        const img = doc.querySelector('img')!;
+        expect(lifted).toBe(1);
+        expect(img.getAttribute('src')).toBe('https://fourhoi.com/abc-123/cover-t.jpg');
+    });
+
+    it('无 data-src 的 img：不改动 src', () => {
+        const doc = parse('<div class="thumbnail group"><img src="https://fourhoi.com/abc-123/cover-t.jpg"></div>');
+        const lifted = liftDataSrcToSrc(doc);
+        const img = doc.querySelector('img')!;
+        expect(lifted).toBe(0);
+        expect(img.getAttribute('src')).toBe('https://fourhoi.com/abc-123/cover-t.jpg');
+    });
+
+    it('混合：只提升有 data-src 的，返回提升数量', () => {
+        const doc = parse(
+            '<div class="thumbnail group"><img src="a" data-src="https://fourhoi.com/x/cover-t.jpg"></div>' +
+                '<div class="thumbnail group"><img src="b"></div>' +
+                '<div class="thumbnail group"><img src="c" data-src="https://fourhoi.com/y/cover-t.jpg"></div>'
+        );
+        const lifted = liftDataSrcToSrc(doc);
+        const imgs = doc.querySelectorAll('img');
+        expect(lifted).toBe(2);
+        expect(imgs[0].getAttribute('src')).toBe('https://fourhoi.com/x/cover-t.jpg');
+        expect(imgs[1].getAttribute('src')).toBe('b');
+        expect(imgs[2].getAttribute('src')).toBe('https://fourhoi.com/y/cover-t.jpg');
     });
 });

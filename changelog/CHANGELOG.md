@@ -9,6 +9,12 @@
 
 ---
 
+## v1.42.0
+
+### 新增
+
+- **MissAV 瀑布流加载模式改造 + 封面修复**（doc/221）：①封面修复——追加缩略图封面不加载的根因是 missav 服务端渲染 `img` 的 `src` 为 1x1 占位图、真实封面在 `data-src`，由站点懒加载 JS 在初始渲染时填充，追加节点不触发 → 新增 `liftDataSrcToSrc` 在追加前手动提升（Camoufox 实测修复后 `naturalWidth 330` 正常加载）。②加载模式对齐 javdb 视频流交互：改为底部「点击加载下一页」按钮（触底显示、点击加载一页，不再自动触底加载）+「加载全部」浮动按钮（循环加载剩余页，文案显示进度，完成后淡出）+「一键回到顶部」（复用 `createBackToTopButton` 工厂）。loader/按钮样式收敛到 `src/styles/missav-auto-page/` 子目录（守 §11.1 扁平度门禁）。新增 `liftDataSrcToSrc` 3 个单测。
+
 ## v1.41.0
 
 ### 新增
