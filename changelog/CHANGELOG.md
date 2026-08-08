@@ -9,6 +9,12 @@
 
 ---
 
+## v1.43.5
+
+### 优化
+
+- **MissAV 视频页三调整**（doc/227）：①「复制番号」「转到JavDB搜索」按钮恢复 prepend/append 进原生播放页工具栏，与收藏/片单/下载/分享同一行（样式对齐保留）；②筛选器视频页守卫修复——`#sprite-plyr` 播放器延迟 ~1.5s 渲染导致 `isVideoPage()` 在 handle 执行时误判，新增 `isVideoDetailPath` URL 特征判定（末段连字符番号 + 排除搜索页），瀑布流同步；③筛选栏去掉 `border-bottom` 分割线，改用底部间距自然分离。新增 5 个 `isVideoDetailPath` 单测。
+
 ## v1.43.4
 
 ### 优化

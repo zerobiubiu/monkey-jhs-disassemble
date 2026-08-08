@@ -9,8 +9,7 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    padding: 8px 0 12px 0;
-    border-bottom: 1px solid #3b4252; /* nord1 */
+    padding: 8px 0 16px 0; /* 无分割线，用底部间距与下方内容自然分离（doc/227） */
 }
 
 /* ---------- 筛选栏标签 ---------- */

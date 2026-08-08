@@ -16,6 +16,7 @@ import { createBackToTopButton } from '../../core/util/back-to-top';
 
 import { BasePlugin } from '../base-plugin';
 import { isVideoPage } from '../car-status-sync/missav-renderer';
+import { isVideoDetailPath } from '../missav-status-filter/mstf-collect';
 import { fetchNextPage } from './map-fetch';
 import { MAP_SEL, collectCarNums, extractThumbs, findNextUrl } from './map-selectors';
 
@@ -72,8 +73,9 @@ export class MissavAutoPagePlugin extends BasePlugin {
      * @returns Promise<void>；容器缺失时静默返回，不抛出
      */
     async handle(): Promise<void> {
-        // 视频播放页不启用瀑布流（底部推荐区有同款 grid，Camoufox 实测无分页链接，跳过避免注入无意义 loader）
-        if (isVideoPage()) return;
+        // 视频播放页不启用瀑布流（底部推荐区有同款 grid，Camoufox 实测无分页链接，跳过避免注入无意义 loader）。
+        // 视频页判定用 URL 特征（#sprite-plyr 延迟渲染致 isVideoPage() 时序不可靠，doc/227）。
+        if (isVideoPage() || isVideoDetailPath(location.pathname)) return;
 
         let container = document.querySelector(MAP_SEL.grid);
         if (!container) {

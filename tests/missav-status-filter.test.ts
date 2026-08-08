@@ -21,6 +21,7 @@ import {
     STATUS_ORDER,
     collectStatusCounts,
     getItemStatus,
+    isVideoDetailPath,
     statusToLabel
 } from '../src/plugins/missav-status-filter/mstf-collect';
 import { applyFilter, shouldShow } from '../src/plugins/missav-status-filter/mstf-apply';
@@ -36,6 +37,29 @@ describe('导出常量', () => {
     it('NO_TAG_VALUE / STATUS_ORDER 与 Task 2 依赖签名一致', () => {
         expect(NO_TAG_VALUE).toBe('no-tag');
         expect(STATUS_ORDER).toEqual(['favorite', 'hasWatch', 'filter', 'hasDown']);
+    });
+});
+
+describe('isVideoDetailPath', () => {
+    it('视频详情页：/cn/mkmp-745 → true', () => {
+        expect(isVideoDetailPath('/cn/mkmp-745')).toBe(true);
+    });
+
+    it('列表页：/cn/new → false', () => {
+        expect(isVideoDetailPath('/cn/new')).toBe(false);
+    });
+
+    it('搜索页含番号：/cn/search/mkmp-745 → false（搜索页需要筛选器）', () => {
+        expect(isVideoDetailPath('/cn/search/mkmp-745')).toBe(false);
+    });
+
+    it('分类/列表路径无番号尾段 → false', () => {
+        expect(isVideoDetailPath('/cn/tag/female')).toBe(false);
+        expect(isVideoDetailPath('/')).toBe(false);
+    });
+
+    it('FC2 番号（含额外段）仍判定为视频页', () => {
+        expect(isVideoDetailPath('/cn/fc2-ppv-4955762')).toBe(true);
     });
 });
 

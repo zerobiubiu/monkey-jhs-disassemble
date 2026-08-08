@@ -229,34 +229,27 @@ function createSVGJavDB(): Node {
 }
 
 /**
- * 在原生工具栏之后插入独立自定义按钮组（复制番号 + 跳转 JavDB）。
+ * 在目标工具栏插入复制番号 + 跳转 JavDB 两个按钮（与原生按钮同一行）。
  * 对应原脚本 insertButtons 函数。
  *
- * 布局调整（doc/226）：不再把按钮 prepend/append 进原生工具栏（避免与原生
- * 「收藏/片单/下载/分享」按钮混排、样式不一致），改为在工具栏后插入独立按钮组，
- * 样式与原生按钮对齐（tailwind class + 响应式图标尺寸）。
+ * 布局（doc/226 回退 + doc/227）：恢复 prepend/append 进原生工具栏，与网站原始
+ * 组件（收藏/片单/下载/分享）同一行；样式对齐保留（无 shadow-sm/mr-2，图标
+ * 响应式尺寸，间距由工具栏 space-x 控制）。
  *
- * @param menuBar 原生工具栏 DOM 元素
+ * @param menuBar 工具栏 DOM 元素
  */
 function insertButtons(menuBar: Element): void {
-    // 幂等：已插入过则跳过（observer 与 existing 双路径避免重复）
-    if (document.querySelector('.jhs-video-actions')) return;
-
     const fanhao = extractCode(window.location.pathname);
 
-    // 独立按钮组容器（tailwind class 与原生工具栏同风格）
-    const bar = document.createElement('div');
-    bar.className = 'jhs-video-actions flex flex-wrap justify-center space-x-4 md:space-x-6 py-4';
-
-    // 复制番号按钮
+    // 复制番号按钮，插到最前
     const copyBtn = createButton('复制番号', createSVGClipboard(), () => {
         copyToClipboard(fanhao).then((success: boolean) => {
             showToast(success ? `番号 ${fanhao} 已复制` : '复制失败');
         });
     });
-    bar.appendChild(copyBtn);
+    menuBar.prepend(copyBtn);
 
-    // 跳转 JavDB 按钮
+    // 跳转 JavDB 按钮，放到最后
     const javdbBtn = createButton('转到JavDB搜索', createSVGJavDB(), () => {
         const javdbUrl = `https://javdb.com/search?q=${encodeURIComponent(fanhao)}&f=all`;
         console.log(`${LOG} 尝试打开 JavDB 链接:`, javdbUrl);
@@ -274,10 +267,8 @@ function insertButtons(menuBar: Element): void {
             });
         }
     });
-    bar.appendChild(javdbBtn);
-
-    menuBar.insertAdjacentElement('afterend', bar);
-    console.log(`${LOG} ✅ Copy 和 JavDB 按钮已插入工具栏后独立按钮组`);
+    menuBar.appendChild(javdbBtn);
+    console.log(`${LOG} ✅ Copy 和 JavDB 按钮已插入 menu_bar`);
 }
 
 /**

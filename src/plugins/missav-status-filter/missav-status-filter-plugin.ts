@@ -18,7 +18,7 @@ import { TaskSupervisor } from '../../core/task-supervisor';
 
 import { BasePlugin } from '../base-plugin';
 import { isVideoPage } from '../car-status-sync/missav-renderer';
-import { NO_TAG_VALUE, STATUS_ORDER, collectStatusCounts, statusToLabel } from './mstf-collect';
+import { NO_TAG_VALUE, STATUS_ORDER, collectStatusCounts, isVideoDetailPath, statusToLabel } from './mstf-collect';
 import { applyFilter } from './mstf-apply';
 
 import missavStatusFilterCssRaw from '../../styles/missav-status-filter/missav-status-filter.css?raw';
@@ -59,12 +59,12 @@ export class MissavStatusFilterPlugin extends BasePlugin {
 
     /**
      * 主处理：非视频播放页时尝试构建筛选栏并启动 MutationObserver。
-     * 与 MissavAutoPagePlugin 一致，视频页（detected by #sprite-plyr）不启用。
+     * 视频页判定用 URL 特征（#sprite-plyr 延迟渲染致 isVideoPage() 时序不可靠，doc/227）。
      *
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if (isVideoPage()) return;
+        if (isVideoPage() || isVideoDetailPath(location.pathname)) return;
         this.tryBuild();
         this.startObserving();
     }
