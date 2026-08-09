@@ -9,6 +9,14 @@
 
 ---
 
+## v1.46.2
+
+### 调整
+
+- **jquery 3.7.1 → 4.0.0 升级**（doc/242）：可行性验证先行（jsdom 实测 layer.js 1.0.9 全兼容 + src/ 全量扫描零移除 API 命中）后执行，npm 包 + `externalGlobals` CDN URL 同步；jQuery 4 移除 13 个静态方法（`$.trim/isArray/parseJSON/isNumeric` 等）+ `toggleClass(布尔)` + 原型 `push/sort/splice`，项目代码零命中；新增回归测试 `tests/jquery4-layer-compat.test.ts`（6 用例，锁定 layer 初始化/`$(window)` 尺寸 API/layer 方法/常用 jQuery 面）；注意 focus/blur 事件顺序改为 W3C 标准；构建/测试 183 用例/ lint/结构门禁全绿。
+
+---
+
 ## v1.46.1
 
 ### 调整

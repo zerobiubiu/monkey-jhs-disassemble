@@ -369,6 +369,7 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
   请求构造/响应解析/base64-UTF-8 往返/路径编码/缺省回退/错误传播，21 用例，node 环境）。
   另有 `tests/missav-auto-page.test.ts`（doc/220 瀑布流：findNextUrl/extractThumbs/collectCarNums/liftDataSrcToSrc，14 用例，jsdom）。
   另有 `tests/missav-status-filter.test.ts`（doc/222 状态筛选：shouldShow/statusToLabel/getItemStatus/collectStatusCounts/applyFilter，14 用例，jsdom）与 `tests/missav-status-filter-ui.test.ts`（接线：chip dataset.value 契约 + 点击 OR 过滤，1 用例，jsdom）。
+  另有 `tests/jquery4-layer-compat.test.ts`（doc/242 jquery 4.0.0 × layui-layer 兼容回归：window.eval 注入 node_modules 原版 dist 文件，锁定 layer 初始化/$(window) 尺寸 API/layer.open-msg-load-tips 与常用 jQuery 面，6 用例，jsdom）。
 - 可测试性 seam：`StorageManager` 构造函数 `constructor(forageInstance?: unknown)` 允许
   注入存储替身（生产无参调用行为不变），`static __resetForTesting()` 重置单例供用例隔离。
   参数用 `unknown` 而非 `any`，遵守「触及文件时消除新增 any」。
