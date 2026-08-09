@@ -27,7 +27,7 @@ export default defineConfig({
                 license: 'MIT',
                 description:
                     'JavDB/MissAV 双站增强工具箱：收藏管理、状态标签、屏蔽过滤、跨站同步、热播/Top250榜单、新作品检测、预告片、字幕搜索、WebDav/Git云备份、演员信息、清单管理、截图墙、磁链聚合、以图识图等功能插件',
-                homepageURL: 'https://github.com/zerobiubiu/javdb-tools',
+                homepageURL: 'https://github.com/zerobiubiu/monkey-jhs-disassemble',
                 icon: 'https://cdn.jsdelivr.net/gh/zerobiubiu/Figure-bed/b507c13a-9f4e-41b5-bbbb-129d0a21f97d.png',
                 match: ['https://javdb.com/*', 'https://missav.ws/*', 'https://missav.live/*', 'https://missav.ai/*'],
                 'run-at': 'document-idle',
