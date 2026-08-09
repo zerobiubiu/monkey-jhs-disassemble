@@ -14,6 +14,7 @@
 ### 调整
 
 - **第三方库打包 → CDN @require 外部引入**（doc/239）：反转 doc/24 的 ESM 打包方案，7 库 JS（jquery/tabulator/layer/md5/toastify/localforage/viewer）不再打包进产物，改由 vite-plugin-monkey `build.externalGlobals` 映射 CDN 全局并自动生成头部 `@require`（URL 与原始 archetype 完全一致，实测 200）；产物 2,209.63 kB → 1,167.82 kB（-47%，gzip 511.88 → 299.67 kB）；库 CSS 保留打包（实测 88.9 KB，占产物 ~4%）；Tabulator 改默认导入规避命名导入陷阱（`Tabulator.TabulatorFull` 为 undefined）+ 新增 `tabulator-shim.d.ts`；layer.css 改显式导入（layer.js 外部化后其 require 不再带入）。
+- **项目依赖升级至最新版**（doc/240）：工具链升级 vite 8.2.1 / vite-plugin-monkey 8.1.0 / eslint 10.8.1 / typescript-eslint 8.66.0 / @vitejs/plugin-react 6.0.5 / react 19.2.8 / jsdom 30.0.1 / @types/node + @types/react；typescript 7.0.2 尝试后回退 6.x（typescript-eslint 尚不支持 TS 7.0，issue #10940）；运行时 CDN 库保持锁定（与 externalGlobals URL 同步，jquery 4.0.0 / tabulator 6.5.2 / viewerjs 1.11.8 未升）；构建/测试/ lint/结构门禁全绿。
 
 ---
 
