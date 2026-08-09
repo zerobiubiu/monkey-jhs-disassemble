@@ -374,6 +374,7 @@
 238. `238-remove-missav-login-guard.md` — 删除 MissAV 搜索页登录保护性判断（✅已执行）：删除详情页和列表页预加载中后续新增的登录表单/密码框/登录关键词检测及“搜索页需要登录，跳过预加载”提示，恢复原始脚本请求后直接按 .text-secondary 解析的行为；缓存、TTL、队列、请求方式与其他错误处理不变；version 1.45.3→1.45.4
 239. `239-library-cdn-require.md` — 第三方库打包 → CDN @require 外部引入（✅已执行）：反转 doc/24 方案 B，7 库 JS（jquery/tabulator/layer/md5/toastify/localforage/viewer）改 vite-plugin-monkey build.externalGlobals 映射 CDN 全局 + 自动生成 @require（URL 与 archetype 完全一致且实测 200）；Tabulator 命名导入陷阱（Tabulator.TabulatorFull=undefined）改默认导入 + 新增 tabulator-shim.d.ts（paths 映射）；layer.css 原由 layer.js require 带入、外部化后显式 import；库 CSS 保留打包（实测 88.9KB 占产物 4%）；产物 2209.63 kB→1167.82 kB（-47%），测试 177 全绿；version 1.45.4→1.46.0
 240. `240-deps-upgrade.md` — 项目依赖升级至最新版（✅已执行）：工具链升级 vite 8.2.1 / vite-plugin-monkey 8.1.0 / eslint 10.8.1 / typescript-eslint 8.66.0 / @vitejs/plugin-react 6.0.5 / react 19.2.8 / jsdom 30.0.1 / @types-node+react；typescript 7.0.2 尝试后回退（typescript-eslint 不支持 TS 7.0）；运行时 CDN 库保持锁定（与 externalGlobals URL 同步，jquery 4.0.0 等未升）；构建/测试/ lint/结构门禁全绿；不升版本号
+241. `241-tabulator-viewerjs-upgrade.md` — tabulator-tables 6.5.2 + viewerjs 1.11.8 升级（✅已执行）：用户确认后同步升级 npm 包 + vite.config.ts externalGlobals CDN URL（两库均为 minor bugfix 升级）；tabulator 6.5.2 UMD 仍返回 TabulatorFull（默认导入 interop 不变）、CSS 路径不变继续打包；其余 5 库（jquery 3.7.1 等）保持锁定，jquery 4.0.0 待验证；产物 1,168.21 kB，测试 177 全绿；version 1.46.0→1.46.1
 
 ## 当前进度概览
 
@@ -399,7 +400,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/240（241 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/241（242 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

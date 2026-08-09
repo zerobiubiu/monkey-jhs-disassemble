@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.46.0',
+                version: '1.46.1',
                                 author: 'zerobiubiu',
                 copyright: '2024-2026 zerobiubiu (https://github.com/zerobiubiu) — 基于 JAV-JHS 3.3.6 (MIT) 二次开发',
                 license: 'MIT',
@@ -71,20 +71,21 @@ export default defineConfig({
             build: {
                 // 7 库 JS 不打包：映射模块名 → [CDN 全局变量名, @require URL]
                 //（externalGlobals 自动把 URL 写入 userscript 头部 @require）。
-                // 版本与原始 archetype/jhs.user.js 完全一致，保证零偏差。
+                // 版本与原始 archetype/jhs.user.js 一致；tabulator-tables 6.5.2 /
+                // viewerjs 1.11.8 为 doc/241 升级（其余同 archetype，jquery 3.7.1 待验证）。
                 // 注意：Tabulator 的 CDN 全局本身就是完整版（含全部模块），
                 // libs.ts 须用默认导入（命名导入会生成 Tabulator.TabulatorFull 访问）。
                 externalGlobals: {
                     jquery: ['$', 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js'],
                     'tabulator-tables': [
                         'Tabulator',
-                        'https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/js/tabulator.min.js'
+                        'https://cdn.jsdelivr.net/npm/tabulator-tables@6.5.2/dist/js/tabulator.min.js'
                     ],
                     'layui-layer': ['layer', 'https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/dist/layer.min.js'],
                     'blueimp-md5': ['md5', 'https://cdn.jsdelivr.net/npm/blueimp-md5@2.19.0/js/md5.min.js'],
                     'toastify-js': ['Toastify', 'https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js'],
                     localforage: ['localforage', 'https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js'],
-                    viewerjs: ['Viewer', 'https://cdn.jsdelivr.net/npm/viewerjs@1.11.1/dist/viewer.min.js']
+                    viewerjs: ['Viewer', 'https://cdn.jsdelivr.net/npm/viewerjs@1.11.8/dist/viewer.min.js']
                 }
             }
         })

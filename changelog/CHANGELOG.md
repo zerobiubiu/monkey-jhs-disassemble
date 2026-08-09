@@ -9,6 +9,14 @@
 
 ---
 
+## v1.46.1
+
+### 调整
+
+- **tabulator-tables 6.5.2 + viewerjs 1.11.8 升级**（doc/241）：用户确认后同步升级 npm 包与 `vite.config.ts` `externalGlobals` CDN URL（两库均为 minor bugfix 升级）；tabulator 6.5.2 UMD 仍返回完整类（默认导入 interop 不变）、CSS 路径不变继续打包；其余 5 库保持锁定（jquery 3.7.1 待验证）；构建/测试/ lint/结构门禁全绿。
+
+---
+
 ## v1.46.0
 
 ### 调整
