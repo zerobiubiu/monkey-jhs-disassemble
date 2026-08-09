@@ -36,14 +36,14 @@
 
 ## 文档
 
-- [ ] `doc/NN-<plugin-name>-integration.md` 已创建（NN 为下一个编号）
+- [ ] `docs/NN-<plugin-name>-integration.md` 已创建（NN 为下一个编号）
 - [ ] 文档头部元数据块：文档类型 + 文档状态
 - [ ] §1.3 可行性分析表（5 维度决策）
 - [ ] §2.3 模块拆分映射表（原脚本段 → 本项目模块）
 - [ ] §3.3 控制流保留要点（编号列出）
 - [ ] §4 执行验证记录（tsc + vite build 实际输出）
 - [ ] 文档状态从 🔧待执行 改为 ✅已执行
-- [ ] `doc/README.md` 更新：文档清单 + 阅读顺序 + 进度概览（plugins 计数 +1）
+- [ ] `docs/README.md` 更新：§1.1 文档索引表追加一行；按 docs/README.md §3.1 同步 changelog 与 version
 
 ## 验证
 

@@ -74,7 +74,7 @@
 | `src/types/globals.d.ts` | <加 `declare const GM_xxx: any;` 或无改动> |
 | `vite.config.ts` | <grant 数组加 `GM_xxx` 或无改动> |
 | `src/main.tsx` | import <PluginName>Plugin；`if (isJavdbSite)` 块注册；注释 N→N+1 |
-| `doc/README.md` | 文档清单 + 阅读顺序 + 进度概览更新 |
+| `docs/README.md` | §1.1 文档索引 + §1.2 映射更新 |
 
 ### 3.3 控制流保留要点
 

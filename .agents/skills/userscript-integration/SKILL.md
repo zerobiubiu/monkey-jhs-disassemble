@@ -1,6 +1,6 @@
 ---
 name: userscript-integration
-description: 将 archetype/ 下的独立油猴脚本（.user.js）转换集成到本 vite-plugin-monkey + React + TypeScript 工程中，作为 BasePlugin 子类注册到 PluginManager。当用户说"转换/集成 X 脚本"、"把 X.user.js 集成进来"、"像 doc/25 那样转换"时加载本 skill。覆盖：可行性分析、模块拆分、TS/TSX 转换、CSS 注入、GM_* grant 补全、main.tsx 注册、文档撰写、tsc + vite build 验证。
+description: 将 archetype/ 下的独立油猴脚本（.user.js）转换集成到本 vite-plugin-monkey + React + TypeScript 工程中，作为 BasePlugin 子类注册到 PluginManager。当用户说"转换/集成 X 脚本"、"把 X.user.js 集成进来"、"像 doc/25 那样转换"时加载本 skill。覆盖：可行性分析、模块拆分、TS/TSX 转换、CSS 注入、GM_* grant 补全、main.tsx 注册、文档撰写（规范见 docs/README.md）、tsc + vite build 验证。
 ---
 
 # 独立油猴脚本集成到工程（BasePlugin 模式）
@@ -11,10 +11,10 @@ description: 将 archetype/ 下的独立油猴脚本（.user.js）转换集成�
 
 触发条件（任一）：
 - 用户说"转换/集成 X 脚本"、"把 X.user.js 集成进来"
-- 用户引用 `archetype/<name>.user.js` 并要求"像 doc/25 那样处理"
+- 用户引用 `archetype/<name>.user.js` 并要求"像 doc/25（见 `docs/02-script-integration-and-cleanup.md`）那样处理"
 - 用户要求"标准化这个转换流程"
 
-**不要用于**：修改已集成插件的行为（直接编辑即可）、bug 修复（走 doc/NN-backend-mod.md 流程）。
+**不要用于**：修改已集成插件的行为（直接编辑即可）、bug 修复（走 `docs/NN-描述.md` 常规变更文档流程，见 `docs/README.md` §3.1）。
 
 ## 前置知识（必读）
 
@@ -30,11 +30,11 @@ description: 将 archetype/ 下的独立油猴脚本（.user.js）转换集成�
 | grant 配置 | `vite.config.ts` | `userscript.grant` 数组；新增 GM_* 必须补 grant + globals.d.ts |
 | 站点常量 | `src/constants/site.ts` | `isJavdbSite`/`currentHref`/`JAVDB` 等 |
 | JSX 渲染 | `src/core/jsx-to-string.ts` | `jsxToString(<Comp />)` 返回 HTML 字符串（替代 react-dom/server） |
-| 文档 | `doc/NN-描述.md` | 编号递增；头部元数据块 + 执行验证记录（见 `doc/README.md`） |
+| 文档 | `docs/NN-描述.md` | 编号递增；头部元数据块 + 执行验证记录（规范见 `docs/README.md`） |
 
 **已集成的独立脚本参考样本**：
 - 简单单文件：无（最简单的已集成插件都来自主脚本拆分，参考 `src/plugins/auto-page-plugin.ts`）
-- 复杂独立脚本拆分：`src/plugins/rating-display/`（6 模块子目录，对应 `archetype/jhsRatingDisplay.user.js`，文档 `doc/25-rating-display-integration.md`）—— **最贴近本 skill 场景的样本**
+- 复杂独立脚本拆分：`src/plugins/rating-display/`（6 模块子目录，对应 `archetype/jhsRatingDisplay.user.js`，文档见 `docs/02-script-integration-and-cleanup.md`（doc/25））—— **最贴近本 skill 场景的样本**
 
 ## 集成流程（7 步）
 
@@ -212,13 +212,13 @@ if (isJavdbSite) {
 
 同步更新：
 - 顶部注释"注册 N 插件"→ N+1
-- `doc/README.md` 当前进度概览的 plugins 计数
+- `AGENTS.md` §3.3 插件清单计数
 
 ### 第 5 步：撰写文档
 
-在 `doc/` 下新建 `NN-<plugin-name>-integration.md`，NN 为下一个编号（查 `doc/` 最大编号 +1）。
+在 `docs/` 下新建 `NN-<plugin-name>-integration.md`，NN 为下一个编号（查 `docs/` 最大编号 +1，编号与文档要求见 `docs/README.md` §3）。
 
-**文档结构**（严格遵循 AGENTS.md 文档组织规范 + doc/25 模式）：
+**文档结构**（严格遵循 `docs/README.md` §2 文档规范 + `docs/02-script-integration-and-cleanup.md`（doc/25）模式）：
 
 ```markdown
 # NN - <PluginName> 插件集成
@@ -264,10 +264,9 @@ if (isJavdbSite) {
 （运行时验证建议 + dead code 说明）
 ```
 
-同步更新 `doc/README.md`：
-- 文档清单表追加一行
-- 阅读顺序追加一条
-- 当前进度概览的 plugins 计数 +1、build 体积更新
+同步更新 `docs/README.md`：
+- §1.1 文档索引表追加一行
+- 按 §3.1 要求同步 `changelog/CHANGELOG.md` 与 `vite.config.ts` version
 
 ### 第 6 步：验证
 
@@ -346,7 +345,7 @@ bunx vite build
 
 ## 失败处理
 
-- **原脚本依赖本项目未实现的接口**：先评估是否能复用现有 `storageManager`/`gmHttp`/`utils`；不能则需先补基础设施（走单独的 doc/NN-backend-mod.md）
+- **原脚本依赖本项目未实现的接口**：先评估是否能复用现有 `storageManager`/`gmHttp`/`utils`；不能则需先补基础设施（走单独的 `docs/NN-描述.md` 变更文档）
 - **tsc 报错无法修复**：1-2 次尝试后向用户说明剩余错误，不强行删代码
 - **行为偏离原脚本**：在文档 §2.2 明确标注"偏离原版，属用户要求的行为改进"（参考 doc/33 模式）
 - **与主项目冲突**：第 1.5 步发现的冲突必须在 §1.4 列出协调策略，在 §3.5 落实编码。原则：本插件单方面适配，零侵入主项目已定稿插件。复杂冲突可能需两份文档（集成 doc/NN + 协调优化 doc/NN+1，参考 doc/36+37 模式）
