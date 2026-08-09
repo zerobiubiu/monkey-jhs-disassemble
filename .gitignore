@@ -31,3 +31,7 @@ lint-output.json
 # Static visual preview pages (not shipped)
 preview/
 omp-session-*
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
