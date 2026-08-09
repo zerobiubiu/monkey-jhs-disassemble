@@ -108,6 +108,7 @@
 - 大变更（新增/删除插件、架构调整）必须独立一份 doc。
 - 文档必须包含：背景、方案、实施（修改文件清单）、执行验证记录（tsc + vite build 输出）、后续验证建议。
 - 同时更新本 README 的文档索引（§1.1 新增一行）+ 旧编号映射（§1.2，如涉及）+ `changelog/CHANGELOG.md` + `vite.config.ts` version（按 AGENTS.md §6.1.1 规则）。
+- 新增/删除插件或核心模块时，同步更新 [`plugin-catalog.md`](plugin-catalog.md)（AGENTS.md §3.3/§3.4 的目录数据落点）。
 - **禁止**只改代码不写文档就回复用户。
 
 ### 3.2 编号与定期归并
@@ -148,6 +149,7 @@
 
 ## 4. 相关文件
 
+- 插件与核心模块清单：`plugin-catalog.md`（AGENTS.md §3.3/§3.4 的目录数据落点，增删时同步更新）
 - 原始脚本：`archetype/jhs.user.js`（只读参考）
 - 升级对照脚本：`archetype/jhs.3.3.6.027.user.js`（说明见 `11-missav-and-finale.md`）
 - 工程入口：`src/main.tsx`（完整启动序列）

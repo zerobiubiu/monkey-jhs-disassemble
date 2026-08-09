@@ -212,7 +212,7 @@ if (isJavdbSite) {
 
 同步更新：
 - 顶部注释"注册 N 插件"→ N+1
-- `AGENTS.md` §3.3 插件清单计数
+- `docs/plugin-catalog.md` §1 插件清单 + `AGENTS.md` 插件计数
 
 ### 第 5 步：撰写文档
 
