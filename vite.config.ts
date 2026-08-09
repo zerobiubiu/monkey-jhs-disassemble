@@ -21,7 +21,7 @@ export default defineConfig({
             userscript: {
                 name: 'JavDB Power Tools',
                 namespace: 'zerobiubiu.top',
-                version: '1.45.4',
+                version: '1.46.0',
                                 author: 'zerobiubiu',
                 copyright: '2024-2026 zerobiubiu (https://github.com/zerobiubiu) — 基于 JAV-JHS 3.3.6 (MIT) 二次开发',
                 license: 'MIT',
@@ -52,10 +52,11 @@ export default defineConfig({
                     'adult.contents.fc2.com',
                     '*'
                 ],
-                // @require 已全部移除：原 9 个 CDN 库中 7 库（jquery/tabulator/layer/
-                // md5/toastify/localforage/viewer）已 ESM import 打包进产物（src/core/libs.ts），
-                // qrcodejs 全项目未使用，parallel_GM_xmlhttpRequest 的 GreasyFork URL
-                // 已失效（410 Gone），原生 GM_xmlhttpRequest 已足够（rating-net 有自带限流器）。
+                // @require 由下方 build.externalGlobals 自动生成：7 库（jquery/tabulator/
+                // layer/md5/toastify/localforage/viewer）JS 不打包，改从 CDN 运行时注入
+                //（见 doc/239，反转 doc/24 的 ESM 打包方案）。qrcodejs 全项目未使用，
+                // parallel_GM_xmlhttpRequest 的 GreasyFork URL 已失效（410 Gone），均不引入。
+                // 库 CSS（layer/toastify/viewer/tabulator）仍由 src/core/libs.ts 打包进产物。
                 grant: [
                     'GM_xmlhttpRequest',
                     'GM_openInTab',
@@ -66,6 +67,25 @@ export default defineConfig({
                     'GM_info',
                     'unsafeWindow'
                 ]
+            },
+            build: {
+                // 7 库 JS 不打包：映射模块名 → [CDN 全局变量名, @require URL]
+                //（externalGlobals 自动把 URL 写入 userscript 头部 @require）。
+                // 版本与原始 archetype/jhs.user.js 完全一致，保证零偏差。
+                // 注意：Tabulator 的 CDN 全局本身就是完整版（含全部模块），
+                // libs.ts 须用默认导入（命名导入会生成 Tabulator.TabulatorFull 访问）。
+                externalGlobals: {
+                    jquery: ['$', 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js'],
+                    'tabulator-tables': [
+                        'Tabulator',
+                        'https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/js/tabulator.min.js'
+                    ],
+                    'layui-layer': ['layer', 'https://cdn.jsdelivr.net/npm/layui-layer@1.0.9/dist/layer.min.js'],
+                    'blueimp-md5': ['md5', 'https://cdn.jsdelivr.net/npm/blueimp-md5@2.19.0/js/md5.min.js'],
+                    'toastify-js': ['Toastify', 'https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js'],
+                    localforage: ['localforage', 'https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js'],
+                    viewerjs: ['Viewer', 'https://cdn.jsdelivr.net/npm/viewerjs@1.11.1/dist/viewer.min.js']
+                }
             }
         })
     ]

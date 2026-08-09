@@ -372,6 +372,7 @@
 236. `236-fix-waterfall-cloudflare-403.md` — 修复 javdb 瀑布流被 Cloudflare 403 拦截（✅已执行）：现场诊断确认 GM_xmlhttpRequest 缺浏览器指纹头被 Cloudflare 返回 403 + Managed Challenge（页面 fetch 可正常通过）；新增共享工具 util-fetch-html.ts（fetchJavdbPageHtml：同源 fetch credentials:include + 429/502/503/504 退避重试 + 验证页/登录页兜底检测）；AutoPagePlugin 瀑布流改走页面 fetch（已确认故障点）+ ListWaterfallPlugin 删裸 GM_xmlhttpRequest（同根因）+ vlt-reconcile fetchHtmlDocument 重构复用（行为不变）；version 1.45.1→1.45.2
 237. `237-revert-missav-request-headers.md` — 回退 MissAV 请求头为原始脚本方式（✅已执行）：详情页探测与列表页预加载移除 buildBrowserNavHeaders，恢复为 gmHttp.get(searchUrl, undefined, siteConfig.headers, true)；缓存、TTL、列表页预加载队列、登录检测和 followRedirect 均不变；version 1.45.2→1.45.3
 238. `238-remove-missav-login-guard.md` — 删除 MissAV 搜索页登录保护性判断（✅已执行）：删除详情页和列表页预加载中后续新增的登录表单/密码框/登录关键词检测及“搜索页需要登录，跳过预加载”提示，恢复原始脚本请求后直接按 .text-secondary 解析的行为；缓存、TTL、队列、请求方式与其他错误处理不变；version 1.45.3→1.45.4
+239. `239-library-cdn-require.md` — 第三方库打包 → CDN @require 外部引入（✅已执行）：反转 doc/24 方案 B，7 库 JS（jquery/tabulator/layer/md5/toastify/localforage/viewer）改 vite-plugin-monkey build.externalGlobals 映射 CDN 全局 + 自动生成 @require（URL 与 archetype 完全一致且实测 200）；Tabulator 命名导入陷阱（Tabulator.TabulatorFull=undefined）改默认导入 + 新增 tabulator-shim.d.ts（paths 映射）；layer.css 原由 layer.js require 带入、外部化后显式 import；库 CSS 保留打包（实测 88.9KB 占产物 4%）；产物 2209.63 kB→1167.82 kB（-47%），测试 177 全绿；version 1.45.4→1.46.0
 
 ## 当前进度概览
 
@@ -397,7 +398,7 @@
 - build：`tsc -b && vite build` 通过，产物 2,198 kB（gzip 510 kB）
 - 外部库：7 库 ESM import 打包（jquery/tabulator/toastify/localforage/viewerjs/
   blueimp-md5/layui-layer），`@require` 全部移除
-- 文档：doc/001-doc/238（239 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
+- 文档：doc/001-doc/239（240 份，含 102 重号一篇），本 README 维护清单 + 阅读顺序 + 进度概览
 
 ## 相关文件
 

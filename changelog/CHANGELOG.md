@@ -9,6 +9,14 @@
 
 ---
 
+## v1.46.0
+
+### 调整
+
+- **第三方库打包 → CDN @require 外部引入**（doc/239）：反转 doc/24 的 ESM 打包方案，7 库 JS（jquery/tabulator/layer/md5/toastify/localforage/viewer）不再打包进产物，改由 vite-plugin-monkey `build.externalGlobals` 映射 CDN 全局并自动生成头部 `@require`（URL 与原始 archetype 完全一致，实测 200）；产物 2,209.63 kB → 1,167.82 kB（-47%，gzip 511.88 → 299.67 kB）；库 CSS 保留打包（实测 88.9 KB，占产物 ~4%）；Tabulator 改默认导入规避命名导入陷阱（`Tabulator.TabulatorFull` 为 undefined）+ 新增 `tabulator-shim.d.ts`；layer.css 改显式导入（layer.js 外部化后其 require 不再带入）。
+
+---
+
 ## v1.45.4
 
 ### 调整

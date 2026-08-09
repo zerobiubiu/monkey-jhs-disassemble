@@ -56,7 +56,7 @@ monkey-jhs-disassemble/
 **职责**：启动序列 + 插件注册。
 
 **执行流程**：
-1. `import './core/libs'` — 加载第三方库（jquery/tabulator/layer/toastify/localforage/viewer/md5）并挂全局
+1. `import './core/libs'` — 加载第三方库（CDN @require 注入，挂全局：$/layer/Tabulator/Toastify/localforage/Viewer/md5）
 2. CSS 注入（javdb-site/a-normal-buttons/common-toolbar/accessibility/design-tokens/loading/viewer/logger）
 3. 全局挂载（utils/gmHttp/storageManager/loadGfriends/filetreeDb/WebDavClient/refresh/cleanCache）
 4. BroadcastChannel('channel-refresh') 跨标签页刷新
@@ -176,7 +176,7 @@ monkey-jhs-disassemble/
 | 文件 | 职责 |
 |------|------|
 | feature-flags.ts | 升级特性开关（localStorage 可覆盖） |
-| libs.ts | 第三方库 ESM import + 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5） |
+| libs.ts | 第三方库 CDN @require 外部引入（externalGlobals）+ 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5），库 CSS 仍打包 |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
 | storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；提供运行时缓存清理方法） |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
@@ -315,7 +315,7 @@ clog/show 等）。GM API 已类型化，应用全局仍为 `any`（后续逐步
 - `entry: 'src/main.tsx'`
 - `userscript`：name/namespace/version/match/include/grant/connect/run-at
 - `grant`：GM_xmlhttpRequest/GM_openInTab/GM_setValue/GM_getValue/GM_addValueChangeListener/GM_registerMenuCommand/unsafeWindow
-- `@require`：全部移除（7 库 ESM import + parallel_GM_xmlhttpRequest URL 失效）
+- `@require`：7 库 CDN 引入（build.externalGlobals 自动生成，URL 与 archetype 一致，见 doc/239）；parallel_GM_xmlhttpRequest URL 失效不引入
 - `css.lightningcss.errorRecovery: true`（layer.css IE hack 容错）
 - `build.minify`：默认 esbuild（terser 可选但已回退）
 
