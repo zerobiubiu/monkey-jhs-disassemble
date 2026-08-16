@@ -2,7 +2,7 @@
  * 第三方站点跳转插件 OtherSitePlugin —— 对应原脚本 archetype/jhs.user.js L4846-5117。
  *
  * 在影片详情页为 MissAv / SupJav 等第三方站点生成跳转按钮：按番号在目标站点搜索，
- * 解析搜索结果页提取详情页链接，命中则直链并缓存（localStorage jhs_other_site），
+ * 解析搜索结果页提取详情页链接，命中则直链并缓存（持久数据 jhs_other_site），
  * 多结果标注"多结果"标签，未命中则回退搜索页；支持 Cloudflare/重定向/404 等异常分类提示。
  * 设置区可勾选启用站点（localStorage jhs_enabled_sites），勾选变更即时显隐并重新探测。
  *

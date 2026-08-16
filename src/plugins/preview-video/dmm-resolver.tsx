@@ -9,6 +9,7 @@
 import { VIDEO_QUALITY_LIST } from '../../constants/video-quality';
 
 import { jsxToString } from '../../core/jsx-to-string';
+import { readPersistentMap, writePersistentEntry } from '../../core/storage/persistent-data-store';
 
 import { SiteResultTag } from '../../components/other-site/site-result-tag';
 
@@ -64,8 +65,7 @@ class DmmPreviewVideoResolver {
      * @returns 缓存命中返回画质 → URL 映射；未命中返回 null。
      */
     _checkCache(): QualityVideoMap | null {
-        const rawCache = localStorage.getItem(DMM_VIDEO_CACHE_KEY);
-        const cache: Record<string, QualityVideoMap> = rawCache ? JSON.parse(rawCache) : {};
+        const cache = readPersistentMap<QualityVideoMap>('dmmVideo', DMM_VIDEO_CACHE_KEY);
         if (cache[this.carNum]) {
             clog.debug('缓存中存在预览视频信息', cache[this.carNum]);
             return cache[this.carNum];
@@ -79,11 +79,10 @@ class DmmPreviewVideoResolver {
      * @param videoMap 画质 → URL 映射。
      */
     _updateCache(videoMap: QualityVideoMap): void {
-        const rawCache = localStorage.getItem(DMM_VIDEO_CACHE_KEY);
-        const cache: Record<string, QualityVideoMap> = rawCache ? JSON.parse(rawCache) : {};
+        const cache = readPersistentMap<QualityVideoMap>('dmmVideo', DMM_VIDEO_CACHE_KEY);
         cache[this.carNum] = videoMap;
         clog.debug('成功解析出预览视频并已缓存:', videoMap);
-        localStorage.setItem(DMM_VIDEO_CACHE_KEY, JSON.stringify(cache));
+        writePersistentEntry('dmmVideo', DMM_VIDEO_CACHE_KEY, this.carNum, videoMap);
     }
 
     /**
@@ -173,15 +172,20 @@ class DmmPreviewVideoResolver {
                     $fanzaBtn.attr('href', siteUrl);
                     $fanzaBtn.css('backgroundColor', '#7bc73b');
                 }
-                const rawOther = localStorage.getItem(DMM_OTHER_SITE_KEY);
-                const otherSiteCache: Record<string, { type: string; url: string }> = rawOther
-                    ? JSON.parse(rawOther)
-                    : {};
+                const otherSiteCache = readPersistentMap<{ type: string; url: string }>(
+                    'otherSiteDmm',
+                    DMM_OTHER_SITE_KEY
+                );
                 otherSiteCache[this.carNum] = {
                     type: linkType,
                     url: siteUrl
                 };
-                localStorage.setItem(DMM_OTHER_SITE_KEY, JSON.stringify(otherSiteCache));
+                writePersistentEntry(
+                    'otherSiteDmm',
+                    DMM_OTHER_SITE_KEY,
+                    this.carNum,
+                    otherSiteCache[this.carNum]
+                );
                 return matched;
             }
             clog.debug(

@@ -7,33 +7,51 @@
 import { createElement } from 'react';
 
 import { jsxToString } from '../../core/jsx-to-string';
+import {
+    clearPersistentNamespace,
+    readPersistentMap,
+    type PersistentNamespace
+} from '../../core/storage/persistent-data-store';
 
+import { RatingCache } from '../rating-display/rating-cache';
 import type { SettingPlugin } from '../setting-plugin';
 import { downloadJson } from './data-import-export';
 
 import { PreloadCacheStatsText } from '../../components/misc/preload-cache-stats-text';
 
-/**
- * 计算指定 localStorage key 的缓存统计信息。
- * @param key localStorage 键名
- * @returns size 字节数；count 条目数（JSON 对象的 key 数或数组长度）
- */
-export function getCacheStats(key: string): { size: number; count: number } {
-    const raw = localStorage.getItem(key);
-    if (!raw) return { size: 0, count: 0 };
-    const size = new Blob([raw]).size;
-    let count = 0;
-    try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            count = Object.keys(parsed).length;
-        } else if (Array.isArray(parsed)) {
-            count = parsed.length;
-        }
-    } catch {
-        // 非 JSON，仅显示大小
+const CACHE_NAMESPACE_BY_KEY: Partial<Record<string, PersistentNamespace>> = {
+    jhs_dmm_video: 'dmmVideo',
+    jhs_other_site: 'otherSite',
+    jhs_other_site_dmm: 'otherSiteDmm',
+    jhs_translate: 'translate',
+    jhs_actress_info: 'actressInfo',
+    jhs_score_info: 'scoreInfo',
+    jhs_screenShot: 'screenShot',
+    jhs_visit_history: 'visitHistory'
+};
+
+function readCacheValue(key: string): Record<string, unknown> | null {
+    if (key === 'jdb:rating_cache_v2' && Object.keys(RatingCache._data).length > 0) {
+        return RatingCache._data as Record<string, unknown>;
     }
-    return { size, count };
+    const namespace = CACHE_NAMESPACE_BY_KEY[key];
+    if (namespace) return readPersistentMap<unknown>(namespace, key);
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const value: unknown = JSON.parse(raw);
+        return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+    } catch {
+        return null;
+    }
+}
+
+/** 计算指定缓存 key 的统计信息，数据源可能是 IndexedDB 或旧 localStorage。 */
+export function getCacheStats(key: string): { size: number; count: number } {
+    const value = readCacheValue(key);
+    if (!value) return { size: 0, count: 0 };
+    const size = new Blob([JSON.stringify(value)]).size;
+    return { size, count: Array.isArray(value) ? value.length : Object.keys(value).length };
 }
 
 /**
@@ -83,19 +101,10 @@ export function refreshAllCacheStats(plugin: SettingPlugin): void {
  */
 export function refreshPreloadCacheStats(_plugin: SettingPlugin): void {
     const stats = getCacheStats('jhs_other_site');
-    const raw = localStorage.getItem('jhs_other_site');
-    let missAv = 0;
-    let supJav = 0;
-    if (raw) {
-        try {
-            const cache = JSON.parse(raw);
-            const keys = Object.keys(cache);
-            missAv = keys.filter((k: string) => k.endsWith('_missAv')).length;
-            supJav = keys.filter((k: string) => k.endsWith('_supJav')).length;
-        } catch {
-            /* 解析失败忽略 */
-        }
-    }
+    const cache = readCacheValue('jhs_other_site') ?? {};
+    const keys = Object.keys(cache);
+    const missAv = keys.filter((key: string) => key.endsWith('_missAv')).length;
+    const supJav = keys.filter((key: string) => key.endsWith('_supJav')).length;
     $('#preload-cache-stats').html(
         jsxToString(
             createElement(PreloadCacheStatsText, {
@@ -114,10 +123,13 @@ export function refreshPreloadCacheStats(_plugin: SettingPlugin): void {
 export function handleCleanCache(plugin: SettingPlugin, event: Event): void {
     const cacheKey = String($(event.currentTarget).data('key'));
     const cacheItem = plugin.cacheItems.find((item) => item.key === cacheKey)!;
-    localStorage.removeItem(cacheKey);
+    const namespace = CACHE_NAMESPACE_BY_KEY[cacheKey];
+    if (cacheKey === 'jdb:rating_cache_v2') RatingCache.clear();
+    else if (namespace) clearPersistentNamespace(namespace, cacheKey);
+    else localStorage.removeItem(cacheKey);
     // 联动清理 jhs_other_site_dmm（DMM 预览视频的伴生缓存）
     if (cacheKey === 'jhs_dmm_video') {
-        localStorage.removeItem('jhs_other_site_dmm');
+        clearPersistentNamespace('otherSiteDmm', 'jhs_other_site_dmm');
     }
     show.ok(`${cacheItem.text} 清理成功`);
     $('#cache-data-display').hide();
@@ -127,8 +139,13 @@ export function handleCleanCache(plugin: SettingPlugin, event: Event): void {
 
 /** #clean-all 点击：清理全部缓存。 */
 export function handleCleanAllCache(plugin: SettingPlugin): void {
-    plugin.cacheItems.forEach((item) => localStorage.removeItem(item.key));
-    localStorage.removeItem('jhs_other_site_dmm');
+    plugin.cacheItems.forEach((item) => {
+        const namespace = CACHE_NAMESPACE_BY_KEY[item.key];
+        if (item.key === 'jdb:rating_cache_v2') RatingCache.clear();
+        else if (namespace) clearPersistentNamespace(namespace, item.key);
+        else localStorage.removeItem(item.key);
+    });
+    clearPersistentNamespace('otherSiteDmm', 'jhs_other_site_dmm');
     show.ok('全部缓存已清理');
     $('#cache-data-display').hide();
     refreshAllCacheStats(plugin);
@@ -137,31 +154,22 @@ export function handleCleanAllCache(plugin: SettingPlugin): void {
 /** .view-btn 点击：查看缓存内容（JSON 格式化显示）。 */
 export function handleViewCache(event: Event): void {
     const cacheKey = String($(event.currentTarget).data('key'));
-    const cachedData = localStorage.getItem(cacheKey);
+    const cachedData = readCacheValue(cacheKey);
     const $display = $('#cache-data-display');
     const $pre = $display.find('pre');
     $display.show();
-    if (cachedData) {
-        try {
-            const parsed = JSON.parse(cachedData);
-            $pre.text(JSON.stringify(parsed, null, 2));
-        } catch {
-            $pre.text(cachedData);
-        }
-    } else {
-        $pre.text('无数据');
-    }
+    $pre.text(cachedData ? JSON.stringify(cachedData, null, 2) : '无数据');
 }
 
 /** .export-btn 点击：导出缓存为 JSON 文件。 */
 export function handleExportCache(plugin: SettingPlugin, event: Event): void {
     const cacheKey = String($(event.currentTarget).data('key'));
-    const cachedData = localStorage.getItem(cacheKey);
+    const cachedData = readCacheValue(cacheKey);
     if (!cachedData) {
         show.error('缓存为空，无可导出数据');
         return;
     }
     const cacheItem = plugin.cacheItems.find((item) => item.key === cacheKey)!;
-    downloadJson(cachedData, `${cacheKey}-${new Date().toISOString().split('T')[0]}.json`);
+    downloadJson(JSON.stringify(cachedData), `${cacheKey}-${new Date().toISOString().split('T')[0]}.json`);
     show.ok(`${cacheItem.text} 已导出`);
 }

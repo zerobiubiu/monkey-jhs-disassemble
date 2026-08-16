@@ -5,6 +5,8 @@
  * 评分缓存读取等基础设施，供 sync-engine 复用。
  */
 
+import { RatingCache } from '../../rating-display/rating-cache';
+
 /** 抓取 want/watched 列表的最大页数保护。 */
 export const SYNC_PAGE_LIMIT = 200;
 
@@ -66,20 +68,14 @@ export async function postWatched(videoId: string, score: number = 0): Promise<v
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
-/** 读取 localStorage 评分缓存（jdb:rating_cache_v2），返回 carNum→score 映射。 */
-export function readRatingCacheMap(): Map<string, number> {
+/** 读取 IndexedDB 评分缓存，返回 carNum→score 映射。 */
+export async function readRatingCacheMap(): Promise<Map<string, number>> {
+    await RatingCache.load();
     const map = new Map<string, number>();
-    try {
-        const raw = localStorage.getItem('jdb:rating_cache_v2');
-        if (!raw) return map;
-        const obj = JSON.parse(raw) as Record<string, { rating?: number }>;
-        for (const [code, entry] of Object.entries(obj)) {
-            if (entry && typeof entry.rating === 'number' && entry.rating > 0) {
-                map.set(code, entry.rating);
-            }
+    for (const [code, entry] of Object.entries(RatingCache._data)) {
+        if (entry && typeof entry.rating === 'number' && entry.rating > 0) {
+            map.set(code, entry.rating);
         }
-    } catch {
-        // 缓存损坏时静默忽略
     }
     return map;
 }

@@ -7,6 +7,7 @@ import { YES } from '../constants/status';
 import { featureFlags } from '../core/feature-flags';
 import { jsxToString } from '../core/jsx-to-string';
 import type { PageType } from '../core/page-context';
+import { readPersistentMap, writePersistentEntry } from '../core/storage/persistent-data-store';
 import { translateText } from '../core/util/util-translate';
 
 import { BasePlugin } from './base-plugin';
@@ -71,9 +72,7 @@ export class TranslatePlugin extends BasePlugin {
                 carNum = '';
             }
         }
-        const cache: Record<string, string> = localStorage.getItem('jhs_translate')
-            ? JSON.parse(localStorage.getItem('jhs_translate') as string)
-            : {};
+        const cache: Record<string, string> = readPersistentMap<string>('translate', 'jhs_translate');
         if (carNum && cache[carNum]) {
             $loadingElement.html(
                 showCarNum ? carNum + '&nbsp;&nbsp;&nbsp;' + cache[carNum] : cache[carNum]
@@ -89,7 +88,7 @@ export class TranslatePlugin extends BasePlugin {
             );
             if (carNum) {
                 cache[carNum] = translatedText;
-                localStorage.setItem('jhs_translate', JSON.stringify(cache));
+                writePersistentEntry('translate', 'jhs_translate', carNum, translatedText);
             }
         } catch (error: unknown) {
             clog.error('翻译失败:', error);

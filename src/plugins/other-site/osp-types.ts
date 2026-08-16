@@ -1,4 +1,4 @@
-/** 第三方站点搜索结果缓存条目（localStorage jhs_other_site 的值结构）。 */
+/** 第三方站点搜索结果缓存条目（持久数据 jhs_other_site 的值结构）。 */
 export interface SiteResult {
     type: 'single' | 'multiple';
     url: string;

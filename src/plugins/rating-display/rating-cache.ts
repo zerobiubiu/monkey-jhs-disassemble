@@ -73,85 +73,81 @@ export const RatingCache = {
     _data: {} as RatingData,
 
     /**
-     * 加载缓存：localStorage 优先 → IndexedDB 恢复兜底。对应原 L191-238。
-     * 两条路径均失败时置为空对象，不抛出。
+     * 加载缓存：合并旧 localStorage 与已有 IndexedDB 寄生副本。
+     * 校验写入 IndexedDB 成功后删除旧 localStorage 副本。
      */
     async load(): Promise<void> {
+        let legacyData: RatingData | null = null;
         try {
             const raw = localStorage.getItem(RATING_CONFIG.RATING_CACHE_KEY);
             if (raw) {
-                const parsed = JSON.parse(raw);
-                if (typeof parsed === 'object' && parsed !== null) {
-                    this._data = parsed as RatingData;
-                    RatingUtils.log(
-                        'CACHE',
-                        `localStorage: ${Object.keys(parsed).length} 条`
-                    );
-                    return;
+                const parsed: unknown = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    legacyData = parsed as RatingData;
                 }
             }
         } catch {
-            /* ignore */
+            /* 损坏的旧缓存交由 IDB 副本恢复 */
         }
 
-        // localStorage 为空 → 从 IndexedDB 恢复
+        let idbData: RatingData | null = null;
         try {
             const db = await openIdb();
-            const idbData = await new Promise<RatingData | null>((resolve) => {
+            idbData = await new Promise<RatingData | null>((resolve) => {
                 try {
                     const tx = db.transaction(RATING_CONFIG.IDB_STORE, 'readonly');
-                    const store = tx.objectStore(RATING_CONFIG.IDB_STORE);
-                    const req = store.get(RATING_CONFIG.IDB_RATING_KEY);
+                    const req = tx.objectStore(RATING_CONFIG.IDB_STORE).get(RATING_CONFIG.IDB_RATING_KEY);
                     req.onsuccess = () => resolve((req.result as RatingData) ?? null);
                     req.onerror = () => resolve(null);
                 } catch {
                     resolve(null);
                 }
             });
-            if (idbData && typeof idbData === 'object') {
-                this._data = idbData;
-                // 恢复到 localStorage
-                this.saveToLS();
-                RatingUtils.log(
-                    'CACHE',
-                    `IndexedDB 恢复: ${Object.keys(idbData).length} 条`
-                );
-                return;
+        } catch (error) {
+            RatingUtils.log('CACHE_IDB_LOAD_ERROR', error);
+        }
+
+        if (legacyData || idbData) {
+            const merged: RatingData = { ...(idbData ?? {}) };
+            for (const [code, legacyEntry] of Object.entries(legacyData ?? {})) {
+                const idbEntry = merged[code];
+                if (!idbEntry || legacyEntry.updatedAt >= idbEntry.updatedAt) {
+                    merged[code] = legacyEntry;
+                }
             }
-        } catch (e) {
-            RatingUtils.log('CACHE_IDB_LOAD_ERROR', e);
+            this._data = merged;
+            if (idbData || legacyData) {
+                const synced = await this._syncToIdb();
+                if (synced) localStorage.removeItem(RATING_CONFIG.RATING_CACHE_KEY);
+            }
+            RatingUtils.log('CACHE', `IndexedDB: ${Object.keys(merged).length} 条`);
+            return;
         }
 
         this._data = {};
     },
 
-    /** 写入 localStorage。对应原 L241-250。失败仅记录日志，不抛出。 */
-    saveToLS(): void {
-        try {
-            localStorage.setItem(
-                RATING_CONFIG.RATING_CACHE_KEY,
-                JSON.stringify(this._data)
-            );
-        } catch (e) {
-            RatingUtils.log('CACHE_SAVE_ERROR', e);
-        }
-    },
-
-    /** 写入 localStorage 并异步同步到 IndexedDB。对应原 L253-256。 */
+    /** 写入 IndexedDB；失败时保留旧 localStorage 兼容副本。 */
     save(): void {
-        this.saveToLS();
         void this._syncToIdb();
     },
 
-    /** 异步同步到 jhs IndexedDB（不阻塞主流程）。对应原 L259-268。 */
-    async _syncToIdb(): Promise<void> {
+    /** 异步同步到 jhs IndexedDB。返回值表示是否提交成功。 */
+    async _syncToIdb(): Promise<boolean> {
         try {
             const db = await openIdb();
-            const tx = db.transaction(RATING_CONFIG.IDB_STORE, 'readwrite');
-            const store = tx.objectStore(RATING_CONFIG.IDB_STORE);
-            store.put(this._data, RATING_CONFIG.IDB_RATING_KEY);
-        } catch (e) {
-            RatingUtils.log('IDB_SYNC_ERROR', e);
+            await new Promise<void>((resolve, reject) => {
+                const tx = db.transaction(RATING_CONFIG.IDB_STORE, 'readwrite');
+                tx.objectStore(RATING_CONFIG.IDB_STORE).put(this._data, RATING_CONFIG.IDB_RATING_KEY);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            });
+            localStorage.removeItem(RATING_CONFIG.RATING_CACHE_KEY);
+            return true;
+        } catch (error) {
+            RatingUtils.log('IDB_SYNC_ERROR', error);
+            return false;
         }
     },
 

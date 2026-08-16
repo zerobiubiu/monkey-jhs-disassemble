@@ -33,6 +33,8 @@ import { featureFlags } from './core/feature-flags';
 import { registerDiagnosticsMenu } from './core/plugin-diagnostics';
 import { initPageContext } from './core/page-context';
 import { storageRevision } from './core/storage-revision';
+import { persistentDataStore } from './core/storage/persistent-data-store';
+import { migratePersistentData } from './core/storage/persistent-data-migration';
 
 // 组件
 import { TemporaryImageContainer } from './components/image-preview/temporary-image-container';
@@ -359,6 +361,31 @@ const pluginManager: PluginManager = (function () {
     // 版本化数据迁移（doc/135）：首次升级执行全部迁移，后续启动仅读取版本号（~1ms）
     if (isJavdbSite) {
         await storageManager.runMigrations();
+        try {
+            await persistentDataStore.initialize();
+            await migratePersistentData(persistentDataStore);
+        } catch (error: unknown) {
+            let migrationPhase: string | undefined;
+            try {
+                migrationPhase = (
+                    await persistentDataStore.getMeta<{ key: string; phase?: string }>(
+                        'persistent-data-v1'
+                    )
+                )?.phase;
+            } catch {
+                migrationPhase = undefined;
+            }
+            if (
+                migrationPhase === 'verified' ||
+                migrationPhase === 'cleanup-pending' ||
+                migrationPhase === 'complete'
+            ) {
+                persistentDataStore.activate();
+            } else {
+                persistentDataStore.deactivate();
+            }
+            window.clog.error('大型持久数据迁移失败，将保留可用的持久数据路径', error);
+        }
     }
     // 存储修订号追踪（doc/144 Storage V2：跨标签页缓存失效）
     storageRevision.init();

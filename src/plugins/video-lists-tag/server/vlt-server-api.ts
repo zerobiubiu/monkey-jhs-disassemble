@@ -4,8 +4,13 @@
  * 提取自 vlt-server.ts：
  * - postJavdbListMutation：POST /users/save_video_to_list
  * - fetchAuthoritativeCheckboxState：GET /users/simple_lists 权威状态查询
- * - 恢复日志（journal）读写：createPendingJournal / removePendingJournal / readPendingJournals
+ * - 恢复日志（journal）读写：createPendingJournal / removePendingJournal / readPendingJournals；独立持久数据 IndexedDB
  */
+import {
+    readPersistentPrefix,
+    removePersistentValue,
+    writePersistentValueAndWait
+} from '../../../core/storage/persistent-data-store';
 import { fetchSimpleListsPage } from '../../../core/util/util-simple-lists';
 
 import {
@@ -37,14 +42,19 @@ export type ServerMutationResult =
     | { kind: 'rejected'; message: string }
     | { kind: 'unknown'; message: string };
 
-export function createPendingJournal(entry: PendingServerSync): string | null {
+export async function createPendingJournal(entry: PendingServerSync): Promise<string | null> {
     try {
         const randomPart =
             typeof crypto.randomUUID === 'function'
                 ? crypto.randomUUID()
                 : `${Math.random().toString(36).slice(2)}-${Date.now()}`;
         const key = `${PENDING_SYNC_PREFIX}${entry.createdAt}:${randomPart}`;
-        localStorage.setItem(key, JSON.stringify(entry));
+        await writePersistentValueAndWait(
+            'vltPending',
+            key.slice(PENDING_SYNC_PREFIX.length),
+            key,
+            entry
+        );
         return key;
     } catch (error) {
         clog.error(`${LOG_PREFIX} 无法写入清单同步恢复日志`, error);
@@ -54,43 +64,33 @@ export function createPendingJournal(entry: PendingServerSync): string | null {
 
 export function removePendingJournal(key: string | null): void {
     if (!key) return;
-    try {
-        localStorage.removeItem(key);
-    } catch { /* ignore */ }
+    const entryKey = key.startsWith(PENDING_SYNC_PREFIX)
+        ? key.slice(PENDING_SYNC_PREFIX.length)
+        : key;
+    removePersistentValue('vltPending', entryKey, key);
 }
 
 export function readPendingJournals(): { key: string; entry: PendingServerSync }[] {
-    const keys: string[] = [];
-    try {
-        for (let index = 0; index < localStorage.length; index++) {
-            const key = localStorage.key(index);
-            if (key?.startsWith(PENDING_SYNC_PREFIX)) keys.push(key);
-        }
-    } catch {
-        return [];
-    }
-
     const entries: { key: string; entry: PendingServerSync }[] = [];
-    for (const key of keys) {
-        try {
-            const value = localStorage.getItem(key);
-            if (!value) continue;
-            const entry = JSON.parse(value) as Partial<PendingServerSync>;
-            if (
-                entry.version !== 1 ||
-                !entry.videoId ||
-                !entry.movieInfo?.designation ||
-                !entry.listInfo?.list_id ||
-                typeof entry.desiredChecked !== 'boolean' ||
-                typeof entry.createdAt !== 'number'
-            ) {
-                removePendingJournal(key);
-                continue;
-            }
-            entries.push({ key, entry: entry as PendingServerSync });
-        } catch {
-            removePendingJournal(key);
+    const values = readPersistentPrefix<Partial<PendingServerSync>>(
+        'vltPending',
+        PENDING_SYNC_PREFIX
+    );
+
+    for (const [entryKey, entry] of Object.entries(values)) {
+        const key = PENDING_SYNC_PREFIX + entryKey;
+        if (
+            entry.version !== 1 ||
+            !entry.videoId ||
+            !entry.movieInfo?.designation ||
+            !entry.listInfo?.list_id ||
+            typeof entry.desiredChecked !== 'boolean' ||
+            typeof entry.createdAt !== 'number'
+        ) {
+            removePersistentValue('vltPending', entryKey, key);
+            continue;
         }
+        entries.push({ key, entry: entry as PendingServerSync });
     }
     return entries.sort((left, right) => left.entry.createdAt - right.entry.createdAt);
 }

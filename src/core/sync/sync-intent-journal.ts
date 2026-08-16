@@ -8,6 +8,12 @@
  * 值格式：JSON `{ type: 'delta'|'full', revision: number, ts: number }`
  */
 
+import {
+    readPersistentPrefix,
+    removePersistentValue,
+    writePersistentValue
+} from '../storage/persistent-data-store';
+
 /** 意图日志 localStorage 键前缀。 */
 const INTENT_PREFIX = 'jhs:car-sync-intent:';
 
@@ -27,14 +33,12 @@ export interface PendingIntent {
  * @param kind 同步类型
  */
 export function writeIntent(revision: number, kind: 'delta' | 'full'): void {
-    try {
-        localStorage.setItem(
-            INTENT_PREFIX + revision,
-            JSON.stringify({ type: kind, revision, ts: Date.now() })
-        );
-    } catch {
-        /* localStorage 满或不可用时静默降级 */
-    }
+    writePersistentValue(
+        'carSyncIntent',
+        String(revision),
+        INTENT_PREFIX + revision,
+        { type: kind, revision, ts: Date.now() }
+    );
 }
 
 /**
@@ -42,11 +46,7 @@ export function writeIntent(revision: number, kind: 'delta' | 'full'): void {
  * @param revision 同步修订号
  */
 export function clearIntent(revision: number): void {
-    try {
-        localStorage.removeItem(INTENT_PREFIX + revision);
-    } catch {
-        /* ignore */
-    }
+    removePersistentValue('carSyncIntent', String(revision), INTENT_PREFIX + revision);
 }
 
 /**
@@ -55,22 +55,9 @@ export function clearIntent(revision: number): void {
  */
 export function readPendingIntents(): PendingIntent[] {
     const intents: PendingIntent[] = [];
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key?.startsWith(INTENT_PREFIX)) {
-                try {
-                    const value = JSON.parse(localStorage.getItem(key) || '');
-                    if (value && typeof value.revision === 'number') {
-                        intents.push(value as PendingIntent);
-                    }
-                } catch {
-                    /* 单条解析失败跳过 */
-                }
-            }
-        }
-    } catch {
-        /* localStorage 不可用 */
+    const values = readPersistentPrefix<PendingIntent>('carSyncIntent', INTENT_PREFIX);
+    for (const value of Object.values(values)) {
+        if (value && typeof value.revision === 'number') intents.push(value);
     }
     return intents.sort((a, b) => a.ts - b.ts);
 }
@@ -81,23 +68,10 @@ export function readPendingIntents(): PendingIntent[] {
  */
 export function cleanStaleIntents(maxAgeMs = 86400000): void {
     const cutoff = Date.now() - maxAgeMs;
-    try {
-        const staleKeys: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key?.startsWith(INTENT_PREFIX)) {
-                try {
-                    const value = JSON.parse(localStorage.getItem(key) || '');
-                    if (value && typeof value.ts === 'number' && value.ts < cutoff) {
-                        staleKeys.push(key);
-                    }
-                } catch {
-                    staleKeys.push(key);
-                }
-            }
+    const values = readPersistentPrefix<PendingIntent>('carSyncIntent', INTENT_PREFIX);
+    for (const [revision, value] of Object.entries(values)) {
+        if (!value || typeof value.ts !== 'number' || value.ts < cutoff) {
+            removePersistentValue('carSyncIntent', revision, INTENT_PREFIX + revision);
         }
-        staleKeys.forEach((k) => localStorage.removeItem(k));
-    } catch {
-        /* ignore */
     }
 }

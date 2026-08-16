@@ -100,7 +100,7 @@ async function fetchOnePage(
 /** 构建对比队列（compare 阶段）。 */
 async function buildQueue(): Promise<void> {
     const carList = await storageManager.getCarList();
-    const ratingCache = readRatingCacheMap();
+    const ratingCache = await readRatingCacheMap();
 
     const javdbWantMap = new Map(session.javdbWant);
     const javdbWatchedMap = new Map(session.javdbWatched);

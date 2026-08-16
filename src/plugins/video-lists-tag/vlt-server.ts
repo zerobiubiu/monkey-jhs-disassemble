@@ -67,7 +67,7 @@ async function performServerCheckboxMutation(
             createdAt: Date.now()
         };
         if (!pending.videoId) throw new Error('无法识别 JavDB 影片 ID');
-        const journalKey = createPendingJournal(pending);
+        const journalKey = await createPendingJournal(pending);
         if (!journalKey) throw new Error('无法建立清单同步恢复日志，本次操作已取消');
         const serverResult = await postJavdbListMutation(pending.videoId, listId, checked);
 

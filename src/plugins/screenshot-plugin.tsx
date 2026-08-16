@@ -3,6 +3,7 @@
  */
 import { featureFlags } from '../core/feature-flags';
 import { jsxToString } from '../core/jsx-to-string';
+import { readPersistentMap, writePersistentEntry } from '../core/storage/persistent-data-store';
 import type { PageType } from '../core/page-context';
 
 import { BasePlugin } from './base-plugin';
@@ -45,11 +46,7 @@ export class ScreenShotPlugin extends BasePlugin {
     }
 
     async getScreenshot(carNum: string): Promise<string | null> {
-        let cacheData: Record<string, string> = {};
-        try {
-            const cached = localStorage.getItem('jhs_screenShot');
-            if (cached) cacheData = JSON.parse(cached);
-        } catch { /* 缓存损坏，回退空对象 */ }
+        const cacheData = readPersistentMap<string>('screenShot', 'jhs_screenShot');
         if (cacheData[carNum]) {
             clog.debug('缓存中存在缩略图:', carNum, cacheData[carNum]);
             return cacheData[carNum];
@@ -71,7 +68,7 @@ export class ScreenShotPlugin extends BasePlugin {
         }
         cacheData[carNum] = imgUrl;
         clog.log('缩略图获取成功:', imgUrl);
-        localStorage.setItem('jhs_screenShot', JSON.stringify(cacheData));
+        writePersistentEntry('screenShot', 'jhs_screenShot', carNum, imgUrl);
         return imgUrl;
     }
 

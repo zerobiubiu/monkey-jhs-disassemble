@@ -7,6 +7,7 @@
  */
 import { AsyncTaskQueue } from '../../core/async-task-queue';
 import { jsxToString } from '../../core/jsx-to-string';
+import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { evictStaleCache, isCacheEntryValid } from './osp-helpers';
@@ -35,11 +36,8 @@ export async function probeSite(
     }
     if (siteConfig.noHandle && siteConfig.noHandle === true) {
         const dmmStorageKey = 'jhs_other_site_dmm';
-        let dmmCache: Record<string, unknown> = {};
-        try {
-            const raw = localStorage.getItem(dmmStorageKey);
-            if (raw) dmmCache = JSON.parse(raw);
-        } catch { /* 缓存损坏，回退空对象 */ }
+        const dmmCache: Record<string, unknown> =
+            readPersistentMap<unknown>('otherSiteDmm', dmmStorageKey);
         const dmmCachedResult = dmmCache[carNum] as { type?: string; url?: string };
         if (dmmCachedResult) {
             if (dmmCachedResult.type === 'single') {
@@ -60,11 +58,7 @@ export async function probeSite(
                 return;
             }
             const storageKey = 'jhs_other_site';
-            let cache: Record<string, unknown> = {};
-            try {
-                const raw = localStorage.getItem(storageKey);
-                if (raw) cache = JSON.parse(raw);
-            } catch { /* 缓存损坏，回退空对象 */ }
+            const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
             const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
             const cachedResult = cache[cacheKey] as { type?: string; url?: string };
             if (isCacheEntryValid(cachedResult, plugin.preloadCacheTTLDays)) {
@@ -134,14 +128,10 @@ export async function probeSite(
             }
             if (resultData) {
                 new AsyncTaskQueue().addTask(() => {
-                    let cache: Record<string, unknown> = {};
-                    try {
-                        const raw = localStorage.getItem(storageKey);
-                        if (raw) cache = JSON.parse(raw);
-                    } catch { /* 缓存损坏，回退空对象 */ }
+                    const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
                     cache[cacheKey] = { ...resultData, ts: Date.now() };
                     evictStaleCache(cache);
-                    localStorage.setItem(storageKey, JSON.stringify(cache));
+                    replacePersistentMap('otherSite', storageKey, cache);
                 });
             }
             if (tagHtml) {

@@ -8,10 +8,12 @@
 import { encryptBackupV2, decryptBackupV2, isBackupV2 } from '../../core/backup-crypto';
 import {
     collectLocalStorageBackup,
+    collectPersistentDataBackup,
     collectGmStorageBackup,
     stripBackupExtras,
     applyBackupExtras
 } from '../../core/backup-extra-storage';
+import { flushPersistentData } from '../../core/storage/persistent-data-store';
 import { getCredentialId, DEFAULT_AUTO_BACKUP_CONFIG } from '../../core/auto-backup';
 
 import { GM_KEY_BACKUP_PASSWORD } from './setting-keys';
@@ -56,12 +58,15 @@ export async function buildBackupPayload(
     settings: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
     const exportData = await storageManager.exportData();
+    await flushPersistentData();
     exportData.__meta = {
         credentialId: getCredentialId(),
         autoBackupConfig: settings.autoBackupConfig || DEFAULT_AUTO_BACKUP_CONFIG,
         backupTime: utils.getNowStr('_', '_')
     };
     exportData.__localStorage = collectLocalStorageBackup();
+    const persistentData = collectPersistentDataBackup();
+    if (persistentData) exportData.__persistentData = persistentData;
     exportData.__gmStorage = collectGmStorageBackup();
     return exportData;
 }
@@ -105,12 +110,20 @@ export function importData(_plugin: SettingPlugin): void {
                             btn: ['确定', '取消']
                         },
                         async (layerIndex: number) => {
-                            const extras = stripBackupExtras(parsedData);
-                            await storageManager.importData(parsedData);
-                            applyBackupExtras(extras);
-                            show.ok('数据导入成功');
-                            layer.close(layerIndex);
-                            location.reload();
+                            try {
+                                const extras = stripBackupExtras(parsedData);
+                                await storageManager.importData(parsedData);
+                                await applyBackupExtras(extras);
+                                show.ok('数据导入成功');
+                                layer.close(layerIndex);
+                                location.reload();
+                            } catch (error: unknown) {
+                                console.error(error);
+                                show.error(
+                                    '导入失败：' +
+                                        (error instanceof Error ? error.message : String(error))
+                                );
+                            }
                         }
                     );
                 } catch (err: unknown) {

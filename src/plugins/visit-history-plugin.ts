@@ -4,18 +4,19 @@
  * 「最近打开时间」，且悬浮期间**实时跳动**（秒级刷新）。
  *
  * - 记录：每次页面加载 + pageshow(bfcache 恢复) 记录当前页 path → 时间戳到
- *   localStorage `jhs_visit_history`。
+ *   持久数据 `jhs_visit_history`。
  * - 显示：详情页元数据链接绑 mouseenter/mouseleave；**每次 hover 重新读
  *   localStorage** 取最新 ts；有记录按时间分级配色（近=安全→远=危险）；
  *   无记录显示白底「无访问记录」。
  * - 相对时间：<1 分秒前 / <1 时分钟前 / <1 天小时前 / <1 周天前 / 更久日期。
  *
- * 存储：localStorage（同步读写）。备份：经 SettingPlugin.buildBackupPayload 的
- * `__localStorage.jhs_visit_history` 随 WebDav/本地 JSON 导出；导入时写回 localStorage。
+ * 存储：独立持久数据 IndexedDB（内存镜像同步读，后端异步写）。备份：经 SettingPlugin.buildBackupPayload 的
+ * `__persistentData.visitHistory` 随 WebDav/本地 JSON 导出；旧版 `__localStorage.jhs_visit_history` 仍兼容导入。
  */
 import { isJavdbSite } from '../constants/site';
 
 import { TaskSupervisor } from '../core/task-supervisor';
+import { readPersistentMap, replacePersistentMap } from '../core/storage/persistent-data-store';
 
 import { BasePlugin } from './base-plugin';
 
@@ -88,20 +89,11 @@ export class VisitHistoryPlugin extends BasePlugin {
         const history = this.readHistory();
         history[path] = Date.now();
         this.evictIfNeeded(history);
-        try {
-            localStorage.setItem(VISIT_HISTORY_STORAGE_KEY, JSON.stringify(history));
-        } catch {
-            localStorage.removeItem(VISIT_HISTORY_STORAGE_KEY);
-        }
+        replacePersistentMap('visitHistory', VISIT_HISTORY_STORAGE_KEY, history);
     }
 
     private readHistory(): Record<string, number> {
-        try {
-            const raw = localStorage.getItem(VISIT_HISTORY_STORAGE_KEY);
-            return raw ? JSON.parse(raw) : {};
-        } catch {
-            return {};
-        }
+        return readPersistentMap<number>('visitHistory', VISIT_HISTORY_STORAGE_KEY);
     }
 
     private evictIfNeeded(history: Record<string, number>): void {

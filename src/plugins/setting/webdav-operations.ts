@@ -306,7 +306,7 @@ export function openFileListDialog(
                                                         const parsedData = JSON.parse(fileContent);
                                                         const extras = stripBackupExtras(parsedData);
                                                         await storageManager.importData(parsedData);
-                                                        applyBackupExtras(extras);
+                                                        await applyBackupExtras(extras);
                                                         show.ok('导入成功!');
                                                         window.location.reload();
                                                     });

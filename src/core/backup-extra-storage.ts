@@ -6,6 +6,13 @@
  * 瞬时同步通道、API 签名、本机凭证 ID 等不备份。
  */
 
+import {
+    getPersistentNamespaceForLegacyKey,
+    PERSISTENT_DATA_NAMESPACES,
+    persistentDataStore,
+    type PersistentNamespace
+} from './storage/persistent-data-store';
+
 /** 随备份的 localStorage 键（长期缓存 + 偏好 + 访问记录）。 */
 export const BACKUP_LOCAL_STORAGE_KEYS: readonly string[] = [
     // —— 长期业务缓存（缓存管理面板 + 截图/预加载伴生）——
@@ -67,6 +74,12 @@ export function collectLocalStorageBackup(): Record<string, string> {
     return out;
 }
 
+/** 采集已迁移的 IndexedDB namespace，旧版未完成迁移时返回 undefined。 */
+export function collectPersistentDataBackup(): Record<string, Record<string, unknown>> | undefined {
+    if (!persistentDataStore.isInitialized || !persistentDataStore.isActive) return undefined;
+    return persistentDataStore.exportNamespaces(PERSISTENT_DATA_NAMESPACES);
+}
+
 /** 采集 GM 备份对象（仅含有定义的键）。 */
 export function collectGmStorageBackup(): Record<string, unknown> {
     const out: Record<string, unknown> = {};
@@ -91,6 +104,7 @@ const ALLOWED_GM_KEYS = new Set<string>(BACKUP_GM_KEYS);
 export interface BackupExtras {
     ls?: Record<string, unknown>;
     gm?: Record<string, unknown>;
+    persistent?: Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -100,31 +114,81 @@ export interface BackupExtras {
 export function stripBackupExtras(data: Record<string, unknown>): BackupExtras {
     const ls = data.__localStorage;
     const gm = data.__gmStorage;
+    const persistent = data.__persistentData;
     delete data.__localStorage;
     delete data.__gmStorage;
+    delete data.__persistentData;
     return {
         ls: ls && typeof ls === 'object' ? (ls as Record<string, unknown>) : undefined,
-        gm: gm && typeof gm === 'object' ? (gm as Record<string, unknown>) : undefined
+        gm: gm && typeof gm === 'object' ? (gm as Record<string, unknown>) : undefined,
+        persistent:
+            persistent && typeof persistent === 'object'
+                ? (persistent as Record<string, Record<string, unknown>>)
+                : undefined
     };
 }
 
 /**
- * 将剥离的备份附加数据写回 localStorage + GM（仅允许白名单键）。
+ * 将剥离的备份附加数据写回 IndexedDB/localStorage + GM（仅允许白名单键）。
  * 应在 importData 成功后调用，确保主数据导入失败时不写入附加存储。
  */
-export function applyBackupExtras(extras: BackupExtras): void {
+export async function applyBackupExtras(extras: BackupExtras): Promise<void> {
+    const appliedNamespaces = new Set<PersistentNamespace>();
+
+    if (extras.persistent) {
+        if (!persistentDataStore.isInitialized || !persistentDataStore.isActive) {
+            throw new Error('持久数据存储不可用，无法导入 IndexedDB 备份');
+        }
+        for (const [namespace, values] of Object.entries(extras.persistent)) {
+            if (!PERSISTENT_DATA_NAMESPACES.includes(namespace as PersistentNamespace)) {
+                console.warn(`[JHS 备份] 跳过未授权的持久数据 namespace: ${namespace}`);
+                continue;
+            }
+            await persistentDataStore.replaceNamespace(namespace, values);
+            appliedNamespaces.add(namespace as PersistentNamespace);
+        }
+    }
+
     if (extras.ls) {
         for (const key of Object.keys(extras.ls)) {
+            const namespace = getPersistentNamespaceForLegacyKey(key);
+            const raw = extras.ls[key];
+            if (namespace && !appliedNamespaces.has(namespace)) {
+                if (raw == null || raw === '') continue;
+                try {
+                    const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                        throw new Error('旧缓存不是对象');
+                    }
+                    if (persistentDataStore.isInitialized && persistentDataStore.isActive) {
+                        await persistentDataStore.replaceNamespace(
+                            namespace,
+                            parsed as Record<string, unknown>
+                        );
+                    } else {
+                        localStorage.setItem(key, JSON.stringify(parsed));
+                    }
+                } catch (error: unknown) {
+                    console.warn(
+                        `[JHS 备份] 恢复持久数据 ${key} 失败:`,
+                        error instanceof Error ? error.message : String(error)
+                    );
+                }
+                continue;
+            }
+
             if (!ALLOWED_LOCALSTORAGE_KEYS.has(key)) {
                 console.warn(`[JHS 备份] 跳过未授权的 localStorage 键: ${key}`);
                 continue;
             }
-            const raw = extras.ls[key];
             if (raw == null || raw === '') continue;
             try {
                 localStorage.setItem(key, typeof raw === 'string' ? raw : JSON.stringify(raw));
-            } catch (err: unknown) {
-                console.warn(`[JHS 备份] 恢复 localStorage.${key} 失败:`, err instanceof Error ? err.message : err);
+            } catch (error: unknown) {
+                console.warn(
+                    `[JHS 备份] 恢复 localStorage.${key} 失败:`,
+                    error instanceof Error ? error.message : String(error)
+                );
             }
         }
     }
@@ -137,8 +201,11 @@ export function applyBackupExtras(extras: BackupExtras): void {
             }
             try {
                 GM_setValue(key, extras.gm[key] as string | number | boolean | object);
-            } catch (err: unknown) {
-                console.warn(`[JHS 备份] 恢复 GM.${key} 失败:`, err instanceof Error ? err.message : err);
+            } catch (error: unknown) {
+                console.warn(
+                    `[JHS 备份] 恢复 GM.${key} 失败:`,
+                    error instanceof Error ? error.message : String(error)
+                );
             }
         }
     }

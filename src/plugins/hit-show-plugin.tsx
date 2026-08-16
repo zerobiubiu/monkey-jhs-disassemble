@@ -4,7 +4,7 @@
  * 在 JavDb "播放排行"入口拦截跳转，改写 advanced_search?handlePlayback=1 页面为
  * "热播"榜单：渲染日/周/月榜切换工具栏，拉取播放排行数据（fetchPlaybackRanking，
  * 最多重试 3 次）生成影片列表，并为每个可见影片拉取评分（fetchMovieDetail）渲染
- * 星级与评价人数；评分结果按影片 ID 缓存到 localStorage（jhs_score_info）。
+ * 星级与评价人数；评分结果按影片 ID 缓存到独立持久数据存储（jhs_score_info）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/o/r/l）已语义化：
  *   period / movieListEl / loadingOverlay / success / attempt / movies / html /
@@ -22,6 +22,7 @@
 import { fetchPlaybackRanking, fetchMovieDetail, type RankingMovie } from '../constants/api';
 
 import { jsxToString } from '../core/jsx-to-string';
+import { readPersistentMap, writePersistentEntry } from '../core/storage/persistent-data-store';
 import { withLoading } from '../core/util/util-async';
 
 import { BasePlugin } from './base-plugin';
@@ -117,7 +118,7 @@ export class HitShowPlugin extends BasePlugin {
 
     /**
      * 为列表中每个可见影片拉取评分（fetchMovieDetail）并渲染到 #score_<id>；
-     * 结果按影片 ID 缓存到 localStorage（jhs_score_info）。页面失焦时阻塞等待聚焦。
+     * 结果按影片 ID 缓存到独立持久数据存储（jhs_score_info）。页面失焦时阻塞等待聚焦。
      * 对应原 L4406-4449。fire-and-forget（IIFE），无参数，无返回值；
      * 单条解析失败仅 clog.error 并继续下一条，不向上抛出；
      * 遇 #score_<id> 缺失时 return 终止整个 IIFE（保留原控制流）。
@@ -140,10 +141,8 @@ export class HitShowPlugin extends BasePlugin {
                     if ($(`#${movieId}`).is(':hidden')) {
                         continue;
                     }
-                    const rawCache: string | null = localStorage.getItem(storageKey);
-                    const cache: Record<string, string | undefined> = rawCache
-                        ? JSON.parse(rawCache)
-                        : {};
+                    const cache: Record<string, string | undefined> =
+                        readPersistentMap<string>('scoreInfo', storageKey);
                     const cachedHtml = cache[movieId];
                     if (cachedHtml) {
                         this.appendScoreHtml(movieId, cachedHtml);
@@ -160,7 +159,7 @@ export class HitShowPlugin extends BasePlugin {
                     );
                     this.appendScoreHtml(movieId, scoreHtml);
                     cache[movieId] = scoreHtml;
-                    localStorage.setItem(storageKey, JSON.stringify(cache));
+                    writePersistentEntry('scoreInfo', storageKey, String(movieId), scoreHtml);
                     await new Promise<void>((resolve) => setTimeout(resolve, 500));
                 } catch (error: unknown) {
                     clog.error(

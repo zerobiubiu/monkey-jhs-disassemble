@@ -26,6 +26,7 @@
 | `09-reuse-and-cross-site-sync.md` | 复用收敛与跨站同步 | doc/180–199 | CSS 复用、pageTypes 门控修复、XSS 加固、跨站同步协议演进（187→195）、共享基础设施 |
 | `10-list-management.md` | 清单功能深化 | doc/200–217 | 清单序号合并、编号整理压实（期0–期2）、清单管理器、收藏双向同步、Git 备份通道 |
 | `11-missav-and-finale.md` | MissAV 专区与收尾 | doc/218–242 | MissAV 专区功能（瀑布流/筛选/预览弹窗）、评价状态自动校验、CDN @require 反转、依赖升级 |
+| `243-indexeddb-persistent-data-migration.md` | IndexedDB 持久数据迁移 | doc/243 | JavDB 大型 localStorage 缓存与恢复日志迁移；保留现有 JavDB/MissAV IndexedDB 和 GM 跨站同步 |
 
 ### 1.2 旧文档编号映射
 
@@ -149,6 +150,7 @@
 
 ## 4. 相关文件
 
+- 变更历史：`history.md`
 - 插件与核心模块清单：`plugin-catalog.md`（AGENTS.md §3.3/§3.4 的目录数据落点，增删时同步更新）
 - 原始脚本：`archetype/jhs.user.js`（只读参考）
 - 升级对照脚本：`archetype/jhs.3.3.6.027.user.js`（说明见 `11-missav-and-finale.md`）

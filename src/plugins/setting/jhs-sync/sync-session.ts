@@ -7,6 +7,12 @@
  * - 中途退出：每次 tick 后保存 checkpoint，下次从断点继续
  */
 
+import {
+    readPersistentValue,
+    removePersistentValue,
+    writePersistentValue
+} from '../../../core/storage/persistent-data-store';
+
 /** 同步阶段。 */
 export type SyncPhase =
     | 'idle'
@@ -88,30 +94,20 @@ export function createSession(): SyncSession {
     };
 }
 
-/** 从 localStorage 加载会话（不存在则返回 null）。 */
+/** 从持久数据存储加载会话（不存在则返回 null）。 */
 export function loadSession(): SyncSession | null {
-    try {
-        const raw = localStorage.getItem(SESSION_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw) as SyncSession;
-    } catch {
-        return null;
-    }
+    return readPersistentValue<SyncSession>('syncSession', 'current', SESSION_KEY);
 }
 
-/** 保存会话到 localStorage。 */
+/** 保存会话到持久数据存储。 */
 export function saveSession(session: SyncSession): void {
     session.updatedAt = Date.now();
-    try {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    } catch {
-        // 存储满时静默失败（不阻断同步）
-    }
+    writePersistentValue('syncSession', 'current', SESSION_KEY, session);
 }
 
 /** 清除会话。 */
 export function clearSession(): void {
-    localStorage.removeItem(SESSION_KEY);
+    removePersistentValue('syncSession', 'current', SESSION_KEY);
 }
 
 /** 判断会话是否可恢复（非 idle/done/error 且有进度）。 */

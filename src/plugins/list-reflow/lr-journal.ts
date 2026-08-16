@@ -5,8 +5,14 @@
  * 回滚日志（rollback）：每完成一步记录 {videoId, addedTo, removedFrom}，
  * 供整次撤销（逆序反向搬运）和 pending_cleanup 重试。
  *
- * 存储：localStorage（轻量、同步、无需 IDB），键前缀 jhs:reflow:*。
+ * 存储：独立持久数据 IndexedDB；迁移未激活时兼容 localStorage，键前缀 jhs:reflow:*。
  */
+
+import {
+    readPersistentValue,
+    removePersistentValue,
+    writePersistentValue
+} from '../../core/storage/persistent-data-store';
 
 /** 恢复日志条目。 */
 export interface JournalEntry {
@@ -47,25 +53,17 @@ const ROLLBACK_PREFIX = 'jhs:reflow:rollback:';
 /** 写入/更新恢复日志。 */
 export function saveJournal(entry: JournalEntry): void {
     entry.updatedAt = Date.now();
-    try {
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(entry));
-    } catch { /* 存储满静默 */ }
+    writePersistentValue('reflowJournal', 'current', JOURNAL_KEY, entry);
 }
 
 /** 读取恢复日志（不存在返回 null）。 */
 export function loadJournal(): JournalEntry | null {
-    try {
-        const raw = localStorage.getItem(JOURNAL_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw) as JournalEntry;
-    } catch {
-        return null;
-    }
+    return readPersistentValue<JournalEntry>('reflowJournal', 'current', JOURNAL_KEY);
 }
 
 /** 清除恢复日志。 */
 export function clearJournal(): void {
-    localStorage.removeItem(JOURNAL_KEY);
+    removePersistentValue('reflowJournal', 'current', JOURNAL_KEY);
 }
 
 /** 是否有未完成的恢复日志（可续传）。 */
@@ -79,29 +77,21 @@ export function hasResumableJournal(): boolean {
 /** 追加一条回滚记录。 */
 export function appendRollback(sessionId: string, entry: RollbackEntry): void {
     const key = ROLLBACK_PREFIX + sessionId;
-    try {
-        const raw = localStorage.getItem(key);
-        const list: RollbackEntry[] = raw ? JSON.parse(raw) : [];
-        list.push(entry);
-        localStorage.setItem(key, JSON.stringify(list));
-    } catch { /* 存储满静默 */ }
+    const list = readPersistentValue<RollbackEntry[]>('reflowRollback', sessionId, key) ?? [];
+    list.push(entry);
+    writePersistentValue('reflowRollback', sessionId, key, list);
 }
 
 /** 读取回滚日志。 */
 export function loadRollback(sessionId: string): RollbackEntry[] {
     const key = ROLLBACK_PREFIX + sessionId;
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return [];
-        return JSON.parse(raw) as RollbackEntry[];
-    } catch {
-        return [];
-    }
+    return readPersistentValue<RollbackEntry[]>('reflowRollback', sessionId, key) ?? [];
 }
 
 /** 清除回滚日志。 */
 export function clearRollback(sessionId: string): void {
-    localStorage.removeItem(ROLLBACK_PREFIX + sessionId);
+    const key = ROLLBACK_PREFIX + sessionId;
+    removePersistentValue('reflowRollback', sessionId, key);
 }
 
 /** 生成会话 ID。 */

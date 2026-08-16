@@ -90,6 +90,9 @@
 | libs.ts | 第三方库 CDN @require（externalGlobals）+ 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5），库 CSS 仍打包 |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
 | storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；运行时缓存清理） |
+| storage/persistent-data-backend.ts | JAV-JHS-PersistentData 的 IndexedDB 连接、记录类型与批量事务后端 |
+| storage/persistent-data-store.ts | JavDB 大型缓存/恢复日志的独立 IndexedDB 存储与兼容读写 |
+| storage/persistent-data-migration.ts | localStorage → 持久数据 IndexedDB 的复制、校验、清理与旧备份迁移 |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
 | common-util.ts | 通用工具（retry/htmlTo$dom/getUrlParam/isMobile/loopDetector） |
 | toast.ts / loading.ts / logger.tsx | Toastify 封装（show.ok/error/success）/ 加载遮罩 / 日志控制台（clog） |

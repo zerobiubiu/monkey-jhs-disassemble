@@ -9,6 +9,18 @@
 
 ---
 
+## v1.46.4
+
+### 修复
+
+- **修复首次 IndexedDB 迁移阻塞插件启动**：迁移记录改为单个 IndexedDB 批量事务写入，避免大型 localStorage 缓存逐条开启事务导致脚本长时间看似未执行。
+
+## v1.46.3
+
+### 调整
+
+- **大型 JavDB localStorage 缓存与恢复日志迁移至独立 IndexedDB**（doc/243）：新增 `JAV-JHS-PersistentData`，按 namespace/entry 拆分存储；复制、校验成功后才清理旧副本；保留旧备份与失败降级路径；MissAV-CarStatus、JAV-JHS/appData、GM 跨站数据和未知旧 key 不变。
+
 ## v1.46.2
 
 ### 调整

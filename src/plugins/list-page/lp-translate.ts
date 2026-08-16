@@ -2,7 +2,7 @@
  * 列表页标题翻译功能模块。
  * 从 list-page-plugin.tsx 提取，逻辑与原实现一致。
  *
- * 含 translate（JavDb 列表项标题就地翻译，带 localStorage["jhs_translate"]
+ * 含 translate（JavDb 列表项标题就地翻译，带持久数据存储中的 jhs_translate
  * 番号→译文缓存 + 串行写入队列）与 revertTranslation（还原译文为原文）。
  * 文本节点替换统一委托 lp-dom.replaceTitleTextNodes（D1）。
  * 翻译缓存（cache）与写入队列（writeQueue）保留为插件实例字段，经 plugin 透传。
@@ -11,11 +11,12 @@ import { isJavdbSite } from '../../constants/site';
 import { YES } from '../../constants/status';
 
 import { translateText } from '../../core/util/util-translate';
+import { writePersistentEntry } from '../../core/storage/persistent-data-store';
 
 import type { ListPagePlugin } from '../list-page-plugin';
 import { replaceTitleTextNodes } from './lp-dom';
 
-/** 翻译 JavDb 列表项标题为中文（带 localStorage 缓存）。对应原 L8934-8997。 */
+/** 翻译 JavDb 列表项标题为中文（带持久数据缓存）。对应原 L8934-8997。 */
 export async function translate(plugin: ListPagePlugin, $item: JQuery): Promise<void> {
     // 列表页标题就地替换逻辑保留在本方法；TranslatePlugin 负责详情页
     if ((await storageManager.getSetting('translateTitle', YES)) !== YES) {
@@ -48,7 +49,7 @@ export async function translate(plugin: ListPagePlugin, $item: JQuery): Promise<
             }
             plugin.writeQueue = plugin.writeQueue.then(() => {
                 plugin.cache[carNum] = translation;
-                localStorage.setItem('jhs_translate', JSON.stringify(plugin.cache));
+                writePersistentEntry('translate', 'jhs_translate', carNum, translation);
             });
         })
         .catch((err: unknown) => {

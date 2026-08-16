@@ -2,7 +2,7 @@
  * 演员信息插件 ActressInfoPlugin —— 对应原脚本 archetype/jhs.user.js L4139-4326。
  *
  * 在影片详情页与演员主页从日文维基百科抓取演员身高/体重/三围/罩杯/生日/年龄
- * 等信息并渲染到页面；查询结果按演员名缓存到 localStorage（jhs_actress_info），
+ * 等信息并渲染到页面；查询结果按演员名缓存到独立持久数据存储（jhs_actress_info），
  * 详情页逐名查询并各自渲染，演员主页按名次顺序查询到首条即止并回填所有别名。
  *
  * 单字母局部变量（原 e/t/n/a/i/o/r/s/l）已语义化：
@@ -24,6 +24,7 @@
 import { YES } from '../constants/status';
 
 import { jsxToString } from '../core/jsx-to-string';
+import { readPersistentMap, writePersistentEntry } from '../core/storage/persistent-data-store';
 
 import { BasePlugin } from './base-plugin';
 
@@ -35,7 +36,7 @@ import { ActressInfoStarPageHtml } from '../components/actress/actress-info-star
 
 import actressInfoCssRaw from '../styles/actress-info-plugin.css?raw';
 
-/** 演员信息缓存：演员名 → 维基详情（localStorage jhs_actress_info 的解析结构） */
+/** 演员信息缓存：演员名 → 维基详情（jhs_actress_info 的解析结构） */
 type ActressInfoCache = Record<string, ActressWikiInfo | undefined>;
 
 export class ActressInfoPlugin extends BasePlugin {
@@ -78,7 +79,7 @@ export class ActressInfoPlugin extends BasePlugin {
 
     /**
      * 详情页处理：从 `.female` 前置节点提取演员名列表，逐名查询维基并渲染信息标签到
-     * "演员" 标题之后；查询结果缓存到 localStorage（jhs_actress_info）。
+     * "演员" 标题之后；查询结果缓存到独立持久数据存储（jhs_actress_info）。
      * 对应原 L4164-4202。
      * 无参数，返回 Promise<void>；遇查询异常仅 console.error 并跳过当前演员，
      * 不向上抛出。已在页面渲染过 `.actress-info` 或无演员名时直接短路返回。
@@ -95,11 +96,7 @@ export class ActressInfoPlugin extends BasePlugin {
             return;
         }
         const storageKey = 'jhs_actress_info';
-        const rawCache: string | null = localStorage.getItem(storageKey);
-        let cache: ActressInfoCache = {};
-        try {
-            if (rawCache) cache = JSON.parse(rawCache);
-        } catch { /* 缓存损坏，回退空对象 */ }
+        const cache: ActressInfoCache = readPersistentMap<ActressWikiInfo>('actressInfo', storageKey);
         let info: ActressWikiInfo | null | undefined;
         let html = '';
         for (const actressName of actressNames) {
@@ -124,13 +121,15 @@ export class ActressInfoPlugin extends BasePlugin {
             html += segment;
         }
         $('strong:contains("演員")').parent().after(html);
-        localStorage.setItem(storageKey, JSON.stringify(cache));
+        for (const [name, value] of Object.entries(cache)) {
+            if (value) writePersistentEntry('actressInfo', storageKey, name, value);
+        }
     }
 
     /**
      * 演员主页处理：从 `.actor-section-name` 与不含"影片"的 `.section-meta` 提取演员名
      * 列表，按顺序查询维基，命中首条即止并将结果回填至所有别名；渲染信息块到
-     * 名称区父节点之后，结果缓存到 localStorage（jhs_actress_info）。
+     * 名称区父节点之后，结果缓存到独立持久数据存储（jhs_actress_info）。
      * 对应原 L4203-4261。
      * 无参数，返回 Promise<void>；遇查询异常仅 console.error 并继续尝试下一名称，
      * 不向上抛出。已在页面渲染过 `.actress-info` 或无演员名时直接短路返回。
@@ -164,11 +163,7 @@ export class ActressInfoPlugin extends BasePlugin {
             return;
         }
         const storageKey = 'jhs_actress_info';
-        const rawCache: string | null = localStorage.getItem(storageKey);
-        let cache: ActressInfoCache = {};
-        try {
-            if (rawCache) cache = JSON.parse(rawCache);
-        } catch { /* 缓存损坏，回退空对象 */ }
+        const cache: ActressInfoCache = readPersistentMap<ActressWikiInfo>('actressInfo', storageKey);
         let info: ActressWikiInfo | null | undefined = null;
         for (const actressName of names) {
             info = cache[actressName];
@@ -191,7 +186,9 @@ export class ActressInfoPlugin extends BasePlugin {
         }
         const html: string = jsxToString(<ActressInfoStarPageHtml info={info} />);
         nameSectionEl.parent().append(html);
-        localStorage.setItem(storageKey, JSON.stringify(cache));
+        for (const [name, value] of Object.entries(cache)) {
+            if (value) writePersistentEntry('actressInfo', storageKey, name, value);
+        }
     }
 
     /**

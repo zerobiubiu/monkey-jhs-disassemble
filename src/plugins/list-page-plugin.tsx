@@ -5,7 +5,7 @@
  * 消息；替换高清封面图、挂载分页跳页控件；
  * 依 IndexedDB 的收藏/屏蔽/已观看/关键词/演员黑名单数据对 .item 卡片做显隐
  * 过滤并注入 status-tag；绑定卡片点击；记忆演员页标签展开态；
- * DOM 变更后自动重过滤；并对 JavDb 标题做 Google 翻译（带 localStorage 缓存）。
+ * DOM 变更后自动重过滤；并对 JavDb 标题做 Google 翻译（带持久数据缓存）。
  *
  * 单字母局部变量（原 e/t/n/a/i/s/o 等）已语义化；顶层站点/状态常量
  * o/r/c/d/h/p/B/C/_ 改由 ../constants 引入（currentHref/isJavdbSite/
@@ -38,6 +38,7 @@ import { isJavdbSite } from '../constants/site';
 import { NO, YES } from '../constants/status';
 
 import { TaskSupervisor } from '../core/task-supervisor';
+import { readPersistentMap } from '../core/storage/persistent-data-store';
 import type { PageType } from '../core/page-context';
 
 import { BasePlugin } from './base-plugin';
@@ -64,17 +65,10 @@ export class ListPagePlugin extends BasePlugin {
     /** 统一生命周期管理：MutationObserver 等资源由此 supervisor 管控。 */
     private supervisor = new TaskSupervisor();
 
-    /** 翻译缓存（localStorage["jhs_translate"]，番号→译文）。 */
-    cache: Record<string, string> = (() => {
-        try {
-            const raw = localStorage.getItem('jhs_translate');
-            return raw ? JSON.parse(raw) : {};
-        } catch {
-            return {};
-        }
-    })();
+    /** 翻译缓存（IndexedDB persistentDataStore，番号→译文）。 */
+    cache: Record<string, string> = {};
 
-    /** 翻译写入队列，串行化 localStorage 写入。 */
+    /** 翻译写入队列，串行化持久数据写入。 */
     writeQueue: Promise<void> = Promise.resolve();
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L8298-8300。 */
@@ -94,6 +88,7 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 列表页主处理。对应原 L8301-8339。 */
     async handle(): Promise<void> {
+        this.cache = readPersistentMap<string>('translate', 'jhs_translate');
         new BroadcastChannel('channel-refresh').addEventListener(
             'message',
             async (event: MessageEvent) => {

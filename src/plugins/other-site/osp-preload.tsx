@@ -9,6 +9,7 @@
 import { YES } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
+import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
@@ -60,11 +61,7 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
 
     // 统计缓存情况
     const storageKey = 'jhs_other_site';
-    let cache: Record<string, unknown> = {};
-    try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) cache = JSON.parse(raw);
-    } catch { /* 缓存损坏，回退空对象 */ }
+    const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
     let cachedCount = 0;
     let skippedHiddenCount = 0;
     let preloadCount = 0;
@@ -218,15 +215,11 @@ async function doPreloadSite(
         if (resultData) {
             updatePreloadStatus(plugin, $item, siteConfig.id, 'success');
             const storageKey = 'jhs_other_site';
-            let cache: Record<string, unknown> = {};
-            try {
-                const raw = localStorage.getItem(storageKey);
-                if (raw) cache = JSON.parse(raw);
-            } catch { /* 缓存损坏，回退空对象 */ }
+            const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
             const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
             cache[cacheKey] = { ...resultData, ts: Date.now() };
             evictStaleCache(cache);
-            localStorage.setItem(storageKey, JSON.stringify(cache));
+            replacePersistentMap('otherSite', storageKey, cache);
             console.log(
                 `${PRELOAD_LOG} ✓ ${carNum} ${siteConfig.id.replace('Btn', '')} ${resultData.type === 'single' ? '命中' : '多结果'}`
             );
@@ -341,11 +334,7 @@ export function syncAllBadges(plugin: OtherSitePlugin): void {
     if (!listPagePlugin) return;
     const sites = getPreloadableSites(plugin);
     if (sites.length === 0) return;
-    let cache: Record<string, unknown> = {};
-    try {
-        const raw = localStorage.getItem('jhs_other_site');
-        if (raw) cache = JSON.parse(raw);
-    } catch { /* 缓存损坏，回退空对象 */ }
+    const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', 'jhs_other_site');
     $('.movie-list .item').each((_index: number, el: HTMLElement) => {
         const $item = $(el);
         if ($item.attr('data-hide') === YES) return;

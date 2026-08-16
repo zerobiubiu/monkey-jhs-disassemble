@@ -87,7 +87,7 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-22 个模块 + `sync/`（跨站同步共享设施）+ `util/`（核心工具集）。
+25 个模块 + `sync/`（跨站同步共享设施）+ `util/`（核心工具集）。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件。
 
 ### 3.5 组件 `src/components/`（139 个）
