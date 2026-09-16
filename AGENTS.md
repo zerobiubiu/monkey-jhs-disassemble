@@ -87,8 +87,8 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-25 个模块 + `sync/`（跨站同步共享设施）+ `util/`（核心工具集）。
-**完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件。
+共 **61 个文件**：顶层 28 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集）三个子目录 33。
+**完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
 ### 3.5 组件 `src/components/`（139 个）
 
@@ -113,6 +113,8 @@ GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 - **构建**：`bun run build` = `tsc -b && vite build`
 - **ESLint**：`bun run lint`（TypeScript recommended + prefer-const/no-useless-escape error 门禁，no-explicit-any warn，基线 0 errors / 0 warnings）
 - **Stylelint**：`bun run lint:css`（`.stylelintrc.json`，CSS 一致性检查）
+- **结构门禁**：`bun run check:structure`（§10/§11 文件行数与目录扁平度棘轮）
+- **文档一致性门禁**：`bun run check:docs`（`docs/plugin-catalog.md` ↔ `src/main.tsx` 注册数、`src/core/` 文件数、catalog 内计数陈述；均不接入 build/lint/test）
 
 ### 3.9 产品设计上下文 `PRODUCT.md`
 
@@ -180,9 +182,9 @@ GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 
 **文档规范、文档索引与文档相关要求全部见 [`docs/README.md`](docs/README.md)（文档中心）**：
 
-- 文档索引与说明：阶段文档（01–11）+ 变更文档编号规则 + 旧编号 `doc/NN` 映射
+- 文档索引与说明：阶段文档（01–11）+ 变更文档编号规则（从 12 起连续递增）
 - 文档规范：存放位置与命名、文档类型、文档状态、文档元数据、文档治理分类
-- 文档相关要求：代码变更必须同步写文档（强制）、编号与定期归并、版本号与文档、执行验证记录、历史记录
+- 文档相关要求：代码变更必须同步写文档（强制）、编号与定期归并、版本号与文档、执行验证记录
 
 本文件（AGENTS.md）不包含文档内容，只保留上述引用。
 

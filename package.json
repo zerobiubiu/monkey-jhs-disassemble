@@ -12,7 +12,8 @@
         "lint": "eslint src/",
         "lint:css": "stylelint \"src/styles/**/*.css\"",
         "test": "vitest run",
-        "check:structure": "bun run scripts/check-structure.ts"
+        "check:structure": "bun run scripts/check-structure.ts",
+        "check:docs": "bun run scripts/check-doc-catalog.ts"
     },
     "dependencies": {
         "blueimp-md5": "2.19.0",

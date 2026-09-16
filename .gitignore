@@ -36,3 +36,5 @@ omp-session-*
 mempalace.yaml
 entities.json
 .superpowers/
+.serena/
+tmp*.js
