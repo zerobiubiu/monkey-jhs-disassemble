@@ -4,10 +4,11 @@
  * 「最近打开时间」，且悬浮期间**实时跳动**（秒级刷新）。
  *
  * - 记录：每次页面加载 + pageshow(bfcache 恢复) 记录当前页 path → 时间戳到
- *   持久数据 `jhs_visit_history`。
+ *   持久数据 `jhs_visit_history`，不设条目上限。
  * - 显示：详情页元数据链接绑 mouseenter/mouseleave；**每次 hover 重新读
- *   localStorage** 取最新 ts；有记录按时间分级配色（近=安全→远=危险）；
- *   无记录显示白底「无访问记录」。
+ *   持久数据**取最新 ts；有记录按时间分级配色（近=安全→远=危险）；
+ *   无记录显示白底「无访问记录」。查询时精确匹配（pathname+search）优先，
+ *   未命中回退同 pathname 任意 search 的最新记录（覆盖翻页/筛选参数不一致）。
  * - 相对时间：<1 分秒前 / <1 时分钟前 / <1 天小时前 / <1 周天前 / 更久日期。
  *
  * 存储：独立持久数据 IndexedDB（内存镜像同步读，后端异步写）。备份：经 SettingPlugin.buildBackupPayload 的
@@ -24,10 +25,30 @@ import visitHistoryCssRaw from '../styles/visit-history-tooltip.css?raw';
 
 /** localStorage 键：path(pathname+search) → 访问时间戳(ms)。随 WebDav/JSON 备份。 */
 export const VISIT_HISTORY_STORAGE_KEY = 'jhs_visit_history';
-/** 记录上限，超过则淘汰最旧条目。 */
-const MAX_ENTRIES = 5000;
 /** 悬浮文案刷新间隔（ms），秒级相对时间需 ≤1000。 */
 const TICK_MS = 500;
+
+/**
+ * 查询某 path 的访问时间：精确匹配（pathname+search 完全一致）优先；
+ * 未命中时回退取同 pathname 任意 search 的最新记录——详情页元数据链接的
+ * href 往往不带 query（如 `/actors/xxx`），而实际访问的是带翻页/筛选参数的
+ * URL（如 `/actors/xxx?page=2`），仅做精确匹配会误报「无访问记录」。
+ */
+export function lookupVisitTime(history: Record<string, number>, path: string): number | undefined {
+    const exact = history[path];
+    if (exact !== undefined) return exact;
+    // pathname 边界：base 后必须紧跟 '?' 或结尾，避免 `/actors/a` 误匹配 `/actors/ab`
+    const qIndex = path.indexOf('?');
+    const base = qIndex === -1 ? path : path.slice(0, qIndex);
+    let best: number | undefined;
+    for (const key in history) {
+        if (!key.startsWith(base)) continue;
+        if (key.length !== base.length && key.charAt(base.length) !== '?') continue;
+        const ts = history[key];
+        if (best === undefined || ts > best) best = ts;
+    }
+    return best;
+}
 
 /** 时间分级（与 formatVisitTime 阈值一致）。 */
 type VisitTier = 'none' | 'sec' | 'min' | 'hour' | 'day' | 'old';
@@ -88,22 +109,11 @@ export class VisitHistoryPlugin extends BasePlugin {
         const path = location.pathname + location.search;
         const history = this.readHistory();
         history[path] = Date.now();
-        this.evictIfNeeded(history);
         replacePersistentMap('visitHistory', VISIT_HISTORY_STORAGE_KEY, history);
     }
 
     private readHistory(): Record<string, number> {
         return readPersistentMap<number>('visitHistory', VISIT_HISTORY_STORAGE_KEY);
-    }
-
-    private evictIfNeeded(history: Record<string, number>): void {
-        const keys = Object.keys(history);
-        if (keys.length <= MAX_ENTRIES) return;
-        keys.sort((a, b) => history[a] - history[b]);
-        const removeCount = keys.length - MAX_ENTRIES;
-        for (let i = 0; i < removeCount; i++) {
-            delete history[keys[i]];
-        }
     }
 
     /**
@@ -186,7 +196,7 @@ export class VisitHistoryPlugin extends BasePlugin {
         const update = (): void => {
             let ts: number | undefined;
             if (this.activePath) {
-                ts = this.readHistory()[this.activePath];
+                ts = lookupVisitTime(this.readHistory(), this.activePath);
             }
             if (!ts) {
                 this.applyTier(el, 'none');

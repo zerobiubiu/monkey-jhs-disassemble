@@ -9,6 +9,22 @@
 
 ---
 
+## v1.46.6
+
+### 调整
+
+- **外站预加载缓存取消 5000 条上限**（doc/246）：删除 `PRELOAD_CACHE_MAX` 与 `evictStaleCache()` LRU 淘汰（`src/plugins/other-site/osp-helpers.ts`），`osp-probe`/`osp-preload` 写入缓存不再淘汰最旧条目。与 v1.46.5 访问记录同理由：缓存为长期有效数据、存 IndexedDB 无配额压力，被淘汰后对应影片需重新发起外站请求；有效期仍由设置项 `preloadCacheTTL`（默认永不过期）控制。
+
+## v1.46.5
+
+### 修复
+
+- **访问记录误报「无访问记录」**（doc/245）：详情页元数据链接 href 往往不带 query（如 `/actors/xxx`），而实际访问的是带翻页/筛选参数的 URL（如 `/actors/xxx?page=2`），查询按 `pathname + search` 精确匹配永远查不到。新增查询纯函数 `lookupVisitTime`：精确匹配优先，未命中回退取同 pathname 任意 query 的最新记录（base 后必须紧跟 `?` 或结尾，避免 `/actors/a` 误匹配 `/actors/ab`）。附 10 个单测。
+
+### 调整
+
+- **访问记录取消 5000 条上限**（doc/245）：移除 `MAX_ENTRIES` 淘汰逻辑（`evictIfNeeded`），记录不设条目上限；数据存 IndexedDB 持久数据（`JAV-JHS-PersistentData`），无 localStorage 5MB 配额压力。
+
 ## v1.46.4
 
 ### 修复

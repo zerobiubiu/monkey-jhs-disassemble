@@ -26,7 +26,7 @@
  *
  * 方法组已拆分至 ./other-site/ 子目录：
  *   osp-types.ts      — SiteResult / SiteConfig 接口
- *   osp-helpers.ts    — 纯工具函数（evictStaleCache / isCacheEntryValid / getItemPreloadStatus）
+ *   osp-helpers.ts    — 纯工具函数（isCacheEntryValid / getItemPreloadStatus）
  *   osp-enabled-sites.ts — 启用站点持久化（getEnabledSites / saveEnabledSites）
  *   osp-filter-bar.ts — 预加载筛选栏（initFilterBar / refreshFilterBar / ensureFilterBar）
  *   osp-preload.tsx   — 列表页预加载编排（preloadListPage / syncAllBadges / startPreloadObserver）

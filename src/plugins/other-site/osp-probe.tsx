@@ -10,7 +10,7 @@ import { jsxToString } from '../../core/jsx-to-string';
 import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
-import { evictStaleCache, isCacheEntryValid } from './osp-helpers';
+import { isCacheEntryValid } from './osp-helpers';
 import type { SiteConfig, SiteResult } from './osp-types';
 
 import { SiteResultTag } from '../../components/other-site/site-result-tag';
@@ -130,7 +130,6 @@ export async function probeSite(
                 new AsyncTaskQueue().addTask(() => {
                     const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
                     cache[cacheKey] = { ...resultData, ts: Date.now() };
-                    evictStaleCache(cache);
                     replacePersistentMap('otherSite', storageKey, cache);
                 });
             }

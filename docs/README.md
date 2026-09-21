@@ -28,6 +28,8 @@
 | `11-missav-and-finale.md` | 阶段 | MissAV 专区与收尾（doc/218–242） | MissAV 专区功能（瀑布流/筛选/预览弹窗）、评价状态自动校验、CDN @require 反转、依赖升级 |
 | `12-indexeddb-persistent-data-migration.md` | 变更 | v1.46.3–1.46.4 | JavDB 大型 localStorage 缓存与恢复日志迁移；保留现有 JavDB/MissAV IndexedDB 和 GM 跨站同步 |
 | `13-merged-row-uncheck-silent-failure.md` | 变更 | 待办（未修复） | 详情页合并行「取消」动作端与展示端共用同一原生 checkbox 查找器导致的静默失败；现场取证、代码定位与候选修法，待可复现时处理 |
+| `14-visit-history-no-limit-and-fallback-lookup.md` | 变更 | v1.46.5 | 访问记录取消 5000 条上限；新增 `lookupVisitTime` 回退匹配（同 pathname 最新记录），修复翻页/筛选参数不一致时误报「无访问记录」 |
+| `15-other-site-preload-cache-remove-limit.md` | 变更 | v1.46.6 | 外站预加载缓存取消 5000 条上限（删除 `PRELOAD_CACHE_MAX`/`evictStaleCache` LRU 淘汰）；有效期仍由 `preloadCacheTTL` 控制 |
 
 ## 2. 文档规范
 

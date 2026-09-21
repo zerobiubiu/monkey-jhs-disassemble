@@ -1,29 +1,3 @@
-/** 预加载缓存最大条目数（超出时淘汰最旧的）。 */
-export const PRELOAD_CACHE_MAX = 5000;
-
-/**
- * LRU 淘汰：缓存条目超过上限时按 ts 排序删除最旧的。
- * 没有 ts 的旧格式条目优先淘汰。仅在写入缓存时调用。
- */
-export function evictStaleCache(cache: Record<string, unknown>): void {
-    const keys = Object.keys(cache);
-    if (keys.length > PRELOAD_CACHE_MAX) {
-        const tsOf = (k: string): number => {
-            const v = cache[k] as { ts?: number } | null | undefined;
-            return v?.ts ?? 0;
-        };
-        const sorted = keys
-            .filter((k) => tsOf(k) !== 0)
-            .sort((a, b) => tsOf(a) - tsOf(b));
-        // 没有 ts 的旧格式条目优先淘汰
-        const noTs = keys.filter((k) => tsOf(k) === 0);
-        const toRemove = [...noTs, ...sorted].slice(0, keys.length - PRELOAD_CACHE_MAX);
-        for (const k of toRemove) {
-            delete cache[k];
-        }
-    }
-}
-
 /**
  * 判断预加载缓存条目是否仍在有效期内（配合设置项 preloadCacheTTL）。
  * - entry 缺失 → 无效

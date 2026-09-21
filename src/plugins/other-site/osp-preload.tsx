@@ -14,7 +14,7 @@ import { readPersistentMap, replacePersistentMap } from '../../core/storage/pers
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
 import { ensureFilterBar, refreshFilterBar } from './osp-filter-bar';
-import { evictStaleCache, isCacheEntryValid } from './osp-helpers';
+import { isCacheEntryValid } from './osp-helpers';
 import type { SiteConfig, SiteResult } from './osp-types';
 
 import {
@@ -218,7 +218,6 @@ async function doPreloadSite(
             const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', storageKey);
             const cacheKey = carNum + '_' + siteConfig.id.replace('Btn', '');
             cache[cacheKey] = { ...resultData, ts: Date.now() };
-            evictStaleCache(cache);
             replacePersistentMap('otherSite', storageKey, cache);
             console.log(
                 `${PRELOAD_LOG} ✓ ${carNum} ${siteConfig.id.replace('Btn', '')} ${resultData.type === 'single' ? '命中' : '多结果'}`
