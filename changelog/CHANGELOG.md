@@ -9,6 +9,70 @@
 
 ---
 
+## v1.46.9
+
+## v1.46.13
+
+### 新增
+- **站点选择器注册表 + 棘轮门禁**（doc/22）：新增 `src/core/util/site/selectors.ts`（JavDB/MissAV 站点原生选择器事实表，按页面分组，每项 `{current, legacy?}`，配 `siteSelector`/`siteQuery`/`siteQueryOne`/`siteQueryCompat` 查询 API）；新增 `bun run check:selectors`，以 `scripts/site-selector-baseline.json` 为棘轮基线，**只允许下降**——已有文件计数上升或出现新文件即 FAIL。实测站点依赖面 **284 处 / 90 文件**；门禁两个失败分支（新增文件 / 计数上升）均负向验证可拦截。未改动 actress-info 插件、存储与用户数据。
+
+## v1.46.12
+
+### 修复
+- **JavDB 详情页女优选择器兼容**（doc/21）：实测新版演员链接为 `a.actor-female`（旧 `.female` 在详情页为 0）；收藏高亮、详情页演员名、清单读取与下载详情页解析统一采用新选择器优先、旧结构回退。男演员与已弃置 actress-info 插件保持原样；不执行任何数据迁移、清理或覆盖。
+
+## v1.46.11
+
+### 调整
+
+- **缓存卡片三按钮无层级**（doc/251）：9 张卡片 × 3 颗按钮共 27 个实心彩块（`104.5×34`、同字重、同白字、均 6px 间隙），扫视时无法判断主次与危险。现按层级重排：「清理」改新增的 `.jhs-btn--danger-ghost`（白底红字红描边，保留危险语义但不再用实心强调色）、「查看」改 `.jhs-btn--ghost`（白底灰字灰描边）、「导出」保持实心 `--mint`——三颗中唯一继续强调，主操作由此唯一。
+
+### 修复
+
+- **`lint:css` 存量告警清零**（doc/251）：`fold-category-plugin.css` 的 `__HIGHLIGHTED_TAG_NUMBER__` / `__HIGHLIGHTED_TAG_COLOR__` 是运行时占位符（由 fold-category 与 favorite-actresses 两个插件 initCss 分别 replace），**必须保持大写**，不能按 stylelint 建议改小写（改则运行时静默失配）。已按项目惯例加 `stylelint-disable-next-line value-keyword-case` + 原因注释。`bun run lint:css` 首次 exit 0。
+## v1.46.10
+
+### 修复
+
+- **`aria-*` 被当作 HTML 布尔属性序列化**（doc/250）：`jsxToString` 对 `true` 输出裸属性、对 `false` 整条省略，导致侧栏 `aria-selected` 实测为「激活项空串、其余项属性缺失」——读屏无法区分「未选中」与「属性不存在」。`aria-*` 不是 HTML 布尔属性，现改为一律输出字符串 `"true"`/`"false"`（`null`/`undefined` 仍省略），与 `renderToStaticMarkup` 一致。**影响面为全项目所有 `aria-*`**，非仅侧栏。
+- **tablist 缺 tabpanel**（doc/250）：v1.46.8 给侧栏加了 `role=tablist`/`role=tab`，但 10 个内容面板无 `role=tabpanel`（实测数量为 0）。现补齐 `role=tabpanel` + `aria-labelledby`，并给 10 个 tab 补 `id="tab-*"`。
+
+### 调整
+
+- **缓存管理面板头部间距**（doc/250）：实测「总占用」与「清理全部缓存」间距达 494px，改为 `baseline` 对齐 + `gap: 12px`，按钮仍在右侧但不再隔出空旷带。
+
+### 修复
+
+- **「清理全部缓存」与「保存设置」共用底栏位置**（doc/249）：「清理全部缓存」原放在底栏，打开缓存管理时与「保存设置」互相顶替——同一个位置两种语义，用户点下去后果完全不同；且它顶掉了本面板的保存入口。现将它移回缓存管理面板内部（统计行右侧，保持同样的右侧位置感），底栏恒为「保存设置」、在所有面板位置不变。v1.46.8 加的确认框逻辑不变。
+## v1.46.8
+
+### 调整
+
+- **按钮与开关统一为一套**（doc/248）：原先三套按钮（`.jhs-setting-btn` / `.jhs-setting-menu-btn` / `.jhs-qs-btn`）尺寸、hover 手感、圆角各不相同，同一个弹层里出现三种按钮手感；开关也有 `mini-switch` 与 `jhs-toggle` 两套。现收敛为单一 `.jhs-btn` 基类 + 语义修饰符（primary/success/danger/pink/mint/neutral/muted/ghost/isolated/compact）与单一 `.jhs-toggle`，hover 统一为透明度提亮。旧类名在源码中零残留。
+- **移除两处装饰性渐变**：快捷浮层主按钮的 `linear-gradient(135deg, …)` 改为主色实底，浮层头部渐变改为纯色——PRODUCT.md 明确拒绝装饰性渐变。
+- **危险动作视觉隔离**：「清理全部缓存」推到最右与「保存设置」拉开距离；两者原先共用同一软盘 emoji（「💾 更多设置」与「💾 保存设置」语义不同却难以区分），现分别改为 🗃️ 与 🧨。
+
+### 修复
+
+- **「清理全部缓存」无确认、不可撤销**（doc/248）：`handleCleanAllCache` 原先一击清空全部缓存，评分缓存需重新发起大量请求重建、外站预加载缓存（v1.46.6 起取消上限）可能已积累很大规模。现接入项目既有的 `q()` 确认框，并在文案中给出受影响条目数与总体积。
+- **设置面板键盘不可达**（doc/248）：10 个侧栏面板原为裸 `<div>`（无 `tabindex`/`role`），Tab 无法进入、只能鼠标点击，读屏把侧栏念成一串 emoji 名。现改为 `role="tab"` 的 `<button>`（含 `aria-selected` 与 roving `tabIndex`），补齐 `↑/↓/←/→` 与 `Home/End` 方向键导航、`:focus-visible` 焦点环，emoji 加 `aria-hidden`。
+
+## v1.46.7
+
+### 新增
+
+- **设计系统快照 `DESIGN.md`**（doc/247）：按「代码实际渲染值」建立视觉设计系统基准（YAML 令牌 frontmatter + 8 个规范章节），供后续界面改动与自动化检测消费。普查确认系统实为五套子系统调色板拼合（核心令牌 / Bulma 站点族 / Flat-UI 日志面板 / Nord MissAV / Tailwind 设置面板），其中性灰已膨胀至 18 阶、语义色有 3–4 个近重复值；快照区分「意图斜坡」（新增代码只允许 5 档字号 / 3 档圆角）与「存量普查阶」（标注不得新增）。同时记录 **The Port-Fidelity Exception**：7 个样式表带「与原脚本一致（渲染等价）」零偏差契约，其字体栈与缓动曲线属冻结产物。
+
+### 调整
+
+- **标题翻译提示块改为低调标题栏**（doc/247）：原实现为「渐变底 + 4px 绿色左边框 + 20px 字号 + 投影」的醒目标注块，与设计基线四项冲突；改为 6px 圆角 + 1px 发丝线 + `#fbfcfd` 底、字号 14px。属本轮唯一的界面视觉有意偏差。
+- **检测器例外登记**（doc/247）：新增 `.impeccable/config.json` 记录 8 条例外（零偏差移植的字体/缓动、JS 驱动宽度过渡的进度条、三处结构性左色条），每条带理由，可评审可回滚；`.gitignore` 改为只忽略可重生成的侧车与快照，例外登记入库共享。检测器 warning 由 14 条降至 0 条（1 条修复 + 5 条因快照补登降为 advisory + 8 条例外登记，逐条对照见 doc/247 §4）。
+
+### 修复
+
+- **日志条目左色条宽度不一致**（doc/247）：`logger-panel.tsx` 行内 `borderLeft` 由 `3px` 统一为 `4px`，与 `.console-logger-entry` 的 `border-left: 4px solid transparent` 占位对齐。原 3px 会使未识别类型（走 `base` 样式）的条目少 1px 边框宽度而横向位移。
+- **`.gitignore` 重复行**：删除一处重复的 `.serena/`。
+
 ## v1.46.6
 
 ### 调整

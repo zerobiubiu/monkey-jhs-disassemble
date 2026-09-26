@@ -23,7 +23,7 @@
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
 │   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 5）
-│   ├── core/               # 核心模块（含 feature-flags、util/、sync/ 子目录）
+│   ├── core/               # 核心模块（含 feature-flags、util/（含 site/）、sync/ 子目录）
 │   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录）
 │   ├── constants/          # 常量（site/status/video-quality/api）
@@ -87,7 +87,7 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-共 **61 个文件**：顶层 28 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集）三个子目录 33。
+共 **63 个文件**：顶层 28 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）三个子目录 35。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
 ### 3.5 组件 `src/components/`（139 个）

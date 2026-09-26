@@ -17,6 +17,8 @@ import { RatingCache } from '../rating-display/rating-cache';
 import type { SettingPlugin } from '../setting-plugin';
 import { downloadJson } from './data-import-export';
 
+import { q } from '../../core/util/util-popup';
+
 import { PreloadCacheStatsText } from '../../components/misc/preload-cache-stats-text';
 
 const CACHE_NAMESPACE_BY_KEY: Partial<Record<string, PersistentNamespace>> = {
@@ -137,18 +139,42 @@ export function handleCleanCache(plugin: SettingPlugin, event: Event): void {
     refreshAllCacheStats(plugin);
 }
 
-/** #clean-all 点击：清理全部缓存。 */
+/**
+ * #clean-all 点击：确认后清理全部缓存。
+ *
+ * doc/248 harden：原实现直接清空全部缓存且无确认、无撤销——评分缓存需重新发起
+ * 大量请求重建，外站预加载缓存在 v1.46.6 取消上限后可能已积累到很大规模。
+ * 现改用项目既有的 `q()` 确认框（core/util/util-popup.ts，与其它破坏性操作一致），
+ * 并在文案中给出受影响条目与总体积，让用户在确认前看得到代价。
+ */
 export function handleCleanAllCache(plugin: SettingPlugin): void {
-    plugin.cacheItems.forEach((item) => {
-        const namespace = CACHE_NAMESPACE_BY_KEY[item.key];
-        if (item.key === 'jdb:rating_cache_v2') RatingCache.clear();
-        else if (namespace) clearPersistentNamespace(namespace, item.key);
-        else localStorage.removeItem(item.key);
-    });
-    clearPersistentNamespace('otherSiteDmm', 'jhs_other_site_dmm');
-    show.ok('全部缓存已清理');
-    $('#cache-data-display').hide();
-    refreshAllCacheStats(plugin);
+    let totalSize = 0;
+    let totalCount = 0;
+    for (const item of plugin.cacheItems) {
+        const stats = getCacheStats(item.key);
+        totalSize += stats.size;
+        totalCount += stats.count;
+    }
+    totalSize += getCacheStats('jhs_other_site_dmm').size;
+
+    q(
+        null,
+        `将清空 <b>${plugin.cacheItems.length}</b> 项缓存（共 <b>${totalCount}</b> 条，约 ${formatSize(totalSize)}）。<br>` +
+            '评分缓存清空后需重新获取；外站预加载缓存清空后对应影片需重新探测。<br>' +
+            '<b>此操作不可撤销。</b>',
+        () => {
+            plugin.cacheItems.forEach((item) => {
+                const namespace = CACHE_NAMESPACE_BY_KEY[item.key];
+                if (item.key === 'jdb:rating_cache_v2') RatingCache.clear();
+                else if (namespace) clearPersistentNamespace(namespace, item.key);
+                else localStorage.removeItem(item.key);
+            });
+            clearPersistentNamespace('otherSiteDmm', 'jhs_other_site_dmm');
+            show.ok('全部缓存已清理');
+            $('#cache-data-display').hide();
+            refreshAllCacheStats(plugin);
+        }
+    );
 }
 
 /** .view-btn 点击：查看缓存内容（JSON 格式化显示）。 */

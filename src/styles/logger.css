@@ -196,8 +196,9 @@
     font-size: 12px;
     line-height: 1.4;
 
-    /* animation: consoleFadeIn 0.3s ease; */
-    border-left: 3px solid transparent;
+    /* 类型标记占位框：宽度须与 _createLogElement 写入的行内 borderLeft 一致，
+       否则未识别类型（走 base 样式）时条目会因边框宽度差产生 1px 位移。 */
+    border-left: 4px solid transparent;
 }
 
 @keyframes consoleFadeIn {

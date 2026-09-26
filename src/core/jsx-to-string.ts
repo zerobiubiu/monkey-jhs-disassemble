@@ -23,7 +23,8 @@
  *   `{backgroundColor:'red'}` → `background-color:red`）
  * - `style` 字符串 → 原样
  * - `data-*` / `aria-*` / 其他 → 原样 `key="value"`
- * - 布尔属性：`true` → 裸属性；`false`/`null`/`undefined` → 省略
+ *   **例外**：`aria-*` 不是 HTML 布尔属性，一律输出字符串
+ *   `aria-x="true"` / `aria-x="false"`（`null`/`undefined` 仍省略）
  * - `on*` 事件 → 忽略
  * - `dangerouslySetInnerHTML` → 取 `__html` 作为原始 inner HTML 注入（不转义），
  *   属性本身不渲染为 HTML 属性（React 的 raw HTML 注入约定）
@@ -167,8 +168,8 @@ function styleToCss(style: PropsRecord): string {
  * - `className`：→ `class="..."`
  * - `style`：对象走 `styleToCss`，字符串原样输出
  * - 布尔 `true`：裸属性（如 `disabled`）
+ * - `aria-*`：**不走布尔分支**，一律 `aria-x="true"` / `aria-x="false"`
  * - 布尔 `false` / `null` / `undefined`：省略
- * - 其他：`key="String(value)"`
  *
  * @param props 元素 props
  * @returns 形如 ` class="..." style="..."` 的字符串；无属性时为空串
@@ -176,10 +177,19 @@ function styleToCss(style: PropsRecord): string {
 function renderAttrs(props: PropsRecord): string {
     const parts: string[] = [];
     for (const [key, value] of Object.entries(props)) {
-        if (value == null || value === false) continue;
         if (key === 'children') continue;
         if (key === 'dangerouslySetInnerHTML') continue;
         if (key.startsWith('on')) continue;
+        // ARIA 属性不是 HTML 布尔属性：必须始终输出字符串 "true"/"false"。
+        // 裸属性（`aria-selected` 无值）会被 HTML 解析为空串、`false` 被省略则属性完全缺失，
+        // 二者都不是合法 ARIA，读屏无法区分「未选中」与「属性不存在」。
+        // 此分支与 React renderToStaticMarkup 的行为一致。
+        if (key.startsWith('aria-')) {
+            if (value == null) continue;
+            parts.push(`${key}="${escapeAttr(String(value))}"`);
+            continue;
+        }
+        if (value == null || value === false) continue;
         if (key === 'className') {
             if (value !== '') parts.push(`class="${escapeAttr(String(value))}"`);
             continue;

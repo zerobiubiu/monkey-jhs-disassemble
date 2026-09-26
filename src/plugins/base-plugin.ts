@@ -22,6 +22,7 @@ import {
 import { featureFlags } from '../core/feature-flags';
 import { failWithToast } from '../core/toast';
 import type { SiteType, PageType } from '../core/page-context';
+import { getActressNames } from '../core/util/site/actress-links';
 import type { PluginManager } from './plugin-manager';
 import type { PluginMap } from './plugin-registry';
 
@@ -116,11 +117,9 @@ export class BasePlugin {
         if (isJavdbSite) {
             carNum = $('a[title="複製番號"]').attr('data-clipboard-text') ?? null;
             url = href.split('?')[0].split('#')[0];
-            actress = $('.female')
-                .prev()
-                .map((_index: number, el: HTMLElement) => $(el).text())
-                .get()
-                .join(' ');
+            // 详情页新版演员链接是 a.actor-female，旧版兼容回退见 core/util/site/actress-links。
+            actress = getActressNames();
+            // 样本详情页无男演员，无法确认 .male 是否改版；保留原读取逻辑不动。
             actors = $('.male')
                 .prev()
                 .map((_index: number, el: HTMLElement) => $(el).text())

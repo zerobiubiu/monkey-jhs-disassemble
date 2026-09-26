@@ -39,6 +39,7 @@ import { NO, YES } from '../constants/status';
 
 import { TaskSupervisor } from '../core/task-supervisor';
 import { readPersistentMap } from '../core/storage/persistent-data-store';
+import { getActressNames } from '../core/util/site/actress-links';
 import type { PageType } from '../core/page-context';
 
 import { BasePlugin } from './base-plugin';
@@ -194,12 +195,8 @@ export class ListPagePlugin extends BasePlugin {
             const html = await gmHttp.get(url);
             const $dom = utils.htmlTo$dom(String(html));
             if (isJavdbSite) {
-                actressName = $dom
-                    .find('.female')
-                    .prev()
-                    .map((_index: number, el: HTMLElement) => $(el).text())
-                    .get()
-                    .join(' ');
+                const root = $dom.get(0);
+                actressName = root ? getActressNames(root) : '';
             }
             clog.debug('解析到名称:', actressName);
         }

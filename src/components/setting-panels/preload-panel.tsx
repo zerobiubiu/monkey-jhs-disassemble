@@ -25,7 +25,7 @@ export function PreloadPanel({ panelName }: PreloadPanelProps) {
     return (
         <div
             id="preload-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-preload-panel" 
             style={{
                 display: panelName === 'preload-panel' ? 'block' : 'none'
             }}

@@ -6,7 +6,7 @@
  * 按钮（data-key），由调用方循环拼接为 cacheItemsHtml 后注入 SettingDialog
  * 的 cache-panel。
  *
- * 保留原 class（cache-item / jhs-setting-menu-btn clean-btn / jhs-setting-menu-btn view-btn）、data-key、
+ * class：cache-item + jhs-btn jhs-btn--{色} {clean,view,export}-btn、data-key、
  * 内联 style 原样不动；text / cacheKey / title / size / count 通过 props 注入。
  *
  * 注：原 prop 名 `key` 与 React 保留 prop `key` 冲突（JSX transform 会将
@@ -55,10 +55,9 @@ export function CacheItemHtml({ text, cacheKey, title, size, count }: CacheItemH
             </div>
             <div style={{ display: 'flex', gap: '6px' }}>
                 <a
-                    className="jhs-setting-menu-btn clean-btn"
+                    className="jhs-btn jhs-btn--danger-ghost clean-btn"
                     data-key={cacheKey}
                     style={{
-                        backgroundColor: '#448cc2',
                         flex: 1,
                         textAlign: 'center',
                         fontSize: '13px'
@@ -68,10 +67,9 @@ export function CacheItemHtml({ text, cacheKey, title, size, count }: CacheItemH
                     <span>清理</span>
                 </a>
                 <a
-                    className="jhs-setting-menu-btn view-btn"
+                    className="jhs-btn jhs-btn--ghost view-btn"
                     data-key={cacheKey}
                     style={{
-                        backgroundColor: '#b2bec0',
                         flex: 1,
                         textAlign: 'center',
                         fontSize: '13px'
@@ -80,10 +78,9 @@ export function CacheItemHtml({ text, cacheKey, title, size, count }: CacheItemH
                     <span>查看</span>
                 </a>
                 <a
-                    className="jhs-setting-menu-btn export-btn"
+                    className="jhs-btn jhs-btn--mint export-btn"
                     data-key={cacheKey}
                     style={{
-                        backgroundColor: '#85d0a3',
                         flex: 1,
                         textAlign: 'center',
                         fontSize: '13px'

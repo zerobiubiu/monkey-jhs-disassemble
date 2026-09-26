@@ -1,7 +1,7 @@
 /**
  * 收藏演员插件 FavoriteActressesPlugin —— 对应原脚本 archetype/jhs.user.js L10696-10864。
  *
- * 在影片详情页高亮已收藏的女演员链接（.female 前置节点比对 starId）；
+ * 在影片详情页高亮已收藏的女演员链接（按链接末段 starId 比对）；
  * 在演员主页为 #button-collect-actor / #button-uncollect-actor 及取消收藏链接
  * 绑定事件，维护 storageManager 中的收藏演员列表；并用收藏记录中的头像
  * 替换演员页 .avatar 背景图。
@@ -26,6 +26,8 @@
 import { YES } from '../constants/status';
 
 import { jsxToString } from '../core/jsx-to-string';
+import { queryActressLinks } from '../core/util/site/actress-links';
+import { siteSelector } from '../core/util/site/selectors';
 
 import { BasePlugin } from './base-plugin';
 
@@ -81,7 +83,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
     }
 
     /**
-     * 详情页高亮已收藏女演员：读取收藏列表 → 提取 starId 集合 → 遍历 .female 前置链接，
+     * 详情页高亮已收藏女演员：读取收藏列表 → 提取 starId 集合 → 遍历兼容读取器返回的链接，
      * 比对链接末段 starId 命中则加 highlighted 类并设 title 提示。
      * 对应原 L10705-10754。
      * 仅当 window.isDetailPage 为真、且设置项 enableFavoriteActresses === YES
@@ -106,10 +108,10 @@ export class FavoriteActressesPlugin extends BasePlugin {
             }
         });
         if (starIdSet.size !== 0) {
-            $('.female')
-                .prev()
-                .each((_index: number, element: HTMLElement) => {
-                    const $link = $(element);
+            // 站点改版：演员链接类名由 .female（性别标记 span，需取前置兄弟）改为
+            // a.actor-female（直接标在链接上）。统一经 queryActressLinks() 兼容两版。
+            queryActressLinks().forEach((element: HTMLElement) => {
+                const $link = $(element);
                     const href: string | undefined = $link.attr('href');
                     let urlStarId: string | null = null;
                     if (href) {
@@ -127,7 +129,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
                         $link.addClass('highlighted');
                         $link.attr('title', '高亮已收藏演员, 可在设置-基础配置中关闭');
                     }
-                });
+            });
         }
     }
 
@@ -170,7 +172,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
             const match = $('#button-collect-actor').attr('href')?.match(actorIdRegex);
             const actorId: string | null = match ? match[1] : null;
             const actressNames: string[] = [];
-            const $nameSection = $('.actor-section-name');
+            const $nameSection = $(siteSelector('actorSectionName'));
             if ($nameSection.length) {
                 $nameSection
                     .text()
@@ -180,7 +182,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
                         actressNames.push(name.trim());
                     });
             }
-            const $metaSection = $(".section-meta:not(:contains('影片'))");
+            const $metaSection = $(siteSelector('actorSectionMetaName'));
             if ($metaSection.length) {
                 $metaSection
                     .text()
@@ -199,7 +201,7 @@ export class FavoriteActressesPlugin extends BasePlugin {
                 clog.error('无法获取演员ID进行收藏操作。');
                 return;
             }
-            const avatarUrl: string = ($('.avatar').first().css('background-image') || '').replace(
+            const avatarUrl: string = ($(siteSelector('actorAvatar')).first().css('background-image') || '').replace(
                 /^url\(["']?|["']?\)$/g,
                 ''
             );
@@ -243,11 +245,11 @@ export class FavoriteActressesPlugin extends BasePlugin {
         const matchedActress = favoriteActressList.find((actress) => actress.starId === actressId);
         if (matchedActress && matchedActress.avatar) {
             const cssUrl: string = `url('${matchedActress.avatar}')`;
-            let $avatar = $('.avatar').first();
+            let $avatar = $(siteSelector('actorAvatar')).first();
             if ($avatar.length === 0) {
                 const avatarColumnHtml = jsxToString(<FavoriteActressAvatarColumn />);
                 $('.section-columns').prepend(avatarColumnHtml);
-                $avatar = $('.avatar').first();
+                $avatar = $(siteSelector('actorAvatar')).first();
             }
             if ($avatar.length === 0) {
                 return;

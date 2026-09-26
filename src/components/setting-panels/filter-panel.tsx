@@ -21,7 +21,7 @@ export function FilterPanel({ panelName }: FilterPanelProps) {
     return (
         <div
             id="filter-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-filter-panel" 
             style={{
                 display: panelName === 'filter-panel' ? 'block' : 'none'
             }}
@@ -36,7 +36,7 @@ export function FilterPanel({ panelName }: FilterPanelProps) {
                             placeholder="输入关键词后按回车添加"
                             style={{ flex: 1 }}
                         />
-                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                        <a className="add-tag-btn jhs-btn jhs-btn--primary" style={{ flexShrink: 0 }}>
                             添加
                         </a>
                     </div>

@@ -23,7 +23,7 @@ export function CachePanel({ panelName, cacheItemsHtml }: CachePanelProps) {
     return (
         <div
             id="cache-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-cache-panel" 
             style={{
                 display: panelName === 'cache-panel' ? 'block' : 'none'
             }}
@@ -31,10 +31,10 @@ export function CachePanel({ panelName, cacheItemsHtml }: CachePanelProps) {
             <SettingSection title="缓存管理" icon="🧹">
                 <div
                     style={{
-                        display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '4px'
+                        alignItems: 'baseline',
+                        gap: '12px',
+                        marginBottom: '12px'
                     }}
                 >
                     <span
@@ -44,6 +44,12 @@ export function CachePanel({ panelName, cacheItemsHtml }: CachePanelProps) {
                             color: '#999'
                         }}
                     />
+                    {/* 批量清理属于本面板的动作，放在本面板内——不放底栏，
+                        以免与全局的「保存设置」抢同一个栅位（doc/249）。 */}
+                    {/* 用裸 .jhs-btn（非 --compact）：--compact 带 flex:1，会把按钮拉满整行 */}
+                    <button id="clean-all" type="button" className="jhs-btn jhs-btn--danger">
+                        <span aria-hidden="true">🧨</span> 清理全部缓存
+                    </button>
                 </div>
                 <p
                     style={{

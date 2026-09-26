@@ -1,0 +1,80 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/styles/magnet-hub-plugin.css"
+        ],
+        "createdAt": "2026-09-25T17:03:06.605Z",
+        "reason": "零偏差移植：文件头声明 CSS 与原脚本一致（渲染等价），字体栈属于冻结产物"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "files": [
+          "src/styles/list-reading-status-plugin.css"
+        ],
+        "createdAt": "2026-09-25T17:03:06.678Z",
+        "reason": "零偏差移植：原脚本星级评分的 hover 弹出曲线，改曲线会使鼠标交互手感与原版不一致"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "src/components/setting-panels/fav-sync-panel.tsx"
+        ],
+        "createdAt": "2026-09-25T17:03:22.786Z",
+        "reason": "进度条宽度由 refreshUi 的 $bar.css({width}) 驱动，宽度过渡是必要过渡；transform: scaleX 会缩放 4px 圆角破坏进度条形态"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "src/styles/list-reflow/list-reflow.css"
+        ],
+        "createdAt": "2026-09-25T17:03:22.823Z",
+        "reason": "进度条宽度由 lr-panel.tsx 的 fillElement.style.width 驱动，宽度过渡是必要过渡"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/core/util/logger-panel.tsx"
+        ],
+        "createdAt": "2026-09-25T17:03:22.859Z",
+        "reason": "日志类型标记色条是日志面板的识别机制（不依赖颜色也能定类型），已统一 4px 消除未识别类型的 1px 位移"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles/setting-plugin.css"
+        ],
+        "createdAt": "2026-09-25T17:03:22.894Z",
+        "reason": "侧栏激活态的三重表态之一（底色 + 左条 + 字重），与 DESIGN.md「不只靠颜色」原则一致；存量偏差，禁止新增"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles/help-dialog.css"
+        ],
+        "createdAt": "2026-09-25T17:03:22.937Z",
+        "reason": "帮助弹层是 Flat-UI 血统的遗留界面，其内容块左侧色条属既有形状；存量偏差，禁止新增"
+      },
+      {
+        "rule": "overused-font",
+        "value": "helvetica",
+        "files": [
+          "src/plugins/car-status-sync/missav-renderer.ts"
+        ],
+        "createdAt": "2026-09-25T17:05:52.066Z",
+        "reason": "零偏差移植：原 missavStatusTag.user.js 的标签字体栈（与 MissAV 页面 Tailwind 字体一致）"
+      }
+    ]
+  }
+}

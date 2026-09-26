@@ -21,7 +21,7 @@ export function DiagnosticsPanel({ panelName }: DiagnosticsPanelProps) {
     return (
         <div
             id="diagnostics-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-diagnostics-panel" 
             style={{
                 display: panelName === 'diagnostics-panel' ? 'block' : 'none',
                 overflowY: 'auto'
@@ -30,10 +30,10 @@ export function DiagnosticsPanel({ panelName }: DiagnosticsPanelProps) {
             <SettingSection title="插件执行状态" icon="📊">
                 <div id="diagnostics-content" />
                 <div style={{ marginTop: '12px' }}>
-                    <button id="copy-diagnostics-btn" className="jhs-setting-btn jhs-setting-btn--primary" type="button">
+                    <button id="copy-diagnostics-btn" className="jhs-btn jhs-btn--primary" type="button">
                         📋 复制诊断报告
                     </button>
-                    <button id="refresh-diagnostics-btn" className="jhs-setting-btn" type="button" style={{ marginLeft: '8px' }}>
+                    <button id="refresh-diagnostics-btn" className="jhs-btn jhs-btn--ghost" type="button" style={{ marginLeft: '8px' }}>
                         🔄 刷新诊断
                     </button>
                 </div>

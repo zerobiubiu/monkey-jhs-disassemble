@@ -4,6 +4,9 @@
  * 提取自 vlt-sync.tsx：无 vlt 模块依赖，仅操作 DOM / 读取页面元素。
  */
 
+import { getActressNames as readActressNames } from '../../core/util/site/actress-links';
+import { siteSelector } from '../../core/util/site/selectors';
+
 /** 日志前缀。 */
 export const LOG_PREFIX = '[JavDB]';
 
@@ -79,7 +82,7 @@ export function getMovieInfo(videoId: string): {
         return null;
     }
 
-    const desEl = detail.querySelector('.panel-block.first-block a[data-clipboard-text]');
+    const desEl = detail.querySelector(siteSelector('detailMetaClipboard'));
     if (!desEl) {
         console.warn(`${LOG_PREFIX} 未找到番号元素，跳过`);
         return null;
@@ -91,13 +94,13 @@ export function getMovieInfo(videoId: string): {
     }
     const href = 'https://javdb.com/v/' + videoId;
 
-    const titleEl = detail.querySelector('strong.current-title');
+    const titleEl = detail.querySelector(siteSelector('detailCurrentTitle'));
     const title = titleEl ? titleEl.innerHTML : '';
 
-    const dateEl = detail.querySelector('.video-meta-panel nav > div:nth-child(2) > span');
+    const dateEl = detail.querySelector(siteSelector('detailPublishTime'));
     const release_date = dateEl ? dateEl.innerHTML : '';
 
-    const coverEl = detail.querySelector('.column-video-cover img');
+    const coverEl = detail.querySelector(siteSelector('detailCoverImg'));
     const cover_src = coverEl ? (coverEl as HTMLImageElement).src : '';
 
     const score = getScoreCached();
@@ -271,15 +274,13 @@ export function setListDisplayedCount(listId: string, count: number): void {
 /**
  * 从详情页 DOM 提取演员名（与 BasePlugin.getPageInfo 的 actress 提取逻辑一致）。
  * 用于自动收藏时填充 CarRecord.names 字段。
+ *
+ * 站点改版适配：委托至 core/util/site/actress-links 的统一实现
+ *（原 `.female` 前置兄弟读法已失效，新结构为 `a.actor-female` 自身）。
  */
 export function getActressNames(): string {
     try {
-        return $('.female')
-            .prev()
-            .map((_index: number, el: HTMLElement) => $(el).text())
-            .get()
-            .join(' ')
-            .trim();
+        return readActressNames();
     } catch {
         return '';
     }

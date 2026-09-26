@@ -51,9 +51,22 @@ export function SettingDialog({
     qualityOptionsHtml,
     isJavdbSite
 }: SettingDialogProps) {
+    /**
+     * 计算 `aria-selected` 值。
+     *
+     * 必须返回字符串（而非布尔）：`aria-selected` 不是 HTML 布尔属性，
+     * 裸属性等价于空串、`false` 被省略则属性缺失，二者都不是合法 ARIA——
+     * 读屏无法区分「未选中」与「属性不存在」。`jsxToString` 已按此约定
+     * 处理 `aria-*`（见 core/jsx-to-string.ts），此处显式给字符串以对齐。
+     */
+    const ariaSelected = (id: string): 'true' | 'false' =>
+        panelName === id ? 'true' : 'false';
     return (
         <div style={{ display: 'flex', height: '100%' }}>
             <div
+                role="tablist"
+                aria-orientation="vertical"
+                aria-label="设置面板"
                 style={{
                     width: '170px',
                     flexShrink: 0,
@@ -63,70 +76,110 @@ export function SettingDialog({
                     overflowY: 'auto'
                 }}
             >
-                <div
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('backup-panel')}
+                    tabIndex={panelName === 'backup-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'backup-panel' ? 'active' : ''}`}
-                    data-panel="backup-panel"
+                    id="tab-backup-panel" data-panel="backup-panel"
                 >
-                    💾 数据备份
-                </div>
-                <div
+                    <span aria-hidden="true">💾</span> 数据备份
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('base-panel')}
+                    tabIndex={panelName === 'base-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'base-panel' ? 'active' : ''}`}
-                    data-panel="base-panel"
+                    id="tab-base-panel" data-panel="base-panel"
                 >
-                    ⚙️ 基础配置
-                </div>
-                <div
+                    <span aria-hidden="true">⚙️</span> 基础配置
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('filter-panel')}
+                    tabIndex={panelName === 'filter-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'filter-panel' ? 'active' : ''}`}
-                    data-panel="filter-panel"
+                    id="tab-filter-panel" data-panel="filter-panel"
                 >
-                    🚫 屏蔽配置
-                </div>
-                <div
+                    <span aria-hidden="true">🚫</span> 屏蔽配置
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('domain-panel')}
+                    tabIndex={panelName === 'domain-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'domain-panel' ? 'active' : ''}`}
-                    data-panel="domain-panel"
+                    id="tab-domain-panel" data-panel="domain-panel"
                     title="第三方视频资源域名配置"
                 >
-                    🌐 外部网站
-                </div>
-                <div
+                    <span aria-hidden="true">🌐</span> 外部网站
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('cache-panel')}
+                    tabIndex={panelName === 'cache-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'cache-panel' ? 'active' : ''}`}
-                    data-panel="cache-panel"
+                    id="tab-cache-panel" data-panel="cache-panel"
                 >
-                    🧹 缓存管理
-                </div>
-                <div
+                    <span aria-hidden="true">🧹</span> 缓存管理
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('vlt-panel')}
+                    tabIndex={panelName === 'vlt-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'vlt-panel' ? 'active' : ''}`}
-                    data-panel="vlt-panel"
+                    id="tab-vlt-panel" data-panel="vlt-panel"
                 >
-                    📋 清单管理器
-                </div>
-                <div
+                    <span aria-hidden="true">📋</span> 清单管理器
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('fav-sync-panel')}
+                    tabIndex={panelName === 'fav-sync-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'fav-sync-panel' ? 'active' : ''}`}
-                    data-panel="fav-sync-panel"
+                    id="tab-fav-sync-panel" data-panel="fav-sync-panel"
                     title="JHS ↔ JavDB 双向增量同步"
                 >
-                    🔄 收藏同步
-                </div>
-                <div
+                    <span aria-hidden="true">🔄</span> 收藏同步
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('missav-panel')}
+                    tabIndex={panelName === 'missav-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'missav-panel' ? 'active' : ''}`}
-                    data-panel="missav-panel"
+                    id="tab-missav-panel" data-panel="missav-panel"
                 >
-                    🎬 MissAV 同步
-                </div>
-                <div
+                    <span aria-hidden="true">🎬</span> MissAV 同步
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('preload-panel')}
+                    tabIndex={panelName === 'preload-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'preload-panel' ? 'active' : ''}`}
-                    data-panel="preload-panel"
+                    id="tab-preload-panel" data-panel="preload-panel"
                     title="视频流外部网站预加载配置"
                 >
-                    ⚡ 预加载配置
-                </div>
-                <div
+                    <span aria-hidden="true">⚡</span> 预加载配置
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('diagnostics-panel')}
+                    tabIndex={panelName === 'diagnostics-panel' ? 0 : -1}
                     className={`side-menu-item ${panelName === 'diagnostics-panel' ? 'active' : ''}`}
-                    data-panel="diagnostics-panel"
+                    id="tab-diagnostics-panel" data-panel="diagnostics-panel"
                     title="插件执行状态诊断"
                 >
-                    📊 插件诊断
-                </div>
+                    <span aria-hidden="true">📊</span> 插件诊断
+                </button>
             </div>
 
             <div
@@ -195,12 +248,10 @@ export function SettingDialog({
                         alignItems: 'center'
                     }}
                 >
-                    <button id="saveBtn" className="jhs-setting-btn jhs-setting-btn--success">
-                        💾 保存设置
+                    <button id="saveBtn" className="jhs-btn jhs-btn--success">
+                        <span aria-hidden="true">🗃️</span> 保存设置
                     </button>
-                    <button id="clean-all" className="jhs-setting-btn jhs-setting-btn--danger" style={{ display: 'none' }}>
-                        ♾️ 清理全部缓存
-                    </button>
+                    {/* 底栏只放「保存设置」。危险动作的入口属于它自己那个面板（见 cache-panel）。 */}
                 </div>
             </div>
         </div>

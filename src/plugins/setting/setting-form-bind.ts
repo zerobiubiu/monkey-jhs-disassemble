@@ -39,32 +39,46 @@ export function bindClick(plugin: SettingPlugin): void {
         $('.content-panel').hide();
         const panelName = $(this).data('panel');
         $('#' + panelName).show();
+        // doc/249：底栏只保留「保存设置」，但它并非每个面板都适用。
+        // 「清理全部缓存」已移回 cache-panel 面板内部，不再参与这里的显隐切换。
         if (panelName === 'cache-panel') {
             $('#saveBtn').hide();
-            $('#clean-all').show();
             refreshAllCacheStats(plugin);
         } else if (panelName === 'vlt-panel') {
             // doc/207：清单管理器现有配置项需保存→显示 saveBtn；导入导出按钮独立保留
             $('#saveBtn').show();
-            $('#clean-all').hide();
         } else if (panelName === 'missav-panel') {
             $('#saveBtn').hide();
-            $('#clean-all').hide();
         } else if (panelName === 'fav-sync-panel') {
             $('#saveBtn').hide();
-            $('#clean-all').hide();
         } else if (panelName === 'preload-panel') {
             $('#saveBtn').show();
-            $('#clean-all').hide();
             refreshPreloadCacheStats(plugin);
         } else if (panelName === 'diagnostics-panel') {
             $('#saveBtn').hide();
-            $('#clean-all').hide();
             plugin.refreshDiagnostics();
         } else {
             $('#saveBtn').show();
-            $('#clean-all').hide();
         }
+    });
+    // ===== 侧栏键盘导航（doc/248 audit）=====
+    // 侧栏项已改为 role=tab 的 <button>，Tab 能进入；此处补齐方向键切换。
+    // 与 click 共用同一套切换逻辑（触发 click 而不是重写一遍）。
+    $('.side-menu-item').on('keydown', function (this: HTMLElement, event: KeyboardEvent) {
+        const keys = ['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        const $items = $('.side-menu-item');
+        const index = $items.index(this);
+        let next = index;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = (index + 1) % $items.length;
+        else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = (index - 1 + $items.length) % $items.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = $items.length - 1;
+        const $next = $items.eq(next);
+        $items.attr('tabindex', '-1');
+        $next.attr('tabindex', '0');
+        $next.trigger('focus').trigger('click');
     });
     $('#importBtn').on('click', () => importData(plugin));
     $('#exportBtn').on('click', () => exportData(plugin));

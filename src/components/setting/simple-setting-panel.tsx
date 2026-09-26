@@ -58,31 +58,31 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                         label="显示所有已鉴定"
                         tip="开启后忽略下方分项，强制显示全部已鉴定内容"
                     >
-                        <input type="checkbox" id="showAllItem" className="mini-switch" />
+                        <input type="checkbox" id="showAllItem" className="jhs-toggle" />
                     </Row>
                     <div className="jhs-qs-subcard" id="jhs-qs-filter-group">
                         <Row label="屏蔽单番号">
-                            <input type="checkbox" id="showFilterItem" className="mini-switch" />
+                            <input type="checkbox" id="showFilterItem" className="jhs-toggle" />
                         </Row>
                         <Row label="屏蔽演员">
                             <input
                                 type="checkbox"
                                 id="showFilterActorItem"
-                                className="mini-switch"
+                                className="jhs-toggle"
                             />
                         </Row>
                         <Row label="屏蔽关键词">
                             <input
                                 type="checkbox"
                                 id="showFilterKeywordItem"
-                                className="mini-switch"
+                                className="jhs-toggle"
                             />
                         </Row>
                         <Row label="收藏">
-                            <input type="checkbox" id="showFavoriteItem" className="mini-switch" />
+                            <input type="checkbox" id="showFavoriteItem" className="jhs-toggle" />
                         </Row>
                         <Row label="已观看">
-                            <input type="checkbox" id="showHasWatchItem" className="mini-switch" />
+                            <input type="checkbox" id="showHasWatchItem" className="jhs-toggle" />
                         </Row>
                     </div>
                 </div>
@@ -90,10 +90,10 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                 <div className="jhs-qs-section">
                     <div className="jhs-qs-section-title">浏览行为</div>
                     <Row label="弹窗打开详情" tip="点击封面：弹窗打开，或新窗口打开">
-                        <input type="checkbox" id="dialogOpenDetail" className="mini-switch" />
+                        <input type="checkbox" id="dialogOpenDetail" className="jhs-toggle" />
                     </Row>
                     <Row label="鉴定后关闭页面">
-                        <input type="checkbox" id="needClosePage" className="mini-switch" />
+                        <input type="checkbox" id="needClosePage" className="jhs-toggle" />
                     </Row>
                     <Row
                         label="触底加载"
@@ -126,19 +126,19 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                 <div className="jhs-qs-section">
                     <div className="jhs-qs-section-title">功能</div>
                     <Row label="标题翻译">
-                        <input type="checkbox" id="translateTitle" className="mini-switch" />
+                        <input type="checkbox" id="translateTitle" className="jhs-toggle" />
                     </Row>
                     {isJavdbSite ? (
                         <Row label="加载女优信息" tip="详情页展示年龄、三围等信息">
                             <input
                                 type="checkbox"
                                 id="enableLoadActressInfo"
-                                className="mini-switch"
+                                className="jhs-toggle"
                             />
                         </Row>
                     ) : null}
                     <Row label="第三方视频资源" tip="详情页 missAv / SupJav 等检测">
-                        <input type="checkbox" id="enableLoadOtherSite" className="mini-switch" />
+                        <input type="checkbox" id="enableLoadOtherSite" className="jhs-toggle" />
                     </Row>
                 </div>
 
@@ -166,10 +166,10 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
             </div>
 
             <div className="jhs-qs-footer">
-                <button type="button" id="helpBtn" className="jhs-qs-btn jhs-qs-btn-ghost">
+                <button type="button" id="helpBtn" className="jhs-btn jhs-btn--ghost jhs-btn--compact">
                     常见问题
                 </button>
-                <button type="button" id="moreBtn" className="jhs-qs-btn jhs-qs-btn-primary">
+                <button type="button" id="moreBtn" className="jhs-btn jhs-btn--primary jhs-btn--compact">
                     更多设置
                 </button>
             </div>

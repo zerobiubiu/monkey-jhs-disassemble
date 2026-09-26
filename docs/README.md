@@ -30,6 +30,22 @@
 | `13-merged-row-uncheck-silent-failure.md` | 变更 | 待办（未修复） | 详情页合并行「取消」动作端与展示端共用同一原生 checkbox 查找器导致的静默失败；现场取证、代码定位与候选修法，待可复现时处理 |
 | `14-visit-history-no-limit-and-fallback-lookup.md` | 变更 | v1.46.5 | 访问记录取消 5000 条上限；新增 `lookupVisitTime` 回退匹配（同 pathname 最新记录），修复翻页/筛选参数不一致时误报「无访问记录」 |
 | `15-other-site-preload-cache-remove-limit.md` | 变更 | v1.46.6 | 外站预加载缓存取消 5000 条上限（删除 `PRELOAD_CACHE_MAX`/`evictStaleCache` LRU 淘汰）；有效期仍由 `preloadCacheTTL` 控制 |
+| `16-design-system-context-and-detector-exceptions.md` | 变更 | v1.46.7 | 建立 `DESIGN.md` 视觉设计系统快照（按实际渲染值重建，区分意图斜坡与存量普查阶）；记录 7 个样式表的零偏差契约；检测器 warning 14 → 0（3 项真实修复 + 8 条带理由的例外登记） |
+| `17-setting-surface-distill-and-harden.md` | 变更 | v1.46.8 | 设置界面收敛（评审 25/40 的后续执行）：三套按钮 + 两套开关 distill 为单一 `.jhs-btn`/`.jhs-toggle`；`#clean-all` 加确认框；侧栏 10 面板改 `role=tab` 按钮并支持方向键；移除两处装饰性渐变；危险按钮隔离与图标去重 |
+| `18-setting-cache-action-relocation.md` | 变更 | v1.46.9 | 「清理全部缓存」从底栏移回缓存管理面板内部（它原与「保存设置」共用底栏栅位，开缓存管理时两者互换）；底栏恒为「保存设置」、位置不再变化 |
+| `19-aria-serialization-and-tabpanel-fix.md` | 变更 | v1.46.10 | 修 `jsxToString` 把 `aria-*` 当 HTML 布尔属性序列化的缺陷（`aria-selected` 渲染为空串/属性缺失）；补齐 10 个面板的 `role=tabpanel` + `aria-labelledby` 关联；新增 4 条 ARIA 回归用例。由 chrome-devtools MCP 接入真实浏览器实测发现 |
+| `20-cache-button-hierarchy-and-stylelint-cleanup.md` | 变更 | v1.46.11 | 缓存卡片三按钮由「三个同级实心彩块」收敛为「一个主操作 + 两个描边次级」（新增 `.jhs-btn--danger-ghost` 变体）；`fold-category-plugin.css` 的运行时占位符加 `stylelint-disable` 说明，`lint:css` 首次全库零告警 |
+| `21-javdb-selector-audit.md` | 变更 | v1.46.12 | JavDB 选择器核验与女演员新旧兼容修复；实测详情/列表/演员/标签/高级搜索/榜单/用户清单等 80+ 项；已装构建端到端复测确认 `.highlighted` 11/11 生效；actress-info 与存储/迁移未动 |
+| `22-site-selector-registry.md` | 变更 | v1.46.13 | 站点选择器收敛为单一注册表 `src/core/util/site/selectors.ts`（站点原生选择器事实表 + 新旧兼容查询 API）；新增 `bun run check:selectors` 棘轮门禁（禁新增裸站点字面量，两个失败分支已负向验证）；实测站点依赖面 284 处 / 90 文件 |
+
+### 1.2 站点参考文档（固定名称，持续维护）
+
+记录宿主站点（JavDB）自身的视觉语言与 DOM 结构，作为增强层“并入原站”原则的事实基线与开发依据。随站点改版更新，不占编号。
+
+| 文件 | 类型 | 内容概览 |
+|------|------|----------|
+| `javdb-site-style.md` | 参考 | JavDB 站点视觉风格：Bulma 基座、字体栈、Bulma 语义色 + JavDB 自有强调色（导航 `#0a0a0a`、演员链接 `#f09`、评分 `#fc8300`）、暗色主题、圆角/阴影、布局与断点、组件规则、与增强层对接要点 |
+| `javdb-site-structure.md` | 参考 | JavDB 站点结构：页面类型与通用骨架、详情/列表/演员/标签/用户清单/系列/榜单/搜索页的 DOM 层级与容器关系、扩展注入标记、选择器实测计数 |
 
 ## 2. 文档规范
 
@@ -125,6 +141,7 @@
 
 - 插件与核心模块清单：`plugin-catalog.md`（AGENTS.md §3.3/§3.4 的目录数据落点，增删时同步更新）
 - 原始脚本：`archetype/jhs.user.js`（只读参考）
+- 宿主站点参考：`javdb-site-style.md`（视觉语言）、`javdb-site-structure.md`（DOM 结构）；选择器有效性清单见 `21-javdb-selector-audit.md`
 - 升级对照脚本：`archetype/jhs.3.3.6.027.user.js`（说明见 `11-missav-and-finale.md`）
 - 工程入口：`src/main.tsx`（完整启动序列）
 - 构建配置：`vite.config.ts`

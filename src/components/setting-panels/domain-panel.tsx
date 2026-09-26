@@ -22,7 +22,7 @@ export function DomainPanel({ panelName }: DomainPanelProps) {
     return (
         <div
             id="domain-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-domain-panel" 
             style={{
                 display: panelName === 'domain-panel' ? 'block' : 'none'
             }}

@@ -94,3 +94,36 @@ describe('jsxToString 函数组件与 Fragment', () => {
         expect(html).toBe('a&lt;b&gt;');
     });
 });
+
+/**
+ * doc/250：ARIA 属性不是 HTML 布尔属性。
+ *
+ * 回归背景：`renderAttrs` 原先把所有 `true` 输出为裸属性、`false` 整条省略。对
+ * `.side-menu-item` 的 `aria-selected` 而言，激活项渲染为 `aria-selected`（无值，
+ * HTML 解析为空串）、其余项属性完全缺失——两者都不是合法 ARIA，读屏无法区分
+ * 「未选中」与「属性不存在」。实测（Chrome DevTools 读真实 DOM）确认了该渲染结果。
+ */
+describe('jsxToString ARIA 属性序列化', () => {
+    it('aria-* 的 true/false 一律输出字符串，不降级为裸属性或省略', () => {
+        const t = jsxToString(createElement('button', { 'aria-selected': true }));
+        const f = jsxToString(createElement('button', { 'aria-selected': false }));
+        expect(t).toBe('<button aria-selected="true"></button>');
+        expect(f).toBe('<button aria-selected="false"></button>');
+        expect(t).not.toBe('<button aria-selected></button>');
+    });
+
+    it('aria-* 为 null/undefined 时仍省略属性', () => {
+        expect(jsxToString(createElement('button', { 'aria-selected': null }))).toBe('<button></button>');
+        expect(jsxToString(createElement('button', { 'aria-selected': undefined }))).toBe('<button></button>');
+    });
+
+    it('非 ARIA 的布尔属性仍保持裸属性 / 省略语义', () => {
+        expect(jsxToString(createElement('button', { disabled: true }))).toBe('<button disabled></button>');
+        expect(jsxToString(createElement('button', { disabled: false }))).toBe('<button></button>');
+    });
+
+    it('aria-hidden 的字符串值原样输出（侧栏装饰性 emoji 依赖此用法）', () => {
+        const html = jsxToString(createElement('span', { 'aria-hidden': 'true' }, 'x'));
+        expect(html).toBe('<span aria-hidden="true">x</span>');
+    });
+});

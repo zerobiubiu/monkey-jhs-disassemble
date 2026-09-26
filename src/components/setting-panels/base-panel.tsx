@@ -30,7 +30,7 @@ export function BasePanel({ panelName, qualityOptionsHtml, isJavdbSite }: BasePa
     return (
         <div
             id="base-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-base-panel" 
             style={{
                 display: panelName === 'base-panel' ? 'block' : 'none'
             }}

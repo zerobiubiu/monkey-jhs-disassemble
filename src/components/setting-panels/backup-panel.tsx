@@ -27,7 +27,7 @@ export function BackupPanel({ panelName }: BackupPanelProps) {
     return (
         <div
             id="backup-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-backup-panel" 
             style={{
                 display: panelName === 'backup-panel' ? 'block' : 'none'
             }}

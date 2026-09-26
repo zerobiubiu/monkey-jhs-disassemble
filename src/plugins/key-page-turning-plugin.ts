@@ -18,12 +18,13 @@
  * 3. lockLeft/lockRight 防长按方向键连发（需 keyup 解锁才接受下一次）
  */
 import type { PageType } from '../core/page-context';
+import { siteSelector } from '../core/util/site/selectors';
 import { BasePlugin } from './base-plugin';
 
 /** 上一页链接选择器（原脚本顶层 SELECTOR_LEFT）。 */
-const SELECTOR_LEFT = 'body > section > div > nav > a.pagination-previous';
+const SELECTOR_LEFT = siteSelector('paginationPrevPath');
 /** 下一页链接选择器（原脚本顶层 SELECTOR_RIGHT）。 */
-const SELECTOR_RIGHT = 'body > section > div > nav > a.pagination-next';
+const SELECTOR_RIGHT = siteSelector('paginationNextPath');
 
 /**
  * 键盘翻页插件主类。

@@ -1,8 +1,9 @@
 /**
  * SettingButton —— 面板操作按钮原子组件。
  *
- * 输出 `<a class="jhs-setting-btn jhs-setting-btn--{color}">`，语义色修饰符
- * 由 setting-plugin.css 提供（primary/success/danger/pink/mint）。id 供
+ * 输出 `<a class="jhs-btn jhs-btn--{color}">`，语义色修饰符
+ * 由 setting-plugin.css 的统一按钮系统提供（primary/success/danger/pink/mint）。id 供
+ * jQuery 绑定。
  * jQuery 绑定。
  */
 
@@ -20,11 +21,11 @@ export interface SettingButtonProps {
 
 /**
  * 渲染面板操作按钮。
- * @returns `.jhs-setting-btn` JSX。
+ * @returns `.jhs-btn` JSX。
  */
 export function SettingButton({ id, color, children }: SettingButtonProps) {
     return (
-        <a id={id} className={`jhs-setting-btn jhs-setting-btn--${color}`}>
+        <a id={id} className={`jhs-btn jhs-btn--${color}`}>
             {children}
         </a>
     );

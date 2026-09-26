@@ -25,7 +25,7 @@ export function FavSyncPanel({ panelName }: FavSyncPanelProps) {
     return (
         <div
             id="fav-sync-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-fav-sync-panel" 
             style={{ display: panelName === 'fav-sync-panel' ? 'block' : 'none', overflowY: 'auto', height: '100%' }}
         >
             <SettingSection title="双向增量同步" icon="🔄">
@@ -77,6 +77,8 @@ export function FavSyncPanel({ panelName }: FavSyncPanelProps) {
                                 width: '0%',
                                 borderRadius: '4px',
                                 background: '#48c774',
+                                // 进度由 refreshUi 的 $bar.css({ width }) 驱动，宽度过渡是必要的；
+                                // 改 transform: scaleX 会同时缩放 4px 圆角，破坏进度条形态。
                                 transition: 'width 0.3s ease'
                             }}
                         />

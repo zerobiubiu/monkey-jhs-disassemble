@@ -37,4 +37,20 @@ mempalace.yaml
 entities.json
 .superpowers/
 .serena/
+
+# Impeccable 设计系统上下文
+#   DESIGN.md —— 入库（团队共享的设计系统快照）
+#   例外登记 .impeccable/config.json —— 入库（记录检测器例外及理由，需团队共享）
+#   其余（design.json 侧车 / critique 快照 / config.local.json）—— 可重生成产物，各人本地保留
+.impeccable/*
+!.impeccable/config.json
 tmp*.js
+
+# GitNexus 索引与生成物（可重建生成物，不入库；AGENTS.md §4.3）
+.gitnexus/
+.claude/
+.agents/skills/gitnexus-*/
+docs/troubleshooting/gitnexus-fts.md
+
+# pi-cap 自动装配的项目级 skill（可重建；项目自有 skill 放 .agents/skills/）
+.pi/skills/

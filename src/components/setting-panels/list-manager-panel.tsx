@@ -33,7 +33,7 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
     return (
         <div
             id="vlt-panel"
-            className="content-panel"
+            className="content-panel" role="tabpanel" aria-labelledby="tab-vlt-panel" 
             style={{ display: panelName === 'vlt-panel' ? 'block' : 'none' }}
         >
             <SettingSection title="序号合并" icon="🗂️">
@@ -60,7 +60,7 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                             placeholder="输入清单名或前缀后按回车添加"
                             style={{ flex: 1 }}
                         />
-                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                        <a className="add-tag-btn jhs-btn jhs-btn--primary" style={{ flexShrink: 0 }}>
                             添加
                         </a>
                     </div>
@@ -136,7 +136,7 @@ export function ListManagerPanel({ panelName }: ListManagerPanelProps) {
                             placeholder="输入关键词后按回车添加（包含匹配）"
                             style={{ flex: 1 }}
                         />
-                        <a className="add-tag-btn jhs-setting-btn jhs-setting-btn--primary" style={{ flexShrink: 0 }}>
+                        <a className="add-tag-btn jhs-btn jhs-btn--primary" style={{ flexShrink: 0 }}>
                             添加
                         </a>
                     </div>

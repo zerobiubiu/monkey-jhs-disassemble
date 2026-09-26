@@ -157,11 +157,14 @@ __CSS_TEXT__
     cursor: help;
 }
 
-/* iOS 风格开关（设置面板内） */
+/* iOS 风格开关（设置面板 + 快捷浮层共用，唯一开关实现） */
 .jhs-toggle {
+    display: inline-block;
     position: relative;
     width: 40px;
     height: 22px;
+    min-width: 40px;
+    max-width: 40px;
     appearance: none;
     -webkit-appearance: none;
     background: #d1d5db;
@@ -174,6 +177,7 @@ __CSS_TEXT__
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    vertical-align: middle;
     accent-color: unset;
 }
 
@@ -198,6 +202,14 @@ __CSS_TEXT__
     transform: translateX(18px);
 }
 
+.jhs-toggle:focus-visible {
+    outline: 2px solid #5d87c2;
+    outline-offset: 2px;
+}
+
+/* 快捷浮层内开关：避免被 form-content 通配拉宽（.jhs-toggle 已锁宽，此处仅保留
+   历史选择器以防旧 class 残留，新代码直接用 .jhs-toggle） */
+
 /* 面板分区（替代渐变 hr 分隔线） */
 .jhs-setting-section {
     margin-top: 20px;
@@ -221,8 +233,25 @@ __CSS_TEXT__
     margin-bottom: 12px;
 }
 
-/* 面板操作按钮（语义色修饰符） */
-.jhs-setting-btn {
+/*
+ * ===== 统一按钮系统（jhs-btn）=====
+ *
+ * doc/248 distill：原先三套并存——`.jhs-setting-btn`（面板操作）、
+ * `.jhs-setting-menu-btn`（缓存卡片/菜单）、`.jhs-qs-btn`（快捷浮层）。三者尺寸、
+ * hover 手感、圆角各不相同，同一个弹层里出现三种按钮手感。现收敛为一套：
+ *
+ *   .jhs-btn                             基准（面板内主尺寸）
+ *   .jhs-btn--primary/success/danger     实心语义色
+ *   .jhs-btn--pink/--mint                次要实心色（缓存卡片用）
+ *   .jhs-btn--neutral/--muted            中性实心色（缓存卡片用）
+ *   .jhs-btn--ghost                      白底描边（次要动作/取消）
+ *   .jhs-btn--danger.jhs-btn--isolated   危险动作：与常规动作拉开距离
+ *   .jhs-btn--compact                    紧凑变体（快捷浮层底部）
+ *
+ * 几何基准取自原 `.jhs-setting-btn`（最完整的一套）。hover 统一用透明度提亮，
+ * 不换底色、不位移（原 `.jhs-setting-menu-btn`/`.jhs-qs-btn` 的 translateY 取消）。
+ */
+.jhs-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -243,32 +272,95 @@ __CSS_TEXT__
     box-sizing: border-box;
 }
 
-.jhs-setting-btn:hover {
+/* 子元素（如 <span>）不得覆盖按钮文字色 */
+.jhs-btn span {
+    color: inherit;
+}
+
+.jhs-btn:hover {
     opacity: 0.9;
 }
 
-.jhs-setting-btn:active {
+.jhs-btn:active {
     transform: scale(0.97);
 }
 
-.jhs-setting-btn--primary {
+.jhs-btn:disabled,
+.jhs-btn.is-disabled {
+    opacity: 0.55;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* 语义色修饰符 */
+.jhs-btn--primary {
     background: #5d87c2;
 }
 
-.jhs-setting-btn--success {
+.jhs-btn--success {
     background: #22c55e;
 }
 
-.jhs-setting-btn--danger {
+.jhs-btn--danger {
     background: #ef4444;
 }
 
-.jhs-setting-btn--pink {
+.jhs-btn--pink {
     background: #d25a88;
 }
 
-.jhs-setting-btn--mint {
+.jhs-btn--mint {
     background: #85d0a3;
+}
+
+.jhs-btn--neutral {
+    background: #b2bec0;
+}
+
+.jhs-btn--muted {
+    background: #448cc2;
+}
+
+/* 危险动作的描边变体：白底 + 红字 + 红描边。
+   用于「重要但低频」的破坏性动作（如缓存卡片的【清理】），保留危险语义又不与主操作争�抢注意力。
+   从实心红改为描边红：它们不在「主操作」位置，用实心强调色会制造错误的层级。 */
+.jhs-btn--danger-ghost {
+    background: #fff;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+}
+
+.jhs-btn--danger-ghost:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+/* 白底描边变体（次要动作/取消） */
+.jhs-btn--ghost {
+    background: #fff;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.jhs-btn--ghost:hover {
+    background: #f8fafc;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+/* 危险动作隔离：与相邻常规按钮拉开距离，降低误触概率 */
+.jhs-btn--isolated {
+    margin-left: auto;
+}
+
+/* 紧凑变体：快捷浮层底部两个按钮 */
+.jhs-btn--compact {
+    flex: 1;
+    height: auto;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
 }
 
 /* 复选框 + 文字标签 */
@@ -349,40 +441,11 @@ __CSS_TEXT__
     margin-top: 0;
 }
 
-/* ===== 通用按钮（jhs-setting-menu-btn 统一样式）===== */
-.jhs-setting-menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 7px 16px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
-    border: none;
-    white-space: nowrap;
-    color: #fff !important;
-}
-
-.jhs-setting-menu-btn span {
-    color: #fff !important;
-}
-
-.jhs-setting-menu-btn:hover {
-    opacity: 0.88;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.15);
-}
-
-.jhs-setting-menu-btn:active {
-    transform: translateY(0);
-}
-
-/* ===== 底部操作按钮（jhs-setting-btn 统一按钮系统）===== */
-#saveBtn,
-#clean-all {
+/* ===== 底栏 #saveBtn =====
+ * doc/249：底栏只保留「保存设置」。「清理全部缓存」已移回 cache-panel 面板内部，
+ * 不再与它共用底栏栅位（原实现开缓存管理时两者互换，造成「同一位置两个语义」）。
+ */
+#saveBtn {
     margin-top: 0;
 }
 
@@ -439,7 +502,7 @@ __CSS_TEXT__
     gap: 8px;
     padding: 14px 16px 10px;
     border-bottom: 1px solid #f1f5f9;
-    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+    background: #f8fafc;
 }
 
 .jhs-qs-title {
@@ -651,108 +714,31 @@ __CSS_TEXT__
     background: #fafbfc;
 }
 
-.jhs-qs-btn {
-    flex: 1;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition:
-        background 0.15s ease,
-        transform 0.12s ease,
-        box-shadow 0.15s ease;
-}
+/* 原 `.jhs-qs-btn` / `-ghost` / `-primary` 三套已并入 `.jhs-btn`（见文件上方统一按钮系统）。
+   主按钮的渐变底已去除：PRODUCT.md 明确拒绝装饰性渐变，改用主色实底（.jhs-btn--primary）。 */
 
-.jhs-qs-btn:hover {
-    transform: translateY(-1px);
-}
-
-.jhs-qs-btn:active {
-    transform: translateY(0);
-}
-
-.jhs-qs-btn-ghost {
-    background: #fff;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
-}
-
-.jhs-qs-btn-ghost:hover {
-    background: #f8fafc;
-    color: #475569;
-    border-color: #cbd5e1;
-}
-
-.jhs-qs-btn-primary {
-    background: linear-gradient(135deg, #5d87c2, #4a90d9);
-    color: #fff;
-    box-shadow: 0 2px 8px rgb(74, 144, 217, 0.28);
-}
-
-.jhs-qs-btn-primary:hover {
-    box-shadow: 0 4px 12px rgb(74, 144, 217, 0.35);
-}
-
-/* 快捷设置内开关：避免被 form-content 通配拉宽 */
-.jhs-qs-panel input.mini-switch[type='checkbox'] {
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
-}
-
-/* ===== 开关（mini-switch）===== */
-
-/* 排除 form-content 通配与 content-panel checkbox 规则的干扰 */
-input.mini-switch[type='checkbox'] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 40px;
-    height: 20px;
-    min-width: 40px;
-    max-width: 40px;
-    padding: 0;
-    margin: 0;
-    background: #e0e0e0;
-    border: none;
-    border-radius: 20px;
-    position: relative;
-    cursor: pointer;
-    outline: none;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    vertical-align: middle;
-    accent-color: unset;
-}
-
-input.mini-switch[type='checkbox']:checked {
-    background: #4caf50;
-}
-
-input.mini-switch[type='checkbox']::before {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
-    top: 2px;
-    left: 2px;
-    box-shadow: 0 1px 3px rgb(0, 0, 0, 0.2);
-    transition: left 0.15s ease;
-}
-
-input.mini-switch[type='checkbox']:checked::before {
-    left: calc(100% - 18px);
-}
+/* ===== 开关：mini-switch 已废弃 =====
+ *
+ * doc/248 distill：原 `input.mini-switch`（40×20 / 圆角 20px / 开态 #4caf50）与
+ * `.jhs-toggle`（40×22 / 圆角 11px / 开态 #22c55e）是两套并行开关，二者都在生产中。
+ * 现统一到 `.jhs-toggle`（尺寸更规范、带 focus-visible 焦点环），mini-switch 定义已删除。
+ * 若后续需回滚，见 git 历史中本注释所在位置。
+ */
 
 /* ===== 侧栏导航 ===== */
 .side-menu-item {
+    /* doc/248 audit：侧栏项由 <div> 改为 role=tab 的 <button>，此处重置按钮默认外观 */
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
     padding: 11px 16px;
     cursor: pointer;
     color: #64748b;
-    border-left: 3px solid transparent;
     transition: color 0.2s, background-color 0.2s, border-color 0.2s;
     display: flex;
     align-items: center;
@@ -762,6 +748,12 @@ input.mini-switch[type='checkbox']:checked::before {
     text-overflow: ellipsis;
     font-size: 14px;
     font-weight: 500;
+    box-sizing: border-box;
+}
+
+.side-menu-item:focus-visible {
+    outline: 2px solid #5d87c2;
+    outline-offset: -2px;
 }
 
 .side-menu-item .icon {
@@ -797,8 +789,8 @@ input.mini-switch[type='checkbox']:checked::before {
 
 /* 表单控件统一样式已收敛至「设置项布局」区块的 .setting-item 作用域规则 */
 
-/* ===== 复选框美化（不含开关）===== */
-.content-panel input[type='checkbox']:not(.mini-switch, .jhs-toggle) {
+/* ===== 复选框美化（已排除 .jhs-toggle 开关；mini-switch 已废弃，无需再排除） ===== */
+.content-panel input[type='checkbox']:not(.jhs-toggle) {
     width: 16px;
     height: 16px;
     accent-color: #5d87c2;

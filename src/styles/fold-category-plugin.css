@@ -27,8 +27,10 @@
     background-color: #ff5722;
 }
 
-/* 高亮状态下的标签样式 */
+/* 以下两条是运行时占位符（须保持大写），由 fold-category-plugin.tsx 与
+   favorite-actresses-plugin.tsx 的 initCss() 分别 replace 为用户设置的高亮标签
+   边框宽度 / 颜色。stylelint 的 value-keyword-case 规则不适用于占位符。 */
 .highlighted {
-    /* 浅黄色 */
+    /* stylelint-disable-next-line value-keyword-case */
     border: __HIGHLIGHTED_TAG_NUMBER__px solid __HIGHLIGHTED_TAG_COLOR__;
 }

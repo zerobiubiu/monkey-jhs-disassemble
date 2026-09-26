@@ -314,6 +314,8 @@
     overflow: hidden;
 }
 
+/* 进度由 lr-panel.tsx 的 fillElement.style.width 驱动，宽度过渡是必要的；
+   改 transform: scaleX 会同时缩放 4px 圆角，破坏进度条形态。 */
 .jhs-reflow-panel__progress-fill {
     height: 100%;
     width: 0%;

@@ -58,6 +58,8 @@ export function SyncPanel({
         <div
             id={panelId}
             className="content-panel"
+            role="tabpanel"
+            aria-labelledby={`tab-${panelId}`}
             style={{
                 display: panelName === panelId ? 'block' : 'none'
             }}

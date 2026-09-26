@@ -229,7 +229,7 @@ export function _createLogElement(entry: LogEntry): HTMLDivElement {
     el.dataset.type = entry.type;
     el.dataset.id = String(entry.id);
     const style = LOG_TYPE_STYLES[entry.type] || LOG_TYPE_STYLES.base;
-    el.style.borderLeft = '3px solid ' + style.borderLeftColor;
+    el.style.borderLeft = '4px solid ' + style.borderLeftColor;
     el.style.background = style.background;
     const timeStr = (
         entry.timestamp instanceof Date ? entry.timestamp : new Date(entry.timestamp)

@@ -1,11 +1,15 @@
-/* 标题翻译插件样式（原 translate-plugin.tsx initCss 返回的 <style> 块，
-   改走 CSS 管线：utils.insertStyle 自动包裹 <style> 注入 head，时机/作用域与原先一致）。 */
+/* 标题翻译插件样式。原 translate-plugin.tsx initCss 返回的 <style> 块，改走 CSS 管线
+   （utils.insertStyle 自动包裹 <style> 注入 head，时机/作用域与原先一致）。
+
+   注意：原实现是「渐变底 + 4px 绿色左边框 + 20px 字号 + 投影」的醒目标注块，
+   与 DESIGN.md 的克制基线（无装饰渐变 / 无单边彩条 / 字号五档 / 扁平为默认）冲突。
+   此处按其交互意图（紧随原站标题之后的一行翻译提示）改为一枚低调的标题栏，
+   是本轮 polish 的**有意偏差**，非笔误。 */
 .translated-title {
     margin-top: 8px;
     padding: 12px;
-    border-radius: 5px;
-    border-left: 4px solid rgb(76, 175, 80);
-    background: linear-gradient(135deg, rgb(255, 255, 255) 0%, rgb(245, 245, 245) 100%);
-    box-shadow: 0 4px 8px rgb(0, 0, 0, 0.08);
-    font-size: 20px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fbfcfd;
+    font-size: 14px;
 }
