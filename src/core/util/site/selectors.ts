@@ -22,6 +22,13 @@ export interface SiteSelector {
     /** 当前（新版）站点结构选择器。 */
     readonly current: string;
     /** 改版前的旧结构选择器；仅当站点确实改过版时提供。 */
+    /**
+     * 改版前的旧结构选择器；仅当站点确实改过版时提供。
+     *
+     * **必须是合法 CSS 选择器**（`siteQueryCompat` 走 `querySelectorAll`）——
+     * jQuery 专有伪类（如 `:contains(...)`）不得写在这里，文本类回退改用
+     * {@link SITE_TEXT_VARIANTS} + {@link textMatchesAny}。
+     */
     readonly legacy?: string;
 }
 
@@ -91,11 +98,14 @@ export const SITE_SELECTORS = {
     detailVideoMetaPanel: { current: '.video-meta-panel' },
     /** 视频信息面板内链接（外链加 target）。 */
     detailVideoMetaLink: { current: '.video-meta-panel a' },
-    /** 发布日期读取（新结构）。 */
-    detailPublishTime: {
-        current: '.video-meta-panel nav > div:nth-child(2) > span',
-        legacy: 'strong:contains("日期:")'
-    },
+    /**
+     * 发布日期读取。
+     *
+     * 旧读法 `strong:contains("日期:")` 是 **jQuery 专有**语法，不是合法 CSS，
+     * 无法进本表（`siteQueryCompat` 走 `querySelectorAll`）；文本回退改由
+     * {@link SITE_TEXT_VARIANTS} 的 `publishDate` 变体承担。
+     */
+    detailPublishTime: { current: '.video-meta-panel nav > div:nth-child(2) > span' },
     /** 封面图。 */
     detailCoverImg: { current: '.column-video-cover img' },
     /** 封面列。 */
@@ -204,10 +214,6 @@ export const SITE_SELECTORS = {
     actorSectionName: { current: '.actor-section-name' },
     /** 演员页元信息（别名/影片数/性别）。 */
     actorSectionMeta: { current: '.section-meta' },
-    /** 演员页不含"影片"的元信息（取名称）。 */
-    actorSectionMetaName: { current: ".section-meta:not(:contains('影片'))" },
-    /** 演员页性别判定（男優）。 */
-    actorSectionMetaMale: { current: ".section-meta:contains('男優')" },
     /** 演员页头像。 */
     actorAvatar: { current: '.avatar' },
     /** 演员页标签区。 */
@@ -303,4 +309,84 @@ export function siteQueryCompat(key: SiteSelectorKey, root: ParentNode = documen
         return current;
     }
     return Array.from(root.querySelectorAll<HTMLElement>(entry.legacy));
+}
+
+/**
+ * 站点文案的**多语言变体**（正體中文 / 简体中文 / English）。
+ *
+ * 背景：JavDB 已支持 `?locale=zh`（繁）/ `zh-CN`（简）/ `en`。类名类选择器跨语言稳定，
+ * 但**文本依赖**（`:contains(...)`、`title=` 属性）会随语言变化——例如演员页元信息在
+ * 繁体为「男優, 3345 部影片」、简体为「男优, 3345 部影片」、英文为「Actor, 3345 movie(s)」。
+ *
+ * 因此文本判断一律走本表 + {@link textMatchesAny}，不要写单语言字面量。
+ */
+export const SITE_TEXT_VARIANTS = {
+    /** 演员页「影片数量」行后缀：用于**排除**该行以取演员名。 */
+    movieCount: ['影片', 'movie'],
+    /** 演员页男性角色标记：用于判定演员性别。 */
+    actorMale: ['男優', '男优', 'Actor'],
+    /** 详情页「发布日期」行标签（BasePlugin 回退读法用）。 */
+    publishDate: ['日期', 'Released Date']
+} as const;
+
+/** {@link SITE_TEXT_VARIANTS} 的键名。 */
+export type SiteTextKey = keyof typeof SITE_TEXT_VARIANTS;
+
+/**
+ * 文本是否命中某组多语言变体（跨语言文本判断的唯一入口）。
+ *
+ * @param text 待判断文本（通常是元素 `textContent`）
+ * @param key 变体组键名
+ * @returns 命中任一语言变体则为 true
+ */
+export function textMatchesAny(text: string, key: SiteTextKey): boolean {
+    const tokens: readonly string[] = SITE_TEXT_VARIANTS[key];
+    return tokens.some((token) => text.includes(token));
+}
+
+/**
+ * 取演员页的「演员名/别名」元信息行（跨语言）。
+ *
+ * 排除「影片数量」行（该行后缀随语言变化：影片 / movie(s)），
+ * 因为它的内容是数字而非演员名。
+ *
+ * @param root 查询根，默认当前 document
+ * @returns 非影片数量行的 `.section-meta` 元素
+ */
+export function queryActorMetaNameRows(root: ParentNode = document): HTMLElement[] {
+    return siteQuery('actorSectionMeta', root).filter(
+        (el) => !textMatchesAny(el.textContent ?? '', 'movieCount')
+    );
+}
+
+/**
+ * 当前演员页是否为男演员页（跨语言）。
+ *
+ * 男性角色标记随语言变化（男優 / 男优 / Actor），故不能用单语言 `:contains`。
+ *
+ * @param root 查询根，默认当前 document
+ * @returns 命中男性标记则为 true
+ */
+export function isMaleActorPage(root: ParentNode = document): boolean {
+    return siteQuery('actorSectionMeta', root).some((el) =>
+        textMatchesAny(el.textContent ?? '', 'actorMale')
+    );
+}
+
+/**
+ * 读详情页发布日期文本（跨语言）。
+ *
+ * 先找标签命中 `publishDate` 变体的 `.panel-block` 行，再取其 `.value`。
+ * 该读法替代了 jQuery 专有的 `$('strong:contains("日期:")').parent('.panel-block').find('.value')`，
+ * 且不再依赖单一语言。
+ *
+ * @param root 查询根，默认当前 document
+ * @returns 发布日期文本（去空白）；未找到为空串
+ */
+export function queryPublishTimeText(root: ParentNode = document): string {
+    const rows = Array.from(root.querySelectorAll<HTMLElement>('.panel-block'));
+    const matched = rows.find((row) =>
+        textMatchesAny(row.querySelector('strong')?.textContent ?? '', 'publishDate')
+    );
+    return (matched?.querySelector('.value')?.textContent ?? '').trim();
 }

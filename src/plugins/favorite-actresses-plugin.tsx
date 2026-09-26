@@ -27,7 +27,7 @@ import { YES } from '../constants/status';
 
 import { jsxToString } from '../core/jsx-to-string';
 import { queryActressLinks } from '../core/util/site/actress-links';
-import { siteSelector } from '../core/util/site/selectors';
+import { queryActorMetaNameRows, siteSelector } from '../core/util/site/selectors';
 
 import { BasePlugin } from './base-plugin';
 
@@ -182,7 +182,8 @@ export class FavoriteActressesPlugin extends BasePlugin {
                         actressNames.push(name.trim());
                     });
             }
-            const $metaSection = $(siteSelector('actorSectionMetaName'));
+            // 站点已支持简体/英文；「影片数量」行后缀随语言变化，改用注册表的跨语言查询。
+            const $metaSection = $(queryActorMetaNameRows());
             if ($metaSection.length) {
                 $metaSection
                     .text()

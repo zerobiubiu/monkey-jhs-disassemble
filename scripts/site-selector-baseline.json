@@ -27,7 +27,7 @@
   "src/main.tsx": 1,
   "src/plugins/actress-info-plugin.tsx": 4,
   "src/plugins/auto-page/ap-fetch.ts": 1,
-  "src/plugins/base-plugin.ts": 9,
+  "src/plugins/base-plugin.ts": 7,
   "src/plugins/blacklist/blacklist-scraper.tsx": 1,
   "src/plugins/blacklist/blacklist-tabulator.tsx": 1,
   "src/plugins/detail-page-button-plugin.tsx": 2,

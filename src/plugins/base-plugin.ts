@@ -23,6 +23,12 @@ import { featureFlags } from '../core/feature-flags';
 import { failWithToast } from '../core/toast';
 import type { SiteType, PageType } from '../core/page-context';
 import { getActressNames } from '../core/util/site/actress-links';
+import {
+    isMaleActorPage,
+    queryActorMetaNameRows,
+    queryPublishTimeText,
+    siteSelector
+} from '../core/util/site/selectors';
 import type { PluginManager } from './plugin-manager';
 import type { PluginMap } from './plugin-registry';
 
@@ -115,7 +121,9 @@ export class BasePlugin {
         let publishTime: string | null = null;
         const href = window.location.href;
         if (isJavdbSite) {
-            carNum = $('a[title="複製番號"]').attr('data-clipboard-text') ?? null;
+            // 站点已支持 ?locale=zh-CN（简体）/ en；`a[title="複製番號"]` 仅繁体下存在（三语言实测）。
+            // 改用语言无关的剪贴板锚点：三语言均命中且 data-clipboard-text 一致。
+            carNum = $(siteSelector('detailMetaClipboard')).attr('data-clipboard-text') ?? null;
             url = href.split('?')[0].split('#')[0];
             // 详情页新版演员链接是 a.actor-female，旧版兼容回退见 core/util/site/actress-links。
             actress = getActressNames();
@@ -125,11 +133,7 @@ export class BasePlugin {
                 .map((_index: number, el: HTMLElement) => $(el).text())
                 .get()
                 .join(' ');
-            publishTime = $('strong:contains("日期:")')
-                .parent('.panel-block')
-                .find('.value')
-                .text()
-                .trim();
+            publishTime = queryPublishTimeText();
         }
         return { carNum, url, actress, actors, publishTime };
     }
@@ -161,7 +165,9 @@ export class BasePlugin {
                     allName.push(part.trim());
                 });
         }
-        const metaEl = $(".section-meta:not(:contains('影片'))");
+        // 站点已支持简体/英文；「影片数量」行后缀随语言变化（影片 / movie(s)），
+        // 故用多语言变体排除该行，不写单语言 `:contains`。
+        const metaEl = $(queryActorMetaNameRows());
         if (metaEl.length) {
             metaEl
                 .text()
@@ -171,7 +177,8 @@ export class BasePlugin {
                     allName.push(part.trim());
                 });
         }
-        const role = $(".section-meta:contains('男優')").length > 0 ? ACTOR : ACTRESS;
+        // 男性角色标记随语言变化（男優 / 男优 / Actor），同样走多语言变体。
+        const role = isMaleActorPage() ? ACTOR : ACTRESS;
         let movieType: string = CENSORED;
         if (allName.some((part: string) => part.includes('無碼'))) {
             movieType = UNCENSORED;

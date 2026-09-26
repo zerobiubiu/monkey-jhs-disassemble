@@ -11,6 +11,11 @@
 
 ## v1.46.9
 
+## v1.46.14
+
+### 修复
+- **JavDB 简体中文（`?locale=zh-CN`）适配**（doc/23）：`a[title="複製番號"]` 仅在繁体下存在，简体/英文下命中 0，导致 `carNum` 整条链路（详情/清单/评分/影评写入）断掉；改用语言无关的 `.panel-block.first-block a[data-clipboard-text]`（三语言实测均命中且值一致）。演员页「影片数量」行后缀与「男優」标记、详情页「日期」标签同样随语言漂移，改为注册表的 `SITE_TEXT_VARIANTS` 多语言变体 + `textMatchesAny` / `queryActorMetaNameRows` / `isMaleActorPage` / `queryPublishTimeText`，语言逻辑内聚于 `core/util/site/selectors.ts`。新增 11 条用例（17 文件 / 217 用例）；站点选择器基线 284 → 275。
+
 ## v1.46.13
 
 ### 新增

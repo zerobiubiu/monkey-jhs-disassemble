@@ -37,6 +37,7 @@
 | `20-cache-button-hierarchy-and-stylelint-cleanup.md` | 变更 | v1.46.11 | 缓存卡片三按钮由「三个同级实心彩块」收敛为「一个主操作 + 两个描边次级」（新增 `.jhs-btn--danger-ghost` 变体）；`fold-category-plugin.css` 的运行时占位符加 `stylelint-disable` 说明，`lint:css` 首次全库零告警 |
 | `21-javdb-selector-audit.md` | 变更 | v1.46.12 | JavDB 选择器核验与女演员新旧兼容修复；实测详情/列表/演员/标签/高级搜索/榜单/用户清单等 80+ 项；已装构建端到端复测确认 `.highlighted` 11/11 生效；actress-info 与存储/迁移未动 |
 | `22-site-selector-registry.md` | 变更 | v1.46.13 | 站点选择器收敛为单一注册表 `src/core/util/site/selectors.ts`（站点原生选择器事实表 + 新旧兼容查询 API）；新增 `bun run check:selectors` 棘轮门禁（禁新增裸站点字面量，两个失败分支已负向验证）；实测站点依赖面 284 处 / 90 文件 |
+| `23-locale-zh-cn-adaptation.md` | 变更 | v1.46.14 | JavDB 简体中文（`?locale=zh-CN`）适配：`a[title="複製番號"]` 在简体/英文下失效（致命，carNum 断链），改走语言无关的 `.panel-block.first-block a[data-clipboard-text]`；注册表新增 `SITE_TEXT_VARIANTS` 多语言变体 + `textMatchesAny`/`queryActorMetaNameRows`/`isMaleActorPage`/`queryPublishTimeText`；三语言 fetch 实测取证 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
