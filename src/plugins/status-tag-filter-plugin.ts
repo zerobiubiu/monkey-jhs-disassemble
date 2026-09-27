@@ -65,6 +65,7 @@ import { BasePlugin } from './base-plugin';
 import { applyFilter } from './status-tag-filter/stf-apply';
 import { doBuild, findMountTarget, LOG } from './status-tag-filter/stf-ui';
 import { setCarRecords } from './status-tag-filter/stf-score';
+import { renderMissingStatusTags } from './status-tag-filter/stf-render';
 
 import statusTagFilterCssRaw from '../styles/status-tag-filter-plugin.css?raw';
 
@@ -127,9 +128,11 @@ export class StatusTagFilterPlugin extends BasePlugin {
     async warmScoreIndex(): Promise<void> {
         try {
             setCarRecords(await storageManager.getCarList());
+            // 从缓存补渲染缺失的状态标签（有 car_list 记录但页面未渲染的场景）
+            await renderMissingStatusTags();
             this.updateFilterBar();
         } catch (error: unknown) {
-            clog.error('评分索引加载失败: ' + (error instanceof Error ? error.message : String(error)));
+            clog.error('状态索引加载失败: ' + (error instanceof Error ? error.message : String(error)));
         }
     }
 

@@ -11,6 +11,11 @@
 
 ## v1.46.9
 
+## v1.46.16
+
+### 新增
+- **状态标签从缓存补渲染**（doc/24 增量二）：卡片 status-tag 原只在 `$item.find('.tags').append(...)` 落地，卡片无 `.tags` 容器 / 番号解析失败 / 渲染时序不对时会「有记录却无标签」。现以 car_list 索引为准补渲染：`stf-score.ts` 索引扩为 `carNum → {status, score}`（新增 `getStatus`、`collectMissingStatusTags`），新增 `stf-render.ts` 的 `renderMissingStatusTags()`，注入点复用 `injectStatusTag` 三级回退（`.tags` → `.item-tag` → `.photo-info > span > div`）。纯补充渲染，不写 car_list。新增 2 用例（18 文件 / 230 用例）。
+
 ## v1.46.15
 
 ### 新增

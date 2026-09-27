@@ -9,7 +9,7 @@
  * 是否有该番号的已读记录 —— 这样「有记录但标签未渲染」的卡片也能被计入与筛选。
  */
 import { describe, expect, it } from 'vitest';
-import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../src/constants/status';
+import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../src/constants/status';
 import {
     SCORE_RANGE,
     SCORE_VALUE_PREFIX,
@@ -19,7 +19,9 @@ import {
     getScore,
     hasScoreIndex,
     parseScoreChipValue,
-    setCarRecords
+    setCarRecords,
+    collectMissingStatusTags,
+    getStatus
 } from '../src/plugins/status-tag-filter/stf-score';
 
 /** 构造一条 car_list 记录（只填测试需要的字段）。 */
@@ -124,5 +126,41 @@ describe('卡片读取', () => {
         setCarRecords([record('FAV-1', FAVORITE_ACTION)]);
         document.body.innerHTML = card('FAV-1');
         expect(countWatchedByScore()).toEqual({});
+    });
+
+    it('状态索引覆盖全部 car_list 记录（收藏/已读/屏蔽均可查状态）', () => {
+        setCarRecords([
+            record('W-1', HAS_WATCH_ACTION, 3),
+            record('F-1', FAVORITE_ACTION),
+            record('B-1', FILTER_ACTION)
+        ]);
+        expect(getStatus('W-1')).toBe(HAS_WATCH_ACTION);
+        expect(getStatus('F-1')).toBe(FAVORITE_ACTION);
+        expect(getStatus('B-1')).toBe(FILTER_ACTION);
+        expect(getStatus('NONE-1')).toBeNull();
+        // 评分只对已读记录有意义
+        expect(getScore('W-1')).toBe(3);
+        expect(getScore('F-1')).toBeNull();
+    });
+
+    it('补渲染候选：有记录但缺标签的卡片被收集，已渲染/被隐藏/无记录的排除', () => {
+        setCarRecords([
+            record('W-1', HAS_WATCH_ACTION, 3),
+            record('F-1', FAVORITE_ACTION),
+            record('W-2', HAS_WATCH_ACTION, 1),
+            record('W-3', HAS_WATCH_ACTION, 1)
+        ]);
+        document.body.innerHTML =
+            card('W-1') + // 有记录、无标签 → 待补
+            card('F-1') + // 有记录、无标签 → 待补
+            '<div class="item"><div class="video-title"><strong>W-2</strong></div>' +
+            '<div class="tags has-addons"><span class="status-tag">已渲染</span></div></div>' + // 已有标签 → 排除
+            card('W-3', 'data-hide="yes"') + // 被其他脚本隐藏 → 排除
+            card('NONE-1'); // 无 car_list 记录 → 排除
+
+        const missing = collectMissingStatusTags(
+            (item: Element) => item.querySelectorAll('.status-tag').length > 0
+        );
+        expect(missing.map((entry) => entry.carNum)).toEqual(['W-1', 'F-1']);
     });
 });

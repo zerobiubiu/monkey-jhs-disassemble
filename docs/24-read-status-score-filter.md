@@ -5,7 +5,7 @@
 > **影响范围**：列表页状态标签筛选栏（已读维度细分）
 > **前置文档**：`javdb-site-structure.md`、`status-tag-filter` 相关插件
 > **替代文档**：无
-> **生效版本**：v1.46.15
+> **生效版本**：v1.46.16
 
 > 本文件是「列表页批量与预加载 UX」需求（3 项）的**第 1 项**增量；第 2 项（预加载队列
 > 面板与权重）、第 3 项（勾选式批量操作）在后续增量中另行记录。
@@ -100,3 +100,38 @@
 - 索引只在插件初始化与显式 `warmScoreIndex()` 时刷新；跨标签页的 `car_list` 变更需重新加载页面
   或后续接入存储修订回调（第 3 项批量操作落地后会调用刷新）。
 - 卡片「已读」标签的**视觉补渲染**（有记录但页面未渲染标签时补出标签）是单独一项，见后续增量。
+
+
+---
+
+## 7. 增量二：从缓存补渲染缺失的状态标签（已执行）
+
+### 背景
+
+卡片 status-tag 由 `list-page/lp-filter.filterMovieList` 渲染，落地点是
+`$item.find('.tags').append(...)`。若卡片**没有 `.tags` 容器**、番号解析失败或渲染时序不对，
+就会出现「car_list 里明明有已读/收藏记录，卡片上却看不到标签」。
+
+### 方案
+
+- `stf-score.ts` 索引从「仅已读评分」扩为 **`carNum → { status, score }`**：
+  新增 `getStatus(carNum)`，`getScore` 仍仅对已读记录返回值；新增
+  `collectMissingStatusTags(hasTag)`（换出「有记录但缺标签」的卡片，跳过 `data-hide` 卡片）。
+- 新增 `src/plugins/status-tag-filter/stf-render.ts`：`renderMissingStatusTags()` ——
+  以 car_list 索引为准补渲染，注入点复用 `injectStatusTag` 的三级回退
+  （`.tags` → `.item-tag` → `.photo-info > span > div`），比原路径容错更强。
+- `status-tag-filter-plugin.warmScoreIndex()` 在灌入索引后调用补渲染，再刷新芯片。
+
+**数据安全**：纯补充渲染 —— 不写 car_list、不改已有标签、不清除任何内容。
+
+### 验证
+
+`bun run test` → **18 文件 / 230 用例**（新增 2 条：状态索引覆盖、补渲染候选收集）；
+`build` / `lint` / `check:selectors` 均 exit 0。
+
+### 关于「缺失 score 回填」
+
+需求提到「已读记录缺失 score 时回填」。**实现取“读取时兜底”而非写回**：
+`setCarRecords` 把缺失/非法评分归一化为 `0`（未评分），筛选与计数均按 0 处理。
+理由：`score` 的唯一来源就是本脚本自己的记录，缺失时**没有可信来源可回填**；
+凭空写回会伪造用户评分，违背「不篡改既有数据」约束。
