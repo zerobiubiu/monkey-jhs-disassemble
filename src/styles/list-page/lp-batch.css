@@ -1,16 +1,17 @@
 /**
- * 列表页勾选式批量操作样式（doc/30 打磨）。
+ * 列表页勾选式批量操作样式（doc/32：常驻操作条 + 快捷评分条同构）。
  *
  * 三部分：
- * 1. `.jhs-lp-batch-item` —— 卡片内勾选框：原生 checkbox 视觉隐藏（键盘仍可聚焦），
- *    勾选态画**白色对号**（形状表态，不只靠颜色）；同时给被选中的卡片加主色描边，
- *    让选择有页面级响应。
- * 2. `.jhs-lp-batch-layer` / `.jhs-lp-batch-bar` —— 底部浮出工具栏（浮层托举：12px 圆角 +
- *    双影），分「选择 / 操作」两组，中间发丝线分隔。
- * 3. 工具栏按钮复用系统既有浅色语义按钮 `.a-normal / .a-warning / .a-success / .a-danger`
- *    （见 `a-normal-buttons.css`），这里只做紧凑化与状态补全，不新增色值。
+ * 1. `.jhs-lp-batch-item` —— 卡片内勾选框（原生 checkbox 视觉隐藏，勾选态画白对号，
+ *    颜色 + 形状双重表态；被选中的卡片本体加主色描边）。
+ * 2. `.jhs-lp-batch-bar` —— **常驻**批量操作条，挂在筛选栏尾部（不随勾选数出现/消失）。
+ *    操作段与详情页快捷评分条**同构**：五颗星（`.jhs-star`，样式契约来自
+ *    `rating-bar.css`，此处只做紧凑化）+ `收藏 / 已读 / 拉黑` 三态按钮
+ *    （`.jhs-fav-btn` / `.jhs-read-btn` / `.jhs-block-btn`，配色沿用详情页：
+ *    收藏蓝 `#3273dc`、已读绿 `#48c774`、拉黑红 `#de3333`）。
+ * 3. 选择组：全选 / 反选 / 清空（`.a-normal` 中性）。
  *
- * 颜色/间距/圆角走 design-tokens.css；层级用 --jhs-z-page（页面内元素，不压过 layer）。
+ * 颜色/间距/圆角走 design-tokens.css 与各子系统族；层级用 --jhs-z-page。
  */
 
 /* ========== 卡片勾选框 ========== */
@@ -76,29 +77,16 @@
     outline-offset: -2px;
 }
 
-/* ========== 底部工具栏 ========== */
-
-.jhs-lp-batch-layer {
-    position: fixed;
-    z-index: var(--jhs-z-page);
-    bottom: var(--jhs-space-lg);
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: calc(100vw - 32px);
-}
+/* ========== 常驻操作条（挂筛选栏尾部，与筛选控件同级在场） ========== */
 
 .jhs-lp-batch-bar {
-    display: flex;
+    display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--jhs-space-sm);
-    padding: var(--jhs-space-sm) var(--jhs-space-md);
-    border: 1px solid var(--jhs-color-border);
-    border-radius: var(--jhs-radius-lg);
-    background-color: var(--jhs-color-bg);
-    box-shadow:
-        0 10px 40px rgb(15, 23, 42, 0.12),
-        0 2px 8px rgb(15, 23, 42, 0.06);
+    margin-left: var(--jhs-space-md);
+    padding: 2px 0 2px var(--jhs-space-md);
+    border-left: 1px solid var(--jhs-color-border);
     color: var(--jhs-color-text);
     font-size: var(--jhs-font-size-sm);
 }
@@ -114,10 +102,6 @@
     font-weight: 600;
 }
 
-.jhs-lp-batch-total {
-    color: var(--jhs-color-text-muted);
-}
-
 /* 组间发丝线：给出「选择」与「操作」的明确界限 */
 .jhs-lp-batch-sep {
     width: 1px;
@@ -131,30 +115,69 @@
     gap: var(--jhs-space-xs);
 }
 
-.jhs-lp-batch-label {
-    padding: 0 2px;
-    color: var(--jhs-color-text-secondary);
-    font-weight: 600;
-}
-
-/* ========== 工具栏按钮（紧凑化既有 .a-* 浅色语义按钮） ========== */
+/* ========== 工具栏按钮（紧凑化既有浅色 / 评分条按钮） ========== */
 
 .jhs-lp-batch-btn {
-    min-width: auto;
-    height: 28px;
+    height: 26px;
     margin-right: 0;
     padding: 0 10px;
     border-radius: var(--jhs-radius-sm);
     font-size: var(--jhs-font-size-sm);
     font-weight: 600;
     line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
-.jhs-lp-batch-star {
-    min-width: 38px;
-    padding: 0 6px;
-    font-variant-numeric: tabular-nums;
+/* 中性选择组（a-normal-buttons.css） */
+.jhs-lp-batch-btn.a-normal {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
 }
+
+/* 星星：详情页快捷评分条的紧凑变体（rating-bar.css 的 .jhs-star 契约） */
+button.jhs-lp-batch-star {
+    width: 24px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 20px;
+    line-height: 1;
+    color: #d0d0d0;
+    cursor: pointer;
+    transition:
+        color 0.15s,
+        transform 0.15s;
+}
+
+button.jhs-lp-batch-star:hover {
+    color: var(--jhs-color-warning);
+    transform: scale(1.1);
+}
+
+button.jhs-lp-batch-star[disabled] {
+    color: #d0d0d0;
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 收藏 / 已读 / 拉黑：沿用详情页配色，紧凑化 */
+.jhs-lp-batch-btn.jhs-fav-btn,
+.jhs-lp-batch-btn.jhs-read-btn,
+.jhs-lp-batch-btn.jhs-block-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 10px;
+    font-size: var(--jhs-font-size-sm);
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* ========== 状态（禁用 / 压下 / 焦点环） ========== */
 
 .jhs-lp-batch-btn:active:not([disabled]) {
     transform: scale(0.97);

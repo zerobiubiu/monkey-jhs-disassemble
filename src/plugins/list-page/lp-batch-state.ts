@@ -10,7 +10,7 @@
  * 不做迁移、不删记录 —— 「取消已读」只清 status，保留 url/names/remark/score 等字段。
  */
 
-import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
+import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import type { CarSaveInput } from '../../core/storage/car-list-ops';
 
@@ -27,7 +27,7 @@ export interface BatchItemInfo {
 }
 
 /** 批量操作类型。 */
-export type BatchActionKind = 'favorite' | 'watched' | 'unwatch';
+export type BatchActionKind = 'favorite' | 'watched' | 'unwatch' | 'filter';
 
 /** 写入计划结果。 */
 export interface BatchPlan {
@@ -114,6 +114,28 @@ export function planFavoriteBatch(
     const favorites = new Set([...favoriteCarNums].map((n) => n.trim().toLowerCase()));
     return buildPlan(selectedCarNums, infoByCarNum, (carNumKey) => favorites.has(carNumKey), () => ({
         actionType: FAVORITE_ACTION
+    }));
+}
+
+/**
+ * 拉黑批量计划：与收藏同一计划逻辑，仅 actionType 不同（FILTER_ACTION）。
+ *
+ * 已在屏蔽列表的番号跳过（存储层对重复屏蔽同样会抛错，见 saveSingleCar 的
+ * FILTER_ACTION 分支）。拉黑在列表页会同时改变卡片可见性（被屏蔽插件隐藏），
+ * 因此执行后须重建可见卡片集。
+ *
+ * @param selectedCarNums 勾选番号（原始大小写）
+ * @param infoByCarNum 番号 → 卡片信息
+ * @param filteredCarNums 已在屏蔽列表的番号
+ */
+export function planFilterBatch(
+    selectedCarNums: string[],
+    infoByCarNum: Map<string, BatchItemInfo>,
+    filteredCarNums: Iterable<string>
+): BatchPlan {
+    const filtered = new Set([...filteredCarNums].map((n) => n.trim().toLowerCase()));
+    return buildPlan(selectedCarNums, infoByCarNum, (carNumKey) => filtered.has(carNumKey), () => ({
+        actionType: FILTER_ACTION
     }));
 }
 

@@ -78,24 +78,25 @@ describe('PreloadQueuePanel 渲染契约', () => {
 });
 
 describe('LpBatchToolbar 渲染契约', () => {
-    it('渲染勾选数、三个操作与 6 档星级按钮', () => {
-        const html = jsxToString(createElement(LpBatchToolbar, { count: 3, total: 40, busy: false }));
+    it('渲染勾选数、快捷评分条（收藏/已读/拉黑 + 五颗星）与选择组', () => {
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 3, busy: false }));
         expect(html).toContain('已选');
         expect(html).toContain('<strong>3</strong>');
-        expect(html).toContain('/ 40');
         expect(html).toContain('data-act="select-all"');
         expect(html).toContain('data-act="invert"');
         expect(html).toContain('data-act="favorite"');
-        expect(html).toContain('data-act="unwatch"');
+        expect(html).toContain('data-act="filter"');
         expect(html).toContain('data-act="clear"');
-        for (const score of [0, 1, 2, 3, 4, 5]) {
+        // 已读（0星）与五颗星（1–5）
+        expect(html).toContain('data-act="watched" data-score="0"');
+        for (const score of [1, 2, 3, 4, 5]) {
             expect(html).toContain(`data-act="watched" data-score="${score}"`);
         }
         expect(html).not.toMatch(/data-act="favorite"[^>]*disabled/);
     });
 
     it('count=0：操作按钮禁用，但「全选 / 反选」仍可用', () => {
-        const html = jsxToString(createElement(LpBatchToolbar, { count: 0, total: 40, busy: false }));
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 0, busy: false }));
         // 断言到属性边界为止，不依赖 disabled 的具体序列化形式
         expect(html).toMatch(/data-act="favorite"[^>]*disabled/);
         expect(html).toMatch(/data-act="watched"[^>]*data-score="5"[^>]*disabled/);

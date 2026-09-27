@@ -12,7 +12,7 @@
  * 状态为模块级（单页单列表）：勾选集合 + 卡片信息表；`destroyBatchToolbar` 负责清理。
  */
 
-import { FAVORITE_ACTION, HAS_WATCH_ACTION, NO, YES } from '../../constants/status';
+import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION, NO, YES } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
 import { getActressNames } from '../../core/util/site/actress-links';
@@ -25,6 +25,7 @@ import type { ListPagePlugin } from '../list-page-plugin';
 import {
     BatchSelection,
     planFavoriteBatch,
+    planFilterBatch,
     planUnwatchBatch,
     planWatchedBatch
 } from './lp-batch-state';
@@ -193,7 +194,12 @@ function collectVisibleCheckboxCarNums(): string[] {
 function handleBarAction(btn: HTMLElement): void {
     const plugin = activePlugin;
     if (!plugin) return;
-    const act = (btn.dataset.act ?? '') as BatchActionKind | 'clear' | 'select-all' | 'invert';
+    const act = (btn.dataset.act ?? '') as
+        | BatchActionKind
+        | 'clear'
+        | 'select-all'
+        | 'invert'
+        | 'filter';
     if (act === 'clear' || act === 'select-all' || act === 'invert') {
         if (act === 'clear') selection.clear();
         else if (act === 'select-all') selection.addAll(collectVisibleCheckboxCarNums());
@@ -202,29 +208,27 @@ function handleBarAction(btn: HTMLElement): void {
         renderBatchToolbar();
         return;
     }
-    if (act !== 'favorite' && act !== 'watched' && act !== 'unwatch') return;
+    if (act !== 'favorite' && act !== 'watched' && act !== 'unwatch' && act !== 'filter') return;
     const score = Number(btn.dataset.score ?? 0);
     runBatch(plugin, act, isNaN(score) ? 0 : score).then();
 }
 
-/** 渲染／移除工具栏（勾选为 0 时移除）。 */
+/**
+ * 渲染常驻批量操作条：挂到筛选栏（`.preload-filter-bar`）尾部，与筛选控件同级在场。
+ *
+ * 与旧版浮出工具栏不同，这条操作条**不随勾选数出现/消失** —— 用户反馈
+ * 「不能在选中后才出现」；它始终在场，只根据 `busy / count` 切换禁用态。
+ */
 function renderBatchToolbar(): void {
-    if (selection.size === 0) {
-        barEl?.remove();
-        barEl = null;
-        return;
-    }
     if (!barEl) {
-        barEl = document.createElement('div');
+        const bar = document.querySelector('.preload-filter-bar');
+        if (!bar) return; // 筛选栏尚未就绪（由 init 时序兜底重试）
+        barEl = document.createElement('span');
         barEl.className = BAR_LAYER_CLASS;
-        document.body.appendChild(barEl);
+        bar.appendChild(barEl);
     }
     barEl.innerHTML = jsxToString(
-        <LpBatchToolbar
-            count={selection.size}
-            total={collectVisibleCheckboxCarNums().length}
-            busy={busy}
-        />
+        <LpBatchToolbar count={selection.size} busy={busy} />
     );
 }
 
@@ -252,6 +256,12 @@ async function runBatch(plugin: ListPagePlugin, kind: BatchActionKind, score = 0
             await applyPlan(planWatchedBatch(carNums, infoByCarNum, score), `已读 ${score}星`, {
                 kind: 'watched',
                 score
+            });
+        } else if (kind === 'filter') {
+            const filtered = carList.filter((car) => car.status === FILTER_ACTION).map((car) => car.carNum);
+            await applyPlan(planFilterBatch(carNums, infoByCarNum, filtered), '拉黑', {
+                kind: 'favorite',
+                score: 0
             });
         } else {
             const watched = carList.filter((car) => car.status === HAS_WATCH_ACTION).map((car) => car.carNum);

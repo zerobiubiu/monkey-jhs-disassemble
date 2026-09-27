@@ -46,6 +46,7 @@
 | `29-rating-persistence-and-backup-audit.md` | 变更 | v1.46.21 | 评分持久化 + 全插件评分存储审计：新增 `rating-persist.ts`（抓到评分后**落库 car_list**，只补空缺、不覆盖）；`watched-from-javdb` 不再写死 `score: 0`（遮蔽回退的污染源）；`RatingCache.onChange` 单槽→ `addChangeListener` 监听器集合；审计确认 car_list / RatingCache / VltDb / lrs 均已在备份范围。新增 7 用例 |
 | `30-ui-polish-from-field-testing.md` | 变更 | v1.46.22 | 实测反馈打磨（impeccable polish）：请求列表入口改**紧凑硬按钮 + 发丝线分隔**（不再像芯片），面板**屏幕居中 + 可拖动**；星级芯片改为 `visibleScoreChips` **只显示当前页存在的档位**；勾选框画**白对号 + 卡片选中描边**、新增 `全选/反选/清空`、操作按钮复用既有 `.a-*` 语义色（收藏橙 / 已读绿 / 取消已读红）。新增 8 用例 |
 | `31-batch-push-to-javdb-background-queue.md` | 变更 | v1.46.23–1.46.24 | 批量操作 → JavDB **后台推送队列**：新增 `lp-batch-sync.ts`（入队即返回，900ms/项节流串行 + 每项重试 2 次 + 汇总提示），复用 `sync-common` 的 `postWantToWatch`/`postWatched`；尊重 `autoServerSync` 开关；`destroy` 终止队列。v1.46.24 起**取消已读也推送**（`findReviewIdInHtml` 取 reviewId → `deleteReview` 删评价记录；用户已确认不写评价正文）。新增 12 用例 |
+| `32-batch-bar-docked-ratingbar.md` | 变更 | v1.46.25 | 实测反馈二轮（impeccable polish）：批量操作条改为**常驻**挂筛选栏尾部（不再浮出、不随勾选数出现）；操作组与详情页快捷评分条**同构**（五颗星 + 收藏/已读/拉黑，复用 `rating-bar.css` 类名与配色）；新增 `planFilterBatch`（拉黑批量）与 `BatchActionKind='filter'` |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
