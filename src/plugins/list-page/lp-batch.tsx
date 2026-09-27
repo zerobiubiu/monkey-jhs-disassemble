@@ -152,6 +152,20 @@ function bindBatchEvents(): void {
     listenerBound = true;
 }
 
+/**
+ * 判定元素是否属于本插件的批量 UI（浮出操作条或左侧常驻竖排栏内）。
+ *
+ * 抽成纯函数是因为：新增容器时极易漏掉白名单，导致按钮“点了没反应”
+ * （v1.46.27 实际踩到过：侧栏按钮未列入白名单）。
+ *
+ * @param el 目标元素
+ * @returns 是否在本插件容器内
+ */
+export function isBatchUiControl(el: Element | null): boolean {
+    if (!el) return false;
+    return el.closest('.' + BAR_LAYER_CLASS + ', .' + SIDE_CLASS) !== null;
+}
+
 /** 委托点击：卡片勾选框切换 / 工具栏动作。 */
 function onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement | null;
@@ -165,7 +179,7 @@ function onDocumentClick(event: Event): void {
         return;
     }
     const btn = target.closest<HTMLElement>('[data-act]');
-    if (btn && btn.closest('.' + BAR_LAYER_CLASS) && !btn.hasAttribute('disabled')) {
+    if (btn && isBatchUiControl(btn) && !btn.hasAttribute('disabled')) {
         event.preventDefault();
         handleBarAction(btn);
     }
