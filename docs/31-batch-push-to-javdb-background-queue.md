@@ -73,7 +73,7 @@ JavDB 服务器侧没有「取消已读」这个动作 —— 等价操作是**�
 | `src/plugins/list-page/lp-batch-sync.ts` | **新增** 后台推送队列（计划/入队/节流/重试/统计/停止；含 unwatch 分支） |
 | `src/plugins/setting/jhs-sync/sync-common.ts` | 新增 `findReviewIdInHtml`（从详情页 HTML 取 reviewId）与 `deleteReview`（CSRF + `_method=delete`） |
 | `src/plugins/list-page/lp-batch.tsx` | `applyPlan` 增加 `push` 参数 → `enqueueIfServerSyncEnabled()`；取消已读分支同样入队；`reportResult` 汇报入队数；`destroyBatchToolbar` 调 `stopBatchSync` |
-| `tests/lp-batch-sync.test.ts` | **新增** 6 用例（计划解析/过滤、入队计数、停止、不启动） |
+| `tests/lp-batch-sync.test.ts` | **新增** 8 用例（计划解析/过滤、入队计数、停止、不启动、unwatch 计划） |
 | `tests/jhs-sync-review-id.test.ts` | **新增** 6 用例（reviewId 提取：命中/带参数/无链接/非数字/空输入/作用域） |
 
 **数据安全**：本地写入逻辑不变（仍复用 `saveCarList` / `clearCarWatchStatus`）；
@@ -86,7 +86,7 @@ JavDB 服务器侧没有「取消已读」这个动作 —— 等价操作是**�
 | `bun run build` | exit 0 |
 | `bun run lint` | exit 0（0 problems） |
 | `bun run lint:css` | exit 0 |
-| `bun run test` | exit 0；**29 文件 / 305 用例**（新增 12） |
+| `bun run test` | exit 0；**29 文件 / 307 用例**（新增 14：推送计划/队列 8 + reviewId 提取 6） |
 | `bun run check:structure` | exit 0 |
 | `bun run check:docs` | exit 0 |
 | `bun run check:selectors` | exit 0（89 文件 / 275 处，与基线持平） |
@@ -101,6 +101,9 @@ JavDB 服务器侧没有「取消已读」这个动作 —— 等价操作是**�
    （这正是「不用再等打开详情页」的验证点）。
 4. 断网 / 未登录状态下批量操作 → 本地仍成功；后台同步项重试 2 次后计入失败并提示（详见日志）。
 5. 设置面板关闭 `autoServerSync` → 批量操作不再产生后台推送日志（只写本地）。
+6. **取消已读**：勾选 2 张已读卡片点「取消已读」→ 控制台可见拉详情页与删除日志
+   （每项 2 个请求，仍约 0.9s/项）→ 打开该影片详情页，服务器上已无评价记录
+   （`.review-buttons` 回到未评价态）。
 
 ## 8. 已知限制
 

@@ -97,3 +97,16 @@ describe('enqueueBatchPush / 队列状态', () => {
         expect(getBatchSyncStatus().scheduled).toBe(false);
     });
 });
+
+describe('planBatchPush 取消已读（unwatch）', () => {
+    it('只需 videoId，不携带评分', () => {
+        const { entries } = planBatchPush([{ carNum: 'A-1', url: '/v/ok1' }], 'unwatch');
+        expect(entries[0]).toMatchObject({ kind: 'unwatch', score: 0, videoId: 'ok1' });
+    });
+
+    it('无 videoId 时同样被跳过（交给本地状态与后续校验）', () => {
+        const { entries, skipped } = planBatchPush([{ carNum: 'X-9', url: '/actors/1' }], 'unwatch');
+        expect(entries).toHaveLength(0);
+        expect(skipped).toEqual(['X-9']);
+    });
+});
