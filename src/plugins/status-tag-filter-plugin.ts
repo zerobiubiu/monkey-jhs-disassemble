@@ -64,6 +64,7 @@ import { TaskSupervisor } from '../core/task-supervisor';
 import { BasePlugin } from './base-plugin';
 import { applyFilter } from './status-tag-filter/stf-apply';
 import { doBuild, findMountTarget, LOG } from './status-tag-filter/stf-ui';
+import { setCarRecords } from './status-tag-filter/stf-score';
 
 import statusTagFilterCssRaw from '../styles/status-tag-filter-plugin.css?raw';
 
@@ -114,6 +115,22 @@ export class StatusTagFilterPlugin extends BasePlugin {
     async handle(): Promise<void> {
         if (!window.isListPage) return;
         this.init();
+        // 预热本脚本评分索引（已读星级筛选用）；缓存未就绪时星级芯片不生成。
+        await this.warmScoreIndex();
+    }
+
+    /**
+     * 把 `car_list` 灌入评分索引，供同步的星级筛选/计数使用。
+     *
+     * 初始化后调用一次；批量操作等改变 car_list 的入口也应调用以刷新。
+     */
+    async warmScoreIndex(): Promise<void> {
+        try {
+            setCarRecords(await storageManager.getCarList());
+            this.updateFilterBar();
+        } catch (error: unknown) {
+            clog.error('评分索引加载失败: ' + (error instanceof Error ? error.message : String(error)));
+        }
     }
 
     /**

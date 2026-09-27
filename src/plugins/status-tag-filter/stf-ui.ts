@@ -5,8 +5,10 @@
  * doBuild：构建筛选栏并插入到挂载目标之后（内部 refreshChips 保留已激活状态）。
  * findMountTarget：按优先级查找挂载目标（jhs-vlt-filter-bar → tabs → section）。
  */
+
 import { collectStatusTagCounts, countNoStatusItems, NO_TAG_VALUE } from './stf-collect';
 import { applyFilter } from './stf-apply';
+import { SCORE_RANGE, SCORE_VALUE_PREFIX, countWatchedByScore, formatScoreLabel } from './stf-score';
 
 /** 日志前缀。 */
 export const LOG = '[状态标签筛选]';
@@ -93,6 +95,25 @@ export function doBuild(mountTarget: Element): void {
             if (activeValues.has(tagName)) chip.classList.add('active');
             chipsContainer.appendChild(chip);
         });
+
+        // 已读星级芯片（需求 doc/24）：按本脚本 car_list 的 score（0–5）分级过滤已读卡片。
+        // 计数不依赖「已读」标签是否已渲染（有记录即计入），无已读卡片时不生成芯片。
+        const scoreCounts = countWatchedByScore();
+        const watchedTotal = SCORE_RANGE.reduce(
+            (sum: number, score: number) => sum + (scoreCounts[score] ?? 0),
+            0
+        );
+        if (watchedTotal > 0) {
+            SCORE_RANGE.forEach((score: number) => {
+                const value = `${SCORE_VALUE_PREFIX}${score}`;
+                const chip = createFilterChip(formatScoreLabel(score), value, {
+                    count: scoreCounts[score] ?? 0
+                });
+                chip.classList.add('score-chip');
+                if (activeValues.has(value)) chip.classList.add('active');
+                chipsContainer.appendChild(chip);
+            });
+        }
     };
 
     // 初始构建芯片

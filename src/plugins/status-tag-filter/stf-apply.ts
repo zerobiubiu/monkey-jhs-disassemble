@@ -5,6 +5,7 @@
  * 隐藏的卡片不纳入管理（doc/48 增强：检查 data-hide 属性）。
  */
 import { JHS_HIDE_ATTR, NO_TAG_VALUE, STATUS_TAG_SELECTOR } from './stf-collect';
+import { getItemCarNum, getScore, parseScoreChipValue } from './stf-score';
 
 /** 标记本脚本隐藏的卡片（与 jhs 的 data-hide 区分，协同安全设计）。 */
 const HIDDEN_ATTR = 'data-status-tag-hidden';
@@ -41,7 +42,15 @@ export function applyFilter(): void {
     }
 
     const showNoTag = selectedValues.has(NO_TAG_VALUE);
-    const selectedTags = new Set([...selectedValues].filter((v) => v !== NO_TAG_VALUE));
+    const selectedTags = new Set(
+        [...selectedValues].filter((v) => v !== NO_TAG_VALUE && parseScoreChipValue(v) === null)
+    );
+    // 已读星级芯片（doc/24）：值形如 `score:3`，按本脚本 car_list 的评分筛选
+    const selectedScores = new Set(
+        [...selectedValues]
+            .map((v) => parseScoreChipValue(v))
+            .filter((score): score is number => score !== null)
+    );
 
     document.querySelectorAll('.item').forEach((item: Element) => {
         const htmlItem = item as HTMLElement;
@@ -73,7 +82,11 @@ export function applyFilter(): void {
         // 无标签条件独立判断，与标签匹配用 OR 连接
         const noTagMatch = showNoTag && itemStatusTags.size === 0;
 
-        const shouldShow = tagMatch || noTagMatch;
+        // 星级匹配：卡片必须是已读（car_list 有记录）且评分命中选中的星级
+        const scoreMatch =
+            selectedScores.size > 0 && selectedScores.has(getScore(getItemCarNum(item)) ?? -1);
+
+        const shouldShow = tagMatch || noTagMatch || scoreMatch;
 
         if (shouldShow) {
             htmlItem.removeAttribute(HIDDEN_ATTR);
