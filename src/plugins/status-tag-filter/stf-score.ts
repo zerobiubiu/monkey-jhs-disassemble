@@ -4,6 +4,9 @@
  * 背景（需求：doc/24）：
  * - 状态标签筛选原本只能按标签文本筛选，已读无法按星级细分；
  * - 评分来源是 `car_list`（IndexedDB `appData`）里的 `CarRecord.score`，**不是站点评分**；
+ *   当 `car_list` 记录**没有 score** 时，回退到 JavDB 个人评分缓存（`RatingCache`，
+ *   RatingDisplayPlugin 悬停懒加载 / 菜单全量加载抓取的「你亲自打的分」）—— 由
+ *   `setScoreFallbackResolver` 注入，本模块自身不依赖任何插件；
  * - 刻度为整数 0–5，`0` 表示未评分（`dpb-review-sync.tsx`：「已看评分 0-5（0 表示未评分）」）。
  *
  * 数据流：插件在初始化与存储变更时把 `car_list` 灌入 {@link setCarRecords}，
@@ -35,6 +38,8 @@ interface CarIndexEntry {
     status: string;
     /** 已读评分（0–5；仅已读记录有意义，非已读固定 0）。 */
     score: number;
+    /** car_list 记录里是否真的有 score 字段（区分「未评分」与「评分为 0」）。 */
+    hasScore: boolean;
 }
 
 /** carNum → 索引条目；由 {@link setCarRecords} 重建。 */
@@ -55,9 +60,11 @@ export function setCarRecords(records: CarRecord[]): void {
         const carNum = typeof record.carNum === 'string' ? record.carNum.trim() : '';
         if (!carNum) continue;
         const status = typeof record.status === 'string' ? record.status : '';
+        const hasScore = typeof record.score === 'number' && Number.isFinite(record.score);
         const raw = typeof record.score === 'number' && Number.isFinite(record.score) ? record.score : 0;
         next.set(carNum, {
             status,
+            hasScore,
             score: Math.min(5, Math.max(0, Math.round(raw)))
         });
     }
@@ -88,9 +95,38 @@ export function getStatus(carNum: string): string | null {
  * @param carNum 番号
  * @returns 0–5 评分；非已读或无记录返回 null
  */
+/** 外部注入的评分回退源（car_list 缺失 score 时使用）。 */
+let scoreFallbackResolver: ((carNum: string) => number | null) | null = null;
+
+/**
+ * 设置评分回退源（`car_list` 记录**没有 score** 时使用）。
+ *
+ * 本脚本的评分有两个独立来源：
+ * 1. `car_list.score`（详情页星级评分等入口写入，随清单持久化）；
+ * 2. JavDB 个人评分缓存 `RatingCache`（RatingDisplayPlugin 抓取 —— 悬停懒加载 /
+ *    菜单「全量加载当前页评分」；移植自 archetype/jhsRatingDisplay.user.js）。
+ * 只有一边有值时，筛选/计数应取**有值的那一边**，而不是把缺失当成 0。
+ *
+ * @param resolver 回退评分（返回 null 表示确实无评分）；传 null 取消回退
+ */
+export function setScoreFallbackResolver(resolver: ((carNum: string) => number | null) | null): void {
+    scoreFallbackResolver = resolver;
+}
+
+/**
+ * 取某番号的**本脚本评分**（仅已读记录）。
+ *
+ * `car_list` 无 score 时回退到外部评分源（JavDB 个人评分缓存）；两边都没有 → 0。
+ *
+ * @param carNum 番号
+ * @returns 0–5 评分；非已读或无记录返回 null
+ */
 export function getScore(carNum: string): number | null {
     const entry = carIndex.get(carNum);
-    return entry && entry.status === HAS_WATCH_ACTION ? entry.score : null;
+    if (!entry || entry.status !== HAS_WATCH_ACTION) return null;
+    if (entry.hasScore) return entry.score;
+    const fallback = scoreFallbackResolver?.(carNum) ?? null;
+    return fallback === null ? 0 : Math.min(5, Math.max(0, Math.round(fallback)));
 }
 
 /**

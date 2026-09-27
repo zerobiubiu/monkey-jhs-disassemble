@@ -5,6 +5,7 @@
 > **影响范围**：列表页状态标签筛选栏（已读维度细分）
 > **前置文档**：`javdb-site-structure.md`、`status-tag-filter` 相关插件
 > **替代文档**：无
+> **后续修正**：§7 的「缺失 score 无可信来源」判断已被 [`28-missing-score-fallback-ratingcache.md`](28-missing-score-fallback-ratingcache.md) 修正 —— 可信来源是 `rating-display` 的 `RatingCache`（JavDB 个人评分）。
 > **生效版本**：v1.46.16
 
 > 本文件是「列表页批量与预加载 UX」需求（3 项）的**第 1 项**增量；第 2 项（预加载队列

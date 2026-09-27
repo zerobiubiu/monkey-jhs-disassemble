@@ -62,9 +62,11 @@ import type { PageType } from '../core/page-context';
 import { TaskSupervisor } from '../core/task-supervisor';
 
 import { BasePlugin } from './base-plugin';
+import { RatingCache } from './rating-display/rating-cache';
+import { RatingUtils } from './rating-display/rating-utils';
 import { applyFilter } from './status-tag-filter/stf-apply';
 import { doBuild, findMountTarget, LOG } from './status-tag-filter/stf-ui';
-import { setCarRecords } from './status-tag-filter/stf-score';
+import { setCarRecords, setScoreFallbackResolver } from './status-tag-filter/stf-score';
 import { renderMissingStatusTags } from './status-tag-filter/stf-render';
 
 import statusTagFilterCssRaw from '../styles/status-tag-filter-plugin.css?raw';
@@ -80,6 +82,10 @@ export class StatusTagFilterPlugin extends BasePlugin {
     private observerDebounce = 0;
     /** 统一生命周期管理器。 */
     private supervisor = new TaskSupervisor();
+    /** 评分回退源（JavDB 个人评分缓存）是否已接入（只接一次）。 */
+    private ratingFallbackReady = false;
+    /** 评分抓取后刷新芯片的防抖计时器。 */
+    private scoreRefreshDebounce = 0;
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -127,6 +133,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
      */
     async warmScoreIndex(): Promise<void> {
         try {
+            await this.ensureRatingFallback();
             setCarRecords(await storageManager.getCarList());
             // 从缓存补渲染缺失的状态标签（有 car_list 记录但页面未渲染的场景）
             await renderMissingStatusTags();
@@ -134,6 +141,35 @@ export class StatusTagFilterPlugin extends BasePlugin {
         } catch (error: unknown) {
             clog.error('状态索引加载失败: ' + (error instanceof Error ? error.message : String(error)));
         }
+    }
+
+    /**
+     * 接入「JavDB 个人评分」缓存作为 `car_list` 缺失 score 时的回退源（只接一次）。
+     *
+     * `RatingDisplayPlugin` 抓到的评分存在 `RatingCache`（localStorage + IDB 双写、永久缓存），
+     * 与 `car_list.score` 是**两套独立存储**：只有一边有值时，星级筛选应取有值的一边。
+     * 这里把缓存加载进内存镜像（`getScore` 是同步函数），并注册变更钩子 ——
+     * 悬停懒加载 / 菜单「全量加载当前页评分」抓到评分后，芯片计数随之刷新。
+     */
+    private async ensureRatingFallback(): Promise<void> {
+        if (this.ratingFallbackReady) return;
+        this.ratingFallbackReady = true;
+        try {
+            await RatingCache.load();
+        } catch (error: unknown) {
+            clog.error('评分缓存加载失败: ' + (error instanceof Error ? error.message : String(error)));
+        }
+        setScoreFallbackResolver((carNum: string): number | null => {
+            const entry = RatingCache.get(RatingUtils.normalizeCode(carNum));
+            return entry ? entry.rating : null;
+        });
+        RatingCache.onChange = (): void => {
+            // 评分来源变了（但 car_list 未变）→ 只需重算计数/筛选，不必重建索引
+            clearTimeout(this.scoreRefreshDebounce);
+            this.scoreRefreshDebounce = this.supervisor.setTimeout(() => {
+                this.updateFilterBar();
+            }, 200);
+        };
     }
 
     /**
@@ -250,6 +286,8 @@ export class StatusTagFilterPlugin extends BasePlugin {
 
     /** 销毁插件：一次性清理所有 supervisor 管理的资源。 */
     destroy(): void {
+        // 解除评分缓存钩子（避免插件销毁后仍引用本实例）
+        RatingCache.onChange = null;
         this.supervisor.abort();
     }
 }

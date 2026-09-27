@@ -42,6 +42,7 @@
 | `25-preload-priority-deprioritize-stated.md` | 变更 | v1.46.17 | 预加载优先级（第 2 项上半）：新增纯函数 `osp-preload-order.ts` 的 `orderItemsByPreloadPriority`，把带状态标签（已读/已收藏）的卡片稳定重排到队列末尾；判定以 car_list 为准（不依赖 DOM 标签）；新增 5 用例 |
 | `26-preload-request-list-panel.md` | 变更 | v1.46.18 | 批量预加载请求列表面板（第 2 项下半）：`AsyncTaskQueue` 增任务句柄（getTasks/cancel/prioritize + 取消自检）；新增 `PreloadTaskRegistry`（失败留存/容量淘汰）与浮层面板（「请求列表」入口 → 队列可视化 + 重试/取消/置顶）；`enqueuePreloadTask` 抽取供首轮与重试共用；取消同步清除卡片徽标。新增 20 用例 |
 | `27-list-batch-actions.md` | 变更 | v1.46.19 | 列表页勾选式批量操作（第 3 项，收口）：纯逻辑 `lp-batch-state.ts`（勾选集合 + 收藏/已读/取消已读三类写入计划）+ 卡片勾选框与底部工具栏（复用 status-tag 注入点）+ 新增存储原语 `clearCarWatchStatus`（**只清 status、保留记录**）。新增 9 用例 |
+| `28-missing-score-fallback-ratingcache.md` | 变更 | v1.46.20 | **修正 doc/24 §7 的错误判断**：缺失 score 的可信来源就是已实现的「JavDB 个人评分」机制（`rating-display` 的 `RatingCache`）。索引新增 `hasScore`（区分「无 score」与「评 0 分」）+ 可选**注入式**回退源 `setScoreFallbackResolver`；插件加载缓存并注册变更钩子（抓分后芯片计数自动刷新）。仍**不写 car_list**。新增 8 用例 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

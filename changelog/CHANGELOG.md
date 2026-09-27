@@ -11,6 +11,11 @@
 
 ## v1.46.9
 
+## v1.46.20
+
+### 修复
+- **缺失 score 回填改用既有「JavDB 个人评分」读取机制**（doc/28，修正 doc/24 §7 的错误判断）：原先「car_list 无 score → 一律当 0」导致你在 JavDB 上亲自打的分数（只存在于 `rating-display` 的 `RatingCache`）在星级筛选里不可见。现 `CarIndexEntry` 新增 `hasScore`（区分「评 0 星」与「无 score」），`getScore()` 在无 score 时回退到外部评分源（新增注入式 `setScoreFallbackResolver`，模块仍零插件依赖）；`status-tag-filter-plugin` 在 `warmScoreIndex()` 中加载 `RatingCache` 并注册其新增的可选 `onChange` 钩子——悬停懒抓取/菜单「全量加载当前页评分」抓到分后，星级芯片计数自动刷新。仍**不写 car_list**（读取回填）。新增 8 用例（24 文件 / 275 用例）。
+
 ## v1.46.19
 
 ### 新增
