@@ -90,6 +90,7 @@ doc/28 引入的是单槽回调（`onChange = fn`）。现在有两个消费者�
 | `src/plugins/setting/jhs-sync/sync-engine.ts` | 拉取方向不再写 `score: 0` |
 | `src/plugins/status-tag-filter-plugin.ts` | 改用 `addChangeListener` + destroy 注销 |
 | `tests/rating-persist.test.ts` | **新增** 7 用例（判定矩阵） |
+| `tests/rating-backup-roundtrip.test.ts` | **新增** 3 用例（评分进 exportData / JSON 往返后保留 / 评分缓存 IDB 键在导出内） |
 
 ## 6. 执行验证记录
 
@@ -98,7 +99,7 @@ doc/28 引入的是单槽回调（`onChange = fn`）。现在有两个消费者�
 | `bun run build` | exit 0 |
 | `bun run lint` | exit 0（0 problems） |
 | `bun run lint:css` | exit 0 |
-| `bun run test` | exit 0；**25 文件 / 282 用例**（原 24 / 275，新增 7） |
+| `bun run test` | exit 0；**26 文件 / 285 用例**（原 24 / 275，新增 10：落库判定 7 + 备份往返 3） |
 | `bun run check:structure` | exit 0（385 files, 67 dirs） |
 | `bun run check:docs` | exit 0 |
 | `bun run check:selectors` | exit 0（89 文件 / 275 处，与基线持平） |
