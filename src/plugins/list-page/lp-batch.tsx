@@ -167,14 +167,24 @@ function toggleItem(boxEl: HTMLElement): void {
 }
 
 /**
- * 收集当前页所有已注入勾选框的番号（供「全选 / 反选」）。
+ * 收集**当前可见**卡片的番号（供「全选 / 反选」与计数）。
+ *
+ * 只算真正参与布局的卡片：被状态标签筛选 / 屏蔽 / 预加载筛选等插件隐藏
+ * （`display: none`）的卡片**不纳入**——用户看不见的项不应被批量选中或写入。
+ *
+ * 可见性判定：卡片本体（`.jhs-lp-batch-item` 的宿主 `.item`）若 `offsetParent === null`
+ * 则不参与布局；再配合 `getClientRects().length` 兜底（祖先 `display:none` 时也为 0）。
+ *
  * @returns 番号列表（DOM 顺序）
  */
-function collectCheckboxCarNums(): string[] {
+function collectVisibleCheckboxCarNums(): string[] {
     const carNums: string[] = [];
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>('.' + ITEM_CLASS))) {
-        const carNum = el.dataset.carNum;
-        if (carNum) carNums.push(carNum);
+    for (const box of Array.from(document.querySelectorAll<HTMLElement>('.' + ITEM_CLASS))) {
+        const carNum = box.dataset.carNum;
+        if (!carNum) continue;
+        const item = box.closest('.item') as HTMLElement | null;
+        if (item && (item.offsetParent === null || item.getClientRects().length === 0)) continue;
+        carNums.push(carNum);
     }
     return carNums;
 }
@@ -186,8 +196,8 @@ function handleBarAction(btn: HTMLElement): void {
     const act = (btn.dataset.act ?? '') as BatchActionKind | 'clear' | 'select-all' | 'invert';
     if (act === 'clear' || act === 'select-all' || act === 'invert') {
         if (act === 'clear') selection.clear();
-        else if (act === 'select-all') selection.addAll(collectCheckboxCarNums());
-        else selection.invert(collectCheckboxCarNums());
+        else if (act === 'select-all') selection.addAll(collectVisibleCheckboxCarNums());
+        else selection.invert(collectVisibleCheckboxCarNums());
         syncBatchCheckboxes(plugin);
         renderBatchToolbar();
         return;
@@ -212,7 +222,7 @@ function renderBatchToolbar(): void {
     barEl.innerHTML = jsxToString(
         <LpBatchToolbar
             count={selection.size}
-            total={collectCheckboxCarNums().length}
+            total={collectVisibleCheckboxCarNums().length}
             busy={busy}
         />
     );
