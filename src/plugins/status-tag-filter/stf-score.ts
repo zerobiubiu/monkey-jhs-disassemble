@@ -32,6 +32,27 @@ export function formatScoreLabel(score: number): string {
     return `${score}星`;
 }
 
+/**
+ * 计算应展示的星级芯片档位。
+ *
+ * 与「已观看 / 已收藏 / 无状态标签」芯片一致：**只看当前页实际有什么**，
+ * 不再把 0–5 六档全铺开。两条保留规则：
+ * - 计数 > 0 的档位展示；
+ * - **已激活**的档位即使本轮计数为 0 也保留 —— 否则筛选态会在结果出现前无声消失。
+ *
+ * @param counts 分数 → 卡片数（来自 {@link countWatchedByScore}）
+ * @param activeValues 当前激活的芯片值集合（形如 `score:3`）
+ * @returns 应按升序展示的分数列表
+ */
+export function visibleScoreChips(
+    counts: Record<number, number>,
+    activeValues: ReadonlySet<string>
+): number[] {
+    return SCORE_RANGE.filter(
+        (score) => (counts[score] ?? 0) > 0 || activeValues.has(`${SCORE_VALUE_PREFIX}${score}`)
+    );
+}
+
 /** 索引条目：一条 car_list 记录在本页需要用到的最小信息。 */
 interface CarIndexEntry {
     /** 记录状态（`FAVORITE_ACTION` / `HAS_WATCH_ACTION` / `FILTER_ACTION` / 其他原值）。 */

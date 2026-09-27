@@ -97,7 +97,13 @@ export function syncBatchCheckboxes(plugin: ListPagePlugin): void {
         if ($item.find('.' + ITEM_CLASS).length === 0) {
             injectStatusTag(
                 $item,
-                jsxToString(<LpBatchCheckbox carNum={info.carNum} checked={selection.has(info.carNum)} />)
+                jsxToString(
+                    <LpBatchCheckbox
+                        carNum={info.carNum}
+                        checked={selection.has(info.carNum)}
+                        label={info.carNum}
+                    />
+                )
             );
         }
         const checked = selection.has(info.carNum);
@@ -155,13 +161,28 @@ function toggleItem(boxEl: HTMLElement): void {
     renderBatchToolbar();
 }
 
+/**
+ * 收集当前页所有已注入勾选框的番号（供「全选 / 反选」）。
+ * @returns 番号列表（DOM 顺序）
+ */
+function collectCheckboxCarNums(): string[] {
+    const carNums: string[] = [];
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>('.' + ITEM_CLASS))) {
+        const carNum = el.dataset.carNum;
+        if (carNum) carNums.push(carNum);
+    }
+    return carNums;
+}
+
 /** 处理工具栏按钮动作。 */
 function handleBarAction(btn: HTMLElement): void {
     const plugin = activePlugin;
     if (!plugin) return;
-    const act = (btn.dataset.act ?? '') as BatchActionKind | 'clear';
-    if (act === 'clear') {
-        selection.clear();
+    const act = (btn.dataset.act ?? '') as BatchActionKind | 'clear' | 'select-all' | 'invert';
+    if (act === 'clear' || act === 'select-all' || act === 'invert') {
+        if (act === 'clear') selection.clear();
+        else if (act === 'select-all') selection.addAll(collectCheckboxCarNums());
+        else selection.invert(collectCheckboxCarNums());
         syncBatchCheckboxes(plugin);
         renderBatchToolbar();
         return;
@@ -183,7 +204,13 @@ function renderBatchToolbar(): void {
         barEl.className = BAR_LAYER_CLASS;
         document.body.appendChild(barEl);
     }
-    barEl.innerHTML = jsxToString(<LpBatchToolbar count={selection.size} busy={busy} />);
+    barEl.innerHTML = jsxToString(
+        <LpBatchToolbar
+            count={selection.size}
+            total={collectCheckboxCarNums().length}
+            busy={busy}
+        />
+    );
 }
 
 /**

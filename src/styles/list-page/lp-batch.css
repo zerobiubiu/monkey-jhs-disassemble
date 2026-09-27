@@ -1,10 +1,14 @@
 /**
- * 列表页勾选式批量操作样式（doc/27）。
+ * 列表页勾选式批量操作样式（doc/30 打磨）。
  *
- * 两部分：
- * 1. `.jhs-lp-batch-item` —— 卡片内勾选框（绝对定位，与状态标签同一套定位上下文；
- *    注入点复用 status-tag 的三级回退，因此定位基准与状态标签一致）；
- * 2. `.jhs-lp-batch-layer` / `.jhs-lp-batch-bar` —— 勾选后出现的底部固定工具栏。
+ * 三部分：
+ * 1. `.jhs-lp-batch-item` —— 卡片内勾选框：原生 checkbox 视觉隐藏（键盘仍可聚焦），
+ *    勾选态画**白色对号**（形状表态，不只靠颜色）；同时给被选中的卡片加主色描边，
+ *    让选择有页面级响应。
+ * 2. `.jhs-lp-batch-layer` / `.jhs-lp-batch-bar` —— 底部浮出工具栏（浮层托举：12px 圆角 +
+ *    双影），分「选择 / 操作」两组，中间发丝线分隔。
+ * 3. 工具栏按钮复用系统既有浅色语义按钮 `.a-normal / .a-warning / .a-success / .a-danger`
+ *    （见 `a-normal-buttons.css`），这里只做紧凑化与状态补全，不新增色值。
  *
  * 颜色/间距/圆角走 design-tokens.css；层级用 --jhs-z-page（页面内元素，不压过 layer）。
  */
@@ -23,25 +27,53 @@
     height: 20px;
     border: 1px solid var(--jhs-color-border);
     border-radius: var(--jhs-radius-sm);
-    background-color: rgb(255, 255, 255, 0.92);
+    background-color: var(--jhs-color-bg);
     cursor: pointer;
     transition:
         background-color var(--jhs-transition-fast),
         border-color var(--jhs-transition-fast);
 }
 
+/* 原生 checkbox：视觉隐藏但保留可聚焦、可点击（标签即热区） */
+.jhs-lp-batch-checkbox {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
 .jhs-lp-batch-item:hover {
     border-color: var(--jhs-color-primary);
 }
 
+/* 勾选态：主色实底 + 白对号（颜色 + 形状两重表态） */
 .jhs-lp-batch-item.is-checked {
     border-color: var(--jhs-color-primary);
-    background-color: var(--jhs-color-primary-light);
+    background-color: var(--jhs-color-primary);
 }
 
-.jhs-lp-batch-checkbox {
-    margin: 0;
-    cursor: pointer;
+.jhs-lp-batch-item.is-checked::after {
+    content: '';
+    width: 4px;
+    height: 8px;
+    margin-top: -2px;
+    border: solid var(--jhs-color-bg);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* 键盘焦点环（DESIGN.md：2px 主色 / offset 2px） */
+.jhs-lp-batch-item:has(.jhs-lp-batch-checkbox:focus-visible) {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+/* 被选中的卡片本体也表态（避免只有角落一个小框的弱反馈） */
+.movie-list .item:has(.jhs-lp-batch-item.is-checked) {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: -2px;
 }
 
 /* ========== 底部工具栏 ========== */
@@ -52,56 +84,80 @@
     bottom: var(--jhs-space-lg);
     left: 50%;
     transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
 }
 
 .jhs-lp-batch-bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--jhs-space-sm);
     padding: var(--jhs-space-sm) var(--jhs-space-md);
     border: 1px solid var(--jhs-color-border);
-    border-radius: var(--jhs-radius-full);
+    border-radius: var(--jhs-radius-lg);
     background-color: var(--jhs-color-bg);
-    box-shadow: var(--jhs-shadow-md);
+    box-shadow:
+        0 10px 40px rgb(15, 23, 42, 0.12),
+        0 2px 8px rgb(15, 23, 42, 0.06);
     color: var(--jhs-color-text);
     font-size: var(--jhs-font-size-sm);
 }
 
 .jhs-lp-batch-count {
     color: var(--jhs-color-text-secondary);
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
+}
+
+.jhs-lp-batch-count strong {
+    color: var(--jhs-color-text);
+    font-weight: 600;
+}
+
+.jhs-lp-batch-total {
+    color: var(--jhs-color-text-muted);
+}
+
+/* 组间发丝线：给出「选择」与「操作」的明确界限 */
+.jhs-lp-batch-sep {
+    width: 1px;
+    height: 18px;
+    background-color: var(--jhs-color-border);
 }
 
 .jhs-lp-batch-group {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--jhs-space-xs);
 }
 
 .jhs-lp-batch-label {
+    padding: 0 2px;
     color: var(--jhs-color-text-secondary);
+    font-weight: 600;
 }
+
+/* ========== 工具栏按钮（紧凑化既有 .a-* 浅色语义按钮） ========== */
 
 .jhs-lp-batch-btn {
-    padding: 2px 10px;
-    border: 1px solid var(--jhs-color-border);
-    border-radius: var(--jhs-radius-full);
-    background-color: var(--jhs-color-bg);
-    color: var(--jhs-color-text);
+    min-width: auto;
+    height: 28px;
+    margin-right: 0;
+    padding: 0 10px;
+    border-radius: var(--jhs-radius-sm);
     font-size: var(--jhs-font-size-sm);
-    line-height: 1.5;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-        background-color var(--jhs-transition-fast),
-        border-color var(--jhs-transition-fast),
-        color var(--jhs-transition-fast);
+    font-weight: 600;
+    line-height: 1;
 }
 
-.jhs-lp-batch-btn:hover:not([disabled]) {
-    border-color: var(--jhs-color-primary);
-    background-color: var(--jhs-color-primary-light);
-    color: var(--jhs-color-primary);
+.jhs-lp-batch-star {
+    min-width: 38px;
+    padding: 0 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.jhs-lp-batch-btn:active:not([disabled]) {
+    transform: scale(0.97);
 }
 
 .jhs-lp-batch-btn[disabled] {
@@ -109,7 +165,7 @@
     cursor: not-allowed;
 }
 
-.jhs-lp-batch-star {
-    padding: 2px 7px;
-    font-variant-numeric: tabular-nums;
+.jhs-lp-batch-btn:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
 }

@@ -1,9 +1,13 @@
 /**
- * 「批量预加载请求列表面板」+ 筛选栏入口按钮样式（doc/26）。
+ * 「批量预加载请求列表面板」+ 筛选栏入口按钮样式（doc/30 打磨）。
  *
- * 面板是挂到 document.body 的固定浮层（独立层，不随列表滚动），
- * 层级取 --jhs-z-top（above-layer，同 tooltip / loading / logger）。
- * 颜色/间距/圆角一律走 design-tokens.css，避免散落字面量。
+ * 借用 DESIGN.md 的既有世界：
+ * - 入口按钮不是筛选芯片（药丸是芯片与下拉的专属形），而是**紧凑硬按钮**（4px 圆角 +
+ *   发丝线左边界），与芯片组形成「筛选 vs 动作」的明确区分；
+ * - 浮层走 `Floating Panel` 规格：12px 圆角 + 双影托举 + 浅底头部；
+ *   默认**屏幕居中**，标题栏可拖动（`pointer` 事件，无依赖）。
+ *
+ * 颜色/间距/圆角走 design-tokens.css；层级取 --jhs-z-top（above-layer）。
  */
 
 :root {
@@ -17,50 +21,88 @@
 /* ========== 筛选栏入口按钮 ========== */
 
 .preload-filter-queue-btn {
-    margin-left: var(--jhs-space-sm);
-    padding: 2px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    margin-left: var(--jhs-space-md);
+    padding: 0 10px 0 var(--jhs-space-md);
     border: 1px solid var(--jhs-color-border);
-    border-radius: var(--jhs-radius-full);
+    border-left-width: 1px;
+    border-radius: var(--jhs-radius-sm);
     background-color: var(--jhs-color-bg);
     color: var(--jhs-color-text-secondary);
     font-size: var(--jhs-font-size-sm);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
     transition:
         background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
         color var(--jhs-transition-fast);
 }
 
+/* 与芯片组之间的发丝线：给出「筛选」与「动作」的界限 */
+.preload-filter-queue-btn::before {
+    content: '';
+    align-self: stretch;
+    margin: 2px var(--jhs-space-sm) 2px 0;
+    border-left: 1px solid var(--jhs-color-border);
+}
+
 .preload-filter-queue-btn:hover {
+    border-color: var(--jhs-color-primary);
     background-color: var(--jhs-color-primary-light);
     color: var(--jhs-color-primary);
 }
 
-/* ========== 浮层容器 ========== */
+.preload-filter-queue-btn:active {
+    transform: scale(0.97);
+}
+
+.preload-filter-queue-btn:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+/* ========== 浮层容器（默认屏幕居中，可拖动） ========== */
 
 .jhs-pqp-layer {
     position: fixed;
-    right: var(--jhs-space-lg);
-    bottom: var(--jhs-space-lg);
     z-index: var(--jhs-z-top);
-    width: 400px;
-    max-width: calc(100vw - 32px);
-    max-height: 60vh;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    width: 420px;
+    max-width: min(420px, 92vw);
+    max-height: min(70vh, 560px);
+    transform: translate(-50%, -50%);
     border: 1px solid var(--jhs-color-border);
-    border-radius: var(--jhs-radius-md);
+    border-radius: var(--jhs-radius-lg);
     background-color: var(--jhs-color-bg);
-    box-shadow: var(--jhs-shadow-lg);
+    box-shadow:
+        0 10px 40px rgb(15, 23, 42, 0.12),
+        0 2px 8px rgb(15, 23, 42, 0.06);
     color: var(--jhs-color-text);
     font-size: var(--jhs-font-size-sm);
+    overflow: hidden;
+}
+
+.jhs-pqp-layer.is-dragging {
+    box-shadow:
+        0 18px 56px rgb(15, 23, 42, 0.18),
+        0 4px 12px rgb(15, 23, 42, 0.08);
 }
 
 .jhs-pqp {
     display: flex;
     flex-direction: column;
-    max-height: 60vh;
+    min-height: 0;
 }
 
-/* ========== 表头 ========== */
+/* ========== 表头（拖动把手） ========== */
 
 .jhs-pqp-header {
     display: flex;
@@ -70,6 +112,12 @@
     padding: var(--jhs-space-sm) var(--jhs-space-md);
     border-bottom: 1px solid var(--jhs-color-border);
     background-color: var(--jhs-color-bg-secondary);
+    cursor: move;
+    user-select: none;
+}
+
+.jhs-pqp-header:active {
+    cursor: grabbing;
 }
 
 .jhs-pqp-title {
@@ -90,18 +138,22 @@
     display: flex;
     gap: var(--jhs-space-xs);
     margin-left: auto;
+    cursor: default;
 }
 
 /* ========== 通用按钮 ========== */
 
 .jhs-pqp-btn {
-    padding: 1px 8px;
+    height: 24px;
+    padding: 0 8px;
     border: 1px solid var(--jhs-color-border);
     border-radius: var(--jhs-radius-sm);
     background-color: var(--jhs-color-bg);
     color: var(--jhs-color-text-secondary);
     font-size: var(--jhs-font-size-xs);
-    line-height: 1.6;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
     transition:
         background-color var(--jhs-transition-fast),
@@ -115,15 +167,24 @@
     color: var(--jhs-color-primary);
 }
 
+.jhs-pqp-btn:active:not([disabled]) {
+    transform: scale(0.97);
+}
+
+.jhs-pqp-btn:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
 .jhs-pqp-btn[disabled] {
     opacity: 0.45;
     cursor: not-allowed;
 }
 
 .jhs-pqp-close {
-    padding: 1px 7px;
+    padding: 0 7px;
     font-size: var(--jhs-font-size-lg);
-    line-height: 1.1;
+    line-height: 1;
 }
 
 /* ========== 行列表 ========== */
@@ -139,7 +200,7 @@
     display: flex;
     align-items: center;
     gap: var(--jhs-space-sm);
-    padding: 5px var(--jhs-space-md);
+    padding: 6px var(--jhs-space-md);
     border-bottom: 1px solid var(--jhs-color-bg-hover);
 }
 

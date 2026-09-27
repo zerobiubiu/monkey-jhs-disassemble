@@ -78,6 +78,25 @@ export class BatchSelection {
     list(): string[] {
         return [...this.selected];
     }
+    /**
+     * 选中给定番号（并集，用于「全选」）。
+     * @param carNums 番号列表
+     */
+    addAll(carNums: string[]): void {
+        for (const carNum of carNums) this.selected.add(BatchSelection.key(carNum));
+    }
+
+    /**
+     * 反选给定番号：集合内已选→取消、未选→选中；集合外的选择保持不动。
+     * @param carNums 番号列表
+     */
+    invert(carNums: string[]): void {
+        for (const carNum of carNums) {
+            const key = BatchSelection.key(carNum);
+            if (this.selected.has(key)) this.selected.delete(key);
+            else this.selected.add(key);
+        }
+    }
 }
 
 /**

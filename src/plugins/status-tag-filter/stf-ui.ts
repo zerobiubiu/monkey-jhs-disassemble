@@ -8,7 +8,12 @@
 
 import { collectStatusTagCounts, countNoStatusItems, NO_TAG_VALUE } from './stf-collect';
 import { applyFilter } from './stf-apply';
-import { SCORE_RANGE, SCORE_VALUE_PREFIX, countWatchedByScore, formatScoreLabel } from './stf-score';
+import {
+    SCORE_VALUE_PREFIX,
+    countWatchedByScore,
+    formatScoreLabel,
+    visibleScoreChips
+} from './stf-score';
 
 /** 日志前缀。 */
 export const LOG = '[状态标签筛选]';
@@ -97,23 +102,18 @@ export function doBuild(mountTarget: Element): void {
         });
 
         // 已读星级芯片（需求 doc/24）：按本脚本 car_list 的 score（0–5）分级过滤已读卡片。
-        // 计数不依赖「已读」标签是否已渲染（有记录即计入），无已读卡片时不生成芯片。
+        // 计数不依赖「已读」标签是否已渲染（有记录即计入）；
+        // 展示口径与「已观看/已收藏/无状态标签」一致 —— 只显示当前页实际存在的档位。
         const scoreCounts = countWatchedByScore();
-        const watchedTotal = SCORE_RANGE.reduce(
-            (sum: number, score: number) => sum + (scoreCounts[score] ?? 0),
-            0
-        );
-        if (watchedTotal > 0) {
-            SCORE_RANGE.forEach((score: number) => {
-                const value = `${SCORE_VALUE_PREFIX}${score}`;
-                const chip = createFilterChip(formatScoreLabel(score), value, {
-                    count: scoreCounts[score] ?? 0
-                });
-                chip.classList.add('score-chip');
-                if (activeValues.has(value)) chip.classList.add('active');
-                chipsContainer.appendChild(chip);
+        visibleScoreChips(scoreCounts, activeValues).forEach((score: number) => {
+            const value = `${SCORE_VALUE_PREFIX}${score}`;
+            const chip = createFilterChip(formatScoreLabel(score), value, {
+                count: scoreCounts[score] ?? 0
             });
-        }
+            chip.classList.add('score-chip');
+            if (activeValues.has(value)) chip.classList.add('active');
+            chipsContainer.appendChild(chip);
+        });
     };
 
     // 初始构建芯片
