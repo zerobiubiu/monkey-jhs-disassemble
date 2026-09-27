@@ -11,6 +11,11 @@
 
 ## v1.46.9
 
+## v1.46.17
+
+### 新增
+- **预加载优先级：带状态标签的卡片降为队尾**（doc/25，列表页批量/预加载 UX 第 2 项上半）：新增纯函数 `src/plugins/other-site/osp-preload-order.ts` 的 `orderItemsByPreloadPriority`（稳定分区：常规卡片原序在前、已读/已收藏卡片原序在后；无降级卡片时返回原数组引用）。`preloadListPage` 改为先读一次 `car_list` 建降级番号集（`FAVORITE_ACTION`/`HAS_WATCH_ACTION`，大小写归一），重排后再逐卡入队（保留 `each` 回调 `return` 语义）。判定以 car_list 为准，不依赖 DOM 标签是否已渲染。新增 5 用例（19 文件 / 235 用例）。
+
 ## v1.46.16
 
 ### 新增

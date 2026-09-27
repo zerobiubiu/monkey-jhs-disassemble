@@ -6,7 +6,7 @@
  * 深度跟踪徽标同步（syncAllBadges）、可预加载站点筛选（getPreloadableSites）、
  * 瀑布流 observer（startPreloadObserver）。
  */
-import { YES } from '../../constants/status';
+import { FAVORITE_ACTION, HAS_WATCH_ACTION, YES } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
 import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
@@ -15,6 +15,7 @@ import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
 import { ensureFilterBar, refreshFilterBar } from './osp-filter-bar';
 import { isCacheEntryValid } from './osp-helpers';
+import { orderItemsByPreloadPriority } from './osp-preload-order';
 import type { SiteConfig, SiteResult } from './osp-types';
 
 import {
@@ -66,7 +67,34 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
     let skippedHiddenCount = 0;
     let preloadCount = 0;
 
-    $items.each((_index: number, itemEl: HTMLElement) => {
+    // 带状态标签（已读/已收藏）的卡片**降为最低优先级**：排在队列末尾（需求 doc/25）。
+    // 判定以 car_list 为准 —— 比 DOM 标签可靠（标签可能尚未补渲染/尚未渲染）。
+    const statedCarNums = new Set<string>();
+    try {
+        for (const car of await storageManager.getCarList()) {
+            if (car.status !== FAVORITE_ACTION && car.status !== HAS_WATCH_ACTION) continue;
+            if (car.carNum) statedCarNums.add(car.carNum.trim().toLowerCase());
+        }
+    } catch (error: unknown) {
+        console.log(`${PRELOAD_LOG} 读取 car_list 失败，跳过优先级降级:`, error);
+    }
+    const allItems = $items.toArray() as HTMLElement[];
+    const orderedItems = orderItemsByPreloadPriority(
+        allItems,
+        statedCarNums,
+        (item: HTMLElement): string => {
+            try {
+                return listPagePlugin.findCarNumAndHref($(item)).carNum || '';
+            } catch {
+                return ''; // 番号提取失败 → 按常规优先级处理
+            }
+        }
+    );
+    if (orderedItems !== allItems) {
+        console.log(`${PRELOAD_LOG} 预加载优先级：带状态标签（已读/已收藏）的卡片已排到队尾`);
+    }
+
+    $(orderedItems).each((_index: number, itemEl: HTMLElement) => {
         const $item = $(itemEl);
         // 跳过被 jhs 屏蔽的卡片
         if ($item.attr('data-hide') === YES) {
