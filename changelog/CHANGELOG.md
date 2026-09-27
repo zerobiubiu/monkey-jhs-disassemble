@@ -11,6 +11,13 @@
 
 ## v1.46.9
 
+## v1.46.23
+
+### 新增 / 优化
+- **批量操作后台同步 JavDB**（doc/31，用户实测反馈）：批量「收藏 / 已读 N星」写完本地后**立即入队**推送，不再等下次打开详情页才同步。新增 `list-page/lp-batch-sync.ts`：`enqueueBatchPush()` **同步返回（不阻塞）**、逐项串行 **900ms 节流**、每项最多重试 2 次（失败项退回队尾）、逐项 `clog` 日志 + 队列结束汇总 toast；复用 `jhs-sync/sync-common` 的 `postWantToWatch` / `postWatched`（与同步面板同一条 API 路径）。尊重 `autoServerSync` 设置（关闭则只写本地）；`destroyBatchToolbar` 调 `stopBatchSync` 终止。批量 toast 新增「已提交后台同步 JavDB N 项」。
+- **取消已读暂不推送**：JavDB 服务器侧只能通过删除评价记录表达，而删除会连带移除写在服务器上的评价正文（破坏性远端操作），代码注释与 doc/31 已说明；如确需可另开增量并在执行前确认。
+- 新增 6 用例（28 文件 / 299 用例）。
+
 ## v1.46.22
 
 ### 修复 / 优化（用户实测反馈）

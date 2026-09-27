@@ -45,6 +45,7 @@
 | `28-missing-score-fallback-ratingcache.md` | 变更 | v1.46.20 | **修正 doc/24 §7 的错误判断**：缺失 score 的可信来源就是已实现的「JavDB 个人评分」机制（`rating-display` 的 `RatingCache`）。索引新增 `hasScore`（区分「无 score」与「评 0 分」）+ 可选**注入式**回退源 `setScoreFallbackResolver`；插件加载缓存并注册变更钩子（抓分后芯片计数自动刷新）。仍**不写 car_list**。新增 8 用例 |
 | `29-rating-persistence-and-backup-audit.md` | 变更 | v1.46.21 | 评分持久化 + 全插件评分存储审计：新增 `rating-persist.ts`（抓到评分后**落库 car_list**，只补空缺、不覆盖）；`watched-from-javdb` 不再写死 `score: 0`（遮蔽回退的污染源）；`RatingCache.onChange` 单槽→ `addChangeListener` 监听器集合；审计确认 car_list / RatingCache / VltDb / lrs 均已在备份范围。新增 7 用例 |
 | `30-ui-polish-from-field-testing.md` | 变更 | v1.46.22 | 实测反馈打磨（impeccable polish）：请求列表入口改**紧凑硬按钮 + 发丝线分隔**（不再像芯片），面板**屏幕居中 + 可拖动**；星级芯片改为 `visibleScoreChips` **只显示当前页存在的档位**；勾选框画**白对号 + 卡片选中描边**、新增 `全选/反选/清空`、操作按钮复用既有 `.a-*` 语义色（收藏橙 / 已读绿 / 取消已读红）。新增 8 用例 |
+| `31-batch-push-to-javdb-background-queue.md` | 变更 | v1.46.23 | 批量操作 → JavDB **后台推送队列**：新增 `lp-batch-sync.ts`（入队即返回，900ms/项节流串行 + 每项重试 2 次 + 汇总提示），复用 `sync-common` 的 `postWantToWatch`/`postWatched`；尊重 `autoServerSync` 开关；`destroy` 终止队列。取消已读**不推**（服务器侧只能删评价记录、会连带删评价正文）。新增 6 用例 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
