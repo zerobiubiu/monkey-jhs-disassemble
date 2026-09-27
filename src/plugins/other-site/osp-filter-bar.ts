@@ -1,5 +1,6 @@
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getItemPreloadStatus } from './osp-helpers';
+import { togglePreloadQueuePanel } from './osp-preload-panel';
 
 /**
  * 筛选栏芯片定义（固定 5 档：排队中/请求中/成功匹配/匹配失败/已缓存）。
@@ -110,7 +111,7 @@ function findFilterMountTarget(): Element | null {
  * 构建筛选栏 DOM 并插入挂载参考元素之后。芯片文本含实时计数，
  * refreshChips 保留已激活状态。点击芯片 toggle active + applyPreloadFilter。
  */
-function buildFilterBar(_plugin: OtherSitePlugin, mountTarget: Element): void {
+function buildFilterBar(plugin: OtherSitePlugin, mountTarget: Element): void {
     const bar = document.createElement('div');
     bar.className = 'preload-filter-bar';
 
@@ -122,6 +123,16 @@ function buildFilterBar(_plugin: OtherSitePlugin, mountTarget: Element): void {
     const chipsContainer = document.createElement('div');
     chipsContainer.className = 'preload-filter-chips';
     bar.appendChild(chipsContainer);
+
+    // 「请求列表」入口：打开批量预加载请求列表面板（队列可视化 + 重试/取消/置顶，doc/26）
+    const queueBtn = document.createElement('button');
+    queueBtn.type = 'button';
+    queueBtn.className = 'preload-filter-queue-btn';
+    queueBtn.textContent = '请求列表';
+    queueBtn.addEventListener('click', () => {
+        togglePreloadQueuePanel(plugin);
+    });
+    bar.appendChild(queueBtn);
 
     const refreshChips = (): void => {
         const activeValues = new Set(

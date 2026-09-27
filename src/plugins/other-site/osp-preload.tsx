@@ -10,13 +10,15 @@ import { FAVORITE_ACTION, HAS_WATCH_ACTION, YES } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
 import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
+import { siteQuery } from '../../core/util/site/selectors';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
 import { ensureFilterBar, refreshFilterBar } from './osp-filter-bar';
-import { isCacheEntryValid } from './osp-helpers';
+import { getItemPreloadStatus, isCacheEntryValid } from './osp-helpers';
 import { orderItemsByPreloadPriority } from './osp-preload-order';
 import type { SiteConfig, SiteResult } from './osp-types';
+import { refreshPreloadQueuePanel } from './osp-preload-panel';
 
 import {
     PRELOAD_STATUS_MAP,
@@ -127,17 +129,8 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
                 continue;
             }
 
-            // 入队串行限流预加载（先标记排队中，徽标实时反映队列状态）
-            updatePreloadStatus(plugin, $item, siteConfig.id, 'queued');
-            plugin.preloadQueue.addTask(async () => {
-                // 二次检查：队列执行期间可能已被标记拦截
-                if (plugin.blockedSiteIds.has(siteConfig.id)) {
-                    updatePreloadStatus(plugin, $item, siteConfig.id, 'failed');
-                    return;
-                }
-                updatePreloadStatus(plugin, $item, siteConfig.id, 'requesting');
-                await preloadSite(plugin, carNum, siteConfig, $item);
-            });
+            // 入队串行限流预加载（标记排队中 → 入队；面板/徽标实时反映队列状态）
+            enqueuePreloadTask(plugin, carNum, siteConfig, itemEl);
             preloadCount++;
         }
     });
@@ -149,6 +142,134 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
                 ? ` | 被拦截站点: ${[...plugin.blockedSiteIds].map((id) => id.replace('Btn', '')).join(', ')}`
                 : '')
     );
+}
+
+/**
+ * 入队一个预加载任务（列表页首轮与面板「重试」共用，避免重复实现）。
+ *
+ * 同时写入任务注册表（供请求列表面板展示）并把卡片徽标置为「排队中」；
+ * 任务闭包内自检取消标记（用户可能在出队前或出队后瞬间取消）。
+ *
+ * @param plugin OtherSitePlugin 实例
+ * @param carNum 番号
+ * @param siteConfig 站点配置
+ * @param itemEl 列表卡片元素；重试时卡片可能已不在页面（翻页/重排）→ 传 null，只预热缓存
+ * @returns 任务键（`${carNum}_${siteId}`）
+ */
+export function enqueuePreloadTask(
+    plugin: OtherSitePlugin,
+    carNum: string,
+    siteConfig: SiteConfig,
+    itemEl: HTMLElement | null
+): string {
+    const key = `${carNum}_${siteConfig.id}`;
+    plugin.preloadTasks.upsert(key, carNum, siteConfig.id, siteConfig.id.replace('Btn', ''));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
+    const $item: any = itemEl ? $(itemEl) : null;
+    if ($item) updatePreloadStatus(plugin, $item, siteConfig.id, 'queued');
+    refreshPreloadQueuePanel(plugin);
+
+    plugin.preloadQueue.addTask(async (handle) => {
+        if (handle.isCancelled()) {
+            plugin.preloadTasks.setStatus(key, 'cancelled');
+            refreshPreloadQueuePanel(plugin);
+            return;
+        }
+        // 二次检查：队列执行期间可能已被标记拦截
+        if (plugin.blockedSiteIds.has(siteConfig.id)) {
+            plugin.preloadTasks.setStatus(key, 'failed');
+            if ($item) updatePreloadStatus(plugin, $item, siteConfig.id, 'failed');
+            refreshPreloadQueuePanel(plugin);
+            return;
+        }
+        plugin.preloadTasks.setStatus(key, 'requesting');
+        if ($item) updatePreloadStatus(plugin, $item, siteConfig.id, 'requesting');
+        refreshPreloadQueuePanel(plugin);
+        await preloadSite(plugin, carNum, siteConfig, $item);
+        // 结果（成功/失败）已由 doPreloadSite 写入徽标，据此同步注册表：
+        // 成功不留存（徽标已显示「成功匹配」），失败/无徽标宿主则留存供面板重试。
+        const badge = itemEl ? getItemPreloadStatus(itemEl) : '';
+        if (badge === 'success' || !itemEl) {
+            plugin.preloadTasks.remove(key);
+        } else {
+            plugin.preloadTasks.setStatus(key, 'failed');
+        }
+        refreshPreloadQueuePanel(plugin);
+    }, key);
+    return key;
+}
+
+/**
+ * 重试一条失败/已取消的预加载任务（请求列表面板动作）。
+ *
+ * @param plugin OtherSitePlugin 实例
+ * @param key 任务键
+ * @returns 是否找到记录并入队
+ */
+export function retryPreloadTask(plugin: OtherSitePlugin, key: string): boolean {
+    const record = plugin.preloadTasks.get(key);
+    if (!record) return false;
+    const siteConfig = plugin.siteConfigs.find((config) => config.id === record.siteId);
+    if (!siteConfig) return false;
+    enqueuePreloadTask(plugin, record.carNum, siteConfig, findListItemByCarNum(plugin, record.carNum));
+    return true;
+}
+
+/**
+ * 取消一条在队/在途的预加载任务（请求列表面板动作）。
+ *
+ * 排队中的直接出队；在途的只能置取消标记（fetch 无法中断，由任务闭包自检后提前退出）。
+ * 同时清掉卡片上的待处理徽标 —— 否则筛选栏计数会永远残留「排队中」。
+ *
+ * @param plugin OtherSitePlugin 实例
+ * @param key 任务键
+ * @returns 是否找到并取消（键不存在时为 false）
+ */
+export function cancelPreloadTask(plugin: OtherSitePlugin, key: string): boolean {
+    const cancelled = plugin.preloadQueue.cancel(key);
+    const record = plugin.preloadTasks.get(key);
+    if (record) {
+        plugin.preloadTasks.setStatus(key, 'cancelled');
+        const itemEl = findListItemByCarNum(plugin, record.carNum);
+        if (itemEl) clearPreloadStatus(plugin, $(itemEl), record.siteId);
+    }
+    refreshPreloadQueuePanel(plugin);
+    return cancelled;
+}
+
+/**
+ * 按番号定位当前页的列表卡片（重试/取消时用于找回徽标宿主）。
+ *
+ * @param plugin OtherSitePlugin 实例
+ * @param carNum 番号
+ * @returns 命中的 `.item` 元素；已翻页/被重排而找不到时返回 null
+ */
+function findListItemByCarNum(plugin: OtherSitePlugin, carNum: string): HTMLElement | null {
+    const listPagePlugin = plugin.getBean('ListPagePlugin');
+    if (!listPagePlugin) return null;
+    const target = carNum.trim().toLowerCase();
+    for (const el of siteQuery('listItem')) {
+        try {
+            const num = (listPagePlugin.findCarNumAndHref($(el)).carNum || '').trim().toLowerCase();
+            if (num === target) return el as HTMLElement;
+        } catch {
+            // 该卡片番号解析失败，跳过
+        }
+    }
+    return null;
+}
+
+/**
+ * 清除某站点在卡片上的预加载徽标（取消任务后调用，避免残留「排队中」计数）。
+ *
+ * @param plugin OtherSitePlugin 实例
+ * @param $item 卡片 jQuery 对象
+ * @param siteId 站点 id
+ */
+export function clearPreloadStatus(plugin: OtherSitePlugin, $item: unknown, siteId: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
+    ($item as any).find(`.jhs-preload-status[data-site-id="${siteId}"]`).remove();
+    refreshFilterBar(plugin);
 }
 
 /**
@@ -302,7 +423,7 @@ async function doPreloadSite(
  * @param siteId 站点 id（如 "missAvBtn"）。
  * @param status 预加载状态（queued / requesting / success / failed）。
  */
-function updatePreloadStatus(
+export function updatePreloadStatus(
     plugin: OtherSitePlugin,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     $item: any,

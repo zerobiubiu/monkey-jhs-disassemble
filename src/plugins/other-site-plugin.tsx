@@ -45,10 +45,14 @@ import { BasePlugin } from './base-plugin';
 import { getEnabledSites, saveEnabledSites } from './other-site/osp-enabled-sites';
 import { initFilterBar } from './other-site/osp-filter-bar';
 import {
+    cancelPreloadTask,
     preloadListPage,
+    retryPreloadTask,
     startPreloadObserver,
     syncAllBadges
 } from './other-site/osp-preload';
+import { destroyPreloadQueuePanel } from './other-site/osp-preload-panel';
+import { PreloadTaskRegistry } from './other-site/osp-preload-tasks';
 import { probeSite } from './other-site/osp-probe';
 import type { SiteConfig } from './other-site/osp-types';
 
@@ -58,6 +62,7 @@ import { OtherSiteCheckbox } from '../components/other-site/other-site-checkbox'
 
 import otherSiteCssRaw from '../styles/other-site-plugin.css?raw';
 import preloadStatusCssRaw from '../styles/preload-status-badge.css?raw';
+import preloadQueuePanelCssRaw from '../styles/other-site/preload-queue-panel.css?raw';
 
 export class OtherSitePlugin extends BasePlugin {
     /** 命中（单/多结果）背景色。对应原 L4849。 */
@@ -124,6 +129,12 @@ export class OtherSitePlugin extends BasePlugin {
     preloadCacheTTLDays = 0;
     /** 进行中的预加载请求（keyed 去重：同一 carNum_siteId 只允许一个请求）。 */
     inflightPreloads = new Map<string, Promise<void>>();
+    /** 预加载任务注册表（请求列表面板的数据源：番号/站点名/失败留存）。 */
+    preloadTasks = new PreloadTaskRegistry();
+    /** 请求列表面板容器（未打开时为 null）。 */
+    preloadQueuePanelEl: HTMLElement | null = null;
+    /** 请求列表面板刷新防抖计时器。 */
+    preloadQueuePanelDebounce = 0;
 
     /** 返回插件名，供 PluginManager 注册去重。对应原 L4875-4877。 */
     getName(): string {
@@ -140,7 +151,7 @@ export class OtherSitePlugin extends BasePlugin {
      * 无参数，返回 Promise<string>（CSS 文本）。
      */
     async initCss(): Promise<string> {
-        return `${otherSiteCssRaw}\n${preloadStatusCssRaw}`;
+        return `${otherSiteCssRaw}\n${preloadStatusCssRaw}\n${preloadQueuePanelCssRaw}`;
     }
 
     /**
@@ -316,6 +327,24 @@ export class OtherSitePlugin extends BasePlugin {
     }
 
     /**
+     * 重试一条失败/已取消的预加载任务（请求列表面板动作）。
+     * @param key 任务键（`${carNum}_${siteId}`）
+     * @returns 是否找到记录并入队
+     */
+    retryPreload(key: string): boolean {
+        return retryPreloadTask(this, key);
+    }
+
+    /**
+     * 取消一条在队/在途的预加载任务（请求列表面板动作）。
+     * @param key 任务键（`${carNum}_${siteId}`）
+     * @returns 是否找到并取消
+     */
+    cancelPreload(key: string): boolean {
+        return cancelPreloadTask(this, key);
+    }
+
+    /**
      * 渲染站点启用设置区复选框。对应原 L5085-5096。
      * 依据 getEnabledSites() 标记各 siteConfig 对应复选框的勾选状态。
      * 无参数，无返回值；#siteCheckboxes 不存在时静默跳过。
@@ -371,5 +400,6 @@ export class OtherSitePlugin extends BasePlugin {
     /** 销毁插件：中止所有由 supervisor 管理的资源。 */
     destroy(): void {
         this.supervisor.abort();
+        destroyPreloadQueuePanel(this);
     }
 }
