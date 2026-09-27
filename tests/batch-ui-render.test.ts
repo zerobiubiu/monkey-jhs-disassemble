@@ -1,0 +1,102 @@
+// @vitest-environment jsdom
+/**
+ * 展示层渲染契约（doc/26 / doc/27）。
+ *
+ * 组件本身只做渲染（`jsxToString` → HTML 字符串），交互由控制器的事件委托负责；
+ * 这里断言「渲染出的 HTML 含哪些行、哪些按钮」——即面板/工具栏对外承诺的结构。
+ * 用 `React.createElement` 构造节点（测试文件本身不写 JSX）。
+ */
+import { createElement } from 'react';
+import { describe, expect, it } from 'vitest';
+import { jsxToString } from '../src/core/jsx-to-string';
+import { PreloadQueuePanel } from '../src/components/other-site/preload-queue-panel';
+import { LpBatchToolbar } from '../src/components/list-page/lp-batch-bar';
+
+describe('PreloadQueuePanel 渲染契约', () => {
+    it('渲染行（番号/站点/状态）与按状态给出的动作按钮', () => {
+        const html = jsxToString(
+            createElement(PreloadQueuePanel, {
+                rows: [
+                    {
+                        key: 'DAZD-314_missAvBtn',
+                        carNum: 'DAZD-314',
+                        siteLabel: 'missAv',
+                        status: 'requesting',
+                        inQueue: true,
+                        running: true
+                    },
+                    {
+                        key: 'ABC-1_missAvBtn',
+                        carNum: 'ABC-1',
+                        siteLabel: 'missAv',
+                        status: 'queued',
+                        inQueue: true,
+                        running: false
+                    },
+                    {
+                        key: 'XYZ-9_missAvBtn',
+                        carNum: 'XYZ-9',
+                        siteLabel: 'missAv',
+                        status: 'failed',
+                        inQueue: false,
+                        running: false
+                    }
+                ],
+                counts: { queued: 1, requesting: 1, failed: 1, cancelled: 0 },
+                concurrency: 1
+            })
+        );
+        expect(html).toContain('预加载请求列表');
+        expect(html).toContain('执行中 1'); // 摘要
+        expect(html).toContain('执行中 1 · 排队 1 · 失败 1');
+        expect(html).toContain('DAZD-314');
+        expect(html).toContain('ABC-1');
+        expect(html).toContain('XYZ-9');
+        // 执行中：只能取消（不能置顶）
+        expect(html).toContain('data-act="cancel" data-key="DAZD-314_missAvBtn"');
+        // 排队中：置顶 + 取消
+        expect(html).toContain('data-act="prioritize" data-key="ABC-1_missAvBtn"');
+        // 终态：重试 + 移除（且不带取消）
+        expect(html).toContain('data-act="retry" data-key="XYZ-9_missAvBtn"');
+        expect(html).toContain('data-act="remove" data-key="XYZ-9_missAvBtn"');
+        expect(html).toContain('data-act="retry-failed"');
+        expect(html).toContain('data-act="clear-terminal"');
+    });
+
+    it('空队列渲染空态且「全部重试 / 清空已结束」禁用', () => {
+        const html = jsxToString(
+            createElement(PreloadQueuePanel, {
+                rows: [],
+                counts: { queued: 0, requesting: 0, failed: 0, cancelled: 0 },
+                concurrency: 2
+            })
+        );
+        expect(html).toContain('队列为空');
+        expect(html).toContain('并发 2');
+        expect(html).toContain('disabled');
+    });
+});
+
+describe('LpBatchToolbar 渲染契约', () => {
+    it('渲染勾选数、三个操作与 6 档星级按钮', () => {
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 3, busy: false }));
+        expect(html).toContain('已选');
+        expect(html).toContain('<strong>3</strong>');
+        expect(html).toContain('data-act="favorite"');
+        expect(html).toContain('data-act="unwatch"');
+        expect(html).toContain('data-act="clear"');
+        for (const score of [0, 1, 2, 3, 4, 5]) {
+            expect(html).toContain(`data-act="watched" data-score="${score}"`);
+        }
+        expect(html).not.toContain('disabled');
+    });
+
+    it('count=0 或 busy 时全部操作按钮禁用（清空选择除外）', () => {
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 0, busy: false }));
+        // 断言到属性边界为止，不依赖 disabled 的具体序列化形式
+        expect(html).toMatch(/data-act="favorite"[^>]*disabled/);
+        expect(html).toMatch(/data-act="watched"[^>]*data-score="5"[^>]*disabled/);
+        expect(html).toMatch(/data-act="clear"(?! enabled)(?=[^>]*>)/);
+        expect(html).not.toMatch(/data-act="clear"[^>]*disabled/);
+    });
+});

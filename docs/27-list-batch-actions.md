@@ -82,7 +82,7 @@
 | `bun run build` | exit 0 |
 | `bun run lint` | exit 0（0 problems） |
 | `bun run lint:css` | exit 0 |
-| `bun run test` | exit 0；**22 文件 / 263 用例**（原 21 / 254，新增 9） |
+| `bun run test` | exit 0；**23 文件 / 267 用例**（原 21 / 254：本项 +9 逻辑用例，收口补 +4 展示层渲染契约用例，覆盖 doc/26 面板与 doc/27 工具栏） |
 | `bun run check:structure` | exit 0（384 files, 67 dirs） |
 | `bun run check:docs` | exit 0 |
 | `bun run check:selectors` | exit 0（89 文件 / 275 处，与基线持平） |
