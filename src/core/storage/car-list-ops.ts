@@ -280,6 +280,44 @@ export async function removeCar(sm: StorageManager, carNum: string): Promise<boo
 }
 
 /**
+ * 批量清除「已读」状态（列表页批量操作 doc/27）。
+ *
+ * **只把 status 置回未标记**（保留 carNum / url / names / remark / score / 日期等全部字段），
+ * 与 `removeCar`（整条删除）刻意区分 —— 取消已读不应造成任何用户数据丢失。
+ * 仅对当前 `status === HAS_WATCH_ACTION` 的记录生效（不会误清收藏/屏蔽状态）。
+ *
+ * @param carNums 目标番号列表
+ * @returns 实际清除的记录数（0 表示无变化，不写库）
+ */
+export async function clearCarWatchStatus(sm: StorageManager, carNums: string[]): Promise<number> {
+    if (!carNums || carNums.length === 0) {
+        return 0;
+    }
+    const target = featureFlags.caseInsensitiveCarNum
+        ? new Set(carNums.map((n) => n.trim().toLowerCase()))
+        : new Set(carNums);
+    const list = await getCarList(sm);
+    const changed: CarRecord[] = [];
+    for (const car of list) {
+        const key = featureFlags.caseInsensitiveCarNum ? car.carNum.toLowerCase() : car.carNum;
+        if (!target.has(key) || car.status !== HAS_WATCH_ACTION) {
+            continue;
+        }
+        car.status = '';
+        car.updateDate = utils.getNowStr();
+        changed.push(car);
+    }
+    if (changed.length === 0) {
+        return 0;
+    }
+    await sm.forage.setItem(sm.car_list_key, list);
+    storageRevision.increment();
+    sm.cacheCarList = list;
+    sm.carListChangeCallback?.({ action: 'upsert', upserts: changed });
+    return changed.length;
+}
+
+/**
  * 批量删除番号记录。
  * @param carNums 待删除番号列表
  * @returns 删除条数（未删除返回 false）

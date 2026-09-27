@@ -90,7 +90,7 @@ monkey-jhs-disassemble/
 共 **63 个文件**：顶层 28 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）三个子目录 35。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
-### 3.5 组件 `src/components/`（139 个）
+### 3.5 组件 `src/components/`（141 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。不使用 react-dom/server。

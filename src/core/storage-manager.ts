@@ -31,6 +31,7 @@ import { storageRevision } from './storage-revision';
 import type { CarListChangeEvent, CarRecord, CarSaveInput } from './storage/car-list-ops';
 import {
     batchRemoveCars,
+    clearCarWatchStatus,
     getCar,
     getCarList,
     removeCar,
@@ -196,6 +197,10 @@ export class StorageManager {
 
     /** 删除单条番号记录。 */
     async removeCar(carNum: string): Promise<boolean> { return removeCar(this, carNum); }
+    /** 批量清除「已读」状态（保留记录与其余字段）；@returns 实际清除数 */
+    async clearCarWatchStatus(carNums: string[]): Promise<number> {
+        return clearCarWatchStatus(this, carNums);
+    }
 
     /** 批量删除番号记录。 */
     async batchRemoveCars(carNums: string[]): Promise<boolean | number> { return batchRemoveCars(this, carNums); }

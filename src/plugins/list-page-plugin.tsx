@@ -52,6 +52,13 @@ import {
     bindClick as _bindClick
 } from './list-page/lp-dom';
 import { addJumpPageControl as _addJumpPageControl } from './list-page/lp-jump-page';
+import {
+    destroyBatchToolbar as _destroyBatchToolbar,
+    initBatchToolbar as _initBatchToolbar,
+    syncBatchCheckboxes as _syncBatchCheckboxes
+} from './list-page/lp-batch';
+
+import lpBatchCssRaw from '../styles/list-page/lp-batch.css?raw';
 
 export class ListPagePlugin extends BasePlugin {
     // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
@@ -79,12 +86,21 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 销毁插件，清理 supervisor 管理的所有资源（MutationObserver 等）。 */
     destroy(): void {
+        _destroyBatchToolbar();
         this.supervisor.abort();
     }
 
     /** 仅在列表页激活（doc/140）。 */
     get pageTypes(): PageType[] {
         return ['list'];
+    }
+
+    /**
+     * 注入列表页批量操作样式（仅列表页）。
+     * @returns CSS 文本
+     */
+    async initCss(): Promise<string> {
+        return lpBatchCssRaw;
     }
 
     /** 列表页主处理。对应原 L8301-8339。 */
@@ -116,6 +132,7 @@ export class ListPagePlugin extends BasePlugin {
         this.replaceHdImg();
         this.addJumpPageControl();
         await this.doFilter();
+        this.initBatchToolbar();
         this.bindClick().then();
         this.rememberTagExpand();
         $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
@@ -166,6 +183,7 @@ export class ListPagePlugin extends BasePlugin {
                 this.replaceHdImg();
                 this.addJumpPageControl();
                 await this.doFilter();
+                this.syncBatchCheckboxes();
                 await this.getBean('ListPageButtonPlugin').sortItems();
                 $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
                 this.getBean('AutoPagePlugin').checkLoad();
@@ -246,5 +264,17 @@ export class ListPagePlugin extends BasePlugin {
 
     addJumpPageControl(): void {
         return _addJumpPageControl();
+    }
+
+    // ── 批量操作（lp-batch.tsx）──────────────────────────────────────────
+
+    /** 初始化勾选式批量操作（勾选框 + 底部工具栏）。 */
+    initBatchToolbar(): void {
+        return _initBatchToolbar(this);
+    }
+
+    /** 同步卡片勾选框（列表 DOM 变化后调用）。 */
+    syncBatchCheckboxes(): void {
+        return _syncBatchCheckboxes(this);
     }
 }

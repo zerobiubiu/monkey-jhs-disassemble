@@ -1,0 +1,115 @@
+/**
+ * 列表页勾选式批量操作样式（doc/27）。
+ *
+ * 两部分：
+ * 1. `.jhs-lp-batch-item` —— 卡片内勾选框（绝对定位，与状态标签同一套定位上下文；
+ *    注入点复用 status-tag 的三级回退，因此定位基准与状态标签一致）；
+ * 2. `.jhs-lp-batch-layer` / `.jhs-lp-batch-bar` —— 勾选后出现的底部固定工具栏。
+ *
+ * 颜色/间距/圆角走 design-tokens.css；层级用 --jhs-z-page（页面内元素，不压过 layer）。
+ */
+
+/* ========== 卡片勾选框 ========== */
+
+.jhs-lp-batch-item {
+    position: absolute;
+    z-index: 3;
+    left: 4px;
+    top: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-sm);
+    background-color: rgb(255, 255, 255, 0.92);
+    cursor: pointer;
+    transition:
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast);
+}
+
+.jhs-lp-batch-item:hover {
+    border-color: var(--jhs-color-primary);
+}
+
+.jhs-lp-batch-item.is-checked {
+    border-color: var(--jhs-color-primary);
+    background-color: var(--jhs-color-primary-light);
+}
+
+.jhs-lp-batch-checkbox {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* ========== 底部工具栏 ========== */
+
+.jhs-lp-batch-layer {
+    position: fixed;
+    z-index: var(--jhs-z-page);
+    bottom: var(--jhs-space-lg);
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.jhs-lp-batch-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--jhs-space-sm);
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-full);
+    background-color: var(--jhs-color-bg);
+    box-shadow: var(--jhs-shadow-md);
+    color: var(--jhs-color-text);
+    font-size: var(--jhs-font-size-sm);
+}
+
+.jhs-lp-batch-count {
+    color: var(--jhs-color-text-secondary);
+    white-space: nowrap;
+}
+
+.jhs-lp-batch-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.jhs-lp-batch-label {
+    color: var(--jhs-color-text-secondary);
+}
+
+.jhs-lp-batch-btn {
+    padding: 2px 10px;
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-full);
+    background-color: var(--jhs-color-bg);
+    color: var(--jhs-color-text);
+    font-size: var(--jhs-font-size-sm);
+    line-height: 1.5;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
+        color var(--jhs-transition-fast);
+}
+
+.jhs-lp-batch-btn:hover:not([disabled]) {
+    border-color: var(--jhs-color-primary);
+    background-color: var(--jhs-color-primary-light);
+    color: var(--jhs-color-primary);
+}
+
+.jhs-lp-batch-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.jhs-lp-batch-star {
+    padding: 2px 7px;
+    font-variant-numeric: tabular-nums;
+}
