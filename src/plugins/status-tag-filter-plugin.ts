@@ -86,6 +86,8 @@ export class StatusTagFilterPlugin extends BasePlugin {
     private ratingFallbackReady = false;
     /** 评分抓取后刷新芯片的防抖计时器。 */
     private scoreRefreshDebounce = 0;
+    /** 评分缓存监听注销函数（destroy 时调用）。 */
+    private ratingCacheUnsubscribe: (() => void) | null = null;
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -163,13 +165,13 @@ export class StatusTagFilterPlugin extends BasePlugin {
             const entry = RatingCache.get(RatingUtils.normalizeCode(carNum));
             return entry ? entry.rating : null;
         });
-        RatingCache.onChange = (): void => {
+        this.ratingCacheUnsubscribe = RatingCache.addChangeListener((): void => {
             // 评分来源变了（但 car_list 未变）→ 只需重算计数/筛选，不必重建索引
             clearTimeout(this.scoreRefreshDebounce);
             this.scoreRefreshDebounce = this.supervisor.setTimeout(() => {
                 this.updateFilterBar();
             }, 200);
-        };
+        });
     }
 
     /**
@@ -286,8 +288,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
 
     /** 销毁插件：一次性清理所有 supervisor 管理的资源。 */
     destroy(): void {
-        // 解除评分缓存钩子（避免插件销毁后仍引用本实例）
-        RatingCache.onChange = null;
+        // 注销评分缓存监听（避免插件销毁后仍引用本实例）
+        this.ratingCacheUnsubscribe?.();
+        this.ratingCacheUnsubscribe = null;
         this.supervisor.abort();
     }
 }

@@ -25,6 +25,7 @@ import { buildWatchedMap, RatingCache } from './rating-cache';
 import { fetchRating } from './rating-net';
 import { RATING_CONFIG } from './rating-config';
 import { RatingUtils } from './rating-utils';
+import { bindRatingPersistence } from './rating-persist';
 
 import ratingDisplayCssRaw from '../../styles/rating-display.css?raw';
 
@@ -436,5 +437,6 @@ export class RatingDisplayPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         await this.init();
+        await bindRatingPersistence();
     }
 }

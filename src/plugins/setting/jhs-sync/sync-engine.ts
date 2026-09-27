@@ -197,8 +197,9 @@ async function executeOp(op: SyncOp): Promise<void> {
             await storageManager.saveCar({
                 carNum: op.carNum,
                 url: `/v/${op.videoId}`,
-                actionType: HAS_WATCH_ACTION,
-                score: 0
+                // 不写 score：拉取方向没有评分数据（SyncOp.score 仅用于 watched-to-javdb），
+                // 写 0 会伪造「已评分」并遮蔽评分回退（doc/29）。缺少评分即「未评分」。
+                actionType: HAS_WATCH_ACTION
             });
             break;
     }

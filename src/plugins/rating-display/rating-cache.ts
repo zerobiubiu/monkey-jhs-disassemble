@@ -72,12 +72,25 @@ export const RatingCache = {
     /** 内存缓存（localStorage / IDB 加载后的镜像） */
     _data: {} as RatingData,
     /**
-     * 评分变化回调（可选，默认 null）。
+     * 评分变化监听器集合。
      *
-     * 供外部（如已读星级筛选）在**抓到新评分后**刷新计数/筛选；
-     * 未设置时行为与原实现完全一致（新增钩子不改变原控制流）。
+     * 供外部在**抓到新评分后**做后续动作：已读星级筛选刷新计数、
+     * RatingDisplayPlugin 把评分持久化进 `car_list`（doc/29）。
+     * 无监听器时与原实现完全一致（新增机制不改变原控制流）。
      */
-    onChange: null as ((code: string, rating: number) => void) | null,
+    _changeListeners: new Set<(code: string, rating: number) => void>(),
+
+    /**
+     * 注册评分变化监听。
+     * @param listener 回调（code = 规范化番号，rating = 1–5）
+     * @returns 注销函数（重复注销安全）
+     */
+    addChangeListener(listener: (code: string, rating: number) => void): () => void {
+        this._changeListeners.add(listener);
+        return () => {
+            this._changeListeners.delete(listener);
+        };
+    },
 
     /**
      * 加载缓存：合并旧 localStorage 与已有 IndexedDB 寄生副本。
@@ -175,11 +188,13 @@ export const RatingCache = {
         if (existed && existed.rating === rating) return false;
         this._data[code] = { rating, updatedAt: Date.now() };
         this.save();
-        // 通知监听者（悬停懒加载/全量加载抓到评分后，已读星级计数随之刷新）
-        try {
-            this.onChange?.(code, rating);
-        } catch (error) {
-            RatingUtils.log('CACHE_ONCHANGE_ERROR', error);
+        // 通知监听者（刷新星级计数 / 把评分持久化进 car_list）
+        for (const listener of [...this._changeListeners]) {
+            try {
+                listener(code, rating);
+            } catch (error) {
+                RatingUtils.log('CACHE_LISTENER_ERROR', error);
+            }
         }
         return true;
     },

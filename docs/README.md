@@ -43,6 +43,7 @@
 | `26-preload-request-list-panel.md` | 变更 | v1.46.18 | 批量预加载请求列表面板（第 2 项下半）：`AsyncTaskQueue` 增任务句柄（getTasks/cancel/prioritize + 取消自检）；新增 `PreloadTaskRegistry`（失败留存/容量淘汰）与浮层面板（「请求列表」入口 → 队列可视化 + 重试/取消/置顶）；`enqueuePreloadTask` 抽取供首轮与重试共用；取消同步清除卡片徽标。新增 20 用例 |
 | `27-list-batch-actions.md` | 变更 | v1.46.19 | 列表页勾选式批量操作（第 3 项，收口）：纯逻辑 `lp-batch-state.ts`（勾选集合 + 收藏/已读/取消已读三类写入计划）+ 卡片勾选框与底部工具栏（复用 status-tag 注入点）+ 新增存储原语 `clearCarWatchStatus`（**只清 status、保留记录**）。新增 9 用例 |
 | `28-missing-score-fallback-ratingcache.md` | 变更 | v1.46.20 | **修正 doc/24 §7 的错误判断**：缺失 score 的可信来源就是已实现的「JavDB 个人评分」机制（`rating-display` 的 `RatingCache`）。索引新增 `hasScore`（区分「无 score」与「评 0 分」）+ 可选**注入式**回退源 `setScoreFallbackResolver`；插件加载缓存并注册变更钩子（抓分后芯片计数自动刷新）。仍**不写 car_list**。新增 8 用例 |
+| `29-rating-persistence-and-backup-audit.md` | 变更 | v1.46.21 | 评分持久化 + 全插件评分存储审计：新增 `rating-persist.ts`（抓到评分后**落库 car_list**，只补空缺、不覆盖）；`watched-from-javdb` 不再写死 `score: 0`（遮蔽回退的污染源）；`RatingCache.onChange` 单槽→ `addChangeListener` 监听器集合；审计确认 car_list / RatingCache / VltDb / lrs 均已在备份范围。新增 7 用例 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

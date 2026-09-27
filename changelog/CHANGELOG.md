@@ -11,6 +11,14 @@
 
 ## v1.46.9
 
+## v1.46.21
+
+### 修复
+- **评分持久化 + 备份审计**（doc/29）：新增 `rating-display/rating-persist.ts` —— 抓到 JavDB 个人评分后**写入 `car_list.score`**（只补空缺：不新建记录、非已读不写、已有 score 含主动 0 星不覆盖），使评分成为受备份覆盖的用户数据主表内容；`RatingDisplayPlugin.handle()` 绑定 `RatingCache` 变更监听。
+- **`watched-from-javdb` 不再写死 `score: 0`**：拉取方向本无评分数据（`SyncOp.score` 注释为「仅 watched-to-javdb」），写 0 会伪造「已评分」并遮蔽 doc/28 的评分回退。现改为不写该字段（= 未评分）。
+- `RatingCache.onChange` 单槽回调 → `addChangeListener()/Set` 多监听（星级筛选计数刷新 + 评分持久化两个消费者互不覆盖），逐监听器兜错；`StatusTagFilterPlugin` 在 destroy 注销。
+- **审计结论**：car_list / RatingCache（localStorage + IDB 双路）/ VltDb / lrs 的 `jdb:list-rating` 均已在备份范围内；MissAV 链路无评分语义（设计如此）。新增 7 用例（25 文件 / 282 用例）。
+
 ## v1.46.20
 
 ### 修复
