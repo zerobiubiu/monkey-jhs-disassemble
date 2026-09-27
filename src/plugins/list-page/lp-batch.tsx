@@ -249,10 +249,17 @@ async function runBatch(plugin: ListPagePlugin, kind: BatchActionKind, score = 0
             const changed = plan.carNums.length
                 ? await storageManager.clearCarWatchStatus(plan.carNums)
                 : 0;
-            reportResult('取消已读', changed, plan.skipped.length, 0);
-            // 取消已读**不推 JavDB**：服务器侧「取消已读」只能删除评价记录，
-            // 而删除会连带移除可能写在服务器上的评价正文（破坏性远端操作），
-            // 故不在批量里静默执行（详见 doc/31 §取消已读）。
+            // 取消已读的服务端对应操作是**删除评价记录**（破坏性远端操作，见 doc/31 §4）
+            let unwatchQueued = 0;
+            if (plan.carNums.length > 0) {
+                const targets: CarSaveInput[] = [];
+                for (const carNum of plan.carNums) {
+                    const info = infoByCarNum.get(carNum);
+                    if (info) targets.push({ carNum: info.carNum, url: info.url });
+                }
+                unwatchQueued = await enqueueIfServerSyncEnabled(targets, { kind: 'unwatch', score: 0 });
+            }
+            reportResult('取消已读', changed, plan.skipped.length, 0, unwatchQueued);
         }
         await refreshAfterBatch(plugin);
     } catch (error: unknown) {

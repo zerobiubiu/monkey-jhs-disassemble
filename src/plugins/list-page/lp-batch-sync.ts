@@ -15,10 +15,24 @@
  *   仍会在下次打开该影片时补齐 —— 不会造成「本地与服务器永久不一致」。
  */
 
-import { extractVideoId, postWantToWatch, postWatched } from '../setting/jhs-sync/sync-common';
+import {
+    deleteReview,
+    extractVideoId,
+    fetchPageHtml,
+    findReviewIdInHtml,
+    postWantToWatch,
+    postWatched
+} from '../setting/jhs-sync/sync-common';
 
-/** 需要推送的操作类型（取消已读不在其列，见 doc/31 §「取消已读为何不推」）。 */
-export type BatchPushKind = 'favorite' | 'watched';
+/**
+ * 需要推送的操作类型。
+ *
+ * - `favorite`：设为 JavDB 想看；
+ * - `watched`：设为已看 + 评分；
+ * - `unwatch`：删除 JavDB 评价记录（= 服务器侧的「取消已读」）。这是**破坏性远端操作**
+ *   （会一并移除服务器上该影片的评价正文），仅在用户明确意图下使用，见 doc/31 §4。
+ */
+export type BatchPushKind = 'favorite' | 'watched' | 'unwatch';
 
 /** 待推送的一项（本地已完成写入）。 */
 export interface BatchPushItem {
@@ -155,6 +169,28 @@ function schedule(delay: number): void {
     }, delay);
 }
 
+/**
+ * 执行单项推送。
+ *
+ * `unwatch` 需先拉详情页取 reviewId：服务器上本就无评价时直接视为已完成（不做多余请求）。
+ *
+ * @param entry 队列条目
+ */
+async function pushEntry(entry: BatchPushEntry): Promise<void> {
+    if (entry.kind === 'favorite') {
+        await postWantToWatch(entry.videoId);
+        return;
+    }
+    if (entry.kind === 'watched') {
+        await postWatched(entry.videoId, entry.score);
+        return;
+    }
+    const html = await fetchPageHtml(`/v/${entry.videoId}`);
+    const reviewId = findReviewIdInHtml(html);
+    if (!reviewId) return; // 服务器上无评价记录 → 已是目标状态
+    await deleteReview(entry.videoId, reviewId);
+}
+
 /** 处理一项：成功计入统计，失败退回队尾重试，重试耗尽则计失败。 */
 async function step(): Promise<void> {
     const entry = queue.shift();
@@ -163,11 +199,7 @@ async function step(): Promise<void> {
         return;
     }
     try {
-        if (entry.kind === 'favorite') {
-            await postWantToWatch(entry.videoId);
-        } else {
-            await postWatched(entry.videoId, entry.score);
-        }
+        await pushEntry(entry);
         stats.succeeded++;
         clog.log(`[列表页批量操作] 已同步 JavDB: ${entry.carNum}`);
     } catch (error: unknown) {

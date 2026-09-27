@@ -11,6 +11,11 @@
 
 ## v1.46.9
 
+## v1.46.24
+
+### 新增
+- **批量「取消已读」也同步 JavDB**（doc/31 §4）：用户确认不写评价正文，故补上服务端对应操作 —— 后台队列新增 `unwatch` 类型：拉详情页 HTML → `findReviewIdInHtml()`（与详情页 `getReviewId()` 同一选择器）取 reviewId → `deleteReview()`（CSRF + `_method=delete`）；服务器上本就无评价时直接视为完成不做多余请求。新增 `sync-common.findReviewIdInHtml` / `deleteReview` 两个共享原语（与详情页删除分支同一路径）。新增 6 用例（29 文件 / 305 用例）。
+
 ## v1.46.23
 
 ### 新增 / 优化
