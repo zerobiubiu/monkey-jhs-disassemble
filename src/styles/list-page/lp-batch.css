@@ -77,6 +77,61 @@
     outline-offset: -2px;
 }
 
+/* ========== 视频流左侧常驻竖排选择组 ========== */
+
+.jhs-lp-batch-side {
+    position: fixed;
+    z-index: var(--jhs-z-page);
+    top: 50%;
+    left: var(--jhs-space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--jhs-space-xs);
+    transform: translateY(-50%);
+}
+
+.jhs-lp-batch-side-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-sm);
+    background-color: var(--jhs-color-bg);
+    color: var(--jhs-color-text-secondary);
+    font-size: var(--jhs-font-size-sm);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
+        color var(--jhs-transition-fast);
+}
+
+.jhs-lp-batch-side-btn:hover:not([disabled]) {
+    border-color: var(--jhs-color-primary);
+    background-color: var(--jhs-color-primary-light);
+    color: var(--jhs-color-primary);
+}
+
+.jhs-lp-batch-side-btn:active:not([disabled]) {
+    transform: scale(0.97);
+}
+
+.jhs-lp-batch-side-btn:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+.jhs-lp-batch-side-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* ========== 常驻操作条（挂筛选栏尾部，与筛选控件同级在场） ========== */
 
 .jhs-lp-batch-bar {

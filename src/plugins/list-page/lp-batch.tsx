@@ -19,7 +19,11 @@ import { getActressNames } from '../../core/util/site/actress-links';
 import { injectStatusTag } from '../../core/util/util-status-tag';
 import type { CarSaveInput } from '../../core/storage/car-list-ops';
 
-import { LpBatchCheckbox, LpBatchToolbar } from '../../components/list-page/lp-batch-bar';
+import {
+    LpBatchCheckbox,
+    LpBatchSideBar,
+    LpBatchToolbar
+} from '../../components/list-page/lp-batch-bar';
 
 import type { ListPagePlugin } from '../list-page-plugin';
 import {
@@ -36,11 +40,19 @@ import type { BatchPushKind } from './lp-batch-sync';
 /** 日志前缀。 */
 const BATCH_LOG = '[列表页批量操作]';
 
+/**
+ * 「请求列表」开关事件名：由左侧常驻竖排栏派发，OtherSitePlugin 监听后开关面板。
+ * 用 DOM 自定义事件解耦，避免跨插件 import 循环。
+ */
+export const PRELOAD_QUEUE_TOGGLE_EVENT = 'jhs:toggle-preload-queue';
+
 /** 勾选框类名（注入到卡片，复用 status-tag 的注入点）。 */
 const ITEM_CLASS = 'jhs-lp-batch-item';
 
 /** 工具栏外层类名（固定定位容器）。 */
 const BAR_LAYER_CLASS = 'jhs-lp-batch-layer';
+/** 左侧常驻竖排选择组类名。 */
+const SIDE_CLASS = 'jhs-lp-batch-side';
 
 /** 勾选状态。 */
 const selection = new BatchSelection();
@@ -53,6 +65,8 @@ let busy = false;
 
 /** 工具栏容器（勾选数为 0 时移除）。 */
 let barEl: HTMLElement | null = null;
+/** 左侧常驻竖排选择组容器。 */
+let sideEl: HTMLElement | null = null;
 
 /** 是否已绑定全局委托监听。 */
 let listenerBound = false;
@@ -199,7 +213,13 @@ function handleBarAction(btn: HTMLElement): void {
         | 'clear'
         | 'select-all'
         | 'invert'
-        | 'filter';
+        | 'filter'
+        | 'request-list';
+    if (act === 'request-list') {
+        // 请求列表属 other-site 预加载功能：经自定义事件解耦（避免跨插件 import）
+        document.dispatchEvent(new CustomEvent(PRELOAD_QUEUE_TOGGLE_EVENT));
+        return;
+    }
     if (act === 'clear' || act === 'select-all' || act === 'invert') {
         if (act === 'clear') selection.clear();
         else if (act === 'select-all') selection.addAll(collectVisibleCheckboxCarNums());
@@ -214,18 +234,40 @@ function handleBarAction(btn: HTMLElement): void {
 }
 
 /**
- * 渲染常驻批量操作条：挂到筛选栏（`.preload-filter-bar`）尾部，与筛选控件同级在场。
- *
- * 与旧版浮出工具栏不同，这条操作条**不随勾选数出现/消失** —— 用户反馈
- * 「不能在选中后才出现」；它始终在场，只根据 `busy / count` 切换禁用态。
+ * 渲染两块批量操作 UI：
+ * - **侧栏**（`.jhs-lp-batch-side`）：常驻竖排在视频流左侧、屏幕中部，不随视频流滚动 ——
+ *   「请求列表 / 全选 / 反选 / 清空」这类**不依赖已选项**的操作；
+ * - **浮出操作条**（`.jhs-lp-batch-bar`）：选中 > 0 时从底部浮出 —— 收藏 / 已读 / 拉黑 /
+ *   五星这类**针对已选视频内容**的操作，随选择出现符合交互直觉。
  */
 function renderBatchToolbar(): void {
+    renderSideBar();
+    renderActionBar();
+}
+
+/** 渲染／刷新左侧常驻竖排选择组。 */
+function renderSideBar(): void {
+    if (!sideEl) {
+        sideEl = document.createElement('div');
+        sideEl.className = SIDE_CLASS;
+        document.body.appendChild(sideEl);
+    }
+    sideEl.innerHTML = jsxToString(
+        <LpBatchSideBar hasSelection={selection.size > 0} />
+    );
+}
+
+/** 渲染／移除浮出操作条（勾选为 0 时移除）。 */
+function renderActionBar(): void {
+    if (selection.size === 0) {
+        barEl?.remove();
+        barEl = null;
+        return;
+    }
     if (!barEl) {
-        const bar = document.querySelector('.preload-filter-bar');
-        if (!bar) return; // 筛选栏尚未就绪（由 init 时序兜底重试）
-        barEl = document.createElement('span');
+        barEl = document.createElement('div');
         barEl.className = BAR_LAYER_CLASS;
-        bar.appendChild(barEl);
+        document.body.appendChild(barEl);
     }
     barEl.innerHTML = jsxToString(
         <LpBatchToolbar count={selection.size} busy={busy} />

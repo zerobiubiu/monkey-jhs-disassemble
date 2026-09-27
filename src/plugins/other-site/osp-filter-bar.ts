@@ -1,5 +1,6 @@
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getItemPreloadStatus } from './osp-helpers';
+import { PRELOAD_QUEUE_TOGGLE_EVENT } from '../list-page/lp-batch';
 import { togglePreloadQueuePanel } from './osp-preload-panel';
 
 /**
@@ -124,15 +125,10 @@ function buildFilterBar(plugin: OtherSitePlugin, mountTarget: Element): void {
     chipsContainer.className = 'preload-filter-chips';
     bar.appendChild(chipsContainer);
 
-    // 「请求列表」入口：打开批量预加载请求列表面板（队列可视化 + 重试/取消/置顶，doc/26）
-    const queueBtn = document.createElement('button');
-    queueBtn.type = 'button';
-    queueBtn.className = 'preload-filter-queue-btn';
-    queueBtn.textContent = '请求列表';
-    queueBtn.addEventListener('click', () => {
+    // 「请求列表」入口已移至左侧常驻竖排选择组（doc/33）：经自定义事件开关面板
+    document.addEventListener(PRELOAD_QUEUE_TOGGLE_EVENT, () => {
         togglePreloadQueuePanel(plugin);
     });
-    bar.appendChild(queueBtn);
 
     const refreshChips = (): void => {
         const activeValues = new Set(

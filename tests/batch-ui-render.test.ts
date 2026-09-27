@@ -10,7 +10,10 @@ import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { jsxToString } from '../src/core/jsx-to-string';
 import { PreloadQueuePanel } from '../src/components/other-site/preload-queue-panel';
-import { LpBatchToolbar } from '../src/components/list-page/lp-batch-bar';
+import {
+    LpBatchSideBar,
+    LpBatchToolbar
+} from '../src/components/list-page/lp-batch-bar';
 
 describe('PreloadQueuePanel 渲染契约', () => {
     it('渲染行（番号/站点/状态）与按状态给出的动作按钮', () => {
@@ -78,15 +81,19 @@ describe('PreloadQueuePanel 渲染契约', () => {
 });
 
 describe('LpBatchToolbar 渲染契约', () => {
-    it('渲染勾选数、快捷评分条（收藏/已读/拉黑 + 五颗星）与选择组', () => {
+    it('浮出操作条渲染：计数 + 快捷评分条（收藏/已读/拉黑 + 五颗星），不含选择组', () => {
         const html = jsxToString(createElement(LpBatchToolbar, { count: 3, busy: false }));
         expect(html).toContain('已选');
         expect(html).toContain('<strong>3</strong>');
-        expect(html).toContain('data-act="select-all"');
-        expect(html).toContain('data-act="invert"');
         expect(html).toContain('data-act="favorite"');
         expect(html).toContain('data-act="filter"');
-        expect(html).toContain('data-act="clear"');
+        // 全选/反选/清空已移至常驻侧栏（LpBatchSideBar）
+        expect(html).not.toContain('data-act="select-all"');
+        expect(html).not.toContain('data-act="invert"');
+        // 全选/反选/清空已移至常驻侧栏（LpBatchSideBar）
+        expect(html).not.toContain('data-act="select-all"');
+        expect(html).not.toContain('data-act="invert"');
+        expect(html).not.toContain('data-act="clear"');
         // 已读（0星）与五颗星（1–5）
         expect(html).toContain('data-act="watched" data-score="0"');
         for (const score of [1, 2, 3, 4, 5]) {
@@ -95,14 +102,36 @@ describe('LpBatchToolbar 渲染契约', () => {
         expect(html).not.toMatch(/data-act="favorite"[^>]*disabled/);
     });
 
-    it('count=0：操作按钮禁用，但「全选 / 反选」仍可用', () => {
+    it('count=0：操作按钮禁用，选择组不在此浮出条内', () => {
         const html = jsxToString(createElement(LpBatchToolbar, { count: 0, busy: false }));
         // 断言到属性边界为止，不依赖 disabled 的具体序列化形式
         expect(html).toMatch(/data-act="favorite"[^>]*disabled/);
         expect(html).toMatch(/data-act="watched"[^>]*data-score="5"[^>]*disabled/);
-        expect(html).toMatch(/data-act="clear"[^>]*disabled/);
+        expect(html).not.toContain('data-act="select-all"');
+        expect(html).not.toContain('data-act="invert"');
+        expect(html).not.toContain('data-act="clear"');
         // 「全选 / 反选」必须在 count=0 时可用，否则无法开始选择
         expect(html).not.toMatch(/data-act="select-all"[^>]*disabled/);
         expect(html).not.toMatch(/data-act="invert"[^>]*disabled/);
+    });
+});
+
+describe('LpBatchSideBar 渲染契约（常驻竖排选择组）', () => {
+    it('含请求列表 / 全选 / 反选 / 清空四枚竖排按钮', () => {
+        const html = jsxToString(createElement(LpBatchSideBar, { hasSelection: true }));
+        expect(html).toContain('data-act="request-list"');
+        expect(html).toContain('data-act="select-all"');
+        expect(html).toContain('data-act="invert"');
+        expect(html).toContain('data-act="clear"');
+        expect(html).toContain('请求列表');
+    });
+
+    it('有选择时「清空」可用；无选择时禁用（全选/反选不受限）', () => {
+        const withSel = jsxToString(createElement(LpBatchSideBar, { hasSelection: true }));
+        const empty = jsxToString(createElement(LpBatchSideBar, { hasSelection: false }));
+        expect(withSel).not.toMatch(/data-act="clear"[^>]*disabled/);
+        expect(empty).toMatch(/data-act="clear"[^>]*disabled/);
+        expect(empty).not.toMatch(/data-act="select-all"[^>]*disabled/);
+        expect(empty).not.toMatch(/data-act="invert"[^>]*disabled/);
     });
 });
