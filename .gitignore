@@ -43,8 +43,10 @@ tmp*.js
 # GitNexus 索引与生成物（可重建生成物，不入库；AGENTS.md §4.3）
 .gitnexus/
 .claude/
-.agents/skills/gitnexus-*/
 docs/troubleshooting/gitnexus-fts.md
 
 # pi-cap 自动装配的项目级 skill（可重建；项目自有 skill 放 .agents/skills/）
 .pi/skills/
+
+# impeccable 评审快照（可重建的工具产物；config.json / design.json 仍入库）
+.impeccable/critique/
