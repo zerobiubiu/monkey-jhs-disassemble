@@ -65,6 +65,8 @@ import {
 } from './setting/webdav-operations';
 import { getGitCredentialsFromGm, buildGitClient } from './setting/git-operations';
 import { addLabelTag, addKeyword } from './setting/setting-tag-ops';
+import { isOpSyncQueued } from './list-page/lp-batch-sync';
+import { listOpSyncRecords, summarizeOpSync } from './setting/jhs-sync/op-sync-records';
 
 import { SettingDialog } from '../components/setting/setting-dialog';
 import { BackToTopButton } from '../components/misc/back-to-top-button';
@@ -73,6 +75,7 @@ import { SettingMountBox } from '../components/setting/setting-mount-box';
 import { SimpleSettingPanel } from '../components/setting/simple-setting-panel';
 import { VideoQualityOption } from '../components/setting/video-quality-option';
 import { StyleBlock } from '../components/misc/style-block';
+import { renderOpSyncHtml, renderOpSyncSummaryHtml } from '../components/setting/op-sync-table';
 
 import settingCssRaw from '../styles/setting-plugin.css?raw';
 import backToTopCssRaw from '../styles/back-to-top-button.css?raw';
@@ -330,6 +333,20 @@ export class SettingPlugin extends BasePlugin {
     /** 刷新插件诊断面板内容（renderDiagnosticsHtml 内部已改读聚合诊断 plugins）。 */
     refreshDiagnostics(): void {
         $('#diagnostics-content').html(renderDiagnosticsHtml(this.pluginManager));
+    }
+
+    /**
+     * 刷新「操作同步」面板内容（doc/38）：记录表格 + 状态摘要。
+     *
+     * 表格只展示最近 200 条（按更新时间倒序），摘要给出全量计数。
+     */
+    refreshOpSync(): void {
+        const records = listOpSyncRecords({ limit: 200 });
+        const queuedKeys = records
+            .filter((r) => isOpSyncQueued(r.carNum, r.kind))
+            .map((r) => `${r.carNum}::${r.kind}`);
+        $('#op-sync-content').html(renderOpSyncHtml(records, queuedKeys));
+        $('#op-sync-summary').html(renderOpSyncSummaryHtml(summarizeOpSync()));
     }
 
     /** 在关键词容器内添加一个关键词标签（带删除按钮）。 */

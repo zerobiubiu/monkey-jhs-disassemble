@@ -24,6 +24,15 @@ import {
     postWatched
 } from '../setting/jhs-sync/sync-common';
 
+import {
+    cancelOpSyncRecord,
+    listOpSyncRecords,
+    setOpSyncState,
+    upsertOpSync,
+    type OpSyncKind,
+    type OpSyncOrigin
+} from '../setting/jhs-sync/op-sync-records';
+
 /**
  * 需要推送的操作类型。
  *
@@ -119,14 +128,30 @@ export function enqueueBatchPush(
     items: BatchPushItem[],
     kind: BatchPushKind,
     score = 0,
-    options?: { pacingMs?: number }
+    options?: { pacingMs?: number; origin?: OpSyncOrigin }
 ): number {
     if (options?.pacingMs !== undefined) pacingMs = options.pacingMs;
     const { entries, skipped } = planBatchPush(items, kind, score);
     if (skipped.length > 0) {
         clog.warn(`[列表页批量操作] ${skipped.length} 项缺少 videoId，跳过 JavDB 推送: ${skipped.join(', ')}`);
+        // 记账（doc/38）：缺 videoId 也属「本地已写、网站未同步」，标 failed 在面板可见并可重试
+        for (const carNum of skipped) {
+            const item = items.find((i) => i.carNum === carNum);
+            upsertOpSync({ carNum, url: item?.url ?? '', kind, score, origin: options?.origin ?? 'list' });
+            setOpSyncState(carNum, kind, 'failed', { error: '缺少 videoId，无法定位详情页' });
+        }
     }
     if (entries.length === 0) return 0;
+    // 记账（doc/38）：入队即登记为「待推送」，供设置面板展示进度与状态
+    for (const entry of entries) {
+        upsertOpSync({
+            carNum: entry.carNum,
+            url: entry.url,
+            kind: entry.kind,
+            score: entry.score,
+            origin: options?.origin ?? 'list'
+        });
+    }
     queue.push(...entries);
     schedule(0);
     return entries.length;
@@ -198,18 +223,22 @@ async function step(): Promise<void> {
         finish();
         return;
     }
+    setOpSyncState(entry.carNum, entry.kind, 'running', { attempts: entry.attempts });
     try {
         await pushEntry(entry);
         stats.succeeded++;
+        setOpSyncState(entry.carNum, entry.kind, 'success', { attempts: entry.attempts, error: '' });
         clog.log(`[列表页批量操作] 已同步 JavDB: ${entry.carNum}`);
     } catch (error: unknown) {
         entry.attempts++;
         const reason = error instanceof Error ? error.message : String(error);
         if (entry.attempts < MAX_ATTEMPTS) {
             queue.push(entry);
+            setOpSyncState(entry.carNum, entry.kind, 'pending', { attempts: entry.attempts, error: reason });
             clog.warn(`[列表页批量操作] 同步失败将重试（${entry.attempts}/${MAX_ATTEMPTS}）: ${entry.carNum} — ${reason}`);
         } else {
             stats.failed++;
+            setOpSyncState(entry.carNum, entry.kind, 'failed', { attempts: entry.attempts, error: reason });
             clog.error(`[列表页批量操作] 同步 JavDB 失败: ${entry.carNum} — ${reason}`);
         }
     }
@@ -236,4 +265,74 @@ function finish(): void {
 function resetStats(): void {
     stats.succeeded = 0;
     stats.failed = 0;
+}
+
+/**
+ * 记录类型 → 站点推送类型。
+ *
+ * 拉黑在站点侧等价于「已读 0 星」（与详情页 quickBlock 语义一致），
+ * 因此映射为 `watched`。
+ *
+ * @param kind 记录类型
+ * @returns 队列推送类型
+ */
+export function toBatchPushKind(kind: OpSyncKind): BatchPushKind {
+    return kind === 'filter' ? 'watched' : kind;
+}
+
+/**
+ * 从设置面板**重试**一条记录（doc/38）：重新入队，走与批量操作同一条推送路径。
+ *
+ * @param record 待重试记录
+ * @returns 是否已入队（url 无法定位 videoId 时为 false）
+ */
+export function retryOpSync(record: {
+    carNum: string;
+    url: string;
+    kind: OpSyncKind;
+    score: number;
+    origin: OpSyncOrigin;
+}): boolean {
+    const queued = enqueueBatchPush([{ carNum: record.carNum, url: record.url }], toBatchPushKind(record.kind), record.score, {
+        origin: record.origin
+    });
+    return queued > 0;
+}
+
+/**
+ * 从设置面板**重试全部失败记录**。
+ *
+ * @returns 实际入队条数
+ */
+export function retryFailedOpSync(): number {
+    let queued = 0;
+    for (const record of listOpSyncRecords({ states: ['failed'] })) {
+        if (retryOpSync(record)) queued++;
+    }
+    return queued;
+}
+
+/**
+ * 从设置面板**取消**一条记录：先从内存队列移除，再把记录置 `cancelled`。
+ *
+ * 注意：只影响同步记录（不再自动重推），**不回滚 car_list 里已写入的本地状态**
+ * —— 本地状态是用户明确执行过的操作行为，不应因远端同步被取消而消失。
+ *
+ * @param carNum 番号
+ * @param kind 操作类型
+ * @returns 是否找到并取消了记录
+ */
+export function cancelOpSync(carNum: string, kind: OpSyncKind): boolean {
+    queue = queue.filter((e) => !(e.carNum === carNum && e.kind === kind));
+    return cancelOpSyncRecord(carNum, kind);
+}
+
+/**
+ * 当前内存队列中是否仍有该（番号 × 操作）—— 面板用于区分「排队中」与「已随页面离开而中断」。
+ *
+ * @param carNum 番号
+ * @param kind 操作类型
+ */
+export function isOpSyncQueued(carNum: string, kind: OpSyncKind): boolean {
+    return queue.some((e) => e.carNum === carNum && e.kind === kind);
 }

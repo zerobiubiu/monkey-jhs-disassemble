@@ -10,6 +10,7 @@ import { readServerReviewState } from './dpb-review-sync';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
+import { setOpSyncState, upsertOpSync } from '../setting/jhs-sync/op-sync-records';
 
 import { QuickBlockConfirmMessage } from '../../components/dpb/quick-block-confirm-message';
 
@@ -42,6 +43,14 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
             publishTime: pageInfo.publishTime ?? undefined,
             score: score
         });
+        // 记账（doc/38）：本地已写 → 登记「待推送」，设置面板可见并可重试
+        upsertOpSync({
+            carNum: pageInfo.carNum,
+            url: pageInfo.url ?? '',
+            kind: 'watched',
+            score,
+            origin: 'detail'
+        });
         plugin.broadcastWantWatchedSync({
             carNum: pageInfo.carNum,
             status: HAS_WATCH_ACTION,
@@ -66,14 +75,19 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
         .then(async () => {
             plugin._wantWatchedSyncing = true;
             try {
+                setOpSyncState(pageInfo.carNum!, 'watched', 'running');
                 await plugin._triggerJavdbReview(score);
                 plugin._syncRatingBar();
+                setOpSyncState(pageInfo.carNum!, 'watched', 'success', { error: '' });
             } finally {
                 plugin._wantWatchedSyncing = false;
             }
         })
         .catch((err: unknown) => {
             // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
+            setOpSyncState(pageInfo.carNum!, 'watched', 'failed', {
+                error: err instanceof Error ? err.message : String(err)
+            });
             clog.warn('[JHS-快键] 站点评价同步失败', err instanceof Error ? err.message : String(err));
             show.error(
                 '站点未同步: ' + (err instanceof Error ? err.message : String(err))
@@ -112,6 +126,14 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                     actionType: FILTER_ACTION,
                     publishTime: pageInfo.publishTime ?? undefined
                 });
+                // 记账（doc/38）：本地已写 FILTER_ACTION → 登记「待推送」（站点侧等价已读 0 星）
+                upsertOpSync({
+                    carNum: pageInfo.carNum!,
+                    url: pageInfo.url ?? '',
+                    kind: 'filter',
+                    score: 0,
+                    origin: 'detail'
+                });
                 // 2) 广播 filter+add（列表页实时隐藏该卡片）
                 plugin.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum!,
@@ -129,14 +151,19 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                 .then(async () => {
                     plugin._wantWatchedSyncing = true;
                     try {
+                        setOpSyncState(pageInfo.carNum!, 'filter', 'running');
                         await plugin._triggerJavdbReview(0);
                         plugin._syncRatingBar();
+                        setOpSyncState(pageInfo.carNum!, 'filter', 'success', { error: '' });
                     } finally {
                         plugin._wantWatchedSyncing = false;
                     }
                 })
                 .catch((err: unknown) => {
                     // doc/37：站点推送在后台执行，失败必须可见（本地已落盘，不回滚）
+                    setOpSyncState(pageInfo.carNum!, 'filter', 'failed', {
+                        error: err instanceof Error ? err.message : String(err)
+                    });
                     clog.warn(
                         '[JHS-快键] 站点已读同步失败',
                         err instanceof Error ? err.message : String(err)
@@ -179,6 +206,14 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
             actionType: FAVORITE_ACTION,
             publishTime: pageInfo.publishTime ?? undefined
         });
+        // 记账（doc/38）：本地已写 → 登记「待推送」
+        upsertOpSync({
+            carNum: pageInfo.carNum,
+            url: pageInfo.url ?? '',
+            kind: 'favorite',
+            score: 0,
+            origin: 'detail'
+        });
         plugin.broadcastWantWatchedSync({
             carNum: pageInfo.carNum,
             status: FAVORITE_ACTION,
@@ -194,14 +229,19 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
         .then(async () => {
             plugin._wantWatchedSyncing = true;
             try {
+                setOpSyncState(pageInfo.carNum!, 'favorite', 'running');
                 await plugin._triggerJavdbWant();
                 plugin._syncRatingBar();
+                setOpSyncState(pageInfo.carNum!, 'favorite', 'success', { error: '' });
             } finally {
                 plugin._wantWatchedSyncing = false;
             }
         })
         .catch((err: unknown) => {
             // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
+            setOpSyncState(pageInfo.carNum!, 'favorite', 'failed', {
+                error: err instanceof Error ? err.message : String(err)
+            });
             clog.warn('[JHS-快键] 站点收藏同步失败', err instanceof Error ? err.message : String(err));
             show.error(
                 '站点未同步: ' + (err instanceof Error ? err.message : String(err))

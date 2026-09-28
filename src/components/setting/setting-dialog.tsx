@@ -24,6 +24,7 @@ import { ListManagerPanel } from '.././setting-panels/list-manager-panel';
 import { FavSyncPanel } from '.././setting-panels/fav-sync-panel';
 import { PreloadPanel } from '.././setting-panels/preload-panel';
 import { DiagnosticsPanel } from '.././setting-panels/diagnostics-panel';
+import { OpSyncPanel } from '.././setting-panels/op-sync-panel';
 
 /** SettingDialog 的属性。 */
 export interface SettingDialogProps {
@@ -180,6 +181,17 @@ export function SettingDialog({
                 >
                     <span aria-hidden="true">📊</span> 插件诊断
                 </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ariaSelected('op-sync-panel')}
+                    tabIndex={panelName === 'op-sync-panel' ? 0 : -1}
+                    className={`side-menu-item ${panelName === 'op-sync-panel' ? 'active' : ''}`}
+                    id="tab-op-sync-panel" data-panel="op-sync-panel"
+                    title="视频操作在插件与网站的同步状态"
+                >
+                    <span aria-hidden="true">🔁</span> 操作同步
+                </button>
             </div>
 
             <div
@@ -235,6 +247,7 @@ export function SettingDialog({
                     <PreloadPanel panelName={panelName} />
                 </div>
                 <DiagnosticsPanel panelName={panelName} />
+                <OpSyncPanel panelName={panelName} />
                 <div
                     style={{
                         flexShrink: 0,

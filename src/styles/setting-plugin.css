@@ -802,3 +802,96 @@ input[type='checkbox']:disabled {
     cursor: default !important;
 }
 
+/* ===== 「操作同步」设置面板（doc/38）===== */
+.op-sync-hint {
+    margin: 0 0 var(--jhs-space-md);
+    color: var(--jhs-color-text-secondary);
+    font-size: var(--jhs-font-size-md);
+    line-height: 1.6;
+}
+
+.op-sync-summary {
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border-radius: var(--jhs-radius-md);
+    background: var(--jhs-color-primary-light);
+    color: var(--jhs-color-text);
+    font-size: var(--jhs-font-size-md);
+}
+
+.op-sync-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--jhs-space-sm);
+    margin-top: var(--jhs-space-md);
+}
+
+.op-sync-content {
+    margin-top: var(--jhs-space-md);
+    overflow-x: auto;
+}
+
+.op-sync-status {
+    margin-top: var(--jhs-space-sm);
+    color: var(--jhs-color-text-muted);
+    font-size: var(--jhs-font-size-sm);
+}
+
+.op-sync-empty {
+    margin: 0;
+    color: var(--jhs-color-text-muted);
+    font-size: var(--jhs-font-size-md);
+}
+
+.op-sync-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--jhs-font-size-md);
+}
+
+.op-sync-table th,
+.op-sync-table td {
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border-bottom: 1px solid var(--jhs-color-border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.op-sync-table th {
+    color: var(--jhs-color-text-secondary);
+    font-weight: 600;
+    background: var(--jhs-color-bg-secondary);
+}
+
+.op-sync-carnum {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* 网站同步状态：颜色 + 文案符号双重表态 */
+.op-sync-row--pending .op-sync-site {
+    color: var(--jhs-color-warning);
+}
+
+.op-sync-row--running .op-sync-site {
+    color: var(--jhs-color-info);
+}
+
+.op-sync-row--success .op-sync-site {
+    color: var(--jhs-color-success);
+}
+
+.op-sync-row--failed .op-sync-site {
+    color: var(--jhs-color-error);
+}
+
+.op-sync-row--cancelled .op-sync-site {
+    color: var(--jhs-color-text-muted);
+}
+
+.op-sync-ops {
+    white-space: nowrap;
+}
+
+.op-sync-ops .op-sync-action {
+    margin-right: var(--jhs-space-xs);
+}
+

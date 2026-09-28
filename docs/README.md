@@ -52,6 +52,7 @@
 | `35-batch-ui-structure-and-responsive-fix.md` | 变更 | v1.46.30 | 修正三处叠加回归 + 响应式：**①** `LpBatchSideBar` 改返回 Fragment（去掉自带容器类，消除同名嵌套）；**③** 恢复 `.jhs-lp-batch-layer` 浮窗定位与面板双影样式（doc/32 误删导致操作条落到页面底部）；**②** 新增 ≤768px 响应式（选择栏转底部横排、操作条上移让开）。新增 1 断言 |
 | `36-batch-bar-ratingbar-parity.md` | 变更 | v1.46.31 | 批量操作条**与详情页快捷评分条完全同构**（实测反馈六轮）：删除本地紧凑类/覆盖，星(26px)与三态按钮(`padding 5px 16px`/14px/6px 圆角)直接用 `rating-bar.css`（并补由 `ListPagePlugin.initCss()` 在列表页注入该样式表）；结构改两行（星行 + 动作行）；**悬停预览补 JS**（`pointerover` → 第 N 颗及其前面全部 `is-preview`，`pointerleave` 清除）。新增 2 用例 |
 | `37-detail-page-status-ops-non-blocking.md` | 变更 | v1.46.33 | 详情页状态操作**不阻塞**（实测：关详情页/切弹窗要等站点响应）：定位到真正阻塞点是 `closePage()` 前 `await waitForPendingPush()` —— 该 pending 把「本地 journal 写入」与「全量快照**上传**」混在一个 Promise 里（doc/195 初衷是保护本地 GM 写入）；拆为 `pendingJournal`（关页只等它，毫秒级）/ `pendingPush`（含上传，由修订号门控在下次加载自愈续传）；三处静默 `.catch(() => {})` 改为 `clog.warn` + 非阻塞 `show.error`；`quickBlock` 关页前补本地持久化等待。含未决项：站点**原生**想看/看过按钮的乐观写入需真实 DOM 样本，不猜选择器 |
+| `38-operation-sync-status-panel.md` | 变更 | v1.47.0 | 「视频操作同步状态」设置面板（可查 + 可操作）：批量/详情页的网站推送原只有**内存队列 + 聚合计数**（关页即失、无逐条信息、失败原因只能翻日志）→ 新增**持久化逐条记录** `op-sync-records`（状态机 pending/running/success/failed/cancelled，GM 键单存，容量 400、优先淘汰终态，不进备份、不改 schema）；`lp-batch-sync` 入队/step/缺 videoId 均记账并暴露 `retryOpSync`/`retryFailedOpSync`/`cancelOpSync`；详情页三条路径带 `origin:'detail'` 记账；新增设置面板（摘要 + 表格 + 刷新/重试全部失败/清理已结束 + 行内重试/取消），取消与失败**不回滚**本地状态。新增 17 用例 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
