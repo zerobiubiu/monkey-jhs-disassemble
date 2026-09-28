@@ -24,6 +24,7 @@ import { VIEWER_CONFIG } from './core/viewer';
 import { jsxToString } from './core/jsx-to-string';
 import { Logger } from './core/logger';
 import { StorageManager } from './core/storage-manager';
+import { invalidateCachesFor } from './core/storage/cache-invalidation';
 import { CommonUtil } from './core/common-util';
 import { GmHttp } from './core/gm-http';
 import { setupLayerWrapper } from './core/layer-wrapper';
@@ -390,9 +391,14 @@ const pluginManager: PluginManager = (function () {
     // 存储修订号追踪（doc/144 Storage V2：跨标签页缓存失效）
     storageRevision.init();
     storageRevision.onRemoteChange(() => {
-        storageManager.clearCarListCache();
-        storageManager.clearSettingCache();
-        storageManager.clearFilterActorActressCarListCache();
+        // doc/39：数据写入（car_list/清单）**只**清数据缓存 —— 不再连带清设置缓存，
+        // 否则详情页 iframe 的每次写库都会让父页下次点卡片时走 IndexedDB 读，
+        // 而该读会排在写事务之后 → 表现为「打开新视频弹窗要等旧视频操作落库完成」。
+        invalidateCachesFor('data', storageManager);
+    });
+    // 设置缓存由**设置写入**单独失效（storageRevision.incrementSettings）
+    storageRevision.onSettingsChange(() => {
+        invalidateCachesFor('settings', storageManager);
     });
     if (isJavdbSite && /(^|;)\s*locale\s*=\s*en\s*($|;)/i.test(document.cookie)) {
         show.error('请切换到中文语言下才可正常使用本脚本', {

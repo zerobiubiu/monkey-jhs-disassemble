@@ -85,7 +85,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **63 个文件**：顶层 28 + `storage/` 9 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **64 个文件**：顶层 28 + `storage/` 10 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -95,6 +95,7 @@
 | storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；运行时缓存清理；CRUD 已按域委托至 `storage/`） |
 | storage/blacklist-ops.ts | 黑名单演员/关键词读写 |
 | storage/blacklist-car-list-ops.ts | 黑名单番号清单读写（缓存 + 修订号） |
+| storage/cache-invalidation.ts | 按写入类型（data/settings）分流远程缓存失效（doc/39） |
 | storage/car-list-ops.ts | 番号清单 car_list 增删改查（saveCar/removeCar/batchRemoveCars + 变更回调） |
 | storage/favorite-actress-ops.ts | 收藏演员清单读写 |
 | storage/keyword-ops.ts | 标题/评论过滤关键词读写 |

@@ -11,6 +11,13 @@
 
 ## v1.46.9
 
+## v1.47.1
+
+### 修复（打开新视频弹窗不再等旧操作落库，doc/39）
+- **根因**：列表页卡片点击的打开路径在 `openPage` 前有一次 `await storageManager.getSetting('dialogOpenDetail', YES)`；该读取本应命中内存缓存，但 `main.tsx` 的 `storageRevision.onRemoteChange` 对**任何**远程变更都执行 `clearSettingCache()` —— 于是详情页 iframe 每写一次 car_list 就把父页设置缓存清掉，下一次点卡片的设置读取落成真正的 **IndexedDB 读**，而同源 IDB 读写串行、必然排在写事务之后 → 弹窗必须等旧操作落库完成。
+- **修法**：修订号拆为「数据 / 设置」两条 —— `StorageRevision.incrementSettings()` + `onSettingsChange()`；新增 `core/storage-cache-invalidation.ts` 的 `invalidateCachesFor('data' | 'settings', target)`，`main.tsx` 分别注册两个回调（数据写入只清 car_list/屏蔽清单缓存，设置写入只清设置缓存）。`saveSetting` 改用 `incrementSettings()`。
+- **副作用清理**：设置变更仍可跨帧传播（不再依赖那条实际无监听者的 `clean_cacheSettingObj` 广播）。
+- 新增 4 用例（数据写入不清设置缓存 = 根因回归），合计 33 文件 / 342 用例。
 ## v1.47.0
 
 ### 新增（视频操作同步状态面板，doc/38）

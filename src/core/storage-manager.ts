@@ -311,7 +311,8 @@ export class StorageManager {
     async saveSetting(setting: Setting): Promise<void> {
         if (setting) {
             await this.forage.setItem(this.setting_key, setting);
-            storageRevision.increment();
+        // doc/39：设置写入只递增「设置修订号」（远程帧仅失效设置缓存，不动数据缓存）
+        storageRevision.incrementSettings();
             window.clean_cacheSettingObj();
         } else {
             show.error('设置对象为空');
