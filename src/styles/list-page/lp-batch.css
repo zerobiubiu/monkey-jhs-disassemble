@@ -1,17 +1,20 @@
 /**
- * 列表页勾选式批量操作样式（doc/32：常驻操作条 + 快捷评分条同构）。
+ * 列表页勾选式批量操作样式（doc/35 重写：浮窗操作条 + 左侧常驻竖排选择栏 + 响应式）。
  *
  * 三部分：
- * 1. `.jhs-lp-batch-item` —— 卡片内勾选框（原生 checkbox 视觉隐藏，勾选态画白对号，
- *    颜色 + 形状双重表态；被选中的卡片本体加主色描边）。
- * 2. `.jhs-lp-batch-bar` —— **常驻**批量操作条，挂在筛选栏尾部（不随勾选数出现/消失）。
- *    操作段与详情页快捷评分条**同构**：五颗星（`.jhs-star`，样式契约来自
- *    `rating-bar.css`，此处只做紧凑化）+ `收藏 / 已读 / 拉黑` 三态按钮
- *    （`.jhs-fav-btn` / `.jhs-read-btn` / `.jhs-block-btn`，配色沿用详情页：
- *    收藏蓝 `#3273dc`、已读绿 `#48c774`、拉黑红 `#de3333`）。
- * 3. 选择组：全选 / 反选 / 清空（`.a-normal` 中性）。
+ * 1. `.jhs-lp-batch-item` —— 卡片内勾选框（原生 checkbox 视觉隐藏，勾选态画白对号；
+ *    被选中的卡片本体加主色描边）。
+ * 2. `.jhs-lp-batch-layer` / `.jhs-lp-batch-bar` —— **浮窗**操作条（选中 > 0 时出现）：
+ *    定位在底部居中（`fixed`），样式走 DESIGN.md 的「浮层面板」规格（8px 圆角 + 双影）；
+ *    内容与详情页快捷评分条同构：五星 + 收藏 / 已读(0星) / 拉黑（类名与配色复用 `rating-bar.css`）。
+ * 3. `.jhs-lp-batch-side` —— 视频流**左侧常驻竖排**选择栏（请求列表 / 全选 / 反选 / 清空，
+ *    以及停靠进来的「加载全部」）：固定屏幕中部、不随视频流滚动。
  *
- * 颜色/间距/圆角走 design-tokens.css 与各子系统族；层级用 --jhs-z-page。
+ * 响应式（DESIGN.md 只允许两个断点，此用 768px）：
+ * - 桌面：选择栏竖排在左中；操作条浮在底部居中。
+ * - ≤768px：选择栏改为**底部横排**（可横向滚动）；操作条上移让开它并占满宽度、可换行。
+ *
+ * 颜色/间距/圆角走 design-tokens.css；层级用 --jhs-z-page（页面内元素，不压过 layer 弹窗）。
  */
 
 /* ========== 卡片勾选框 ========== */
@@ -77,7 +80,7 @@
     outline-offset: -2px;
 }
 
-/* ========== 视频流左侧常驻竖排选择组 ========== */
+/* ========== 视频流左侧常驻竖排选择栏 ========== */
 
 .jhs-lp-batch-side {
     position: fixed;
@@ -89,7 +92,6 @@
     gap: var(--jhs-space-xs);
     transform: translateY(-50%);
 }
-
 
 .jhs-lp-batch-side-btn {
     display: inline-flex;
@@ -133,18 +135,37 @@
     cursor: not-allowed;
 }
 
-/* ========== 常驻操作条（挂筛选栏尾部，与筛选控件同级在场） ========== */
+/* ========== 浮窗操作条（选中 > 0 时出现） ========== */
+
+.jhs-lp-batch-layer {
+    position: fixed;
+    z-index: var(--jhs-z-page);
+    bottom: var(--jhs-space-lg);
+    left: 50%;
+    max-width: calc(100vw - 32px);
+    transform: translateX(-50%);
+
+    /* 只有面板本身接收指针事件，避免浮层透明区域挡住卡片 */
+    pointer-events: none;
+}
 
 .jhs-lp-batch-bar {
-    display: inline-flex;
+    display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--jhs-space-sm);
-    margin-left: var(--jhs-space-md);
-    padding: 2px 0 2px var(--jhs-space-md);
-    border-left: 1px solid var(--jhs-color-border);
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-lg);
+    background-color: var(--jhs-color-bg);
+
+    /* 浮层托举：双影（DESIGN.md 唯一的分层阴影用法） */
+    box-shadow:
+        0 10px 40px rgb(15, 23, 42, 0.12),
+        0 2px 8px rgb(15, 23, 42, 0.06);
     color: var(--jhs-color-text);
     font-size: var(--jhs-font-size-sm);
+    pointer-events: auto;
 }
 
 .jhs-lp-batch-count {
@@ -158,20 +179,7 @@
     font-weight: 600;
 }
 
-/* 组间发丝线：给出「选择」与「操作」的明确界限 */
-.jhs-lp-batch-sep {
-    width: 1px;
-    height: 18px;
-    background-color: var(--jhs-color-border);
-}
-
-.jhs-lp-batch-group {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--jhs-space-xs);
-}
-
-/* ========== 工具栏按钮（紧凑化既有浅色 / 评分条按钮） ========== */
+/* ========== 操作条按钮（紧凑化既有浅色 / 评分条按钮） ========== */
 
 .jhs-lp-batch-btn {
     height: 26px;
@@ -183,13 +191,6 @@
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;
-}
-
-/* 中性选择组（a-normal-buttons.css） */
-.jhs-lp-batch-btn.a-normal {
-    display: inline-flex;
-    align-items: center;
-    height: 26px;
 }
 
 /* 星星：详情页快捷评分条的紧凑变体（rating-bar.css 的 .jhs-star 契约） */
@@ -220,7 +221,7 @@ button.jhs-lp-batch-star[disabled] {
     transform: none;
 }
 
-/* 收藏 / 已读 / 拉黑：沿用详情页配色，紧凑化 */
+/* 收藏 / 已读 / 拉黑：沿用详情页配色（rating-bar.css），紧凑化 */
 .jhs-lp-batch-btn.jhs-fav-btn,
 .jhs-lp-batch-btn.jhs-read-btn,
 .jhs-lp-batch-btn.jhs-block-btn {
@@ -247,4 +248,59 @@ button.jhs-lp-batch-star[disabled] {
 .jhs-lp-batch-btn:focus-visible {
     outline: 2px solid var(--jhs-color-primary);
     outline-offset: 2px;
+}
+
+/* ========== 响应式（≤768px：选择栏转底部横排，操作条上移让开） ========== */
+
+@media (width <= 768px) {
+    .jhs-lp-batch-side {
+        top: auto;
+        right: var(--jhs-space-sm);
+        bottom: var(--jhs-space-sm);
+        left: var(--jhs-space-sm);
+        flex-direction: row;
+        max-width: calc(100vw - 16px);
+        overflow-x: auto;
+        transform: none;
+
+        /* 触控目标加大（DESIGN.md：移动端 ≥44px） */
+        scrollbar-width: thin;
+    }
+
+    .jhs-lp-batch-side-btn {
+        min-height: var(--jhs-touch-target);
+        flex: 0 0 auto;
+    }
+
+    .jhs-lp-batch-layer {
+        right: var(--jhs-space-sm);
+        bottom: 60px; /* 让开底部横排的选择栏 */
+        left: var(--jhs-space-sm);
+        max-width: none;
+        transform: none;
+    }
+
+    .jhs-lp-batch-bar {
+        justify-content: center;
+        width: 100%;
+        padding: var(--jhs-space-sm);
+    }
+
+    .jhs-lp-batch-btn {
+        height: 32px;
+        padding: 0 12px;
+    }
+
+    .jhs-lp-batch-btn.jhs-fav-btn,
+    .jhs-lp-batch-btn.jhs-read-btn,
+    .jhs-lp-batch-btn.jhs-block-btn {
+        height: 32px;
+        padding: 0 12px;
+    }
+
+    button.jhs-lp-batch-star {
+        width: 30px;
+        height: 32px;
+        font-size: 22px;
+    }
 }

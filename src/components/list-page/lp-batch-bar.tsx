@@ -51,14 +51,19 @@ export function LpBatchCheckbox({ carNum, checked, label }: LpBatchCheckboxProps
 }
 
 /**
- * 渲染视频流左侧的常驻竖排选择组。
+ * 渲染视频流左侧常驻竖排选择组。
  *
  * @param props.hasSelection 是否已有勾选（决定「清空」禁用态）
- * @returns `.jhs-lp-batch-side` JSX（请求列表 / 全选 / 反选 / 清空，按钮带 data-act）
+ * 返回 **Fragment**：四枚按钮作为容器（`.jhs-lp-batch-side`，由控制器创建）的**直接子元素**。
+ * 刻意不再自带一层同名容器 —— 否则会出现嵌套重复且内层再带一份列布局与固定定位
+ * （实测反馈「显示结构还是错的」即此）。
+ *
+ * @param props.hasSelection 是否已有勾选（决定「清空」禁用态）
+ * @returns 四枚按钮的 Fragment（按钮带 data-act）
  */
 export function LpBatchSideBar({ hasSelection }: { hasSelection: boolean }) {
     return (
-        <div className="jhs-lp-batch-side">
+        <>
             <button type="button" className="jhs-lp-batch-side-btn" data-act="request-list">
                 请求列表
             </button>
@@ -76,7 +81,7 @@ export function LpBatchSideBar({ hasSelection }: { hasSelection: boolean }) {
             >
                 清空
             </button>
-        </div>
+        </>
     );
 }
 

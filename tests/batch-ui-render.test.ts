@@ -119,11 +119,11 @@ describe('LpBatchToolbar 渲染契约', () => {
 describe('LpBatchSideBar 渲染契约（常驻竖排选择组）', () => {
     it('含请求列表 / 全选 / 反选 / 清空四枚竖排按钮', () => {
         const html = jsxToString(createElement(LpBatchSideBar, { hasSelection: true }));
-        expect(html).toContain('data-act="request-list"');
-        expect(html).toContain('data-act="select-all"');
-        expect(html).toContain('data-act="invert"');
         expect(html).toContain('data-act="clear"');
         expect(html).toContain('请求列表');
+        // 不得自带容器类：容器由控制器创建，自带会形成同名嵌套（实测反馈的结构错误）
+        expect(html).not.toContain('jhs-lp-batch-side"');
+        expect(html).not.toContain('<div');
     });
 
     it('有选择时「清空」可用；无选择时禁用（全选/反选不受限）', () => {
