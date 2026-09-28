@@ -185,6 +185,35 @@
     cursor: not-allowed;
 }
 
+/*
+ * 星级按钮的浏览器默认装饰复位。
+ *
+ * 参照实现（rating-bar.css）里星是 <span>（无 UA 装饰）；本项目用 <button> 换取键盘可达，
+ * 因此必须自行抹掉按钮默认的 `border: 2px outset` 与底色 —— 否则每颗星外会有一圈**黑框**，
+ * 五颗星也不成一体。字体改为继承（否则按钮不继承宿主字体栈，星形与页面不一致）。
+ */
+.jhs-lp-batch-bar button.jhs-star {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: none;
+    font-family: inherit;
+}
+
+/* 键盘焦点环（鼠标悬停不出现，只给键盘用户；避免默认黑框观感） */
+.jhs-lp-batch-bar button.jhs-star:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 1px;
+    border-radius: var(--jhs-radius-sm);
+}
+
+/* 三态按钮同样是 <button>（参照亦然），仅补字体继承，保证与页面同一字体栈 */
+.jhs-lp-batch-bar .jhs-fav-btn,
+.jhs-lp-batch-bar .jhs-read-btn,
+.jhs-lp-batch-bar .jhs-block-btn {
+    font-family: inherit;
+}
+
 .jhs-lp-batch-count {
     color: var(--jhs-color-text-secondary);
     font-variant-numeric: tabular-nums;

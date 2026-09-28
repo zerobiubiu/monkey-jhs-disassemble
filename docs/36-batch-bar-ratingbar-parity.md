@@ -106,6 +106,36 @@ starsEl.addEventListener('pointerleave', () => stars.forEach((el) => el.classLis
 
 ## 7. 已知限制
 
+## 7.1 后续修正（同类问题的收尾）
+
+**现象**：星改为 `<button>` 后，每颗星外出现一圈**黑框**，五颗星看着不像一个整体。
+
+**根因**：参照实现里星是 `<span>`（无 UA 装饰）；本项目用 `<button>` 换取键盘可达，
+而 `rating-bar.css` 的 `.jhs-star` 只定义字号/颜色/内边距，**没有抹掉按钮默认的
+`border: 2px outset` 与底色** —— 旧紧凑版覆盖里曾带着 `border: none`，
+doc/36 删除覆盖后就暴露出来了。同理，`<button>` 默认**不继承页面字体栈**，
+所以星形与三态按钮文案的字体也与页面不一致（“不像一个整体”的另一半）。
+
+**修正**（不动参照样式表，只在列表页侧补齐）：
+
+```css
+.jhs-lp-batch-bar button.jhs-star {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: none;
+    font-family: inherit;
+}
+
+.jhs-lp-batch-bar .jhs-fav-btn,
+.jhs-lp-batch-bar .jhs-read-btn,
+.jhs-lp-batch-bar .jhs-block-btn {
+    font-family: inherit;
+}
+```
+
+并给星补显式 `:focus-visible` 焦点环（仅键盘触发，不再用默认黑框当焦点提示）。
+
 - 三态按钮的 `is-active`（详情页会按当前影片状态亮起蓝/绿/红）在批量场景下**未使用**：
   多选卡片的状态可能各不相同，无法用单一 active 表示；如需「全部同态才高亮」可后续补。
 - 星与按钮尺寸不再随断点缩放（沿用详情页尺寸）；窄屏靠 `flex-wrap` 换行适配。

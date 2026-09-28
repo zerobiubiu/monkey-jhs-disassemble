@@ -11,6 +11,12 @@
 
 ## v1.46.9
 
+## v1.46.32
+
+### 修复（impeccable polish）
+- **星标黑框**（doc/36 §7.1）：参照实现的星是 `<span>`（无 UA 装饰），本项目用 `<button>` 保留键盘可达，而 `rating-bar.css` 的 `.jhs-star` 未抹掉按钮默认的 `border: 2px outset` 与底色 → 每颗星一圈黑框。现于列表页侧补齐 `appearance: none` / `border: none` / `background: none` / `font-family: inherit`，并给星补显式 `:focus-visible` 焦点环（仅键盘触发）。
+- **字体一致性**：三个动作按钮补 `font-family: inherit`（`<button>` 默认不继承页面字体栈）。
+
 ## v1.46.31
 
 ### 修复 / 优化（实测反馈六轮）
