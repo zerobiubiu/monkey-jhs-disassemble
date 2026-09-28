@@ -30,9 +30,10 @@
 
 /*
  * 「加载全部」按钮。
- * - 默认（未停靠）：独立浮层形态（左下角）；
- * - 停靠后（`.is-docked`，已并入左侧常驻竖排栏）：几何沿用 `.jhs-lp-batch-side-btn`，
- *   此处**只覆写配色**，与旁边中性色的选择组形成区分（主色 = 可执行的加载动作）。
+ * - 默认（未停靠）：独立浮层形态（左下角）—— **仅在未被停靠时生效**；
+ * - 停靠后（`.is-docked`，已并入左侧常驻竖排栏**第一位**）：几何**显式复位**，
+ *   不依赖上面那条规则被 `:not()` 排除 —— 只要有任何一条未限定的 `.jhs-load-all-btn`
+ *   规则生效，遗留的 `position: fixed` 就会在栏内（父元素带 transform）压住其它按钮并错位。
  */
 .jhs-load-all-btn:not(.is-docked) {
     position: fixed;
@@ -55,18 +56,33 @@
     box-shadow: 0 4px 12px rgb(0, 0, 0, 0.4);
 }
 
-/* 停靠进左侧竖排栏：主色实底（与中性选择组区分），几何由 .jhs-lp-batch-side-btn 提供 */
+/* 停靠进左侧竖排栏（组内第一位）：显式复位为流内几何 + 主色实底 */
 .jhs-load-all-btn.is-docked {
-    margin-top: var(--jhs-space-sm);
-    border-color: var(--jhs-color-primary);
-    background-color: var(--jhs-color-primary);
+    position: static;
+    inset: auto;
+    order: -1; /* 与「请求列表 / 全选 / 反选 / 清空」同组且排第一位 */
+    flex: 0 0 auto;
+    align-self: stretch;
+    width: 100%;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid var(--jhs-color-primary);
+    border-radius: var(--jhs-radius-sm);
+    background: var(--jhs-color-primary);
+    box-shadow: none;
     color: var(--jhs-color-bg);
+    font-size: var(--jhs-font-size-sm);
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    transform: none;
 }
 
 .jhs-load-all-btn.is-docked:hover:not(.jhs-load-all-disabled) {
-    background-color: var(--jhs-color-primary-hover);
     border-color: var(--jhs-color-primary-hover);
-    color: var(--jhs-color-bg);
+    background: var(--jhs-color-primary-hover);
+    box-shadow: none;
+    transform: none;
 }
 
 .jhs-load-all-btn.jhs-load-all-disabled {

@@ -144,7 +144,7 @@ export function dockLoadAllBtn(plugin: AutoPagePlugin, attempt = 0): void {
         if (!btn) return true; // 已被移除，停止重试
         const side = document.querySelector('.' + BATCH_SIDE_CLASS);
         if (!side) return false;
-        if (btn.parentElement !== side) side.appendChild(btn);
+        if (btn.parentElement !== side) side.prepend(btn); // 组内第一位（用户要求）
         btn.classList.add('is-docked');
         return true;
     };

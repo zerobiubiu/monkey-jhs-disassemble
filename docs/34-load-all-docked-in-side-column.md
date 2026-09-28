@@ -16,24 +16,26 @@
 
 ## 2. 方案
 
-### 2.1 侧栏新增「选择组槽位」（结构前提）
+### 2.1 侧栏「只渲染一次」+ 停靠按钮插到组内第一位（结构前提）
 
-原来的侧栏刷新是整容器 `innerHTML` 重写 —— 任何**外部停靠**到容器里的按钮都会被冲掉。
-因此把容器拆成「容器 + 槽位」：
+侧栏原本每次刷新都整容器重写 `innerHTML` —— 任何**停靠**进来的按钮都会被冲掉。
+但现在选择组是**静态结构**（只有「清空」的可用性会变），所以改为：
 
 ```html
-<div class="jhs-lp-batch-side">            <!-- 固定定位容器（列） -->
-  <div class="jhs-lp-batch-side-select">   <!-- 选择组槽位：刷新只重写这里 -->
-    …请求列表 / 全选 / 反选 / 清空…
-  </div>
-  <button class="jhs-load-all-btn is-docked jhs-lp-batch-side-btn">加载全部</button>
+<div class="jhs-lp-batch-side">                       <!-- 固定定位列（同一组） -->
+  <button class="jhs-load-all-btn is-docked">加载全部</button>   <!-- 停靠方 prepend，组内第一位 -->
+  <button data-act="request-list">请求列表</button>
+  <button data-act="select-all">全选</button>
+  <button data-act="invert">反选</button>
+  <button data-act="clear">清空</button>
 </div>
 ```
 
-- 槽位由 `ensureBatchSideSlot(container, html)` 保证存在（**固定为容器首个子节点**）并只重写其内容；
-- 停靠按钮作为容器的**兄弟节点**追加在后 → 刷新选择组时不受影响（有回归测试锁定）；
-- 容器类名 `BATCH_SIDE_CLASS` 与槽位类名 `BATCH_SIDE_SLOT_CLASS` 由 `list-page/lp-batch` 导出，
-  停靠方（auto-page）导入常量而非硬编码字面量。
+- `ensureBatchSideBar(container)`：**仅首次**（选择组缺失时）写入四键，之后只同步「清空」禁用态 ——
+  **不再重写 DOM**，因此停靠按钮可长期存活（有回归测试锁定）；
+- 停靠方用 `container.prepend(btn)` 插到**组内第一位**（用户明确要求），
+  并用 CSS `order: -1` 双保险保持首位；
+- 容器类名 `BATCH_SIDE_CLASS` 由 `list-page/lp-batch` 导出，停靠方导入常量而非硬编码字面量。
 
 ### 2.2 「加载全部」停靠逻辑（auto-page 侧）
 
@@ -41,7 +43,7 @@
 
 1. 以 `<button type="button">` 创建（原为 `<div>`，改为按钮以获得原生键盘可达）；
 2. 追加到 `document.body`（**先保留原浮层形态**，避免竞态期间按钮消失）；
-3. 调 `dockLoadAllBtn(plugin)`：查找 `.jhs-lp-batch-side` → 命中则 `appendChild` 并加 `is-docked`；
+3. 调 `dockLoadAllBtn(plugin)`：查找 `.jhs-lp-batch-side` → 命中则 `prepend` 并加 `is-docked`；
 4. **未命中则重试**（`LOAD_ALL_DOCK_RETRIES = 10` × `300ms`，走 `plugin.supervisor` 定时器）——
    两个插件启动存在竞态（侧栏由 ListPagePlugin 异步创建）；重试耗尽则**保留浮层形态**（优雅降级）。
 
@@ -51,11 +53,12 @@
 
 | 形态 | 几何 | 配色 |
 |---|---|---|
-| **停靠**（`.is-docked`） | 沿用 `.jhs-lp-batch-side-btn`（同一列自动对齐，**零几何重复**） | **主色实底** `--jhs-color-primary` + 白字；hover 转 `--jhs-color-primary-hover` —— 与旁边**中性色**的选择组明确区分（主色 = 可执行的加载动作） |
+| **停靠**（`.is-docked`） | **显式复位为流内几何**（`position: static; inset: auto; width: 100%` + 紧凑尺寸）—— 不依赖浮层规则被 `:not()` 排除 | **主色实底** `--jhs-color-primary` + 白字；hover 转 `--jhs-color-primary-hover` —— 与旁边**中性色**的选择组明确区分 |
 | **浮层**（`:not(.is-docked)`，降级路径） | 原样保留（左下角、20px 圆角、渐变） | 原样（唯一被许可的装饰性渐变） |
 
-停靠形态额外 `margin-top: var(--jhs-space-sm)`：用**间距**而不是分隔线把「加载动作」与「选择动作」分开
-（DESIGN.md：靠明度/间距分层，不堆边框）。
+**为什么停靠形态要显式复位几何**：父容器 `.jhs-lp-batch-side` 带 `transform`（`translateY(-50%)`），
+若按钮残留 `position: fixed`，它会以**容器**为包含块定位 → 正好压在下面几个选择按钮上并错位
+（实测反馈的「被选择按钮盖在下边、还不对齐」即此）。不依赖「基础规则恰好被排除」，直接复位才稳。
 
 ## 3. 实施（修改文件清单）
 

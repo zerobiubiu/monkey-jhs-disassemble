@@ -52,13 +52,11 @@ const ITEM_CLASS = 'jhs-lp-batch-item';
 /** 工具栏外层类名（固定定位容器）。 */
 const BAR_LAYER_CLASS = 'jhs-lp-batch-layer';
 /**
- * 左侧常驻竖排栏容器类名 —— 导出供其它插件**停靠**自己的按钮到同一列
- * （如 AutoPagePlugin 的「加载全部」；停靠方补 `is-docked` 自定义样式）。
+ * 左侧常驻竖排栏容器类名 —— 导出供其它插件**停靠**自己的按钮到同一组
+ * （如 AutoPagePlugin 的「加载全部」，要求插到组内**第一位**：`container.prepend(btn)`；
+ * 停靠方自备 `is-docked` 样式，并**显式复位**浮层几何）。
  */
 export const BATCH_SIDE_CLASS = 'jhs-lp-batch-side';
-
-/** 侧栏内「选择组槽位」类名（刷新只重写槽位内容，不碰外部停靠按钮）。 */
-export const BATCH_SIDE_SLOT_CLASS = 'jhs-lp-batch-side-select';
 
 /** 内部简写（保持既有引用不变）。 */
 const SIDE_CLASS = BATCH_SIDE_CLASS;
@@ -271,9 +269,9 @@ function renderBatchToolbar(): void {
 /**
  * 渲染／刷新左侧常驻竖排栏。
  *
- * 容器（`.jhs-lp-batch-side`）与「选择组槽位」分离：刷新只重写**槽位内容**，
- * 其它插件停靠在容器里的按钮（如 AutoPagePlugin 的「加载全部」）作为容器兄弟节点
- * **不会被冲掉**（v1.46.27 的教训：直接重写容器 innerHTML 会清掉外部子节点）。
+ * 选择组是**静态结构**（只有「清空」的可用性会变），因此**只首次渲染一次**，
+ * 之后仅同步动态态 —— 刻意不再重写 innerHTML：否则其它插件**停靠进本组**的按钮
+ * （如 AutoPagePlugin 的「加载全部」，要求排在组内第一位）会被每次刷新冲掉。
  */
 function renderSideBar(): void {
     if (!sideEl) {
@@ -281,27 +279,30 @@ function renderSideBar(): void {
         sideEl.className = BATCH_SIDE_CLASS;
         document.body.appendChild(sideEl);
     }
-    ensureBatchSideSlot(sideEl, jsxToString(<LpBatchSideBar hasSelection={selection.size > 0} />));
+    ensureBatchSideBar(sideEl);
 }
 
 /**
- * 确保侧栏内的「选择组槽位」就绪并写入选择组 HTML。
+ * 确保侧栏容器已被渲染（只首次写入选择组「请求列表 / 全选 / 反选 / 清空」），
+ * 并同步动态态（「清空」在无选择时禁用）。
  *
- * 槽位固定为容器的**首个**子节点；外部停靠按钮追加在后面，刷新时不受影响。
+ * 已渲染时**不触碰其它子节点**，因此停靠进本组的按钮（如「加载全部」，由停靠方
+ * 用 `container.prepend()` 插到**第一位**）可长期存活。
  *
- * @param container 侧栏容器
- * @param html 选择组 HTML（由 `LpBatchSideBar` 渲染）
- * @returns 槽位元素
+ * @param container 侧栏容器（`.jhs-lp-batch-side`）
+ * @returns 容器本身
  */
-export function ensureBatchSideSlot(container: HTMLElement, html: string): HTMLElement {
-    let slot = container.querySelector<HTMLElement>('.' + BATCH_SIDE_SLOT_CLASS);
-    if (!slot) {
-        slot = document.createElement('div');
-        slot.className = BATCH_SIDE_SLOT_CLASS;
-        container.prepend(slot);
+export function ensureBatchSideBar(container: HTMLElement): HTMLElement {
+    // 选择组缺失（首次/被外部清空）才重建；停靠按钮不在重建条件内
+    if (!container.querySelector('[data-act="request-list"]')) {
+        container.insertAdjacentHTML(
+            'beforeend',
+            jsxToString(<LpBatchSideBar hasSelection={selection.size > 0} />)
+        );
     }
-    slot.innerHTML = html;
-    return slot;
+    const clearBtn = container.querySelector<HTMLButtonElement>('[data-act="clear"]');
+    if (clearBtn) clearBtn.disabled = selection.size === 0;
+    return container;
 }
 
 /** 渲染／移除浮出操作条（勾选为 0 时移除）。 */
