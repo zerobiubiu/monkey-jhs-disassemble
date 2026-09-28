@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { isBatchUiControl } from '../src/plugins/list-page/lp-batch';
+import { ensureBatchSideSlot } from '../src/plugins/list-page/lp-batch';
 
 /** 造一段指定容器类名下的按钮结构。 */
 function htmlWith(containerClass: string): HTMLElement {
@@ -44,5 +45,39 @@ describe('isBatchUiControl（委托白名单）', () => {
         document.body.innerHTML =
             '<div class="status-tag-filter-bar"><span data-act="x">标签</span></div>';
         expect(isBatchUiControl(document.querySelector('span'))).toBe(false);
+    });
+});
+
+describe('ensureBatchSideSlot（槽位刷新不冲掉停靠按钮）', () => {
+    it('槽位首次创建并写入内容，且固定为容器首个子节点', () => {
+        document.body.innerHTML = '<div class="jhs-lp-batch-side"></div>';
+        const container = document.querySelector('.jhs-lp-batch-side') as HTMLElement;
+        const slot = ensureBatchSideSlot(container, '<button>全选</button>');
+        expect(slot.className).toBe('jhs-lp-batch-side-select');
+        expect(container.firstElementChild).toBe(slot);
+        expect(slot.innerHTML).toContain('全选');
+        expect(container.querySelectorAll('.jhs-lp-batch-side-select')).toHaveLength(1);
+    });
+
+    it('重复刷新只重写槽位内容，外部停靠按钮（加载全部）仍在且未被替换', () => {
+        document.body.innerHTML =
+            '<div class="jhs-lp-batch-side"><button class="jhs-load-all-btn is-docked">加载全部</button></div>';
+        const container = document.querySelector('.jhs-lp-batch-side') as HTMLElement;
+        const docked = container.querySelector('.jhs-load-all-btn') as HTMLElement;
+
+        ensureBatchSideSlot(container, '<button>全选 A</button>');
+        ensureBatchSideSlot(container, '<button>全选 B</button>');
+
+        // 同一个停靠元素仍在文档中（未被 innerHTML 重写清掉），且槽位在它前面
+        expect(container.querySelector('.jhs-load-all-btn')).toBe(docked);
+        expect(docked.isConnected).toBe(true);
+        expect(container.lastElementChild).toBe(docked);
+        expect(container.querySelector('.jhs-lp-batch-side-select')?.innerHTML).toContain('全选 B');
+    });
+
+    it('停靠按钮仍属白名单（它与选择组同容器）', () => {
+        document.body.innerHTML =
+            '<div class="jhs-lp-batch-side"><button class="jhs-load-all-btn is-docked">加载全部</button></div>';
+        expect(isBatchUiControl(document.querySelector('.jhs-load-all-btn'))).toBe(true);
     });
 });

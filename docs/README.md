@@ -48,6 +48,7 @@
 | `31-batch-push-to-javdb-background-queue.md` | 变更 | v1.46.23–1.46.24 | 批量操作 → JavDB **后台推送队列**：新增 `lp-batch-sync.ts`（入队即返回，900ms/项节流串行 + 每项重试 2 次 + 汇总提示），复用 `sync-common` 的 `postWantToWatch`/`postWatched`；尊重 `autoServerSync` 开关；`destroy` 终止队列。v1.46.24 起**取消已读也推送**（`findReviewIdInHtml` 取 reviewId → `deleteReview` 删评价记录；用户已确认不写评价正文）。新增 12 用例 |
 | `32-batch-bar-docked-ratingbar.md` | 变更 | v1.46.26 | 实测反馈二轮（impeccable polish）：批量操作条改为**常驻**挂筛选栏尾部（不再浮出、不随勾选数出现）；操作组与详情页快捷评分条**同构**（五颗星 + 收藏/已读/拉黑，复用 `rating-bar.css` 类名与配色）；新增 `planFilterBatch`（拉黑批量）与 `BatchActionKind='filter'` |
 | `33-batch-ui-layering.md` | 变更 | v1.46.27 | 批量操作 **UI 分层**（实测反馈三轮）：选择类（请求列表/全选/反选/清空）改**常驻竖排栏**固定在视频流左侧屏幕中部、不随滚动；内容操作（五星+收藏/已读/拉黑）保持**浮出条**；请求列表入口迁至侧栏并经自定义事件解耦。含 §3 回归：**修复侧栏按钮「点了没反应」**（委托白名单漏配侧栏容器 → 抽 `isBatchUiControl` + 6 用例） |
+| `34-load-all-docked-in-side-column.md` | 变更 | v1.46.28 | 「加载全部」**并入左侧常驻竖排栏**（同风格 + 主色区分）：侧栏新增「选择组槽位」（容器+槽位，刷新不再冲掉外部停靠按钮）；auto-page 停靠（带重试/降级）；停靠形态几何沿用 `.jhs-lp-batch-side-btn`、仅覆写配色为**主色实底**。新增 3 用例（槽位刷新保活） |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

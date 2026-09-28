@@ -28,7 +28,13 @@
     text-decoration: underline;
 }
 
-.jhs-load-all-btn {
+/*
+ * 「加载全部」按钮。
+ * - 默认（未停靠）：独立浮层形态（左下角）；
+ * - 停靠后（`.is-docked`，已并入左侧常驻竖排栏）：几何沿用 `.jhs-lp-batch-side-btn`，
+ *   此处**只覆写配色**，与旁边中性色的选择组形成区分（主色 = 可执行的加载动作）。
+ */
+.jhs-load-all-btn:not(.is-docked) {
     position: fixed;
     left: 20px;
     bottom: 80px;
@@ -44,9 +50,23 @@
     user-select: none;
 }
 
-.jhs-load-all-btn:hover {
+.jhs-load-all-btn:not(.is-docked):hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgb(0, 0, 0, 0.4);
+}
+
+/* 停靠进左侧竖排栏：主色实底（与中性选择组区分），几何由 .jhs-lp-batch-side-btn 提供 */
+.jhs-load-all-btn.is-docked {
+    margin-top: var(--jhs-space-sm);
+    border-color: var(--jhs-color-primary);
+    background-color: var(--jhs-color-primary);
+    color: var(--jhs-color-bg);
+}
+
+.jhs-load-all-btn.is-docked:hover:not(.jhs-load-all-disabled) {
+    background-color: var(--jhs-color-primary-hover);
+    border-color: var(--jhs-color-primary-hover);
+    color: var(--jhs-color-bg);
 }
 
 .jhs-load-all-btn.jhs-load-all-disabled {

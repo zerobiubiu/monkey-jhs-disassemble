@@ -51,8 +51,17 @@ const ITEM_CLASS = 'jhs-lp-batch-item';
 
 /** 工具栏外层类名（固定定位容器）。 */
 const BAR_LAYER_CLASS = 'jhs-lp-batch-layer';
-/** 左侧常驻竖排选择组类名。 */
-const SIDE_CLASS = 'jhs-lp-batch-side';
+/**
+ * 左侧常驻竖排栏容器类名 —— 导出供其它插件**停靠**自己的按钮到同一列
+ * （如 AutoPagePlugin 的「加载全部」；停靠方补 `is-docked` 自定义样式）。
+ */
+export const BATCH_SIDE_CLASS = 'jhs-lp-batch-side';
+
+/** 侧栏内「选择组槽位」类名（刷新只重写槽位内容，不碰外部停靠按钮）。 */
+export const BATCH_SIDE_SLOT_CLASS = 'jhs-lp-batch-side-select';
+
+/** 内部简写（保持既有引用不变）。 */
+const SIDE_CLASS = BATCH_SIDE_CLASS;
 
 /** 勾选状态。 */
 const selection = new BatchSelection();
@@ -259,16 +268,40 @@ function renderBatchToolbar(): void {
     renderActionBar();
 }
 
-/** 渲染／刷新左侧常驻竖排选择组。 */
+/**
+ * 渲染／刷新左侧常驻竖排栏。
+ *
+ * 容器（`.jhs-lp-batch-side`）与「选择组槽位」分离：刷新只重写**槽位内容**，
+ * 其它插件停靠在容器里的按钮（如 AutoPagePlugin 的「加载全部」）作为容器兄弟节点
+ * **不会被冲掉**（v1.46.27 的教训：直接重写容器 innerHTML 会清掉外部子节点）。
+ */
 function renderSideBar(): void {
     if (!sideEl) {
         sideEl = document.createElement('div');
-        sideEl.className = SIDE_CLASS;
+        sideEl.className = BATCH_SIDE_CLASS;
         document.body.appendChild(sideEl);
     }
-    sideEl.innerHTML = jsxToString(
-        <LpBatchSideBar hasSelection={selection.size > 0} />
-    );
+    ensureBatchSideSlot(sideEl, jsxToString(<LpBatchSideBar hasSelection={selection.size > 0} />));
+}
+
+/**
+ * 确保侧栏内的「选择组槽位」就绪并写入选择组 HTML。
+ *
+ * 槽位固定为容器的**首个**子节点；外部停靠按钮追加在后面，刷新时不受影响。
+ *
+ * @param container 侧栏容器
+ * @param html 选择组 HTML（由 `LpBatchSideBar` 渲染）
+ * @returns 槽位元素
+ */
+export function ensureBatchSideSlot(container: HTMLElement, html: string): HTMLElement {
+    let slot = container.querySelector<HTMLElement>('.' + BATCH_SIDE_SLOT_CLASS);
+    if (!slot) {
+        slot = document.createElement('div');
+        slot.className = BATCH_SIDE_SLOT_CLASS;
+        container.prepend(slot);
+    }
+    slot.innerHTML = html;
+    return slot;
 }
 
 /** 渲染／移除浮出操作条（勾选为 0 时移除）。 */

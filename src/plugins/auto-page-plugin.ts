@@ -69,8 +69,8 @@ export class AutoPagePlugin extends BasePlugin {
     nextUrl: string | null | undefined = undefined;
     /** 分页状态机：统一管理 hasMore/isLoading/phase 状态转换。 */
     pagination = new PaginationStateMachine();
-    /** 「加载全部」浮动按钮节点（有下一页时始终显示）。 */
-    loadAllBtn: HTMLDivElement | null = null;
+    /** 「加载全部」按钮节点（有下一页时始终显示；优先停靠到左侧常驻竖排栏）。 */
+    loadAllBtn: HTMLButtonElement | null = null;
     /** 是否正在自动加载全部后续页（防重入）。 */
     isLoadingAll = false;
     /**

@@ -90,6 +90,13 @@
     transform: translateY(-50%);
 }
 
+/* 选择组槽位：刷新只重写槽位内容，同容器内其它停靠按钮（如「加载全部」）不受影响 */
+.jhs-lp-batch-side-select {
+    display: flex;
+    flex-direction: column;
+    gap: var(--jhs-space-xs);
+}
+
 .jhs-lp-batch-side-btn {
     display: inline-flex;
     align-items: center;

@@ -9,6 +9,13 @@
  * setState：设置 loader 的状态类与文案。
  */
 import type { AutoPagePlugin } from '../auto-page-plugin';
+import { BATCH_SIDE_CLASS } from '../list-page/lp-batch';
+
+/** 「加载全部」停靠重试次数（等左侧竖排栏容器出现）。 */
+const LOAD_ALL_DOCK_RETRIES = 10;
+
+/** 停靠重试间隔 ms。 */
+const LOAD_ALL_DOCK_INTERVAL_MS = 300;
 
 /**
  * 滚动时同步内部 currentPage（供「加载全部」文案等使用）。
@@ -103,12 +110,14 @@ export function hideLoadAllBtn(plugin: AutoPagePlugin): void {
 }
 
 /**
- * 创建「加载全部」浮动按钮并追加到 body。
+ * 创建「加载全部」按钮：**优先停靠**到列表页左侧常驻竖排栏，与批量选择组同列同风格；
+ * 容器尚未就绪时先挂 body（保留原有浮层样式），并在短时间内重试停靠。
  * 瀑布流模式且有下一页时调用，点击后循环加载所有后续页。
  */
 export function createLoadAllBtn(plugin: AutoPagePlugin): void {
-    const btn = document.createElement('div');
-    btn.className = 'jhs-load-all-btn';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'jhs-load-all-btn jhs-lp-batch-side-btn';
     btn.textContent = '加载全部';
     plugin.supervisor.addEventListener(btn, 'click', () => {
         if (!plugin.isLoadingAll) {
@@ -117,6 +126,31 @@ export function createLoadAllBtn(plugin: AutoPagePlugin): void {
     });
     document.body.appendChild(btn);
     plugin.loadAllBtn = btn;
+    dockLoadAllBtn(plugin);
+}
+
+/**
+ * 把「加载全部」按钮停靠进左侧竖排栏（容器出现前先留浮层形态）。
+ *
+ * 停靠后加 `is-docked`：几何沿用 `.jhs-lp-batch-side-btn`，仅覆写配色与选择组区分。
+ * 容器由 ListPagePlugin 异步创建，两插件启动存在竞态，故用 supervisor 定时器重试。
+ *
+ * @param plugin AutoPagePlugin 实例
+ * @param attempt 当前重试次数（内部递归用）
+ */
+export function dockLoadAllBtn(plugin: AutoPagePlugin, attempt = 0): void {
+    const dock = (): boolean => {
+        const btn = plugin.loadAllBtn;
+        if (!btn) return true; // 已被移除，停止重试
+        const side = document.querySelector('.' + BATCH_SIDE_CLASS);
+        if (!side) return false;
+        if (btn.parentElement !== side) side.appendChild(btn);
+        btn.classList.add('is-docked');
+        return true;
+    };
+    if (dock()) return;
+    if (attempt >= LOAD_ALL_DOCK_RETRIES) return; // 放弃停靠，保留浮层形态
+    plugin.supervisor.setTimeout(() => dockLoadAllBtn(plugin, attempt + 1), LOAD_ALL_DOCK_INTERVAL_MS);
 }
 
 /**
