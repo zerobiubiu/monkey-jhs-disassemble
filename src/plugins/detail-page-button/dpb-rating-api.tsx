@@ -72,7 +72,13 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
                 plugin._wantWatchedSyncing = false;
             }
         })
-        .catch(() => {});
+        .catch((err: unknown) => {
+            // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
+            clog.warn('[JHS-快键] 站点评价同步失败', err instanceof Error ? err.message : String(err));
+            show.error(
+                '站点未同步: ' + (err instanceof Error ? err.message : String(err))
+            );
+        });
 }
 
 /**
@@ -129,7 +135,19 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                         plugin._wantWatchedSyncing = false;
                     }
                 })
-                .catch(() => {});
+                .catch((err: unknown) => {
+                    // doc/37：站点推送在后台执行，失败必须可见（本地已落盘，不回滚）
+                    clog.warn(
+                        '[JHS-快键] 站点已读同步失败',
+                        err instanceof Error ? err.message : String(err)
+                    );
+                    show.error('站点未同步: ' + (err instanceof Error ? err.message : String(err)));
+                });
+            // 只需等本地持久化（journal/GM 写入）落盘；站点推送不阻塞关页（doc/37）
+            const clr2 = plugin.getBean('CarListReaderPlugin');
+            if (clr2) {
+                await clr2.waitForPendingJournal();
+            }
             // 4) 关闭页面 + 刷新
             plugin.showStatus(pageInfo.carNum!).then();
             refresh();
@@ -182,7 +200,13 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
                 plugin._wantWatchedSyncing = false;
             }
         })
-        .catch(() => {});
+        .catch((err: unknown) => {
+            // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
+            clog.warn('[JHS-快键] 站点收藏同步失败', err instanceof Error ? err.message : String(err));
+            show.error(
+                '站点未同步: ' + (err instanceof Error ? err.message : String(err))
+            );
+        });
 }
 
 /**

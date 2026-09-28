@@ -11,6 +11,13 @@
 
 ## v1.46.9
 
+## v1.46.33
+
+### 变更（详情页状态操作不阻塞，doc/37）
+- **关页不再等网络上传**：`favoriteOne` / `hasWatchOne` / `filterOne` / `quickBlock` 在 `closePage()` 前原等 `waitForPendingPush()`，而该 pending 同时覆盖「本地 journal 写入」与「全量快照 POST 上传」→ 关闭详情页（列表页 iframe 弹层）被网络阻塞，连带「开下一个视频弹窗也慢」。现拆为 `pendingJournal`（本地持久化，毫秒级，关页只等它）与 `pendingPush`（含上传）；未传完时修订号大于已同步修订号，下次页面加载按 `needsSync` 门控自动续传，不丢数据。
+- **站点推送失败不再静默**：`dpb-rating-api.tsx` 三处 `.catch(() => {})` 改为 `clog.warn` + 非阻塞 `show.error`（本地状态不回滚，开页自动校验会重试推送），使“是否落实为成功”可见。
+- **不改动**：插件自带快捷评分条本就是「本地写入 → 广播 → 立即刷新状态标签 → 站点推送挂串行链不 await」，未做改动；存储 schema 仍为 6。
+
 ## v1.46.32
 
 ### 修复（impeccable polish）

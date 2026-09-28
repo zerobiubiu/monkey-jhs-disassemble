@@ -138,21 +138,50 @@ export class CarListReaderPlugin extends BasePlugin {
         }
     }
 
-    /** 当前正在进行的增量推送 Promise（供外部 await 等待完成）。 */
+    /** 当前正在进行的增量推送 Promise（含本地写入与后台上传；供 waitForPendingPush 等待）。 */
     private pendingPush: Promise<void> = Promise.resolve();
 
+    /** 当前「本地持久化」阶段的 Promise（journal / GM 写入；毫秒级、不含网络）。 */
+    private pendingJournal: Promise<void> = Promise.resolve();
+
     /**
-     * 增量推送入口（fire-and-forget）：把异步推送挂到 pendingPush 上，
-     * 供 waitForPendingPush 等待完成，避免 closePage 中断异步 GM 写入（doc/195）。
+     * 增量推送入口（fire-and-forget）：把异步推送挂到 pendingPush / pendingJournal 上。
+     *
+     * **两段拆开**（doc/37）：
+     * - `pendingJournal`：本地持久化（journal 追加 + 修订号），关页前只需等这一段；
+     * - `pendingPush`：含后续后台上传（同步全量快照 POST），**不阻塞关页** ——
+     *   未传完时修订号会大于已同步修订号，下次页面加载（needsSync 门控）会自动续传。
+     *
      * @param event storageManager 的变更事件
      */
     pushDelta(event: CarListChangeEvent): void {
-        this.pendingPush = this.pushDeltaAsync(event).catch((err: unknown) => {
-            logErr('增量推送失败', err instanceof Error ? err.message : String(err));
+        let markDurable!: () => void;
+        this.pendingJournal = new Promise<void>((resolve) => {
+            markDurable = resolve;
         });
+        const durableOnce = (): void => {
+            markDurable();
+            markDurable = () => {};
+        };
+        this.pendingPush = this.pushDeltaAsync(event, durableOnce)
+            .catch((err: unknown) => {
+                logErr('增量推送失败', err instanceof Error ? err.message : String(err));
+            })
+            // 兜底：无论成功/失败/早返回，本地持久化阶段必定兑现（避免关页 await 挂起）
+            .finally(durableOnce);
     }
 
-    /** 等待当前增量推送完成（供 DetailPageButtonPlugin 在 closePage 前调用，doc/195）。 */
+    /**
+     * 等待**本地持久化**完成（journal / GM 写入，毫秒级、不含网络）。
+     *
+     * 关闭详情页（closePage）前只应等这一段：本地状态已落盘即可安全关页，
+     * 后台上传由修订号门控在下次加载续传（见 pushDelta 注释）。
+     */
+    async waitForPendingJournal(): Promise<void> {
+        await this.pendingJournal;
+    }
+
+    /** 等待增量推送**全部**完成（含后台上传）—— 仅在确实需要等上传时使用。 */
     async waitForPendingPush(): Promise<void> {
         await this.pendingPush;
     }
@@ -161,7 +190,7 @@ export class CarListReaderPlugin extends BasePlugin {
      * 增量推送：单调修订号 + 增量 journal（按 carNum 去重 + 阈值压缩 + 超限收敛为全量快照）。
      * @param event storageManager 的变更事件
      */
-    private async pushDeltaAsync(event: CarListChangeEvent): Promise<void> {
+    private async pushDeltaAsync(event: CarListChangeEvent, markDurable: () => void): Promise<void> {
         if (event.action === 'upsert' && event.upserts) {
             const items = event.upserts.map((car) => {
                 const { code } = normalizeUrl(car.url || '');
@@ -170,12 +199,16 @@ export class CarListReaderPlugin extends BasePlugin {
             if (items.length === 0) return;
             if (items.length > CAR_STATUS_DELTA_MAX_ITEMS) {
                 logWarn('批量变更超过增量上限，改发压缩全量快照', `${items.length} 条`);
+                // 超限分支无 journal 写入：本地状态已在 car_list 落盘，上传自行后台完成
+                markDurable();
                 await this.syncFullCarStatus();
                 return;
             }
             const revision = await nextRevision();
             const payload: CarStatusDeltaPayload = { action: 'upsert', items, ts: revision, revision };
             const needsFullSnapshot = await appendDeltaJournal(payload);
+            // 本地持久化完成（journal 已写入）—— 后续上传不阻塞关页
+            markDurable();
             logInfo('增量推送', `upsert ${items.length} 条`);
             if (needsFullSnapshot) {
                 logInfo('增量日志超过阈值，发布压缩全量快照');
@@ -185,6 +218,7 @@ export class CarListReaderPlugin extends BasePlugin {
             if (event.deletes.length === 0) return;
             if (event.deletes.length > CAR_STATUS_DELTA_MAX_ITEMS) {
                 logWarn('批量删除超过增量上限，改发压缩全量快照', `${event.deletes.length} 条`);
+                markDurable();
                 await this.syncFullCarStatus();
                 return;
             }
@@ -196,6 +230,8 @@ export class CarListReaderPlugin extends BasePlugin {
                 revision
             };
             const needsFullSnapshot = await appendDeltaJournal(payload);
+            // 本地持久化完成（journal 已写入）—— 后续上传不阻塞关页
+            markDurable();
             logInfo('增量推送', `delete ${event.deletes.length} 条`);
             if (needsFullSnapshot) {
                 logInfo('增量日志超过阈值，发布压缩全量快照');

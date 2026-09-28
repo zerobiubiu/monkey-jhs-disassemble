@@ -378,10 +378,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
             actionType: FAVORITE_ACTION,
             publishTime: pageInfo.publishTime ?? undefined
         });
-        // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+        // 只需等本地持久化（journal/GM 写入）落盘；后台上传不阻塞关页（doc/37）
         const clr = this.getBean('CarListReaderPlugin');
         if (clr) {
-            await clr.waitForPendingPush();
+            await clr.waitForPendingJournal();
         }
         this.showStatus(pageInfo.carNum!).then();
         refresh();
@@ -400,10 +400,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
             actionType: HAS_WATCH_ACTION,
             publishTime: pageInfo.publishTime ?? undefined
         });
-        // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+        // 只需等本地持久化（journal/GM 写入）落盘；后台上传不阻塞关页（doc/37）
         const clr = this.getBean('CarListReaderPlugin');
         if (clr) {
-            await clr.waitForPendingPush();
+            await clr.waitForPendingJournal();
         }
         this.showStatus(pageInfo.carNum!).then();
         refresh();
@@ -427,10 +427,10 @@ export class DetailPageButtonPlugin extends BasePlugin {
                 actionType: FILTER_ACTION,
                 publishTime: pageInfo.publishTime ?? undefined
             });
-            // 等待增量推送完成，避免 closePage 中断异步 GM 写入（doc/195）
+            // 只需等本地持久化（journal/GM 写入）落盘；后台上传不阻塞关页（doc/37）
             const clr = this.getBean('CarListReaderPlugin');
             if (clr) {
-                await clr.waitForPendingPush();
+                await clr.waitForPendingJournal();
             }
             this.showStatus(pageInfo.carNum!).then();
             refresh();
