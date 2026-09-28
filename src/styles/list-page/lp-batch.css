@@ -151,9 +151,10 @@
 
 .jhs-lp-batch-bar {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
-    gap: var(--jhs-space-sm);
+    gap: 6px; /* 与 .jhs-rating-bar 同节奏 */
+    max-width: calc(100vw - 32px);
     padding: var(--jhs-space-sm) var(--jhs-space-md);
     border: 1px solid var(--jhs-color-border);
     border-radius: var(--jhs-radius-lg);
@@ -164,8 +165,24 @@
         0 10px 40px rgb(15, 23, 42, 0.12),
         0 2px 8px rgb(15, 23, 42, 0.06);
     color: var(--jhs-color-text);
-    font-size: var(--jhs-font-size-sm);
+    font-size: var(--jhs-font-size-md);
     pointer-events: auto;
+}
+
+/* 操作行：计数 + 三态按钮（对齐 .jhs-rating-actions 的间隙） */
+.jhs-lp-batch-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--jhs-space-sm);
+}
+
+/* 星与三态按钮的视觉全部交还 rating-bar.css（与详情页一致）；
+   此处只补 rating-bar.css 未定义的**禁用态** */
+.jhs-lp-batch-bar button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .jhs-lp-batch-count {
@@ -179,76 +196,6 @@
     font-weight: 600;
 }
 
-/* ========== 操作条按钮（紧凑化既有浅色 / 评分条按钮） ========== */
-
-.jhs-lp-batch-btn {
-    height: 26px;
-    margin-right: 0;
-    padding: 0 10px;
-    border-radius: var(--jhs-radius-sm);
-    font-size: var(--jhs-font-size-sm);
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-/* 星星：详情页快捷评分条的紧凑变体（rating-bar.css 的 .jhs-star 契约） */
-button.jhs-lp-batch-star {
-    width: 24px;
-    height: 26px;
-    padding: 0;
-    border: none;
-    background: none;
-    font-size: 20px;
-    line-height: 1;
-    color: #d0d0d0;
-    cursor: pointer;
-    transition:
-        color 0.15s,
-        transform 0.15s;
-}
-
-button.jhs-lp-batch-star:hover {
-    color: var(--jhs-color-warning);
-    transform: scale(1.1);
-}
-
-button.jhs-lp-batch-star[disabled] {
-    color: #d0d0d0;
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* 收藏 / 已读 / 拉黑：沿用详情页配色（rating-bar.css），紧凑化 */
-.jhs-lp-batch-btn.jhs-fav-btn,
-.jhs-lp-batch-btn.jhs-read-btn,
-.jhs-lp-batch-btn.jhs-block-btn {
-    display: inline-flex;
-    align-items: center;
-    height: 26px;
-    padding: 0 10px;
-    font-size: var(--jhs-font-size-sm);
-    font-weight: 600;
-    line-height: 1;
-}
-
-/* ========== 状态（禁用 / 压下 / 焦点环） ========== */
-
-.jhs-lp-batch-btn:active:not([disabled]) {
-    transform: scale(0.97);
-}
-
-.jhs-lp-batch-btn[disabled] {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.jhs-lp-batch-btn:focus-visible {
-    outline: 2px solid var(--jhs-color-primary);
-    outline-offset: 2px;
-}
 
 /* ========== 响应式（≤768px：选择栏转底部横排，操作条上移让开） ========== */
 
@@ -286,21 +233,4 @@ button.jhs-lp-batch-star[disabled] {
         padding: var(--jhs-space-sm);
     }
 
-    .jhs-lp-batch-btn {
-        height: 32px;
-        padding: 0 12px;
-    }
-
-    .jhs-lp-batch-btn.jhs-fav-btn,
-    .jhs-lp-batch-btn.jhs-read-btn,
-    .jhs-lp-batch-btn.jhs-block-btn {
-        height: 32px;
-        padding: 0 12px;
-    }
-
-    button.jhs-lp-batch-star {
-        width: 30px;
-        height: 32px;
-        font-size: 22px;
-    }
 }

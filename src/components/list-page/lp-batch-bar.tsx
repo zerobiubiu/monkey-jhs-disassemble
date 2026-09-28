@@ -96,19 +96,21 @@ export interface LpBatchToolbarProps {
 /**
  * 渲染浮出操作条（选中 > 0 时出现）。
  *
- * 与详情页快捷评分条同构：`.jhs-stars` 容器 + 5 个 `.jhs-star`（data-score 1–5）+
- * 收藏 / 已读(0星) / 拉黑；样式契约由 `rating-bar.css` 提供，按列表页场景做紧凑化覆盖。
+ * **与详情页快捷评分条同构**（参照 `.jhs-rating-bar`）：
+ * - 第一行 `.jhs-stars` + 5 个 `.jhs-star`（`data-score` 1–5）；
+ * - 第二行操作区：计数 + `.jhs-fav-btn`（♥ 收藏）/ `.jhs-read-btn`（已读）/
+ *   `.jhs-block-btn`（🚫 拉黑），文案与类名照搬参照实现。
  *
- * @returns `.jhs-lp-batch-bar` JSX（按钮带 data-act / data-score）
+ * 星与三态按钮**只带 rating-bar.css 的类名**（不再加本地紧凑类）：视觉完全沿用详情页那一套；
+ * `data-act` / `data-score` 供委托监听定位。
+ *
+ * @returns `.jhs-lp-batch-bar` JSX
  */
 export function LpBatchToolbar({ count, busy }: LpBatchToolbarProps) {
     // 操作在「无选择」时禁用（没选任何卡片时执行无意义）
     const disabled = busy || count === 0;
     return (
         <div className="jhs-lp-batch-bar">
-            <span className="jhs-lp-batch-count">
-                已选 <strong>{count}</strong>
-            </span>
             <span
                 className={`jhs-stars${busy ? ' is-disabled' : ''}`}
                 title="点第 N 颗星 = 已读 N 星"
@@ -116,7 +118,7 @@ export function LpBatchToolbar({ count, busy }: LpBatchToolbarProps) {
                 {LP_BATCH_SCORES.map((score) => (
                     <button
                         type="button"
-                        className="jhs-star jhs-lp-batch-star"
+                        className="jhs-star"
                         data-act="watched"
                         data-score={score}
                         disabled={disabled}
@@ -126,31 +128,36 @@ export function LpBatchToolbar({ count, busy }: LpBatchToolbarProps) {
                     </button>
                 ))}
             </span>
-            <button
-                type="button"
-                className="jhs-fav-btn jhs-lp-batch-btn"
-                data-act="favorite"
-                disabled={disabled}
-            >
-                收藏
-            </button>
-            <button
-                type="button"
-                className="jhs-read-btn jhs-lp-batch-btn"
-                data-act="watched"
-                data-score={0}
-                disabled={disabled}
-            >
-                已读
-            </button>
-            <button
-                type="button"
-                className="jhs-block-btn jhs-lp-batch-btn"
-                data-act="filter"
-                disabled={disabled}
-            >
-                拉黑
-            </button>
+            <span className="jhs-lp-batch-actions">
+                <span className="jhs-lp-batch-count">
+                    已选 <strong>{count}</strong>
+                </span>
+                <button
+                    type="button"
+                    className="jhs-fav-btn"
+                    data-act="favorite"
+                    disabled={disabled}
+                >
+                    ♥ 收藏
+                </button>
+                <button
+                    type="button"
+                    className="jhs-read-btn"
+                    data-act="watched"
+                    data-score={0}
+                    disabled={disabled}
+                >
+                    已读
+                </button>
+                <button
+                    type="button"
+                    className="jhs-block-btn"
+                    data-act="filter"
+                    disabled={disabled}
+                >
+                    🚫 拉黑
+                </button>
+            </span>
         </div>
     );
 }

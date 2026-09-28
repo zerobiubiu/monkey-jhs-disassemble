@@ -11,6 +11,14 @@
 
 ## v1.46.9
 
+## v1.46.31
+
+### 修复 / 优化（实测反馈六轮）
+- **批量操作条与详情页快捷评分条完全同构**（doc/36）：星与三态按钮**删除本地紧凑类**，改用 `rating-bar.css` 的 `jhs-star` / `jhs-fav-btn` / `jhs-read-btn` / `jhs-block-btn`（星 26px；按钮 `padding 5px 16px`、14px 字、6px 圆角、灰描边），结构改**两行**（星行 + 动作行 `jhs-lp-batch-actions`），文案对齐参照（`♥ 收藏` / `已读` / `🚫 拉黑`）。`lp-batch.css` 只保留容器/计数/禁用态。
+- **列表页补注入 `rating-bar.css`**（`ListPagePlugin.initCss()`）：该样式表原本只在详情页注入，否则列表页这些类名无样式。
+- **修正星级悬停预览**：原先仅靠 CSS `:hover` 只亮一颗；现补 `bindStarPreview`（与详情页逐行同构）—— `pointerover` 时**第 N 颗及其前面全部**加 `is-preview`，`pointerleave` 时清除。
+- 新增 2 用例（30 文件 / 321 用例）。
+
 ## v1.46.30
 
 ### 修复 / 优化（实测反馈四、五轮）

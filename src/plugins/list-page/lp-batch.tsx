@@ -320,6 +320,32 @@ function renderActionBar(): void {
     barEl.innerHTML = jsxToString(
         <LpBatchToolbar count={selection.size} busy={busy} />
     );
+    bindStarPreview(barEl);
+}
+
+/**
+ * 绑定星星悬停预览（与详情页快捷评分条一致的行为）。
+ *
+ * 指针进入第 N 颗时，**第 N 颗及其前面所有**都加 `is-preview`（`index < score`），
+ * 离开整个星级容器时全部清除 —— 之前的 CSS-only `:hover` 只会亮悬停的那一颗，不正确。
+ *
+ * 每次渲染都是新元素，监听器随旧元素回收（不会重复叠加）。
+ *
+ * @param container 操作条容器（`.jhs-lp-batch-layer`）
+ */
+function bindStarPreview(container: HTMLElement): void {
+    const starsEl = container.querySelector<HTMLElement>('.jhs-stars');
+    if (!starsEl) return;
+    const stars = Array.from(starsEl.querySelectorAll<HTMLElement>('.jhs-star'));
+    starsEl.addEventListener('pointerover', (event: Event) => {
+        const star = (event.target as HTMLElement).closest<HTMLElement>('.jhs-star');
+        if (!star) return;
+        const score = Number(star.dataset.score ?? 0);
+        stars.forEach((el, index) => el.classList.toggle('is-preview', index < score));
+    });
+    starsEl.addEventListener('pointerleave', () => {
+        stars.forEach((el) => el.classList.remove('is-preview'));
+    });
 }
 
 /**

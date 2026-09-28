@@ -116,6 +116,29 @@ describe('LpBatchToolbar 渲染契约', () => {
     });
 });
 
+describe('操作条与详情页评分条的类名契约', () => {
+    it('星与三态按钮只带 rating-bar.css 的类名（不再加本地紧凑类）', () => {
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 2, busy: false }));
+        expect(html).toContain('class="jhs-star"');
+        expect(html).toContain('class="jhs-fav-btn"');
+        expect(html).toContain('class="jhs-read-btn"');
+        expect(html).toContain('class="jhs-block-btn"');
+        // 本地紧凑类不得再出现（视觉已全部交还 rating-bar.css）
+        expect(html).not.toContain('jhs-lp-batch-star');
+        expect(html).not.toContain('jhs-lp-batch-btn');
+        // 两行结构：星级行 + 操作行
+        expect(html).toContain('class="jhs-stars"');
+        expect(html).toContain('class="jhs-lp-batch-actions"');
+    });
+
+    it('文案与详情页参照一致（♥ 收藏 / 已读 / 🚫 拉黑）', () => {
+        const html = jsxToString(createElement(LpBatchToolbar, { count: 1, busy: false }));
+        expect(html).toContain('♥ 收藏');
+        expect(html).toContain('已读');
+        expect(html).toContain('🚫 拉黑');
+    });
+});
+
 describe('LpBatchSideBar 渲染契约（常驻竖排选择组）', () => {
     it('含请求列表 / 全选 / 反选 / 清空四枚竖排按钮', () => {
         const html = jsxToString(createElement(LpBatchSideBar, { hasSelection: true }));

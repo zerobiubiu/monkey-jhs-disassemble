@@ -59,6 +59,7 @@ import {
 } from './list-page/lp-batch';
 
 import lpBatchCssRaw from '../styles/list-page/lp-batch.css?raw';
+import ratingBarCssRaw from '../styles/rating-bar.css?raw';
 
 export class ListPagePlugin extends BasePlugin {
     // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
@@ -100,7 +101,9 @@ export class ListPagePlugin extends BasePlugin {
      * @returns CSS 文本
      */
     async initCss(): Promise<string> {
-        return lpBatchCssRaw;
+        // rating-bar.css：批量操作条与详情页快捷评分条**同构**（星 / 收藏 / 已读 / 拉黑
+        // 复用同一套类名与样式契约），列表页也需注入；lp-batch.css 负责容器与选择栏。
+        return `${ratingBarCssRaw}\n${lpBatchCssRaw}`;
     }
 
     /** 列表页主处理。对应原 L8301-8339。 */
