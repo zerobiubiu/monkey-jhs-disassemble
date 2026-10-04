@@ -27,7 +27,7 @@
 | `10-list-management.md` | 阶段 | 清单功能深化（doc/200–217） | 清单序号合并、编号整理压实（期0–期2）、清单管理器、收藏双向同步、Git 备份通道 |
 | `11-missav-and-finale.md` | 阶段 | MissAV 专区与收尾（doc/218–242） | MissAV 专区功能（瀑布流/筛选/预览弹窗）、评价状态自动校验、CDN @require 反转、依赖升级 |
 | `12-indexeddb-persistent-data-migration.md` | 变更 | v1.46.3–1.46.4 | JavDB 大型 localStorage 缓存与恢复日志迁移；保留现有 JavDB/MissAV IndexedDB 和 GM 跨站同步 |
-| `13-merged-row-uncheck-silent-failure.md` | 变更 | 待办（未修复） | 详情页合并行「取消」动作端与展示端共用同一原生 checkbox 查找器导致的静默失败；现场取证、代码定位与候选修法，待可复现时处理 |
+| `13-merged-row-uncheck-silent-failure.md` | 变更 | 已被 doc/41 修复 | 详情页合并行「取消」动作端与展示端共用同一原生 checkbox 查找器导致的静默失败；现场取证、代码定位与候选修法。缺陷本体由 `41-merged-row-uncheck-fix.md`（v1.47.3）修复 |
 | `14-visit-history-no-limit-and-fallback-lookup.md` | 变更 | v1.46.5 | 访问记录取消 5000 条上限；新增 `lookupVisitTime` 回退匹配（同 pathname 最新记录），修复翻页/筛选参数不一致时误报「无访问记录」 |
 | `15-other-site-preload-cache-remove-limit.md` | 变更 | v1.46.6 | 外站预加载缓存取消 5000 条上限（删除 `PRELOAD_CACHE_MAX`/`evictStaleCache` LRU 淘汰）；有效期仍由 `preloadCacheTTL` 控制 |
 | `16-design-system-context-and-detector-exceptions.md` | 变更 | v1.46.7 | 建立 `DESIGN.md` 视觉设计系统快照（按实际渲染值重建，区分意图斜坡与存量普查阶）；记录 7 个样式表的零偏差契约；检测器 warning 14 → 0（3 项真实修复 + 8 条带理由的例外登记） |
@@ -54,6 +54,9 @@
 | `37-detail-page-status-ops-non-blocking.md` | 变更 | v1.46.33 | 详情页状态操作**不阻塞**（实测：关详情页/切弹窗要等站点响应）：定位到真正阻塞点是 `closePage()` 前 `await waitForPendingPush()` —— 该 pending 把「本地 journal 写入」与「全量快照**上传**」混在一个 Promise 里（doc/195 初衷是保护本地 GM 写入）；拆为 `pendingJournal`（关页只等它，毫秒级）/ `pendingPush`（含上传，由修订号门控在下次加载自愈续传）；三处静默 `.catch(() => {})` 改为 `clog.warn` + 非阻塞 `show.error`；`quickBlock` 关页前补本地持久化等待。含未决项：站点**原生**想看/看过按钮的乐观写入需真实 DOM 样本，不猜选择器 |
 | `38-operation-sync-status-panel.md` | 变更 | v1.47.0 | 「视频操作同步状态」设置面板（可查 + 可操作）：批量/详情页的网站推送原只有**内存队列 + 聚合计数**（关页即失、无逐条信息、失败原因只能翻日志）→ 新增**持久化逐条记录** `op-sync-records`（状态机 pending/running/success/failed/cancelled，GM 键单存，容量 400、优先淘汰终态，不进备份、不改 schema）；`lp-batch-sync` 入队/step/缺 videoId 均记账并暴露 `retryOpSync`/`retryFailedOpSync`/`cancelOpSync`；详情页三条路径带 `origin:'detail'` 记账；新增设置面板（摘要 + 表格 + 刷新/重试全部失败/清理已结束 + 行内重试/取消），取消与失败**不回滚**本地状态。新增 17 用例 |
 | `39-cache-invalidation-split-by-write-kind.md` | 变更 | v1.47.1 | 「打开新视频弹窗要等旧视频操作落库」的根因：`lp-dom` 打开路径 `await getSetting('dialogOpenDetail')` 本应命中内存缓存，但 `main.tsx` 的 `onRemoteChange` 对**任何**远程变更都清设置缓存 → 详情页 iframe 每写一次 car_list 就把父页设置缓存清掉 → 下次点卡片的设置读取落到 **IndexedDB**，而同源 IDB 读写串行、排在写事务之后。修法：修订号拆为「数据 / 设置」两条（`incrementSettings()`），新增 `invalidateCachesFor(kind)` 分流失效（数据不带设置、设置不带数据）；附带发现 `clean_cacheSettingObj` 广播无监听者。新增 4 用例 |
+| `40-builtin-cache-probe.md` | 变更 | v1.47.2 | 内置缓存诊断探针：油猴沙箱下由 GM 菜单两条命令执行（①记录快照 ②检查是否被数据写入连带清空；OK/BAD/WARN 判据 → 日志面板 + 剪贴板）；只读 `cacheSettingObj`，不写任何数据。新增 7 用例（34 文件 / 349 用例） |
+| `41-merged-row-uncheck-fix.md` | 变更 | v1.47.3 | 合并行「取消」静默失败修复（承接 `13`）：原生派发失败重试一次、仍失败走 VLT 服务端管线兜底（未解析成员按本地关联纳入取消范围）；未知成员保持半选、不再伪装成已取消；加入路由与本地 `VltDb` 关联交叉校验，防「塞进同组第二个清单」。新增 13 用例（35 文件 / 362 用例） |
+| `42-release-notes-and-version-hygiene.md` | 变更 | v1.47.3 | 发布链路与版本治理：`release.yml` 提取改为「止于下一个 `## v`」（修复 34 版本 / 243 行吞噬）；清理空 `## v1.46.9` 标题与 v1.13.3 双标题；`package.json` version 与 `userscript.version` 对齐 + 新增 `bun run check:version` 门禁；补写欠档 `docs/33`；README 索引补 40–42 行 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
@@ -135,6 +138,7 @@
 ### 3.3 版本号与文档
 
 - 纯文档修改（`docs/` 下的 `.md`）、纯 `AGENTS.md` 修改不递增 `userscript.version`（见 AGENTS.md §6.1.1）。
+- `package.json` 的 `version` 与 `userscript.version` 的同步与校验：`bun run check:version`（见 AGENTS.md §6.3）。
 - 文档变更若同时含 `src/` 逻辑修改，按 AGENTS.md §6.1.1 正常递增。
 
 ### 3.4 执行验证记录

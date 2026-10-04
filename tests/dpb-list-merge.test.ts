@@ -12,6 +12,7 @@ import {
     compileMergePattern,
     computeGroupCheckState,
     DEFAULT_LIST_MERGE_PATTERN,
+    findLocallyContained,
     groupEntries,
     isMemberFull,
     isMergeExcluded,
@@ -285,5 +286,37 @@ describe('computeGroupCheckState', () => {
         });
         expect(state.checked).toBe(false);
         expect(state.indeterminate).toBe(false);
+    });
+});
+
+describe('findLocallyContained', () => {
+    const members = [
+        { listId: 'A', name: '等待更新1' },
+        { listId: 'B', name: '等待更新2' }
+    ];
+
+    it('url 中的 listId 命中', () => {
+        const hit = findLocallyContained(members, [
+            { name: '任意名字', url: 'https://javdb.com/lists/B?locale=zh' }
+        ]);
+        expect(hit.map((m) => m.listId)).toEqual(['B']);
+    });
+
+    it('url 缺失时按清单名命中', () => {
+        const hit = findLocallyContained(members, [{ name: '等待更新1', url: null }]);
+        expect(hit.map((m) => m.listId)).toEqual(['A']);
+    });
+
+    it('未命中返回空数组', () => {
+        expect(
+            findLocallyContained(members, [
+                { name: '别的清单', url: 'https://javdb.com/lists/X' }
+            ])
+        ).toEqual([]);
+    });
+
+    it('空关联或空候选直接返回空数组', () => {
+        expect(findLocallyContained(members, [])).toEqual([]);
+        expect(findLocallyContained([], [{ name: '等待更新1', url: null }])).toEqual([]);
     });
 });

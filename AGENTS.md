@@ -115,6 +115,7 @@ GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 - **Stylelint**：`bun run lint:css`（`.stylelintrc.json`，CSS 一致性检查）
 - **结构门禁**：`bun run check:structure`（§10/§11 文件行数与目录扁平度棘轮）
 - **文档一致性门禁**：`bun run check:docs`（`docs/plugin-catalog.md` ↔ `src/main.tsx` 注册数、`src/core/` 文件数、catalog 内计数陈述；均不接入 build/lint/test）
+- **版本一致性门禁**：`bun run check:version`（`package.json` version 与 `vite.config.ts` `userscript.version` 漂移即 FAIL；均不接入 build/lint/test）
 
 ### 3.9 产品设计上下文 `PRODUCT.md`
 
@@ -160,6 +161,7 @@ GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 
 - 格式 `major.minor.patch`：patch = 修 bug/小改动/优化；minor = 新增插件/功能模块/较大变更（patch 归零）；major = 架构级重构/不兼容（minor/patch 归零）
 - 纯文档修改（`docs/` 下 `.md`）、纯 `AGENTS.md` 修改、`vite.config.ts` 自身构建配置（不改源码逻辑）均不递增
+- `package.json` 的 `version` 须与 `userscript.version` 保持同步（同步属元数据修正、不另行递增；`bun run check:version` 校验漂移）
 - **时机**：代码修改完成、`tsc -b && vite build` 验证通过后，在最终回复前递增
 - **验证**：构建产物 userscript 头部 `@version` 应与 `vite.config.ts` 一致
 
@@ -175,8 +177,8 @@ GM API 已类型化，应用全局仍为 `any`（后续逐步消除）。
 - 被测模块为纯函数（`react.createElement` 构造节点，无需 JSX 转换或 DOM）
 - seam：`StorageManager` 构造函数 `constructor(forageInstance?: unknown)` 可注入替身 + `static __resetForTesting()`；参数用 `unknown`（遵守「触及文件时消除新增 any」）
 - devDependencies：`vitest` + `jsdom`
-- **版本规则交互**：仅改测试（tests/、vitest.config.ts、package.json 的 scripts/deps/version）不递增 `userscript.version`；package.json version 与 userscript.version 同步属元数据修正
-- 当前套件（13 个测试文件）：jsx-to-string（doc/151 XSS 转义，9 用例）· backup-crypto（doc/137 AES-GCM 往返，8 用例）· storage-migration（doc/135/162/163 迁移契约 + 附件路径，7 用例，jsdom + 手写 FakeForage）· car-status-consume（跨站同步消费侧，34 用例）· dpb-list-merge（doc/200 清单合并，33 用例）· lr-planner（doc/202 压实规划，8 用例）· lr-execute（doc/216 压实执行，8 用例）· git-backup-client（doc/217 Git 备份，21 用例）· missav-auto-page（doc/220 瀑布流，14 用例，jsdom）· missav-status-filter（doc/222 状态筛选，21 用例，jsdom）· missav-status-filter-ui（接线契约，1 用例，jsdom）· missav-video-preview（doc/228 预览弹窗，9 用例，jsdom）· jquery4-layer-compat（doc/242 jquery4×layer 兼容回归，6 用例，jsdom）
+- **版本规则交互**：仅改测试（tests/、vitest.config.ts、package.json 的 scripts/deps/version）不递增 `userscript.version`；package.json version 与 userscript.version 同步属元数据修正（`bun run check:version` 校验漂移）
+- 当前套件（35 个测试文件 / 362 用例，截至 v1.47.3）：async-task-queue（10 用例）· backup-crypto（doc/137 AES-GCM 往返，8 用例）· batch-selection-and-chip-visibility（勾选集合与评分芯片可见性，8 用例）· batch-ui-render（doc/33 批量 UI 渲染契约，8 用例）· cache-probe（doc/40 内置缓存诊断探针，7 用例，jsdom）· car-status-consume（跨站同步消费侧，34 用例）· dpb-list-merge（doc/200 清单合并，37 用例）· dpb-list-merge-ui（doc/41 合并行路由回归，9 用例，jsdom + 假时钟）· git-backup-client（doc/217 Git 备份，21 用例）· jhs-sync-review-id（doc/214 reviewId 提取，6 用例）· jquery4-layer-compat（doc/242 jquery4×layer 兼容回归，6 用例，jsdom）· jsx-to-string（doc/151 XSS 转义 + doc/19 aria 序列化，17 用例）· lp-batch-delegation（doc/33 委托白名单回归，10 用例）· lp-batch-state（doc/27 批量计划纯逻辑，9 用例）· lp-batch-sync（doc/31 后台推送队列，8 用例）· lr-execute（doc/216 压实执行，8 用例）· lr-planner（doc/202 压实规划，8 用例）· missav-auto-page（doc/220 瀑布流，14 用例，jsdom）· missav-status-filter（doc/222 状态筛选，21 用例，jsdom）· missav-status-filter-ui（接线契约，1 用例，jsdom）· missav-video-preview（doc/228 预览弹窗，9 用例，jsdom）· op-sync-records（doc/38 操作同步账本，12 用例）· op-sync-table（doc/38 面板表格渲染，5 用例）· osp-preload-order（doc/25 预加载优先级，5 用例）· persistent-data-migration（doc/12 持久数据迁移校验，5 用例）· preload-task-registry（doc/26 请求列表注册表，9 用例）· rating-backup-roundtrip（doc/29 评分备份往返，3 用例）· rating-persist（doc/29 评分落库，7 用例）· site-selectors（doc/22 注册表查询 API，11 用例）· stf-score（doc/24 星级索引，13 用例）· stf-score-fallback（doc/28 评分回退源，8 用例）· storage-cache-invalidation（doc/39 分流失效，4 用例）· storage-migration（doc/135/162/163 迁移契约 + 附件路径，7 用例，jsdom + 手写 FakeForage）· util-site-selectors（doc/21 选择器工具，4 用例）· visit-history-lookup（doc/14 回退匹配，10 用例）
 
 ## 7. 文档规范与文档相关要求
 

@@ -48,8 +48,9 @@ jobs:
                   echo "提取到版本号：$VERSION（tag: v$VERSION）"
 
                   # 从 CHANGELOG.md 提取最新版本条目：
-                  #   从第一个 `## v` 行开始打印，直到遇到下一个 `---`（不含分隔线本身）
-                  awk '/^## v/{f=1} f&&/^---$/{exit} f{print}' changelog/CHANGELOG.md \
+                  #   从第一个 `## v` 行开始打印，直到遇到下一个版本标题（`## v`，不含该行）
+                  #   （条目之间不要求 `---` 分隔；历史分隔线行不参与判定）
+                  awk '/^## v/{n++; if(n>1) exit} n>=1{print}' changelog/CHANGELOG.md \
                     > release_notes.md
 
                   echo "::group::最新更新日志"

@@ -16,11 +16,16 @@ import { sleep } from '../../core/util/util-misc';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import { createList } from '../video-lists-tag/vlt-create-list-api';
+import { VltDb } from '../video-lists-tag/vlt-db';
+import { enqueueServerCheckboxMutation } from '../video-lists-tag/vlt-server';
+import { getListInfo, getMovieInfo } from '../video-lists-tag/vlt-helpers';
+import type { ListInfo, MovieInfo } from '../video-lists-tag/vlt-helpers';
 
 import type { DetailListEntry, DetailListPanelElement } from './dpb-list-panel';
 import {
     buildMergeConfig,
     computeGroupCheckState,
+    findLocallyContained,
     groupEntries,
     isMemberFull,
     nextListName,
@@ -109,12 +114,23 @@ function parseMemberRefs(groupElement: HTMLElement): GroupMemberRef[] {
     }
 }
 
-/** 依据原生容器实时状态构建组成员列表（用于路由与展示刷新）。 */
-function liveMembers(groupElement: HTMLElement): ListMember[] {
+/**
+ * 依据原生容器实时状态构建组成员列表（用于路由与展示刷新）。
+ * 原生 checkbox 查不到的成员（容器重建中/未载入分页）不静默丢弃，单列返回，
+ * 供展示端区分「未含片」与「状态未知」（doc/13 修复）。
+ */
+function liveMembers(groupElement: HTMLElement): {
+    members: ListMember[];
+    unresolved: GroupMemberRef[];
+} {
     const members: ListMember[] = [];
+    const unresolved: GroupMemberRef[] = [];
     for (const ref of parseMemberRefs(groupElement)) {
         const input = findNativeInput(ref.id);
-        if (!input) continue;
+        if (!input) {
+            unresolved.push(ref);
+            continue;
+        }
         members.push({
             listId: ref.id,
             name: ref.name,
@@ -124,7 +140,7 @@ function liveMembers(groupElement: HTMLElement): ListMember[] {
             disabled: input.disabled
         });
     }
-    return members;
+    return { members, unresolved };
 }
 
 /**
@@ -189,7 +205,7 @@ function renderMemberDetail(groupElement: HTMLElement, members: ListMember[]): v
  * @param groupElement 合并行根元素 .jhs-list-group
  */
 export function refreshMergedRowDisplay(groupElement: HTMLElement): void {
-    const members = liveMembers(groupElement);
+    const { members, unresolved } = liveMembers(groupElement);
     const checkbox = groupElement.querySelector<HTMLInputElement>(
         '.jhs-list-item__label input[type="checkbox"]'
     );
@@ -202,7 +218,8 @@ export function refreshMergedRowDisplay(groupElement: HTMLElement): void {
     const base = groupElement.dataset.listGroup || '';
     const state = computeGroupCheckState({ base, members } as ListGroup);
     checkbox.checked = state.checked;
-    checkbox.indeterminate = state.indeterminate;
+    // 状态未知的成员不得被展示端当作「未含片」：保持半选，避免出现“已取消”的错觉
+    checkbox.indeterminate = state.indeterminate || unresolved.length > 0;
 
     const allKnown = members.length > 0 && members.every((m) => m.count !== null);
     const total = members.reduce((sum, m) => sum + (m.count ?? 0), 0);
@@ -222,7 +239,7 @@ export function refreshMergedRowDisplay(groupElement: HTMLElement): void {
 
     if (toggle) {
         const expanded = Boolean(detail && !detail.hidden);
-        toggle.textContent = `${expanded ? '▾' : '▸'} ${members.length} 个清单`;
+        toggle.textContent = `${expanded ? '▾' : '▸'} ${members.length + unresolved.length} 个清单`;
     }
     renderMemberDetail(groupElement, members);
 }
@@ -333,6 +350,52 @@ function setGroupBusy(groupElement: HTMLElement, busy: boolean): void {
     }
 }
 
+/** 读取当前详情页影片信息（供原生 checkbox 不可用时的服务端兜底使用）。 */
+function getCurrentMovieInfo(): MovieInfo | null {
+    const videoId = window.location.pathname.match(/\/v\/([^/?#]+)/)?.[1];
+    if (!videoId) return null;
+    return getMovieInfo(videoId);
+}
+
+/** 查询当前影片在本地的清单关联；非详情页或查询失败时返回 null。 */
+async function queryLocalMemberships(): Promise<Array<{ name: string; url: string | null }> | null> {
+    const movieInfo = getCurrentMovieInfo();
+    if (!movieInfo) return null;
+    try {
+        const map = await VltDb.queryMoviesLists([movieInfo.designation]);
+        return map[movieInfo.designation] || [];
+    } catch (error) {
+        clog.warn('[JHS] 本地清单关联查询失败，按原生状态继续', error);
+        return null;
+    }
+}
+
+/**
+ * 取消单个成员在当前影片上的勾选：原生 checkbox → 重试一次 → VLT 服务端管线直连兜底。
+ * 兜底路径绕过原生 DOM（容器重建/成员未载入分页时原生查找会失败），
+ * 由服务端管线完成「先服务端、后本地镜像」的移除（doc/13 修法 1）。
+ * @returns 是否已实际送达（原生已派发或服务端管线成功执行）
+ */
+async function cancelMemberAssociation(listId: string, name: string): Promise<boolean> {
+    if (setNativeCheckbox(listId, false)) return true;
+    await sleep(SERIAL_CHANGE_GAP_MS);
+    if (setNativeCheckbox(listId, false)) return true;
+    const movieInfo = getCurrentMovieInfo();
+    if (!movieInfo) {
+        clog.warn('[JHS] 清单移除兜底失败：无法读取当前影片信息', listId);
+        return false;
+    }
+    const listInfo: ListInfo = getListInfo(listId);
+    if (!listInfo.info.name) listInfo.info.name = name;
+    try {
+        await enqueueServerCheckboxMutation(movieInfo, listInfo, false, null, true);
+        return true;
+    } catch (error) {
+        clog.error('[JHS] 清单移除兜底失败', listId, error);
+        return false;
+    }
+}
+
 /** 加入路由：已在组内则提示；否则入最靠前未满清单；全满则自动新建。 */
 async function addToGroup(
     plugin: DetailPageButtonPlugin,
@@ -340,11 +403,23 @@ async function addToGroup(
     groupElement: HTMLElement
 ): Promise<void> {
     const base = groupElement.dataset.listGroup || '';
-    const members = liveMembers(groupElement);
+    const { members } = liveMembers(groupElement);
     const state = computeGroupCheckState({ base, members } as ListGroup);
     if (state.containing.length > 0) {
         refreshMergedRowDisplay(groupElement);
         plugin._showListPanelNotice(panel, '该影片已在此清单组中');
+        return;
+    }
+    // 原生勾选态可能滞后（本地已写、站点刷新未回）：与本地关联交叉校验，
+    // 避免把已在组内清单的影片再塞进同组第二个清单（doc/13 修法 3）
+    const localContained = findLocallyContained(members, (await queryLocalMemberships()) || []);
+    if (localContained.length > 0) {
+        refreshMergedRowDisplay(groupElement);
+        plugin._showListPanelNotice(
+            panel,
+            `该影片已在「${localContained[0].name}」（本地记录），请稍后重试或刷新页面`
+        );
+        plugin._scheduleListPanelSync(0);
         return;
     }
     const target = pickTargetMember(members);
@@ -381,15 +456,23 @@ async function addToGroup(
     }
 }
 
-/** 移除路由：从组内所有含片清单串行移除。 */
+/** 移除路由：从组内所有含片清单串行移除；原生不可见的成员按本地关联兜底（doc/13）。 */
 async function removeFromGroup(
     plugin: DetailPageButtonPlugin,
     panel: DetailListPanelElement,
     groupElement: HTMLElement
 ): Promise<void> {
-    const members = liveMembers(groupElement);
+    const { members, unresolved } = liveMembers(groupElement);
     const containing = sortMembersByNum(members.filter((m) => m.checked));
-    if (containing.length === 0) {
+    // 原生不可见的成员（未载入分页/容器重建）若本地关联记录显示含片，同样纳入取消范围
+    const unresolvedContained =
+        unresolved.length > 0
+            ? findLocallyContained(
+                  unresolved.map((ref) => ({ listId: ref.id, name: ref.name })),
+                  (await queryLocalMemberships()) || []
+              )
+            : [];
+    if (containing.length === 0 && unresolvedContained.length === 0) {
         refreshMergedRowDisplay(groupElement);
         return;
     }
@@ -397,8 +480,13 @@ async function removeFromGroup(
     setGroupBusy(groupElement, true);
     const failed: string[] = [];
     for (const member of containing) {
-        const ok = setNativeCheckbox(member.listId, false);
+        const ok = await cancelMemberAssociation(member.listId, member.name);
         if (!ok) failed.push(member.name);
+        await sleep(SERIAL_CHANGE_GAP_MS);
+    }
+    for (const ref of unresolvedContained) {
+        const ok = await cancelMemberAssociation(ref.listId, ref.name);
+        if (!ok) failed.push(ref.name);
         await sleep(SERIAL_CHANGE_GAP_MS);
     }
     delete groupElement.dataset.jhsBusy;
@@ -440,7 +528,7 @@ export async function reflowGroup(
     groupElement: HTMLElement
 ): Promise<void> {
     if (groupElement.dataset.jhsBusy === '1') return;
-    const members = liveMembers(groupElement);
+    const { members } = liveMembers(groupElement);
     const containing = sortMembersByNum(members.filter((m) => m.checked));
     if (containing.length <= 1) {
         plugin._showListPanelNotice(panel, '当前影片在该清单组内无需整理');

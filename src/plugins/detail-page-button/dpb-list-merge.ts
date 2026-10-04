@@ -179,6 +179,33 @@ export function pickTargetMember(members: ListMember[]): ListMember | null {
 }
 
 /**
+ * 从本地关联记录中筛选出「确认已含片」的候选成员。
+ *
+ * 用途：原生 checkbox 状态不可用或滞后时的交叉校验依据（doc/13 修复）——
+ * 取消时用于识别未解析成员是否确实含片；加入时用于阻止把已在组内的影片
+ * 再塞进同组第二个清单。匹配口径：关联条目的 url 中含同一 listId
+ *（`/lists/{id}`），或清单名与成员名完全一致。
+ *
+ * @param candidates 待校验的成员（至少含 listId/name）
+ * @param localEntries 本地关联的清单条目（VltDb.queryMoviesLists 的单番号结果）
+ * @returns 命中本地关联的成员（保持入参顺序）
+ */
+export function findLocallyContained<T extends { listId: string; name: string }>(
+    candidates: readonly T[],
+    localEntries: ReadonlyArray<{ name: string; url: string | null }>
+): T[] {
+    if (candidates.length === 0 || localEntries.length === 0) return [];
+    const ids = new Set<string>();
+    const names = new Set<string>();
+    for (const entry of localEntries) {
+        const matched = entry.url ? /\/lists\/([^/?#]+)/.exec(entry.url) : null;
+        if (matched?.[1]) ids.add(matched[1]);
+        if (entry.name) names.add(entry.name);
+    }
+    return candidates.filter((member) => ids.has(member.listId) || names.has(member.name));
+}
+
+/**
  * 计算组的下一清单名（用于全满时自动新建）。
  * 规则：base + (现有最大序号 + 1)。
  * @param group 合并组
