@@ -51,3 +51,6 @@ docs/troubleshooting/gitnexus-fts.md
 
 # impeccable 评审快照（可重建的工具产物；config.json / design.json 仍入库）
 .impeccable/critique/
+
+# omp 项目级 MCP 配置（机器绑定绝对路径，不入库；AOCI-CODE 要求）
+.omp/mcp.json
