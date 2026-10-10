@@ -19,7 +19,12 @@ vi.mock('../src/constants/site', () => ({
     isMissavSite: false
 }));
 
-import { detectPageContext, initPageContext, isVideoListContext } from '../src/core/page-context';
+import {
+    detectPageContext,
+    initPageContext,
+    isJavdbHomePath,
+    isVideoListContext
+} from '../src/core/page-context';
 
 /** 替身 jQuery：只提供检测用到的 `.movie-list` 计数。 */
 function stubMovieList(count: number): void {
@@ -67,5 +72,24 @@ describe('JavDB 首页判定', () => {
         expect(ctx.site).toBe('javdb');
         expect(ctx.isJavdbSite).toBe(true);
         expect(ctx.isMissavSite).toBe(false);
+    });
+});
+
+describe('isJavdbHomePath（doc/51 的按页面 CSS 作用域共用同一判定）', () => {
+    it('`/` 与空串为首页', () => {
+        expect(isJavdbHomePath('/')).toBe(true);
+        expect(isJavdbHomePath('')).toBe(true);
+    });
+
+    it('其它路径不是首页', () => {
+        expect(isJavdbHomePath('/search?q=a')).toBe(false);
+        expect(isJavdbHomePath('/users/want_watch')).toBe(false);
+        expect(isJavdbHomePath('/v/abc123')).toBe(false);
+        expect(isJavdbHomePath('/actors/MVzk')).toBe(false);
+    });
+
+    it('detectPageContext 的 isHomePage 与它同源（首页固定为 true）', () => {
+        stubMovieList(0);
+        expect(detectPageContext().isHomePage).toBe(isJavdbHomePath(window.location.pathname));
     });
 });

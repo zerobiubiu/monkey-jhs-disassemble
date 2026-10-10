@@ -11,6 +11,18 @@
  */
 import { isJavdbSite, isMissavSite } from '../constants/site';
 
+/**
+ * 是否为 JavDB 首页路径（`/` 或空）。
+ *
+ * 抽成函数供早期代码复用（如 main.tsx 拼按页面生效的 CSS，doc/51），
+ * 与 `detectPageContext` 用同一份判定，避免两处各写一条规则。
+ *
+ * @param pathname 当前路径（默认读 location，便于测试注入）
+ */
+export function isJavdbHomePath(pathname: string = window.location.pathname): boolean {
+    return pathname === '/' || pathname === '';
+}
+
 /** 页面类型枚举。`home` = JavDB 首页（`/`，站点文档列为影片列表页；列表容器可能未检出）。 */
 export type PageType = 'detail' | 'list' | 'fc2' | 'home' | 'unknown';
 
@@ -57,9 +69,9 @@ export function detectPageContext(): PageContextResult {
         (($('.movie-list').length > 0) || href.includes('advanced_search'));
     const isFc2Page =
         href.includes('advanced_search?type=3') || href.includes('advanced_search?type=100');
-    // doc/47：首页（pathname 为空或 `/`）本身就是一个影片列表页
+    // doc/47：首页（pathname 为空或 `/`）本身就是一个影片列表页（判定见 isJavdbHomePath）
     const pathname = window.location.pathname;
-    const isHomePage = isJavdbSite && (pathname === '/' || pathname === '');
+    const isHomePage = isJavdbSite && isJavdbHomePath(pathname);
 
     const site: SiteType = isJavdbSite ? 'javdb' : isMissavSite ? 'missav' : 'unknown';
     const pageType: PageType = isDetailPage

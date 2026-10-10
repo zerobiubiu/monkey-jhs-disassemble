@@ -30,7 +30,7 @@ import {
     FAVORITE_ACTION
 } from '../constants/status';
 
-import type { PageType } from '../core/page-context';
+import { pageContext, type PageType } from '../core/page-context';
 import type { BlacklistItem } from '../core/storage-manager';
 import { jsxToString } from '../core/jsx-to-string';
 
@@ -60,6 +60,10 @@ export class ListPageButtonPlugin extends BasePlugin {
      */
     async handle(): Promise<void> {
         if (!window.isListPage) {
+            return;
+        }
+        // doc/51：首页不显示本按钮组（新作品检测/黑名单等入口）—— 其它列表页行为不变
+        if (pageContext.isHomePage) {
             return;
         }
         await this.createMenuBtn();

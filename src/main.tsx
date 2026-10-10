@@ -32,7 +32,8 @@ import { setupTooltip } from './core/tooltip';
 import { encryptCredential, decryptCredential } from './core/webdav-crypto';
 import { featureFlags } from './core/feature-flags';
 import { registerDiagnosticsMenu } from './core/plugin-diagnostics';
-import { initPageContext } from './core/page-context';
+import { initPageContext, isJavdbHomePath } from './core/page-context';
+import { siteSelector } from './core/util/site/selectors';
 import { storageRevision } from './core/storage-revision';
 import { persistentDataStore } from './core/storage/persistent-data-store';
 import { migratePersistentData } from './core/storage/persistent-data-migration';
@@ -130,7 +131,13 @@ if (window.location.href.includes('hideNav=1')) {
     javdbHideNavCss =
         '\n        .main-nav,#search-bar-container {\n            display: none !important;\n        }\n        \n        html {\n            padding-top:0px!important;\n        }\n    ';
 }
-const javdbSiteCss = javdbSiteCssRaw.replace('/*__HIDENAV2__*/', javdbHideNavCss);
+// doc/51：首页隐藏站点原生「大封面 / 小封面」切换（选择器取自注册表；非首页替换为空串）
+const hideCoverSizeCss = isJavdbHomePath()
+    ? `${siteSelector('listCoverSizeSwitch')}{display:none!important;}`
+    : '';
+const javdbSiteCss = javdbSiteCssRaw
+    .replace('/*__HIDENAV2__*/', javdbHideNavCss)
+    .replace('/*__HIDE_COVER_SIZE__*/', hideCoverSizeCss);
 function generateScrollbarCss(): string {
     const scrollbarSelectors: string[] = [
         '.jhs-scrollbar',

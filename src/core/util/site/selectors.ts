@@ -166,6 +166,13 @@ export const SITE_SELECTORS = {
     listTags: { current: '.tags.has-addons' },
     /** 列表工具栏。 */
     listToolbar: { current: 'body > section > div > div.toolbar' },
+    /**
+     * 列表页原生「大封面 / 小封面」切换（站点原始控件）。
+     *
+     * doc/51：首页按产品要求隐藏它（main.tsx 用本键拼隐藏规则；非首页不注入）。
+     * 用 `:has(a[href*="vft=1"])` 语义定位，勿用 `:nth-child(1)`（toolbar 里还有其它 button-group）。
+     */
+    listCoverSizeSwitch: { current: 'body > section > div > div.toolbar .button-group:has(a[href*="vft=1"])' },
     /** 列表工具栏按钮。 */
     listToolbarButton: { current: '.toolbar a.button' },
     /** 主标签栏。 */
