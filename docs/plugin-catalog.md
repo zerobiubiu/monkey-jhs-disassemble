@@ -85,7 +85,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **62 个文件**：顶层 26 + `storage/` 10 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **63 个文件**：顶层 26 + `storage/` 11 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -103,6 +103,7 @@
 | storage/persistent-data-backend.ts | JAV-JHS-PersistentData 的 IndexedDB 连接、记录类型与批量事务后端 |
 | storage/persistent-data-store.ts | JavDB 大型缓存/恢复日志的独立 IndexedDB 存储与兼容读写 |
 | storage/persistent-data-migration.ts | localStorage → 持久数据 IndexedDB 的复制、校验、清理与旧备份迁移 |
+| storage/external-visit-ops.ts | 外部站点访问统计读写（按番号单条记录 + 站点分列；读取失败降级为零值） |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
 | common-util.ts | 通用工具（retry/htmlTo$dom/getUrlParam/isMobile/loopDetector） |
 | toast.ts / loading.ts / logger.tsx | Toastify 封装（show.ok/error/success）/ 加载遮罩 / 日志控制台（clog） |

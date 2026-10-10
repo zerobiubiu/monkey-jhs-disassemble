@@ -27,3 +27,35 @@
     padding: 2px 6px;
     border-radius: 4px;
 }
+
+/* 外部站点访问统计（docs/45）：按钮行上方的汇总行 + 按钮内的计数徽标。 */
+
+.site-visit-total {
+    display: block;
+    margin-bottom: var(--jhs-space-xs);
+    font-size: var(--jhs-font-size-xs);
+    color: var(--jhs-color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.site-visit-total b {
+    margin: 0 2px;
+    font-size: var(--jhs-font-size-sm);
+    color: var(--jhs-color-text);
+}
+
+/* 徽标压在按钮自身底色上（结果色会随探测结果变化），故用白底 + 正文色，
+   对比度不随按钮状态色波动。 */
+.site-open-count {
+    display: inline-block;
+    min-width: 15px;
+    margin-left: var(--jhs-space-xs);
+    padding: 0 5px;
+    border-radius: var(--jhs-radius-full);
+    background-color: var(--jhs-color-bg);
+    color: var(--jhs-color-text);
+    font-size: var(--jhs-font-size-xs);
+    line-height: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

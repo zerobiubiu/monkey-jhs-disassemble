@@ -37,6 +37,7 @@ import { isJavdbSite } from '../constants/site';
 import { YES } from '../constants/status';
 
 import { AsyncTaskQueue } from '../core/async-task-queue';
+import { readExternalVisitStat } from '../core/storage/external-visit-ops';
 import { TaskSupervisor } from '../core/task-supervisor';
 import { jsxToString } from '../core/jsx-to-string';
 import type { PageType } from '../core/page-context';
@@ -55,6 +56,7 @@ import { destroyPreloadQueuePanel } from './other-site/osp-preload-panel';
 import { PreloadTaskRegistry } from './other-site/osp-preload-tasks';
 import { probeSite } from './other-site/osp-probe';
 import type { SiteConfig } from './other-site/osp-types';
+import { bindExternalVisitCounter, setVisitCounterCarNum } from './other-site/osp-visit-count';
 
 import { OtherSiteBox } from '../components/other-site/other-site-box';
 import { OtherSiteBtn } from '../components/other-site/other-site-btn';
@@ -215,7 +217,8 @@ export class OtherSitePlugin extends BasePlugin {
      * @param sourceCarNum 源番号（写入各 siteConfig.sourceCarNum 供 condition 判定），缺省为 undefined。
      * 设置项 enableLoadOtherSite !== YES 时直接返回；按钮 HTML 同时追加到
      * .movie-panel-info 与 .container .info；各站点探测为串行 await（Promise.all 内），
-     * 完成后渲染设置区与事件监听。返回 Promise<void>。
+     * 完成后渲染设置区与事件监听。同时读取该视频的外站访问统计并挂上点击计数
+     * （docs/45；绑定幂等，按钮 HTML 会被重复重建）。返回 Promise<void>。
      */
     async loadOtherSite(carNum?: string, sourceCarNum?: string): Promise<void> {
         if ((await storageManager.getSetting('enableLoadOtherSite', YES)) !== YES) {
@@ -223,6 +226,7 @@ export class OtherSitePlugin extends BasePlugin {
         }
         carNum ||= this.getPageInfo().carNum ?? '';
         const enabledSiteIds = this.getEnabledSites();
+        const visitStat = readExternalVisitStat(carNum);
         const siteButtonsHtml = this.siteConfigs
             .map((siteConfig) => {
                 siteConfig.sourceCarNum = sourceCarNum;
@@ -236,15 +240,25 @@ export class OtherSitePlugin extends BasePlugin {
                     <OtherSiteBtn
                         id={siteConfig.id}
                         enabled={enabledSiteIds.includes(siteConfig.id)}
+                        count={visitStat.bySite[siteConfig.id] ?? 0}
                     />
                 );
             })
             .join('');
         const boxHtml = jsxToString(
-            <OtherSiteBox siteButtonsHtml={siteButtonsHtml} isJavdbSite={isJavdbSite} />
+            <OtherSiteBox
+                siteButtonsHtml={siteButtonsHtml}
+                isJavdbSite={isJavdbSite}
+                visitTotal={visitStat.total}
+            />
         );
         $('.movie-panel-info').append(boxHtml);
         $('.container .info').append(boxHtml);
+        // 外站访问统计（docs/45）：登记本次详情页番号，并挂上 document 级委托计数。
+        // 本方法会被反复调用（设置开关切换 / FC2 弹窗）并每次重建按钮 HTML，
+        // 因此绑定必须幂等，计数只能发生在真实外跳的点击上。
+        setVisitCounterCarNum(carNum);
+        bindExternalVisitCounter();
         await Promise.all(
             this.siteConfigs.map(async (siteConfig) => {
                 if (

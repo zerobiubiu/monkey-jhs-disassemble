@@ -33,6 +33,7 @@ export type PersistentNamespace =
     | 'actressInfo'
     | 'scoreInfo'
     | 'visitHistory'
+    | 'externalVisit'
     | 'syncSession'
     | 'vltPending'
     | 'carSyncIntent'
@@ -48,6 +49,7 @@ export const PERSISTENT_DATA_NAMESPACES: readonly PersistentNamespace[] = [
     'actressInfo',
     'scoreInfo',
     'visitHistory',
+    'externalVisit',
     'syncSession',
     'vltPending',
     'carSyncIntent',
