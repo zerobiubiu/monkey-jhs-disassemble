@@ -9,6 +9,14 @@
 
 ---
 
+## v1.48.4
+
+### 调整（首页两处 DOM 收敛，doc/51）
+- **隐藏站点原生「大封面 / 小封面」切换**（首页）：用注册表新键 \`listCoverSizeSwitch\`（\`:has(a[href*="vft=1"])\` 语义定位，不靠 \`:nth-child\`）+ CSS 占位符按页面注入；非首页不注入、站点 DOM 不做改动，可随时回退。
+- **本脚本按钮组不在首页显示**（新作品检测 / 加入黑名单等）：\`list-page-button-plugin.handle()\` 增加 \`pageContext.isHomePage\` 守卫；其它列表页行为不变。排序能力不受影响（\`sortItems\` 不依赖按钮组 DOM）。
+- 抽出 \`isJavdbHomePath()\`，\`detectPageContext\` 与 main.tsx 的按页面 CSS 共用同一判定。
+- 用例 416 → 419（\`page-context-home\` 新增 3 例：首页路径判定与同源性）；报告了按钮组在其它列表页的覆盖面，未删除组件（等确认）。
+
 ## v1.48.3
 
 ### 修复（三根筛选栏顺序错乱，doc/50）
