@@ -1,3 +1,4 @@
+import { FILTER_BAR_PRIORITY, ensureFilterStack, mountFilterBar } from '../../core/util/site/list-mount';
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getItemPreloadStatus } from './osp-helpers';
 import { PRELOAD_QUEUE_TOGGLE_EVENT } from '../list-page/lp-batch';
@@ -60,59 +61,16 @@ export function initFilterBar(plugin: OtherSitePlugin): void {
 /** 尝试构建筛选栏（若已存在或无挂载目标则跳过）。@returns 是否已就绪。 */
 function tryBuildFilterBar(plugin: OtherSitePlugin): boolean {
     if (document.querySelector('.preload-filter-bar')) return true;
-    const target = findFilterMountTarget();
-    if (!target) return false;
-    buildFilterBar(plugin, target);
+    if (!ensureFilterStack()) return false;
+    buildFilterBar(plugin);
     return true;
-}
-
-/**
- * 按优先级查找筛选栏挂载参考元素（镜像 StatusTagFilterPlugin.findMountTarget，
- * 但优先紧随 .status-tag-filter-bar）：
- * .status-tag-filter-bar → .jhs-vlt-filter-bar → .tabs.is-boxed / .actor-tags.tags
- * → section/div 首子元素回退。挂载方向：高优先级 afterend，回退 beforebegin。
- */
-function findFilterMountTarget(): Element | null {
-    const stf = document.querySelector('.status-tag-filter-bar');
-    if (stf) return stf;
-    const vlt = document.querySelector('.jhs-vlt-filter-bar');
-    if (vlt) return vlt;
-    const isActorPage = /^\/actors\//.test(window.location.pathname);
-    if (isActorPage) {
-        const actorTags = document.querySelector('body > section > div > div.actor-tags.tags');
-        if (actorTags) return actorTags;
-    } else {
-        const tabsBoxed = document.querySelector('body > section > div > div.tabs.is-boxed');
-        if (tabsBoxed) return tabsBoxed;
-    }
-    const section = document.querySelector('body > section > div > div');
-    if (section && section.firstElementChild) {
-        if (
-            !section.firstElementChild.matches(
-                '.preload-filter-bar, .status-tag-filter-bar, .jhs-vlt-filter-bar'
-            )
-        ) {
-            return section.firstElementChild;
-        }
-    }
-    const container = document.querySelector('body > section > div');
-    if (container && container.firstElementChild) {
-        if (
-            !container.firstElementChild.matches(
-                '.preload-filter-bar, .status-tag-filter-bar, .jhs-vlt-filter-bar'
-            )
-        ) {
-            return container.firstElementChild;
-        }
-    }
-    return null;
 }
 
 /**
  * 构建筛选栏 DOM 并插入挂载参考元素之后。芯片文本含实时计数，
  * refreshChips 保留已激活状态。点击芯片 toggle active + applyPreloadFilter。
  */
-function buildFilterBar(plugin: OtherSitePlugin, mountTarget: Element): void {
+function buildFilterBar(plugin: OtherSitePlugin): void {
     const bar = document.createElement('div');
     bar.className = 'preload-filter-bar';
 
@@ -157,15 +115,8 @@ function buildFilterBar(plugin: OtherSitePlugin, mountTarget: Element): void {
 
     refreshChips();
 
-    if (
-        mountTarget.matches(
-            '.status-tag-filter-bar, .jhs-vlt-filter-bar, .actor-tags.tags, .tabs.is-boxed'
-        )
-    ) {
-        mountTarget.insertAdjacentElement('afterend', bar);
-    } else {
-        mountTarget.insertAdjacentElement('beforebegin', bar);
-    }
+    // 按优先级入栈：顺序由 FILTER_BAR_PRIORITY 决定（doc/50），不再各自找邻接栏
+    mountFilterBar(bar, FILTER_BAR_PRIORITY.preload);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation
     (bar as any)._refreshChips = refreshChips;
@@ -247,26 +198,14 @@ export function refreshFilterBar(plugin: OtherSitePlugin): void {
 }
 
 /**
- * 确保筛选栏存在且紧随其他筛选栏。流式加载/重排时由 observer 调用：
- * - 栏缺失 → 构建
- * - .status-tag-filter-bar 晚于本插件挂载 → 将本栏移至其后，保持「放在一块」
+ * 确保筛选栏存在（流式加载/重排时由 observer 调用）：栏缺失 → 构建，
+ * 顺序由 jhs-filter-stack 的优先级保证，无需再搬动位置（doc/50）
  */
 export function ensureFilterBar(plugin: OtherSitePlugin): void {
     if (!plugin.preloadStatusEnabled) return;
     if (!document.querySelector('.preload-filter-bar')) {
         tryBuildFilterBar(plugin);
     }
-    const bar = document.querySelector('.preload-filter-bar');
-    if (!bar) return;
-    const stf = document.querySelector('.status-tag-filter-bar');
-    if (stf && bar.previousElementSibling !== stf) {
-        stf.insertAdjacentElement('afterend', bar);
-        refreshFilterBar(plugin);
-        return;
-    }
-    const vlt = document.querySelector('.jhs-vlt-filter-bar');
-    if (!stf && vlt && bar.previousElementSibling !== vlt) {
-        vlt.insertAdjacentElement('afterend', bar);
-        refreshFilterBar(plugin);
-    }
+    // 顺序由 jhs-filter-stack 保证；此处只需确保芯片与当前页面同步
+    if (document.querySelector('.preload-filter-bar')) refreshFilterBar(plugin);
 }

@@ -54,11 +54,71 @@ export function findListMountPoint(pathname: string = window.location.pathname):
 }
 
 /**
- * 按挂载点把筛选栏插入 DOM。
+ * 按挂载点把筛选栏插入 DOM（单根直插，用于超时兜底等无栈场景）。
  *
- * @param mount 挂载点（`findListMountPoint` 或已挂栏的邻接点）
+ * @param mount 挂载点
  * @param bar 待插入的筛选栏元素
  */
 export function applyListMountPoint(mount: ListMountPoint, bar: HTMLElement): void {
     mount.target.insertAdjacentElement(mount.position, bar);
+}
+
+/** 筛选栏统一容器（三根栏都进这个栈，顺序由优先级决定）。 */
+export const FILTER_STACK_CLASS = 'jhs-filter-stack';
+
+/**
+ * 筛选栏显示优先级（**唯一的顺序权威**，与挂载先后无关）。
+ *
+ * 现场口径：筛选（清单标签）→ 状态（状态标签芯片）→ 预加载（外站预加载）。
+ */
+export const FILTER_BAR_PRIORITY = { vlt: 10, status: 20, preload: 30 } as const;
+
+/** 优先级在栈内子元素上的属性名。 */
+const STACK_PRIORITY_ATTR = 'data-jhs-filter-priority';
+
+/**
+ * 取回（必要时创建）筛选栏栈容器。
+ *
+ * 容器挂在 `findListMountPoint()` 给出的位置；页面暂无可用锚点时返回 null
+ * （调用方自决：等待锚点 / 超时兜底直挂）。
+ *
+ * @returns 栈容器或 null
+ */
+export function ensureFilterStack(): HTMLElement | null {
+    const existing = document.querySelector<HTMLElement>(`.${FILTER_STACK_CLASS}`);
+    if (existing) return existing;
+
+    const mount = findListMountPoint();
+    if (!mount) return null;
+
+    const stack = document.createElement('div');
+    stack.className = FILTER_STACK_CLASS;
+    applyListMountPoint(mount, stack);
+    return stack;
+}
+
+/**
+ * 把筛选栏按优先级放进栈容器。
+ *
+ * doc/50：三根栏此前各自找锚点直插，顺序取决于并发挂载先后（实测首页被挂成
+ * 状态 → 预加载 → 筛选）。改为统一入栈后，顺序只由 `priority` 决定。
+ *
+ * @param bar 筛选栏元素
+ * @param priority 显示优先级（取值见 `FILTER_BAR_PRIORITY`）
+ * @returns 是否入栈成功（无可用锚点时为 false）
+ */
+export function mountFilterBar(bar: HTMLElement, priority: number): boolean {
+    const stack = ensureFilterStack();
+    if (!stack) return false;
+
+    bar.setAttribute(STACK_PRIORITY_ATTR, String(priority));
+    const next = Array.from(stack.children).find(
+        (child) => Number(child.getAttribute(STACK_PRIORITY_ATTR) ?? 0) > priority
+    );
+    if (next) {
+        stack.insertBefore(bar, next);
+    } else {
+        stack.appendChild(bar);
+    }
+    return true;
 }

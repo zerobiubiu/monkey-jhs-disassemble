@@ -64,7 +64,7 @@
   "src/plugins/mod-my-list-open-way-plugin.ts": 1,
   "src/plugins/nav-bar-plugin.tsx": 8,
   "src/plugins/other-site-plugin.tsx": 2,
-  "src/plugins/other-site/osp-filter-bar.ts": 7,
+  "src/plugins/other-site/osp-filter-bar.ts": 2,
   "src/plugins/other-site/osp-preload.tsx": 5,
   "src/plugins/page-sort-plugin.ts": 5,
   "src/plugins/preview-video-plugin.tsx": 2,

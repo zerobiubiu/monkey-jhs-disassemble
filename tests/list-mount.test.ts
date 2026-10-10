@@ -9,7 +9,12 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { applyListMountPoint, findListMountPoint } from '../src/core/util/site/list-mount';
+import {
+    FILTER_BAR_PRIORITY,
+    applyListMountPoint,
+    findListMountPoint,
+    mountFilterBar
+} from '../src/core/util/site/list-mount';
 
 afterEach(() => {
     document.body.innerHTML = '';
@@ -91,5 +96,55 @@ describe('findListMountPoint — 列表页/首页', () => {
         document.body.innerHTML = '';
 
         expect(findListMountPoint('/')).toBeNull();
+    });
+});
+
+describe('jhs-filter-stack — 三根栏的顺序权威（doc/50）', () => {
+    const LIST_HTML = `
+        <section><div>
+            <div class="movie-list"><div class="item">卡片</div></div>
+        </div></section>`;
+
+    /** 造一根筛选栏并带上类名（顺序断言只看位置）。 */
+    const makeBar = (cls: string): HTMLElement => {
+        const bar = document.createElement('div');
+        bar.className = cls;
+        return bar;
+    };
+
+    it('无论挂载先后，栈内顺序恒为 筛选 → 状态 → 预加载', () => {
+        document.body.innerHTML = LIST_HTML;
+
+        // 故意逆序挂载
+        mountFilterBar(makeBar('preload-filter-bar'), FILTER_BAR_PRIORITY.preload);
+        mountFilterBar(makeBar('status-tag-filter-bar'), FILTER_BAR_PRIORITY.status);
+        mountFilterBar(makeBar('jhs-vlt-filter-bar'), FILTER_BAR_PRIORITY.vlt);
+
+        const stack = document.querySelector('.jhs-filter-stack')!;
+        expect([...stack.children].map((el) => el.className)).toEqual([
+            'jhs-vlt-filter-bar',
+            'status-tag-filter-bar',
+            'preload-filter-bar'
+        ]);
+    });
+
+    it('栈容器只创建一次，且挂在影片列表之前（与列表同层）', () => {
+        document.body.innerHTML = LIST_HTML;
+
+        mountFilterBar(makeBar('jhs-vlt-filter-bar'), FILTER_BAR_PRIORITY.vlt);
+        mountFilterBar(makeBar('status-tag-filter-bar'), FILTER_BAR_PRIORITY.status);
+
+        const stacks = document.querySelectorAll('.jhs-filter-stack');
+        expect(stacks).toHaveLength(1);
+        const list = document.querySelector('.movie-list')!;
+        expect(stacks[0].nextElementSibling).toBe(list);
+        expect(list.contains(stacks[0])).toBe(false);
+    });
+
+    it('无可用锚点 → 入栈失败且不建空容器', () => {
+        document.body.innerHTML = '';
+
+        expect(mountFilterBar(makeBar('jhs-vlt-filter-bar'), FILTER_BAR_PRIORITY.vlt)).toBe(false);
+        expect(document.querySelector('.jhs-filter-stack')).toBeNull();
     });
 });

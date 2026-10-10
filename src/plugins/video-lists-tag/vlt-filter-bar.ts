@@ -7,7 +7,7 @@
  * 本文件保留 UI 构建：
  * - buildFilterBar / buildFilterModeDropdown / createFilterChip / refreshChips / updateFilterBar
  */
-import { applyListMountPoint, findListMountPoint } from '../../core/util/site/list-mount';
+import { FILTER_BAR_PRIORITY, ensureFilterStack, mountFilterBar } from '../../core/util/site/list-mount';
 import type { VltTags } from './vlt-tags';
 import {
     applyFilter,
@@ -229,10 +229,8 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
 export function buildFilterBar(plugin: VltTags): void {
     if (document.querySelector('.jhs-vlt-filter-bar')) return;
 
-    // 挂载点：共享单点（doc/48/49）——结构式标签栏之后、影片列表之前、页面容器顶部，
-    // 插入方位随锚点类型而定，避免把筛选栏插进卡片网格
-    const mount = findListMountPoint();
-    if (!mount) return;
+    // 入栈（顺序权威=优先级，doc/50）：无可用锚点时不建栏
+    if (!ensureFilterStack()) return;
 
     const filterBar = document.createElement('div') as FilterBarEl;
     filterBar.className = 'jhs-vlt-filter-bar';
@@ -288,8 +286,8 @@ export function buildFilterBar(plugin: VltTags): void {
 
     boundRefreshChips();
 
-    // 按共享挂载点的方位插入（结构式之后 / 列表之前 / 容器顶部）
-    applyListMountPoint(mount, filterBar);
+    // 按优先级入栈：顺序与挂载先后无关（doc/50）
+    mountFilterBar(filterBar, FILTER_BAR_PRIORITY.vlt);
 
     // 保存 refreshChips 引用以便后续更新（与原脚本一致，挂在 DOM 元素上）
     filterBar._refreshChips = boundRefreshChips;

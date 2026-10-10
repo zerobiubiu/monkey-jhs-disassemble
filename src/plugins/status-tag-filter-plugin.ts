@@ -48,14 +48,14 @@
  * 3. applyFilter 协同安全：被其他脚本隐藏的卡片不纳入管理；OR 逻辑筛选
  * 4. createFilterChip 创建芯片（标签名+计数，点击 toggle active + applyFilter）
  * 5. doBuild 构建筛选栏（refreshChips 保留已激活状态）
- * 6. findMountPoint 解析挂载点：jhs-vlt-filter-bar → 结构式筛选标签栏 → 影片列表之前 → 容器顶部
+ * 6. ensureFilterStack/doBuild 入栈：筛选栏统一容器，顺序由 FILTER_BAR_PRIORITY 决定（doc/50）
  * 7. MutationObserver 监听新增 .item/status-tag（防抖 150ms 刷新）
  * 8. init 等待 document.body + tryBuild + startObserving（含 10s 超时兜底）
  *
  * 方法组已拆分至 ./status-tag-filter/ 子目录：
  *   stf-collect.ts — collectStatusTagCounts / countNoStatusItems
  *   stf-apply.ts   — applyFilter
- *   stf-ui.ts      — createFilterChip / doBuild / findMountPoint
+ *   stf-ui.ts      — createFilterChip / doBuild（入栈或直挂）
  * 本类保留同名薄委托方法，内部调用点签名不变。
  */
 import { isVideoListContext, type PageType } from '../core/page-context';
@@ -65,8 +65,8 @@ import { TaskSupervisor } from '../core/task-supervisor';
 import { BasePlugin } from './base-plugin';
 import { RatingCache } from './rating-display/rating-cache';
 import { applyFilter } from './status-tag-filter/stf-apply';
-import { doBuild, findMountPoint, LOG } from './status-tag-filter/stf-ui';
-import type { ListMountPoint } from '../core/util/site/list-mount';
+import { doBuild, LOG } from './status-tag-filter/stf-ui';
+import { ensureFilterStack, findListMountPoint, type ListMountPoint } from '../core/util/site/list-mount';
 import { setCarRecords, setScoreFallbackResolver } from './status-tag-filter/stf-score';
 import { renderMissingStatusTags } from './status-tag-filter/stf-render';
 
@@ -214,14 +214,17 @@ export class StatusTagFilterPlugin extends BasePlugin {
         const mountTimeout = this.supervisor.setTimeout(() => {
             mountObserver.disconnect();
             if (!document.querySelector('.status-tag-filter-bar')) {
-                const fallback: ListMountPoint | null = findMountPoint() ??
-                    (document.body.firstElementChild
-                        ? { target: document.body, position: 'afterbegin' }
-                        : null);
-                if (fallback) {
-                    doBuild(fallback);
+                // 有锚点 → 走入栈（顺序正确）；连锚点都没有 → 直挂到 body 顶部
+                const hasAnchor = findListMountPoint() !== null;
+                const fallback: ListMountPoint | null = hasAnchor
+                    ? null
+                    : document.body.firstElementChild
+                      ? { target: document.body, position: 'afterbegin' }
+                      : null;
+                if (hasAnchor || fallback) {
+                    doBuild(fallback ?? undefined);
                     this.startObserving();
-                    console.warn(`${LOG} 通过最终回退挂载`, fallback.target);
+                    console.warn(`${LOG} 通过最终回退挂载`);
                 } else {
                     console.warn(`${LOG} 超时后仍无挂载目标`);
                 }
@@ -237,10 +240,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
     private tryBuild(): boolean {
         if (document.querySelector('.status-tag-filter-bar')) return true;
 
-        const mount = findMountPoint();
-        if (!mount) return false;
+        if (!ensureFilterStack()) return false;
 
-        doBuild(mount);
+        doBuild();
         return true;
     }
 

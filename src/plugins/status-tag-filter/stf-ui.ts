@@ -6,7 +6,12 @@
  * findMountPoint：解析挂载点（优先邻接清单标签栏，否则用共享站点锚点 list-mount）。
  */
 
-import { applyListMountPoint, findListMountPoint, type ListMountPoint } from '../../core/util/site/list-mount';
+import {
+    FILTER_BAR_PRIORITY,
+    applyListMountPoint,
+    mountFilterBar,
+    type ListMountPoint
+} from '../../core/util/site/list-mount';
 import { collectStatusTagCounts, countNoStatusItems, NO_TAG_VALUE } from './stf-collect';
 import { applyFilter } from './stf-apply';
 import {
@@ -52,9 +57,9 @@ export function createFilterChip(
  * 构建筛选栏并插入到挂载目标之后。对应原 L150-195。
  * 内部定义 refreshChips（收集 status-tag 文本并重建芯片，保留已激活状态）。
  *
- * @param mount 挂载点（目标 + 插入方位，见 core/util/site/list-mount）
+ * @param mount 可选：直挂点（超时兜底用）；缺省则按优先级入栈（doc/50）
  */
-export function doBuild(mount: ListMountPoint): void {
+export function doBuild(mount?: ListMountPoint): void {
     if (document.querySelector('.status-tag-filter-bar')) return;
 
     const filterBar = document.createElement('div');
@@ -120,8 +125,9 @@ export function doBuild(mount: ListMountPoint): void {
     // 初始构建芯片
     refreshChips();
 
-    // 插入到 DOM：方位由挂载点决定（已知栏位之后 / 列表之前 / 容器顶部）
-    applyListMountPoint(mount, filterBar);
+    // 入栈（顺序权威=优先级）；无锚点时的超时兜底才走直挂
+    if (mount) applyListMountPoint(mount, filterBar);
+    else mountFilterBar(filterBar, FILTER_BAR_PRIORITY.status);
 
     // 保存 refreshChips 引用以便后续更新（与原脚本 filterBar._refreshChips 一致）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: storing function ref on element
@@ -130,14 +136,3 @@ export function doBuild(mount: ListMountPoint): void {
     console.log(`${LOG} 筛选栏已挂载`);
 }
 
-/**
- * 解析本栏的挂载点：优先挂在清单标签筛选栏之后（两根栏相邻），
- * 否则用共享站点锚点（doc/48/49）。
- *
- * @returns 挂载点或 null
- */
-export function findMountPoint(): ListMountPoint | null {
-    const tagFilterBar = document.querySelector('.jhs-vlt-filter-bar');
-    if (tagFilterBar) return { target: tagFilterBar, position: 'afterend' };
-    return findListMountPoint();
-}
