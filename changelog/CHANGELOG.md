@@ -9,6 +9,26 @@
 
 ---
 
+## v1.48.0
+
+### 修复（番号匹配口径统一，doc/47）
+- `car_list` 的 `updateCarInfo` / `removeCar` / `batchRemoveCars` 三处历史上固定精确匹配，不跟随 `caseInsensitiveCarNum`（默认开），而读取路径（`getCar` 等）跟随 —— 造成「**能读到却删不掉**」：详情页取消想看/已看后记录留在清单、历史面板批量删除静默失败、`updateCarInfo` 直接抛错。现三条路径改为与读取同口径；开关关闭时退回精确匹配。新增 7 用例。
+- 外站访问计数的 legacy 键 `jhs_external_visit` 未列入持久数据迁移清单 —— 持久存储激活后旧数据读不到；补入 `MAP_SPECS`。
+
+### 修复（跨站同步载荷协议，doc/47）
+- 设置面板「同步到 missav」自建全量载荷（**缺 `revision`/`mode`/`ready`**、`hwm`/`ts` 用墙钟），消费端只能回退 `ts` 当修订号写水位线，且不写修订号指针、不裁剪增量日志。现与自动全量同步共用 `car-status-publish.publishFullSnapshot` 唯一构造点：协议完整载荷 + 修订号分配器 + 指针/日志侧效应一次做齐。新增 8 用例（含 gzip 真实压缩）。
+
+### 新增（JavDB 首页显示过滤/筛选组件，doc/47）
+- 历史复核：原脚本无页面门控（`@include javdb*.com/*`），站点参考把 `/` 列为列表页且筛选栏挂载点命中 —— 首页**一直**展示卡片过滤、状态标签芯片筛选栏、清单标签筛选栏。
+- 现状代码把三者同时押在一次性 DOM 检测上（`.movie-list` 出现前判定为 false 就整体不执行且不重试）。现引入页面类型 `home`：JavDB 首页（pathname 为 `/`）在未检出列表容器时记为 `home`，三个组件显式放行（容器存在时仍走 `list`，不影响其它 `pageTypes:['list']` 插件）。新增 4 用例。
+
+### 重构（遗留项收敛，doc/47）
+- CSRF 令牌读取 5 份实现 → `core/util/site/csrf.ts` 单源（含表单兜底具名变体）。
+- `isVideoDetailPath` 从 `missav-status-filter` 迁到 `core/util/site/missav-paths.ts`，消除一条跨插件内部 import。
+- `STATUS_LIST` 改由 `constants/status.ts` 的动作常量派生（顺序不变，列存协议顺序保持）。
+- 遗留项 #1/#4/#5/#7 与 FC2 前缀、缓存键三表派生本轮明确推迟并记录理由（doc/47 §3.2）。
+- 核心模块 64 → 66；测试套件 37 文件 / 388 用例 → **40 文件 / 407 用例**。
+
 ## v1.47.6
 
 ### 重构（领域驱动重构试点：番号身份共享内核，doc/46）
