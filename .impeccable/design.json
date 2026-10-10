@@ -1,6 +1,6 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-10-10T05:28:28.899Z",
+    "generatedAt": "2026-10-10T13:46:15.516Z",
     "title": "Design System: JavDB Power Tools",
     "extensions": {
         "colorMeta": {
@@ -539,6 +539,16 @@
                 "name": "The Subsystem-Fidelity Rule",
                 "section": "colors",
                 "body": "每个子系统调色板只在其宿主的上下文中使用。Nord 族只在 MissAV 页面，Flat-UI 族只在日志面板，Bulma 族只在紧邻站点原生控件的列表页。跨域搬用一族颜色进另一族的地盘，是比色值不一致更严重的问题。"
+            },
+            {
+                "name": "The Contrast-On-Subtle Rule",
+                "section": "colors",
+                "body": "次级文字 #6c757d 只在纯白底上达标（4.69:1）。落在浅灰底上必须加深一档——实测 #f8fafc 4.48 / #f1f5f9 4.28 / #e2e8f0 3.80，三者均低于 4.5:1（WCAG AA 1.4.3）。在 #f0f0f0 及更浅的灰底上写次级文字，改用 slate-600 #475569（7.5:1）。 #999999（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。"
+            },
+            {
+                "name": "The Danger-On-Light Rule",
+                "section": "colors",
+                "body": "危险色作文字或图标时浅底需 ≥4.5:1：用 #dc2626（白底 4.83）。#ef4444（3.76）、#f40（3.45）、#dc3545 只可用于可填充控件底（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。"
             },
             {
                 "name": "The Five-Size Rule",

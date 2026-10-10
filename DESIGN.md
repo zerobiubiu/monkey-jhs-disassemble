@@ -381,13 +381,19 @@ components:
 
 **The Declared-Not-Wired Rule.** `src/styles/design-tokens.css` 声明了 39 个令牌，其中**只有 `--jhs-z-top` 与 `--jhs-z-page` 被 `var()` 真正消费**——颜色、间距、圆角、字号、阴影、过渡、触控尺寸全部是「声明即止」，渲染路径写死字面量。令牌层的值是对的，缺的只是接线。**新代码必须写 `var(--jhs-color-primary)` 而不是 `#5d87c2`**；既有字面量按触碰即迁移的方式逐步收敛，不做一次性机械替换。
 
+实测存量（doc/54 审计快照）：TSX 字面色值 **384 处 vs `var(--jhs-*)` 2 处（覆盖率 0.5%）**，CSS 538 vs 182（25.3%）；`impeccable detect` 因此长期报 71 条调色板漂移（severity=advisory，全部落在「字面值不在 DESIGN.md 内」这一个类别）。债务是**集中的、可一次收口的**，不是分散的随手乱写。
+
 **The Subsystem-Fidelity Rule.** 每个子系统调色板只在其宿主的上下文中使用。Nord 族只在 MissAV 页面，Flat-UI 族只在日志面板，Bulma 族只在紧邻站点原生控件的列表页。跨域搬用一族颜色进另一族的地盘，是比色值不一致更严重的问题。
+
+**The Contrast-On-Subtle Rule.** 次级文字 `#6c757d` 只在**纯白底**上达标（4.69:1）。落在浅灰底上必须加深一档——实测 `#f8fafc` 4.48 / `#f1f5f9` 4.28 / `#e2e8f0` **3.80**，三者均低于 4.5:1（WCAG AA 1.4.3）。**在 `#f0f0f0` 及更浅的灰底上写次级文字，改用 slate-600 `#475569`（7.5:1）。** `#999999`（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。
+
+**The Danger-On-Light Rule.** 危险色作**文字或图标**时浅底需 ≥4.5:1：用 `#dc2626`（白底 4.83）。`#ef4444`（3.76）、`#f40`（3.45）、`#dc3545` 只可用于**可填充控件底**（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。
 
 ## Typography
 
 **Display Font:** 无（本系统不设 —— 增强层不存在 display 级文字）
 **Body Font:** 继承宿主机（JavDB / MissAV 的站点字体栈），项目**不声明全局 `font-family`**
-**Label/Mono Font:** 等宽 `Consolas, Monaco, 'Andale Mono', monospace`（缓存文本与代码块）；四个局部系统栈仅用于完全浮于页面之上的浮层
+**Label/Mono Font:** 等宽 `Consolas, Monaco, 'Andale Mono', monospace`（缓存文本与代码块）；四个局部系统栈仅用于完全浮于页面之上的浮层。栈内的 `ui-monospace` / `SFMono-Regular` / `-apple-system` / `BlinkMacSystemFont` 是**平台回退项而非项目自选字体**（不随包分发，也无字重文件），设计检测器把它们报成字体告警属预期，不修。
 
 **Character:** 字体是借来的，不是选的——这条约束本身就是设计。增强文字出现在原站文字旁边，任何自有字体都会制造可见的接缝。性格由**字号与字重**承担：13px 正文配 600 字重的小标签，形成紧凑但不糊的层级。
 
