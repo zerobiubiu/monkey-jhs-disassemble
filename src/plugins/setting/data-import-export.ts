@@ -17,11 +17,8 @@ import { flushPersistentData } from '../../core/storage/persistent-data-store';
 import { getCredentialId, DEFAULT_AUTO_BACKUP_CONFIG } from '../../core/auto-backup';
 
 import { GM_KEY_BACKUP_PASSWORD } from './setting-keys';
-import { GM_KEY_CAR_STATUS_DATA } from '../car-status-sync/car-status-config';
+import { publishFullSnapshot, type PublishFailureReason } from '../car-status-sync/car-status-publish';
 import {
-    toColumnar,
-    gzipToBase64,
-    countColumnar,
     columnarToFlat,
     buildJavdbUrl
 } from '../car-status-sync/car-status-columnar';
@@ -230,32 +227,33 @@ export async function handleVltExportClick(): Promise<void> {
 
 // ===== MissAV 车号状态同步/导入/导出 =====
 
-/** #missav-sync-btn 点击：将 car_list 列存压缩后推送到 GM 存储。 */
+/** 同步失败原因 → 面板提示文本。 */
+const MISSAV_SYNC_FAILURE_TEXT: Record<PublishFailureReason, string> = {
+    empty: 'car_list 为空',
+    'no-valid': '列存后无有效记录',
+    'compress-failed': '压缩失败',
+    superseded: '已有更新的快照，未覆盖'
+};
+
+/**
+ * #missav-sync-btn 点击：把本机 car_list 发布到 GM 存储（跨站快照）。
+ *
+ * doc/47：载荷构造与修订号/指针副作用统一走 `publishFullSnapshot`（与自动全量同步同一条
+ * 路径）。此前本处自建载荷（缺 revision/mode/ready）会把墙钟时间当成修订号写进消费端水位线。
+ */
 export async function handleMissavSync(): Promise<void> {
     const $status = $('#missav-status');
     $status.text('⏳ 同步中...').css('color', '#0d6efd');
     try {
-        const carList = await storageManager.getCarList();
-        if (carList.length === 0) {
-            $status.text('✗ car_list 为空').css('color', '#dc3545');
+        const result = await publishFullSnapshot(() => storageManager.getCarList());
+        if (!result.ok) {
+            const reason = result.reason ? MISSAV_SYNC_FAILURE_TEXT[result.reason] : '同步失败';
+            $status.text(`✗ ${reason}`).css('color', '#dc3545');
+            showToast(`✗ 同步未完成：${reason}`, 'error');
             return;
         }
-        const colRes = toColumnar(carList);
-        const count = countColumnar(colRes.byStatus);
-        const base64 = await gzipToBase64(colRes.byStatus);
-        if (!base64) {
-            $status.text('✗ 压缩失败').css('color', '#dc3545');
-            return;
-        }
-        const payload = {
-            data: base64,
-            hwm: new Date().toISOString(),
-            count,
-            ts: Date.now()
-        };
-        GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
-        $status.html(`✓ 同步完成：${count} 条记录已推送到 GM 存储`).css('color', '#198754');
-        showToast(`✓ 同步完成：${count} 条`, 'success');
+        $status.html(`✓ 同步完成：${result.count} 条记录已推送到 GM 存储`).css('color', '#198754');
+        showToast(`✓ 同步完成：${result.count} 条`, 'success');
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         $status.text(`✗ 同步失败：${msg}`).css('color', '#dc3545');

@@ -64,7 +64,10 @@ const MAP_SPECS: readonly MapSpec[] = [
     { legacyKey: 'jhs_screenShot', namespace: 'screenShot' },
     { legacyKey: 'jhs_actress_info', namespace: 'actressInfo' },
     { legacyKey: 'jhs_score_info', namespace: 'scoreInfo' },
-    { legacyKey: 'jhs_visit_history', namespace: 'visitHistory' }
+    { legacyKey: 'jhs_visit_history', namespace: 'visitHistory' },
+    // doc/47：外站访问计数（doc/45 引入）此前只在读写侧登记了 legacy 键，
+    // 未列入迁移清单 —— 持久存储一旦激活，旧 localStorage 数据就再也读不到。
+    { legacyKey: 'jhs_external_visit', namespace: 'externalVisit' }
 ];
 
 const SINGLE_SPECS: readonly SingleSpec[] = [

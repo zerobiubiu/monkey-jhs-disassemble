@@ -1,5 +1,11 @@
-/**
- * 车辆状态同步配置模块 —— javdb 与 missav 跨域数据传递的共享常量。
+import {
+    FAVORITE_ACTION,
+    FILTER_ACTION,
+    HAS_DOWN_ACTION,
+    HAS_WATCH_ACTION
+} from '../../constants/status';
+
+/** 车辆状态同步配置模块 —— javdb 与 missav 跨域数据传递的共享常量。
  *
  * 来源：archetype/jhsCarListReader.user.js + archetype/missavStatusTag.user.js。
  * 原架构通过后端服务器（Cloudflare Workers + D1）中转，现改为油猴原生
@@ -12,8 +18,13 @@
  * WebDav 仅用于 missav 端本地 IndexedDB 的备份/恢复（随 jhs 主数据库一起备份）。
  */
 
-/** 影片状态枚举（与 jhs.user.js / 后端 cars 表 status 一致）。 */
-export const STATUS_LIST = ['filter', 'favorite', 'hasDown', 'hasWatch'] as const;
+/**
+ * 影片状态枚举（与 jhs.user.js / 后端 cars 表 status 一致）。
+ *
+ * doc/47：值**取自** `constants/status.ts` 的动作常量（同一事实的单源），
+ * 顺序是列存/快照的协议顺序（filter → favorite → hasDown → hasWatch），不可改。
+ */
+export const STATUS_LIST = [FILTER_ACTION, FAVORITE_ACTION, HAS_DOWN_ACTION, HAS_WATCH_ACTION] as const;
 export type CarStatus = (typeof STATUS_LIST)[number];
 
 /**

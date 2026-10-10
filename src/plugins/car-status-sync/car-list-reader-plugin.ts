@@ -19,25 +19,16 @@
 
 import { BasePlugin } from '../base-plugin';
 import type { CarListChangeEvent } from '../../core/storage-manager';
-import { withExclusiveLock } from '../../core/sync';
 import {
-    CAR_STATUS_DELTA_COMPACT_THRESHOLD,
     CAR_STATUS_DELTA_MAX_ITEMS,
     GM_KEY_CAR_STATUS_DATA,
     GM_KEY_CAR_STATUS_DELTA,
     GM_KEY_CAR_STATUS_REVISION,
     LOG_PREFIX_JHS,
-    type CarStatusPayload,
     type CarStatusDeltaPayload
 } from './car-status-config';
-import {
-    compactDeltaJournal,
-    countDeltaItems,
-    getPayloadRevision,
-    readDeltaJournal,
-    sortDeltaJournal
-} from './car-status-journal';
-import { toColumnar, gzipToBase64, countColumnar, normalizeUrl } from './car-status-columnar';
+import { allocateRevision, appendDeltaJournal, publishFullSnapshot } from './car-status-publish';
+import { normalizeUrl } from './car-status-columnar';
 import { createLogger } from './car-status-logger';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_JHS);
@@ -204,7 +195,7 @@ export class CarListReaderPlugin extends BasePlugin {
                 await this.syncFullCarStatus();
                 return;
             }
-            const revision = await nextRevision();
+            const revision = await allocateRevision();
             const payload: CarStatusDeltaPayload = { action: 'upsert', items, ts: revision, revision };
             const needsFullSnapshot = await appendDeltaJournal(payload);
             // 本地持久化完成（journal 已写入）—— 后续上传不阻塞关页
@@ -222,7 +213,7 @@ export class CarListReaderPlugin extends BasePlugin {
                 await this.syncFullCarStatus();
                 return;
             }
-            const revision = await nextRevision();
+            const revision = await allocateRevision();
             const payload: CarStatusDeltaPayload = {
                 action: 'delete',
                 items: event.deletes.map((carNum) => ({ carNum })),
@@ -241,10 +232,12 @@ export class CarListReaderPlugin extends BasePlugin {
         GM_setValue(GM_KEY_CAR_LIST_REV, (GM_getValue(GM_KEY_CAR_LIST_REV, 0) as number) + 1);
     }
 
-    /**
-     * 全量同步：读 car_list → 转列存 → gzip → 修订号保护发布 → 安全裁剪旧增量。
+/**
+     * 全量同步：读 car_list → 列存 → gzip → 修订号保护发布 → 安全裁剪旧增量。
      * 页面加载时执行一次（延迟 2s），或菜单手动触发。
      * isFullSyncing 锁防并发；进行中收到大批变更时结束后补发最新快照。
+     *
+     * 载荷构造与指针副作用统一在 `car-status-publish.publishFullSnapshot`（doc/47）。
      */
     async syncFullCarStatus(): Promise<boolean> {
         if (isFullSyncing) {
@@ -255,43 +248,12 @@ export class CarListReaderPlugin extends BasePlugin {
         isFullSyncing = true;
         try {
             logInfo('全量同步开始');
-            const revision = await nextRevision();
-            const carList = await storageManager.getCarList();
-            logInfo('1-读取', `本地 car_list 记录数：${carList.length}`);
-            if (carList.length === 0) {
-                logWarn('car_list 为空，跳过同步（jhs 可能尚未写入数据）');
+            const result = await publishFullSnapshot(() => storageManager.getCarList());
+            if (!result.ok) {
+                logWarn('全量同步未完成', `原因=${result.reason}`, `revision=${result.revision}`);
                 return false;
             }
-            const colRes = toColumnar(carList);
-            const count = countColumnar(colRes.byStatus);
-            logInfo('2-转列存', `列存 ${count} 条 / 丢弃 ${colRes.dropped} / url 异常 ${colRes.malformed}`);
-            if (count === 0) {
-                logWarn('列存后无有效记录，跳过');
-                return false;
-            }
-            const base64 = await gzipToBase64(colRes.byStatus);
-            if (!base64) {
-                logErr('gzip 压缩失败（CompressionStream 不可用？非 https 环境？）');
-                return false;
-            }
-            logInfo('3-压缩', `gzip+base64 体积：约 ${(base64.length / 1024).toFixed(1)} KB`);
-            const payload: CarStatusPayload = {
-                data: base64,
-                hwm: new Date(revision).toISOString(),
-                count,
-                ts: revision,
-                revision,
-                mode: 'snapshot',
-                ready: true
-            };
-            const published = await publishSnapshot(payload);
-            if (!published) {
-                logWarn('发现更新的全量快照，放弃发布本次旧快照', `revision=${revision}`);
-                return false;
-            }
-            logOk('4-完成', `已写入 GM 存储，count=${count}，hwm=${payload.hwm}`);
-            GM_setValue(GM_KEY_SYNCED_REV, GM_getValue(GM_KEY_CAR_LIST_REV, 0));
-            GM_setValue(GM_KEY_LAST_SYNC_TIME, Date.now());
+            logOk('4-完成', `已写入 GM 存储，count=${result.count}，revision=${result.revision}`);
             return true;
         } catch (err: unknown) {
             logErr('全量同步失败', err instanceof Error ? err.message : String(err), err);
@@ -307,68 +269,12 @@ export class CarListReaderPlugin extends BasePlugin {
 }
 
 /* ===========================================================================
- * 跨站车号状态同步 —— javdb 端发布侧模块级函数。
- * 单调修订号分配 + 增量 journal 读改写（Web Lock 串行化、按番号去重压缩、超限收敛全量）
- * + 全量快照指针保护。
+ * 跨站车号状态同步 —— javdb 端发布侧：**载荷构造与修订号分配已提取到
+ * `car-status-publish.ts`**（doc/47，唯一权威构造点，设置面板手动同步共用）。
+ * 本文件只保留调度状态（并发锁 / 补发标记）。
  * ========================================================================= */
 
 /** 全量同步锁，防止并发触发。 */
 let isFullSyncing = false;
 /** 全量进行中又收到大批变更时，结束后再补发一次最新快照。 */
 let fullResyncRequested = false;
-/** 当前 javdb 标签页内的单调修订号逻辑时钟。 */
-let lastIssuedRevision = 0;
-
-/** javdb 发布侧跨标签页读改写互斥的 Web Lock 名称。 */
-const JAVDB_SYNC_LOCK_NAME = 'jhs-javdb-car-status-publisher';
-
-/** 分配下一个单调修订号（跨标签页以 GM 持久值 + 本地逻辑时钟取大）。 */
-async function nextRevision(): Promise<number> {
-    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
-        const now = Date.now();
-        let persisted = 0;
-        try {
-            const value = GM_getValue(GM_KEY_CAR_STATUS_REVISION, 0);
-            if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
-                persisted = value;
-            }
-        } catch {
-            /* 读取失败时仍用当前标签页的逻辑时钟，后续全量同步会校正状态。 */
-        }
-        lastIssuedRevision = Math.max(now, persisted + 1, lastIssuedRevision + 1);
-        GM_setValue(GM_KEY_CAR_STATUS_REVISION, lastIssuedRevision);
-        return lastIssuedRevision;
-    });
-}
-
-/** 追加一条增量到 journal；超过压缩阈值时返回 true 提示调用方发布全量。 */
-async function appendDeltaJournal(payload: CarStatusDeltaPayload): Promise<boolean> {
-    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
-        const journal = readDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
-        journal.push(payload);
-        const compacted = compactDeltaJournal(sortDeltaJournal(journal));
-        GM_setValue(GM_KEY_CAR_STATUS_DELTA, compacted);
-        return countDeltaItems(compacted) > CAR_STATUS_DELTA_COMPACT_THRESHOLD;
-    });
-}
-
-/**
- * 发布全量快照并保护 GM 中的「最后快照」指针。
- * 较早开始、较晚压缩完成的旧全量不能覆盖已发布的新全量；同修订号增量保留由消费端兜底。
- */
-async function publishSnapshot(payload: CarStatusPayload): Promise<boolean> {
-    return withExclusiveLock(JAVDB_SYNC_LOCK_NAME, async () => {
-        const current = GM_getValue(GM_KEY_CAR_STATUS_DATA) as CarStatusPayload | undefined;
-        const currentRevision = current ? getPayloadRevision(current) : -1;
-        if (currentRevision >= getPayloadRevision(payload)) {
-            return false;
-        }
-        GM_setValue(GM_KEY_CAR_STATUS_DATA, payload);
-        const journal = readDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
-        const retained = journal.filter((delta) => getPayloadRevision(delta) >= getPayloadRevision(payload));
-        if (retained.length !== journal.length) {
-            GM_setValue(GM_KEY_CAR_STATUS_DELTA, sortDeltaJournal(retained));
-        }
-        return true;
-    });
-}
