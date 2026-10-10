@@ -9,6 +9,15 @@
 
 ---
 
+## v1.48.1
+
+### 修复（JavDB 首页「清单标签筛选栏」不显示，doc/48）
+- 现场定位：装 v1.48.0 后首页实测 `{ml:1, items:40, tabs:1, stfBar:true, vltBar:false, batchSide:true}` —— 首页是列表页、容器与 40 张卡都在、状态标签芯片栏与批量栏都挂上了，**只有清单标签筛选栏没挂**。
+- 根因：两处挂载链能力不同 —— 状态标签栏有「结构式 → 容器兜底 → 10s 强挂」，而清单标签栏只认结构式 `body > section > div > div.tabs.is-boxed`；首页该元素存在（计数 1）但**不在这一层**（结构式计数 0），于是清单标签栏静默 `return`。
+- 修法：把「列表页筛选栏挂载锚点」收成共享单点 `core/util/site/list-mount.ts`（结构式 → 宽松式 → 内层容器首子元素 → 外层容器首子元素），两处栏共用同一锚点（因此始终相邻）；注册表新增 `tabsBoxedLoose`/`sectionList`/`sectionListInner` 三键；`vlt-plugin` 在列表变更且栏仍缺席时重试挂载。
+- 顺带修正：`list-page-plugin.checkDom()` 的守卫仍是 `window.isListPage`（doc/47 漏改），改为 `isVideoListContext()`；容器缺失时由 `clog.error` 降为 `clog.debug`。
+- 新增 5 用例（41 文件 / 412 用例）；`check:selectors` 基线收紧至 87 文件 / 268 字面量。核心模块 66 → 67。
+
 ## v1.48.0
 
 ### 修复（番号匹配口径统一，doc/47）

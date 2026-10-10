@@ -85,7 +85,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **66 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 11 + `sync/` 4 + `util/` 24。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **67 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 11 + `sync/` 4 + `util/` 25。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -123,4 +123,4 @@
 | pagination-state.ts | 瀑布流分页状态机（idle/loading/error/exhausted + retry） |
 | storage-revision.ts | 跨标签页存储修订号追踪（BroadcastChannel 广播 + 缓存失效回调） |
 | sync/ | 4 个文件：withExclusiveLock（Web Locks 包装，降级直接执行）、KeyedQueue（键控串行队列）、sync-intent-journal（意图日志，崩溃后恢复消费）、index（barrel） |
-| util/ | 24 个文件：broadcast（三重广播总线）、back-to-top、tabulator-factory、util-async/clipboard/cookie/date/dom/download/misc/popup/retry/sort/status-tag/translate/url、site/selectors（站点原生选择器注册表）、site/actress-links（演员链接新旧结构兼容）、site/missav-paths（MissAV 视频页路径判定）、site/csrf（CSRF 令牌读取）、esc-layer、logger-panel、util-simple-lists、util-fetch-html（同源 fetch 规避 Cloudflare 403） |
+| util/ | 25 个文件：broadcast（三重广播总线）、back-to-top、tabulator-factory、util-async/clipboard/cookie/date/dom/download/misc/popup/retry/sort/status-tag/translate/url、site/selectors（站点原生选择器注册表）、site/actress-links（演员链接新旧结构兼容）、site/missav-paths（MissAV 视频页路径判定）、site/csrf（CSRF 令牌读取）、site/list-mount（列表页筛选栏挂载锚点）、esc-layer、logger-panel、util-simple-lists、util-fetch-html（同源 fetch 规避 Cloudflare 403） |
