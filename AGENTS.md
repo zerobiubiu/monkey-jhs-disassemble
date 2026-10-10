@@ -82,7 +82,7 @@ monkey-jhs-disassemble/
 
 ### 3.3 插件清单
 
-共 **44 个功能插件**（JavDB 39 + MissAV 5）：主脚本拆分 22 + 独立脚本集成 12 + 升级新插件 5（feature flag 可关）+ 新增功能插件 5。
+共 **43 个功能插件**（JavDB 38 + MissAV 5）：主脚本拆分 21 + 独立脚本集成 12 + 升级新插件 5（feature flag 可关）+ 新增功能插件 5。
 **完整清单（含职责/来源脚本/flag）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删插件时同步更新该文件。
 
 ### 3.4 核心模块 `src/core/`
@@ -90,7 +90,7 @@ monkey-jhs-disassemble/
 共 **67 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 41。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
-### 3.5 组件 `src/components/`（140 个）
+### 3.5 组件 `src/components/`（139 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。不使用 react-dom/server。

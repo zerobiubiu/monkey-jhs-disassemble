@@ -66,6 +66,7 @@
 | `49-mount-point-position.md` | 变更 | v1.48.2 | 挂载点（目标+方位）修复首页布局错乱：v1.48.1 的宽松式回退把插入点带进卡片网格 → 规则收成 `applyListMountPoint` 一处（结构式标签栏之后 / **影片列表之前** / 容器顶部），删除 `tabsBoxedLoose` 与 `doBuild` 里重复的方位判断；用例改为断言方位与同层性（41 文件/413 用例） |
 | `50-filter-bar-order.md` | 变更 | v1.48.3 | 三根筛选栏顺序权威：统一栈容器 `jhs-filter-stack` + `FILTER_BAR_PRIORITY`（筛选 10 / 状态 20 / 预加载 30）+ `mountFilterBar()`，顺序与并发挂载先后无关；删除预加载栏重复的挂载链与「搬到状态栏之后」逻辑；新增 3 条顺序用例（41 文件/416 用例） |
 | `51-home-dom-consolidation.md` | 变更 | v1.48.4 | 首页两处 DOM 收敛：隐藏站点原生「大封面/小封面」（注册表键 + 按页面 CSS 占位符，不动站点 DOM）；我方按钮组（新作品检测/黑名单）加 `isHomePage` 守卫不在首页显示；抽出 `isJavdbHomePath()` 统一首页判定；报告按钮组在其它列表页的覆盖面（未删组件） |
+| `52-list-page-button-removal.md` | 变更 | v1.48.5 | 删除列表页按钮组组件（`ListPageButtonPlugin` + 模板组件）：引用盘点零残留；`sortItems()` 迁入 `list-page-plugin` 保留排序能力、选择器改走注册表；`waitCheckCount`/`.jhs-toolbar-menu-btn` 仍有消费者故保留；插件 44→43、组件 140→139、选择器基线收紧至 258 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

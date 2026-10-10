@@ -9,9 +9,9 @@
 
 ## 1. 插件清单
 
-共 44 个功能插件（JavDB 39 + MissAV 5）。多模块插件的子目录拆分见各插件源码目录（`src/plugins/<name>/`）。
+共 43 个功能插件（JavDB 38 + MissAV 5）。多模块插件的子目录拆分见各插件源码目录（`src/plugins/<name>/`）。
 
-### 1.1 主脚本拆分插件（22 个）
+### 1.1 主脚本拆分插件（21 个）
 
 来自 `archetype/jhs.user.js`
 
@@ -20,7 +20,6 @@
 | ListPagePlugin | 列表页主插件：过滤/状态标签/翻译/点击绑定 |
 | AutoPagePlugin | 瀑布流自动翻页 |
 | FoldCategoryPlugin | 折叠分类 |
-| ListPageButtonPlugin | 列表页按钮组（批量打开/排序切换/加入黑名单） |
 | HistoryPlugin | 鉴定记录 |
 | SettingPlugin | 设置弹窗（侧栏+面板）+ WebDav/Git 备份 + 缓存清理 |
 | NavBarPlugin | 导航栏 |
