@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-10-04T06:02:32Z",
-  "updated_at": "2026-10-10T05:15:04Z",
+  "updated_at": "2026-10-10T05:29:21Z",
   "files": {
     ".agents/skills/userscript-integration/SKILL.md": {
       "role": "index",
@@ -65,9 +65,9 @@
     },
     ".impeccable/design.json": {
       "role": "index",
-      "sha256": "7c6dcb28004d7e211fd88e5df28dbc2eb2f029398df15a0c56845047adc9d61e",
-      "size": 27841,
-      "normalized_sha256": "7c6dcb28004d7e211fd88e5df28dbc2eb2f029398df15a0c56845047adc9d61e"
+      "sha256": "df954b3f8fe131556494cfabbd765b2798fb033f801b3dec30960079cc6119bc",
+      "size": 39576,
+      "normalized_sha256": "df954b3f8fe131556494cfabbd765b2798fb033f801b3dec30960079cc6119bc"
     },
     ".mcp.json": {
       "role": "index",
@@ -125,9 +125,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "d40ea948595a378e8990b5b2dba434b3264d20ee1a4febb148a3f1f0ae874107",
-      "size": 366646,
-      "normalized_sha256": "d40ea948595a378e8990b5b2dba434b3264d20ee1a4febb148a3f1f0ae874107"
+      "sha256": "d9a1ebd38e1a50947d841e5ac651326fef8696d48613148a093f326824b63fc4",
+      "size": 366755,
+      "normalized_sha256": "d9a1ebd38e1a50947d841e5ac651326fef8696d48613148a093f326824b63fc4"
     },
     "aoci.meta.txt": {
       "role": "index",
