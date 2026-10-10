@@ -1,8 +1,10 @@
 # Product
 
-## Register
+<!-- impeccable:product-schema 1 -->
 
-product
+## Platform
+
+web
 
 ## Users
 
@@ -12,9 +14,55 @@ JavDB 与 MissAV 的高频用户。他们通常已登录站点，在桌面或移
 
 ## Product Purpose
 
-JavDB Power Tools 是注入 JavDB / MissAV 的用户脚本工具箱，在保留站点原有操作习惯
-的前提下，补充批量管理、状态同步、过滤排序、清单维护和数据备份能力。成功标准是：
+JavDB Power Tools 是注入 JavDB / MissAV 的用户脚本工具箱，在保留站点原有操作习惯的
+前提下，补充批量管理、状态同步、过滤排序、清单维护和数据备份能力。成功标准是：
 常用操作更少、更快，服务端与本地状态可靠一致，增强界面不会遮挡或破坏原站功能。
+
+## Positioning
+
+两条支柱，共同构成邻近产品无法如实复制的位置：
+
+**本地优先的一致性。** 状态一致性不依赖任何服务端——数据只存在浏览器本地（GM 存储与
+IndexedDB），跨标签页与跨站的收敛由 BroadcastChannel 与意图日志保证，备份目的地是用户
+自己的 WebDAV 或 Git 仓库。站点官方功能与云端服务型脚本都无法宣称「没有服务端也保证一致」。
+
+**双站同构。** 同一套工具同时服务 Bulma 血统的 JavDB 与 nord 暗色的 MissAV：每个子系统
+的调色板与宿主同构，而不是把两站做成同一个样子（见 DESIGN.md 的 The Subsystem-Fidelity Rule）。
+
+## Operating Context
+
+- **宿主**：Tampermonkey 类用户脚本管理器，注入 `javdb.com` 与 `missav.ws`；增强文字与控件
+  出现在原站文字旁边。
+- **使用现场**：已登录站点上的高频浏览/筛选/收藏/评分/清单维护；典型动作是「批量」与
+  「跨站对齐」，而非一次性浏览。
+- **状态面**：本地状态在多个标签页之间通过 BroadcastChannel 广播刷新；跨站（JavDB ↔ MissAV ↔
+  本站清单）以番号为身份、以「以谁为准」的显式选择消解冲突。
+- **备份**：目的地由用户自备（WebDAV / Git），脚本不承担托管。
+- **配置入口**：脚本自有的设置弹层（9 个面板，侧栏切页）与悬浮快捷设置面板；改动即时生效。
+- **评判基准**：站点 DOM 属外部依赖，任何选择器改动需以 `docs/javdb-site-structure.md` /
+  `docs/javdb-site-style.md` 的取证与站点选择器注册表基线为准。
+
+## Capabilities and Constraints
+
+**能力**：双站 43 个功能插件（JavDB 38 + MissAV 5）、9 个设置面板；清单管理与批量操作、
+状态标签、过滤排序、评分落库与备份、跨站同步、磁链聚合与高画质过滤、热播/Top250 榜单、
+新作品检测、演员信息、以图识图、WebDAV/Git 云备份。
+
+**技术约束（不得假设其不存在）**：
+
+- 单文件用户脚本产物；7 个第三方库（jquery / layui-layer / tabulator / toastify / localforage /
+  viewerjs / blueimp-md5）经 CDN `@require` 外置，不进包。
+- 站点结构是外部依赖：选择器集中在 `src/core/util/site/selectors.ts` 注册表，并有基线门禁
+  （`bun run check:selectors`）防止静默失配。
+- 无服务端：容量与生命周期受浏览器存储限制；读取失败按零值展示且不写回（宁可少一次动作，
+  不丢历史）。
+- 移植保真纪律：七个样式表与原脚本（JAV-JHS 3.3.6）声明零偏差契约，移植保真组件同样冻结；
+  改动须同步原脚本对照关系（见 DESIGN.md 的 The Port-Fidelity Exception 与 The Danger-On-Light Rule 豁免清单）。
+- 目录与行数门禁（`bun run check:structure`）限制新增文件落点；结构与文档计数由
+  `bun run check:docs` 双向比对。
+
+**术语**：番号（carNum）、清单、待鉴定、已收藏、已观看、屏蔽（演员/关键词/单番号）、
+以谁为准（冲突选择）、子系统（令牌 / Bulma / Flat-UI / Nord / Tailwind 五个调色板族）。
 
 ## Brand Personality
 
@@ -27,6 +75,14 @@ JavDB Power Tools 是注入 JavDB / MissAV 的用户脚本工具箱，在保留�
 大幅动效；不为了“独特”重造标准表单控件，也不以极端紧凑牺牲可读性、触控面积和
 状态反馈。
 
+## Evidence on Hand
+
+- `archetype/jhs.user.js`：原脚本基准（JAV-JHS 3.3.6，MIT），所有「零偏差」声明的对照物。
+- `docs/javdb-site-structure.md`、`docs/javdb-site-style.md`：宿主站点结构与样式的取证记录。
+- `docs/plugin-catalog.md`：插件与核心模块的当前清单（可机器校验）。
+- `docs/*-*.md` 的「执行验证记录」：每次变更的真实命令输出（含实测数字与已知限制）。
+- **不存在、也不得编造**：用户调研数据、性能基准、媒体报道、客户证言、定价或部署承诺。
+
 ## Design Principles
 
 1. 融入原站：复用 JavDB/Bulma 的颜色、字体和标准控件语义。
@@ -35,6 +91,19 @@ JavDB Power Tools 是注入 JavDB / MissAV 的用户脚本工具箱，在保留�
 3. 信息可扫读：名称、数量、选中状态和操作入口层级明确，大量数据仍能快速定位。
 4. 渐进增强：原生 DOM 与站点操作链保持可用，增强层失效时不制造假成功或破坏数据。
 5. 密度有节制：桌面高效、移动端可触控，优先减少认知负担而非堆叠装饰。
+
+以上是**界面层**约束；下节是与之互补的**战略层**原则。
+
+## Product Principles
+
+1. **本地优先。** 不引入厂商服务端：一致性由本地机制保证，备份用用户自己的存储。
+2. **单一事实来源。** 版本号、站点选择器、存储域、术语各有一处权威定义，并由门禁校验，
+   不在第二处复述。
+3. **可回退纪律。** 与宿主/原脚本的对照关系必须可验证；移植保真范围内的行为与字面值冻结，
+   改动须同步对照关系，而不是就地「优化」。
+4. **失败可解释。** 宁可少计一次、少做一步，也不制造假成功或静默丢数据（读失败不写回、
+   冲突显式选择）。
+5. **维护优先于扩张。** 新能力落在既有抽象与目录门禁内：先复用，再新增。
 
 ## Accessibility & Inclusion
 
