@@ -63,6 +63,7 @@
 | `46-domain-refactor-video-identity.md` | 变更 | v1.47.6 | 领域驱动重构（试点：番号身份共享内核）：实测依赖图（386 文件 / 6 处环，95 文件巨型 SCC **全部是类型层环**）、领域闭环与规则重复盘点；新增 `src/core/domain/car-num.ts` 作为番号归一化/等价判定/西方格式的**单点权威**（8 处实现收敛为 1），`normalizeCode`/`normalizeVisitCarNum`/`_formatWesternCar` 及 missav 归一化导出删除并迁移 11 个调用方；`BasePlugin` 不再承载业务规则；棘轮收紧（删 4 条过期 file-ceiling，dir-ceiling 下调）；新增 18 用例（37 文件 / 388 用例）+ 100,023 次迁移等价模糊比对 0 差异 |
 | `47-carnum-match-and-home-filter.md` | 变更 | v1.48.0 | 番号匹配口径统一（`updateCarInfo`/`removeCar`/`batchRemoveCars` 三处改为跟随 `caseInsensitiveCarNum`，消除「能读到却删不掉」，7 用例）；**跨站全量载荷唯一构造点** `car-status-publish.publishFullSnapshot`（面板同步不再缺 `revision`/`mode`/`ready`，8 用例）；**JavDB 首页显示过滤/筛选组件**（历史复核为「一直显示」，新增页面类型 `home` 确定性放行，4 用例）；遗留项收敛：CSRF 5 份→1、`isVideoDetailPath` 归位共享模块、`STATUS_LIST` 单源、补 `jhs_external_visit` 迁移缺口；核心模块 64→66、测试 40 文件/407 用例 |
 | `48-list-mount-anchor.md` | 变更 | v1.48.1 | 列表页筛选栏挂载锚点单点化：首页实测 `stfBar:true / vltBar:false`（`.tabs.is-boxed` 计数 1 但不在结构式层）→ 根因是清单标签栏只认结构式一条链；新增 `core/util/site/list-mount.ts`（结构式→宽松式→容器首子元素）+ 注册表 3 键 + 列表变更时重试挂载；顺带修正 `list-page-plugin.checkDom()` 遗留的 `window.isListPage` 守卫并降噪日志；新增 5 用例（41 文件/412 用例），选择器基线收紧至 268 |
+| `49-mount-point-position.md` | 变更 | v1.48.2 | 挂载点（目标+方位）修复首页布局错乱：v1.48.1 的宽松式回退把插入点带进卡片网格 → 规则收成 `applyListMountPoint` 一处（结构式标签栏之后 / **影片列表之前** / 容器顶部），删除 `tabsBoxedLoose` 与 `doBuild` 里重复的方位判断；用例改为断言方位与同层性（41 文件/413 用例） |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 
