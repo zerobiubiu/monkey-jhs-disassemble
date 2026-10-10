@@ -22,7 +22,6 @@
   "src/components/setting/simple-setting-panel.tsx": 4,
   "src/components/top250/top250-nav-link.tsx": 2,
   "src/components/top250/top250-pagination.tsx": 4,
-  "src/core/list-dom-bus.ts": 1,
   "src/core/page-context.ts": 1,
   "src/main.tsx": 1,
   "src/plugins/actress-info-plugin.tsx": 4,

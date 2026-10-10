@@ -57,6 +57,8 @@
 | `40-builtin-cache-probe.md` | 变更 | v1.47.2 | 内置缓存诊断探针：油猴沙箱下由 GM 菜单两条命令执行（①记录快照 ②检查是否被数据写入连带清空；OK/BAD/WARN 判据 → 日志面板 + 剪贴板）；只读 `cacheSettingObj`，不写任何数据。新增 7 用例（34 文件 / 349 用例） |
 | `41-merged-row-uncheck-fix.md` | 变更 | v1.47.3 | 合并行「取消」静默失败修复（承接 `13`）：原生派发失败重试一次、仍失败走 VLT 服务端管线兜底（未解析成员按本地关联纳入取消范围）；未知成员保持半选、不再伪装成已取消；加入路由与本地 `VltDb` 关联交叉校验，防「塞进同组第二个清单」。新增 13 用例（35 文件 / 362 用例） |
 | `42-release-notes-and-version-hygiene.md` | 变更 | v1.47.3 | 发布链路与版本治理：`release.yml` 提取改为「止于下一个 `## v`」（修复 34 版本 / 243 行吞噬）；清理空 `## v1.46.9` 标题与 v1.13.3 双标题；`package.json` version 与 `userscript.version` 对齐 + 新增 `bun run check:version` 门禁；补写欠档 `docs/33`；README 索引补 40–42 行 |
+| `43-dead-module-cleanup.md` | 变更 | v1.47.4 | 无引用模块清理：按 import 图（规格化说明符）核实并删除 7 个零引用文件（`core/image-preview.tsx` 及其两个专属组件与样式表、`core/list-dom-bus.ts`、`components/misc/url-auto-link.tsx`、`components/setting-panels/hr-style.ts`）；同步 catalog/AGENTS 计数、选择器棘轮基线、版本与 CHANGELOG。构建 + 362 用例通过，产物被删符号零残留 |
+| `44-leftover-deadcode-adjudication.md` | 决策 | v1.47.4 | 遗留死件裁决（承接 `43`）：对 6 项疑似死件（jhs-sync barrel、外站设置区 no-op 方法与其孤儿组件、`resetBtnTip` 空实现、`dpb-helpers` 死方法、Beyond60 死分支、`HAS_DOWN_TEXT`/`HAS_DOWN_STATUS`）做调用点/创建者/消费方/档案四查，全部裁决**保留**并给出依据与复核触发条件；本轮无 `src/` 改动 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

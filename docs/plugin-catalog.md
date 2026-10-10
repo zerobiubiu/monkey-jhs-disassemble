@@ -85,7 +85,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **64 个文件**：顶层 28 + `storage/` 10 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **62 个文件**：顶层 26 + `storage/` 10 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -106,7 +106,7 @@
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
 | common-util.ts | 通用工具（retry/htmlTo$dom/getUrlParam/isMobile/loopDetector） |
 | toast.ts / loading.ts / logger.tsx | Toastify 封装（show.ok/error/success）/ 加载遮罩 / 日志控制台（clog） |
-| image-preview.tsx / viewer.ts | 图片查看器 / Viewer.js 配置 |
+| viewer.ts | Viewer.js 配置 |
 | webdav.ts / webdav-crypto.ts / gfriends.ts | WebDav 客户端 / WebDav 加密解密 / GFriends 数据 |
 | backup-crypto.ts | 备份 payload 的 AES-GCM 加解密（凭证派生） |
 | backup-extra-storage.ts | 备份附加存储采集（GM 键 + localStorage 白名单，如阅读状态/清单插件主数据） |
@@ -118,7 +118,6 @@
 | plugin-diagnostics.tsx | 插件诊断（状态表格 + 纯文本报告 + GM 菜单注册） |
 | page-context.ts | 集中式页面类型检测（detectPageContext + pageContext 单例） |
 | task-supervisor.ts | AbortSignal 统一生命周期管理（定时器/Observer/事件监听器） |
-| list-dom-bus.ts | 列表页 DOM 变更总线（单 Observer + rAF 批量分发 .item 新增） |
 | pagination-state.ts | 瀑布流分页状态机（idle/loading/error/exhausted + retry） |
 | storage-revision.ts | 跨标签页存储修订号追踪（BroadcastChannel 广播 + 缓存失效回调） |
 | sync/ | 4 个文件：withExclusiveLock（Web Locks 包装，降级直接执行）、KeyedQueue（键控串行队列）、sync-intent-journal（意图日志，崩溃后恢复消费）、index（barrel） |

@@ -87,10 +87,10 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-共 **63 个文件**：顶层 28 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）三个子目录 35。
+共 **62 个文件**：顶层 26 + `storage/`（存储域拆分）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）三个子目录 36。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
-### 3.5 组件 `src/components/`（141 个）
+### 3.5 组件 `src/components/`（140 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。不使用 react-dom/server。
@@ -243,8 +243,6 @@ layer.js 的 z-index **无上限递增**（每次开弹窗 +1、mousedown +1）�
 
 - `--jhs-z-page: 9999`：页面内元素（back-to-top / load-all / 瀑布流按钮 / tag 下拉）
 - `--jhs-z-top: 999999999`：above-layer 层（tooltip / loading / logger / fc2 / visit-history）
-
-`image-preview.css` 的 `/* __Z_INDEX__ */` 为运行时占位符，**不得**替换为 `var()`。
 
 ### 9.5 CSS 类名前缀
 

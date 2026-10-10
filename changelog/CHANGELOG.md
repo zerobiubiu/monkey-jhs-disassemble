@@ -9,6 +9,18 @@
 
 ---
 
+## v1.47.4
+
+### 清理（无引用模块与遗留资产，doc/43）
+- **删除 7 个零引用文件**（全库 import 图核实：`from`/`import()` 规格化说明符命中数 = 0）：
+  - `src/core/image-preview.tsx` —— 悬浮大图预览类 `ImagePreview`；其唯一初始化点 (`hoverBigImg`) 已在 doc/04 移除，此后无任何构造点。
+  - `src/components/image-preview/image-preview-error.tsx`、`image-preview-img.tsx` —— 只被 `core/image-preview.tsx` 引用。
+  - `src/styles/image-preview.css` —— 只被 `core/image-preview.tsx` 以 `?raw` 引用（含 `/* __Z_INDEX__ */` 运行时占位符）。
+  - `src/core/list-dom-bus.ts` —— `ListDomBus`（Runtime V2 候选基础设施，doc/142 引入，从未接线）。
+  - `src/components/misc/url-auto-link.tsx` —— `UrlAutoLink`（日志链接化已由 `logger-log-entry.tsx` 内联实现）。
+  - `src/components/setting-panels/hr-style.ts` —— `HR_STYLE`（已被 `.jhs-setting-section` 取代）。
+- **文档与门禁同步**：`docs/plugin-catalog.md` §2 核心模块 64 → 62（顶层 28 → 26，删 `list-dom-bus.ts`、`image-preview.tsx` 两行）；`AGENTS.md` §3.4 计数 63 → 62（顶层 26 + 子目录 36）、§3.5 组件 141 → 140、§9.4 删除对已删 `image-preview.css` 占位符的引用；`scripts/site-selector-baseline.json` 移除已删文件条目。版本 1.47.3 → 1.47.4。
+
 ## v1.47.3
 
 ### 修复（合并行「取消」静默失败，doc/41）
