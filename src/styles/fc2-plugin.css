@@ -87,12 +87,12 @@
     transform: scale(1.05);
 }
 
-/* 加载中和错误状态 */
+/* 加载中和错误状态（.movie-error 的色值被下方第三条同名规则覆盖为 #666，此处实际作用于 .search-loading） */
 .search-loading,
 .movie-error {
     padding: 40px;
     text-align: center;
-    color: #999;
+    color: var(--jhs-color-text-secondary);
 }
 
 .movie-error {

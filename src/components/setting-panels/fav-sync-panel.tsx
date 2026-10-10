@@ -35,7 +35,7 @@ export function FavSyncPanel({ panelName }: FavSyncPanelProps) {
                     <br />
                     支持 5 万+ 条目：分页抓取、断点续接、后台处理。关闭弹窗不中断同步，重新打开自动恢复进度。
                     <br />
-                    <span style={{ color: '#f40' }}>建议先备份数据。</span>
+                    <span style={{ color: '#dc2626' }}>建议先备份数据。</span>
                 </p>
                 <SettingRow
                     label="同步请求间隔(毫秒):"

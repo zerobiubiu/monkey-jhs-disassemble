@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { TipIcon } from './tip-icon';
 
 /** SimpleSettingPanel 的属性。 */
 export interface SimpleSettingPanelProps {
@@ -18,24 +19,24 @@ function Row({
     label,
     tip,
     children,
-    stacked
+    stacked,
+    htmlFor
 }: {
     label: string;
     tip?: string;
     children: ReactNode;
     stacked?: boolean;
+    /**
+     * 控件 id。给出时标签文案渲染为 `<label for>`，整段文案成为命中区
+     * （开关自身只有 40×22）。问号提示图标留在 label 外，避免点提示误触控件。
+     */
+    htmlFor?: string;
 }) {
     return (
         <div className={stacked ? 'jhs-qs-row jhs-qs-row-stacked' : 'jhs-qs-row'}>
             <div className="jhs-qs-label">
-                {tip ? (
-                    // doc/53：问号提示此前无可访问名称（读屏只念「问号」）。
-                    // role=img + aria-label 让提示内容进入可访问名称树，与视觉 tooltip 同源。
-                    <span className="jhs-qs-tip" role="img" aria-label={tip} data-tip={tip}>
-                        ?
-                    </span>
-                ) : null}
-                <span>{label}</span>
+                {tip ? <TipIcon tip={tip} /> : null}
+                {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
             </div>
             <div className="jhs-qs-control">{children}</div>
         </div>
@@ -59,31 +60,32 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                     <Row
                         label="显示所有已鉴定"
                         tip="开启后忽略下方分项，强制显示全部已鉴定内容"
+                        htmlFor="showAllItem"
                     >
                         <input type="checkbox" id="showAllItem" className="jhs-toggle" />
                     </Row>
                     <div className="jhs-qs-subcard" id="jhs-qs-filter-group">
-                        <Row label="屏蔽单番号">
+                        <Row label="屏蔽单番号" htmlFor="showFilterItem">
                             <input type="checkbox" id="showFilterItem" className="jhs-toggle" />
                         </Row>
-                        <Row label="屏蔽演员">
+                        <Row label="屏蔽演员" htmlFor="showFilterActorItem">
                             <input
                                 type="checkbox"
                                 id="showFilterActorItem"
                                 className="jhs-toggle"
                             />
                         </Row>
-                        <Row label="屏蔽关键词">
+                        <Row label="屏蔽关键词" htmlFor="showFilterKeywordItem">
                             <input
                                 type="checkbox"
                                 id="showFilterKeywordItem"
                                 className="jhs-toggle"
                             />
                         </Row>
-                        <Row label="收藏">
+                        <Row label="收藏" htmlFor="showFavoriteItem">
                             <input type="checkbox" id="showFavoriteItem" className="jhs-toggle" />
                         </Row>
-                        <Row label="已观看">
+                        <Row label="已观看" htmlFor="showHasWatchItem">
                             <input type="checkbox" id="showHasWatchItem" className="jhs-toggle" />
                         </Row>
                     </div>
@@ -91,10 +93,10 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
 
                 <div className="jhs-qs-section">
                     <div className="jhs-qs-section-title">浏览行为</div>
-                    <Row label="弹窗打开详情" tip="点击封面：弹窗打开，或新窗口打开">
+                    <Row label="弹窗打开详情" tip="点击封面：弹窗打开，或新窗口打开" htmlFor="dialogOpenDetail">
                         <input type="checkbox" id="dialogOpenDetail" className="jhs-toggle" />
                     </Row>
-                    <Row label="鉴定后关闭页面">
+                    <Row label="鉴定后关闭页面" htmlFor="needClosePage">
                         <input type="checkbox" id="needClosePage" className="jhs-toggle" />
                     </Row>
                     <Row
@@ -127,11 +129,15 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
 
                 <div className="jhs-qs-section">
                     <div className="jhs-qs-section-title">功能</div>
-                    <Row label="标题翻译">
+                    <Row label="标题翻译" htmlFor="translateTitle">
                         <input type="checkbox" id="translateTitle" className="jhs-toggle" />
                     </Row>
                     {isJavdbSite ? (
-                        <Row label="加载女优信息" tip="详情页展示年龄、三围等信息">
+                        <Row
+                            label="加载女优信息"
+                            tip="详情页展示年龄、三围等信息"
+                            htmlFor="enableLoadActressInfo"
+                        >
                             <input
                                 type="checkbox"
                                 id="enableLoadActressInfo"
@@ -139,7 +145,11 @@ export function SimpleSettingPanel({ isJavdbSite }: SimpleSettingPanelProps) {
                             />
                         </Row>
                     ) : null}
-                    <Row label="第三方视频资源" tip="详情页 missAv / SupJav 等检测">
+                    <Row
+                        label="第三方视频资源"
+                        tip="详情页 missAv / SupJav 等检测"
+                        htmlFor="enableLoadOtherSite"
+                    >
                         <input type="checkbox" id="enableLoadOtherSite" className="jhs-toggle" />
                     </Row>
                 </div>

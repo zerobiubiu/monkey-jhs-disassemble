@@ -666,16 +666,8 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .jhs-list-panel *,
-    .jhs-list-panel *::before,
-    .jhs-list-panel *::after {
-        scroll-behavior: auto !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
+/* 减少动态效果由 accessibility.css 统一处理（doc/55 起为「减少而非抹平」：停循环与位移、
+   保留状态过渡），此处不再重复声明作用域内版本 */
 
 /* 隐藏详情页菜单按钮组的状态行（屏蔽/收藏/已观看）
    快捷评分条（星星+已读+收藏）已覆盖这三个功能，拉黑待第二步移入评分条

@@ -17,14 +17,34 @@ textarea:focus-visible,
     outline-offset: 2px;
 }
 
-/* 减少动态效果：尊重用户系统偏好 */
+/* 减少动态效果：尊重用户系统偏好——「减少而非抹平」（见 DESIGN.md 动效条款）。
+   1) 循环与一次性入场动画（spinner / 脉冲 / 骨架 / toast 入场 / 淡入）收敛为「立即到位」：
+      其含义由并存文字与静态图形承担（如「请求中」+ 静止圆点、「加载中」+ 静态骨架）；
+   2) 滚动改即时；
+   3) **状态过渡保留**：颜色 / 底色 / 描边 / 阴影 / 透明度 / 填充仍按原时长过渡，
+      动作反馈不因减动而消失；
+   4) 只摘掉「位移动效」（transform / width）：下方 10 处载体把 transition-property
+      收窄到非位移属性，悬停抬升、开关滑块、骨架与进度位移改为立即到位。 */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    .jhs-load-all-btn:not(.is-docked),
+    .jhs-toolbar-menu-btn,
+    .movie-image-thumb,
+    .list-rating-star,
+    .console-logger-toggle::after,
+    .jhs-user-rating,
+    .cache-item,
+    .jhs-toggle::before,
+    .jhs-vlt-auto-refresh-slider::before,
+    .jhs-vlt-filter-mode-arrow {
+        transition-property: color, background-color, background, border-color, border,
+            box-shadow, opacity, fill !important;
     }
 }

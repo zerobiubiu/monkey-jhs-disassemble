@@ -62,7 +62,9 @@ export class HighlightMagnetPlugin extends BasePlugin {
             );
             nameEl.parent().parent().parent().addClass('magnet-row');
             if (nameText.includes('4k')) {
-                nameEl.css('color', '#f40');
+                // 4K 行标红：用 DESIGN.md 的 Danger-On-Light 色阶（白底 4.83:1），
+                // 原脚本的 #f40 在白底仅 3.45:1（doc/54 P2 / doc/55）
+                nameEl.css('color', '#dc2626');
             }
             if (isHighQuality) {
                 hasHighQuality = true;

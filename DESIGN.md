@@ -385,9 +385,9 @@ components:
 
 **The Subsystem-Fidelity Rule.** 每个子系统调色板只在其宿主的上下文中使用。Nord 族只在 MissAV 页面，Flat-UI 族只在日志面板，Bulma 族只在紧邻站点原生控件的列表页。跨域搬用一族颜色进另一族的地盘，是比色值不一致更严重的问题。
 
-**The Contrast-On-Subtle Rule.** 次级文字 `#6c757d` 只在**纯白底**上达标（4.69:1）。落在浅灰底上必须加深一档——实测 `#f8fafc` 4.48 / `#f1f5f9` 4.28 / `#e2e8f0` **3.80**，三者均低于 4.5:1（WCAG AA 1.4.3）。**在 `#f0f0f0` 及更浅的灰底上写次级文字，改用 slate-600 `#475569`（7.5:1）。** `#999999`（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。
+**The Contrast-On-Subtle Rule.** 次级文字 `#6c757d` 只在**纯白底**上达标（4.69:1）。落在浅灰底上必须加深一档——实测 `#f8fafc` 4.48 / `#f1f5f9` 4.28 / `#e2e8f0` **3.80**，三者均低于 4.5:1（WCAG AA 1.4.3）。**在 `#f0f0f0` 及更浅的灰底上写次级文字，改用 slate-600 `#475569`（7.5:1）。** `#999999`（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。**已按此规则修正的信息性文本**：`cache-item-html` 的缓存容量/条目行、`actress-info-detail-segment` 的空态提示、`review-conflict-dialog` 的说明段、`fc2-plugin` 的 `.search-loading`、`new-video-plugin` 的 `.actress-card-allname`；保留的登记用途：`related-item`/`review-item` 的序号与时间戳、`section-header` 的分隔线渐变（非文字）、`design-tokens.css` 的令牌声明本身。
 
-**The Danger-On-Light Rule.** 危险色作**文字或图标**时浅底需 ≥4.5:1：用 `#dc2626`（白底 4.83）。`#ef4444`（3.76）、`#f40`（3.45）、`#dc3545` 只可用于**可填充控件底**（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。
+**The Danger-On-Light Rule.** 危险色作**文字或图标**时浅底需 ≥4.5:1：用 `#dc2626`（白底 4.83）。`#ef4444`（3.76）、`#f40`（3.45）、`#dc3545` 只可用于**可填充控件底**（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。**已按此规则修正**：`fav-sync-panel` / `fav-sync-bind` 的「建议先备份数据」、`highlight-magnet-plugin` 的 4K 行标红。**例外（移植保真，不改）**：`blacklist-confirm-message` / `quick-block-confirm-message` / `confirm-warn` / `log-colored` 四个组件声明了与原脚本「字节级相同 / DOM 等价」的契约，其 `#f40` 属被冻结的移植产物，改动需同步原脚本对照关系（与 The Port-Fidelity Exception 同源逻辑）。
 
 ## Typography
 
@@ -491,7 +491,7 @@ components:
 - **Style:** `height: 36px` / `padding: 6px 12px` / `1px solid #d1d5db` / 6px 圆角 / 13px / `#1e293b` 文字 / 白底。颜色选择器同高同圆角，宽度 36px
 - **Focus:** 描边转 `#5d87c2` + `box-shadow: 0 0 0 2px rgb(93 135 194 / 0.15)`。**光晕用主色的 15% 透明版，不用灰色**
 - **Readonly / Disabled:** 只读转 `#f8fafc` 底 / `#94a3b8` 文字 / `#e2e8f0` 描边；禁用走 `opacity: 0.6`
-- **开关:** `.jhs-toggle` 40×22px / 圆角 11px / 关态 `#d1d5db` / 开态 `#22c55e` / 旋钮 18px 白圆 + `translateX(18px)`。紧凑开关 `input.mini-switch` 为 40×20px / 圆角 20px / 关态 `#e0e0e0` / 开态 `#4caf50`。**两组开关各自为政是历史欠账，两者都在生产使用中**
+- **开关:** `.jhs-toggle` 40×22px / 圆角 11px / 关态 `#d1d5db` / 开态 `#22c55e` / 旋钮 18px 白圆 + `translateX(18px)`。紧凑开关 `input.mini-switch` 为 40×20px / 圆角 20px / 关态 `#e0e0e0` / 开态 `#4caf50`。**两组开关各自为政是历史欠账，两者都在生产使用中**。命中区：视觉维持 40×22，用透明 `::after` 向外括到 **40×44**（旋钮占用 `::before`）；行标签以 `<label for>` 联动（`setting-row.tsx` / `simple-setting-panel.tsx`），问号提示图标留在 label 外不参与激活。
 - **下拉选择器:** 药丸形（`50rem`）、`1.5px solid #ced4da`、`0.72–0.78rem`、内联 SVG 箭头（`data:` URI，随文字色切换）。列表页工具栏专用
 - **复选框:** 16px，`accent-color: #5d87c2`
 
@@ -523,7 +523,7 @@ components:
 - **Do** 保持 44px 触控目标（`--jhs-touch-target`）。
 - **Do** 给自建滚动容器挂 `.jhs-scrollbar`。
 - **Do** 保留 `:focus-visible` 的 `2px solid #5d87c2` / `outline-offset: 2px`。
-- **Do** 动效只用两档：`150ms ease`（微反馈）与 `250ms ease`（面板与布局）。`prefers-reduced-motion` 已全局兜底。
+- **Do** 动效只用两档：`150ms ease`（微反馈）与 `250ms ease`（面板与布局）。`prefers-reduced-motion` 的兜底是**「减少而非抹平」**（`accessibility.css`）：停掉循环与一次性入场动画、把 10 处位移过渡（transform / width）摘成立即到位、滚动改即时，但**保留颜色 / 底色 / 描边 / 阴影 / 透明度 / 填充的状态过渡**——动作反馈不因减动而消失。
 - **Do** 设置项落进 `grid-template-columns: 180px 1fr` + `gap: 12px` 的既有网格。
 - **Do** 需要新图标时画 SVG 或从 `src/resources/icons.ts` 取。
 - **Do** 改动那七个带零偏差契约的样式表前，先确认原脚本对照关系是否需要同步更新（见 The Port-Fidelity Exception）。

@@ -36,7 +36,7 @@
 
 .actress-card-allname {
     font-size: 0.9em;
-    color: #999;
+    color: var(--jhs-color-text-secondary);
     margin-top: 5px;
     height: 30px; /* 保证高度一致性 */
     overflow: hidden;

@@ -15,7 +15,7 @@ import './core/libs';
 import { isJavdbSite, isMissavSite } from './constants/site';
 
 // 核心模块
-import { injectCss } from './core/style-injector';
+import { CSS_PLACEHOLDER, fillCssPlaceholder, injectCss } from './core/style-injector';
 import { loadGfriends, filetreeDb } from './core/gfriends';
 import { WebDavClient } from './core/webdav';
 import { createLoading } from './core/loading';
@@ -134,9 +134,11 @@ if (window.location.href.includes('hideNav=1')) {
 const hideCoverSizeCss = isJavdbHomePath()
     ? `${siteSelector('listCoverSizeSwitch')}{display:none!important;}`
     : '';
-const javdbSiteCss = javdbSiteCssRaw
-    .replace('/*__HIDENAV2__*/', javdbHideNavCss)
-    .replace('/*__HIDE_COVER_SIZE__*/', hideCoverSizeCss);
+const javdbSiteCss = fillCssPlaceholder(
+    fillCssPlaceholder(javdbSiteCssRaw, CSS_PLACEHOLDER.hideNav, javdbHideNavCss),
+    CSS_PLACEHOLDER.hideCoverSize,
+    hideCoverSizeCss
+);
 function generateScrollbarCss(): string {
     const scrollbarSelectors: string[] = [
         '.jhs-scrollbar',
@@ -154,7 +156,11 @@ function generateScrollbarCss(): string {
         .trim()
         .replace(/\n/g, '');
 }
-const commonToolbarCss = commonToolbarCssRaw.replace('/*__SCROLLBAR__*/', generateScrollbarCss());
+const commonToolbarCss = fillCssPlaceholder(
+    commonToolbarCssRaw,
+    CSS_PLACEHOLDER.scrollbar,
+    generateScrollbarCss()
+);
 if (isJavdbSite) {
     injectCss(javdbSiteCss);
 }

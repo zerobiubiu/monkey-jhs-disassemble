@@ -68,6 +68,12 @@ __CSS_TEXT__
     min-width: 0;
 }
 
+/* 联动标签（有 for 的 <label>）给手型指针，与平台惯例一致；问号提示图标留在 label 外 */
+.setting-label > label,
+.jhs-qs-label > label {
+    cursor: pointer;
+}
+
 .form-content {
     min-width: 0;
 }
@@ -140,8 +146,9 @@ __CSS_TEXT__
     box-sizing: border-box;
 }
 
-/* 行内问号提示图标 */
-.jhs-tooltip-icon {
+/* 行内问号提示图标（doc/55：设置行与快捷面板的 `.jhs-tooltip-icon`/`.jhs-qs-tip`
+   两套逐字相同的实现已收敛为 tip-icon.tsx + 本规则） */
+.jhs-tip-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -200,6 +207,19 @@ __CSS_TEXT__
 
 .jhs-toggle:checked::before {
     transform: translateX(18px);
+}
+
+/* 命中区：视觉仍是 40×22，用透明 ::after 向外括到 40×44（≥44px 触控目标，见 DESIGN.md）。
+   旋钮占用了 ::before，故命中区只能用 ::after。跨界最多 11px，落在行内 padding 上；
+   行标签同时以 `<label for>` 联动（setting-row.tsx / simple-setting-panel.tsx），
+   整段文案可点。 */
+.jhs-toggle::after {
+    content: '';
+    position: absolute;
+    top: -11px;
+    right: -2px;
+    bottom: -11px;
+    left: -2px;
 }
 
 .jhs-toggle:focus-visible {
@@ -579,22 +599,6 @@ __CSS_TEXT__
     color: #334155;
     line-height: 1.35;
     min-width: 0;
-}
-
-.jhs-qs-tip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: #cbd5e1;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    cursor: help;
-    line-height: 1;
 }
 
 .jhs-qs-control {

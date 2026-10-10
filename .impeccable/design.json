@@ -1,6 +1,6 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-10-10T13:46:15.516Z",
+    "generatedAt": "2026-10-10T14:05:24.941Z",
     "title": "Design System: JavDB Power Tools",
     "extensions": {
         "colorMeta": {
@@ -543,12 +543,12 @@
             {
                 "name": "The Contrast-On-Subtle Rule",
                 "section": "colors",
-                "body": "次级文字 #6c757d 只在纯白底上达标（4.69:1）。落在浅灰底上必须加深一档——实测 #f8fafc 4.48 / #f1f5f9 4.28 / #e2e8f0 3.80，三者均低于 4.5:1（WCAG AA 1.4.3）。在 #f0f0f0 及更浅的灰底上写次级文字，改用 slate-600 #475569（7.5:1）。 #999999（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。"
+                "body": "次级文字 #6c757d 只在纯白底上达标（4.69:1）。落在浅灰底上必须加深一档——实测 #f8fafc 4.48 / #f1f5f9 4.28 / #e2e8f0 3.80，三者均低于 4.5:1（WCAG AA 1.4.3）。在 #f0f0f0 及更浅的灰底上写次级文字，改用 slate-600 #475569（7.5:1）。 #999999（白底 2.85:1）只限占位、禁用、时间戳，不得用作信息性文本。已按此规则修正的信息性文本：cache-item-html 的缓存容量/条目行、actress-info-detail-segment 的空态提示、review-conflict-dialog 的说明段、fc2-plugin 的 .search-loading、new-video-plugin 的 .actress-card-allname；保留的登记用途：related-item/review-item 的序号与时间戳、section-header 的分隔线渐变（非文字）、design-tokens.css 的令牌声明本身。"
             },
             {
                 "name": "The Danger-On-Light Rule",
                 "section": "colors",
-                "body": "危险色作文字或图标时浅底需 ≥4.5:1：用 #dc2626（白底 4.83）。#ef4444（3.76）、#f40（3.45）、#dc3545 只可用于可填充控件底（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。"
+                "body": "危险色作文字或图标时浅底需 ≥4.5:1：用 #dc2626（白底 4.83）。#ef4444（3.76）、#f40（3.45）、#dc3545 只可用于可填充控件底（配白字）、实底徽标或深色底前景，不得直接作浅底文字色。已按此规则修正：fav-sync-panel / fav-sync-bind 的「建议先备份数据」、highlight-magnet-plugin 的 4K 行标红。例外（移植保真，不改）：blacklist-confirm-message / quick-block-confirm-message / confirm-warn / log-colored 四个组件声明了与原脚本「字节级相同 / DOM 等价」的契约，其 #f40 属被冻结的移植产物，改动需同步原脚本对照关系（与 The Port-Fidelity Exception 同源逻辑）。"
             },
             {
                 "name": "The Five-Size Rule",
@@ -595,7 +595,7 @@
             "Do 保持 44px 触控目标（--jhs-touch-target）。",
             "Do 给自建滚动容器挂 .jhs-scrollbar。",
             "Do 保留 :focus-visible 的 2px solid #5d87c2 / outline-offset: 2px。",
-            "Do 动效只用两档：150ms ease（微反馈）与 250ms ease（面板与布局）。prefers-reduced-motion 已全局兜底。",
+            "Do 动效只用两档：150ms ease（微反馈）与 250ms ease（面板与布局）。prefers-reduced-motion 的兜底是「减少而非抹平」（accessibility.css）：停掉循环与一次性入场动画、把 10 处位移过渡（transform / width）摘成立即到位、滚动改即时，但保留颜色 / 底色 / 描边 / 阴影 / 透明度 / 填充的状态过渡——动作反馈不因减动而消失。",
             "Do 设置项落进 grid-template-columns: 180px 1fr + gap: 12px 的既有网格。",
             "Do 需要新图标时画 SVG 或从 src/resources/icons.ts 取。",
             "Do 改动那七个带零偏差契约的样式表前，先确认原脚本对照关系是否需要同步更新（见 The Port-Fidelity Exception）。"

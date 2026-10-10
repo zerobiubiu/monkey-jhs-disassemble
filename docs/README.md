@@ -69,6 +69,7 @@
 | `52-list-page-button-removal.md` | 变更 | v1.48.5 | 删除列表页按钮组组件（`ListPageButtonPlugin` + 模板组件）：引用盘点零残留；`sortItems()` 迁入 `list-page-plugin` 保留排序能力、选择器改走注册表；`waitCheckCount`/`.jhs-toolbar-menu-btn` 仍有消费者故保留；插件 44→43、组件 140→139、选择器基线收紧至 258 |
 | `53-setting-layer-polish.md` | 变更 | v1.48.5 | 设置弹层 `/impeccable polish` 独立复核：critique 快照两条 P1 经核实已由 doc/248（侧栏 tablist + 方向键导航）与 doc/249（危险动作回本面板）实现；本轮新修两处——`.jhs-qs-tip` 补 `role="img"` + `aria-label`（读屏不再只念「问号」）、`cache-panel` 两处信息性文本从 `ink-muted #999`（2.85:1）改 `--jhs-color-text-secondary`（4.69:1）；记录未做项（按钮/开关体系收敛属 distill、其余 13 处 `#999` 属项目级）。补写：原提交引用了本文但文档当时未落盘 |
 | `54-design-audit-src.md` | 审计 | v1.48.5 快照 | `/impeccable audit src` 技术质量审计快照：健康度 11/20（无障碍 2 / 性能 3 / 主题化 2 / 响应式 2 / 实现完整性 2）；P1 三项（开关命中区 40×22 且标签不可点、次级文字在浅底 4.28–3.80、`prefers-reduced-motion` 全局 0.01ms 杀灭）；P2 四项（双问号实现其一无可访问名、`#f40` 白底 3.45、TSX 令牌覆盖率 0.5%、固定宽度窄视口）；含仪器限制与检测器误报声明 |
+| `55-impeccable-batch-closure.md` | 变更 | v1.48.6 | 六条命令收口：`document`（两条新 Named Rule + 存量实测写入设计系统、侧车重生成）· `adapt`（开关透明 `::after` 命中区 40×44 + 标签 `<label for>` 联动、问号提示留在 label 外）· `animate`（减动改「减少而非抹平」：停循环与 10 处位移动效、保留状态过渡）· `distill`（两套逐字相同的问号提示 CSS 收敛为 `tip-icon.tsx` + `.jhs-tip-icon`）· `polish`（信息性文本 `#999` 5 处、浅底危险文字 `#f40` 3 处；登记用途与移植保真豁免记录在案）；**顺带修复既有缺陷**：v1.28.15 注释格式化导致 `__HIDENAV2__`/`__SCROLLBAR__` 两处 CSS 注入静默失效（占位符单点声明 + 契约测试）；新增 2 个测试文件（9 用例），套件 43 文件/428 用例 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

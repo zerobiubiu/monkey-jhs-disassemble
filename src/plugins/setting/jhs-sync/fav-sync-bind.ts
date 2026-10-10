@@ -97,7 +97,7 @@ export function bindFavSyncPanel(): void {
             '确定开始双向增量同步？<br>' +
                 '将分页抓取 JavDB 想看/已看列表，对比后增量同步。<br>' +
                 '支持暂停/继续，关闭弹窗不中断。<br>' +
-                '<span style="color:#f40">建议先备份数据。</span>',
+                '<span style="color:#dc2626">建议先备份数据。</span>',
             () => {
                 const interval = Number($('#favSyncInterval').val()) || 500;
                 startSync(interval);

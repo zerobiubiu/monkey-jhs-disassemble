@@ -9,6 +9,20 @@
 
 ---
 
+## v1.48.6
+
+### 无障碍 / 动效 / 主题化收口（impeccable 批处理，doc/55）
+
+- **开关命中区与标签联动**：`.jhs-toggle` 视觉仍 40×22，用透明 `::after` 把命中区括到 **40×44**（旋钮占用 `::before`）；设置弹层与快捷浮层的行标签改为 `<label for>`（`SettingRow.controlId` / `Row.htmlFor`，共 11 个开关行），点标签文案即切换；问号提示图标留在 label 外，点提示不误触控件。
+- **减动策略改「减少而非抹平」**：`prefers-reduced-motion: reduce` 下停掉循环与一次性入场动画、把 10 处位移过渡（`transform`/`width`）摘成立即到位、滚动改即时，**保留**颜色 / 底色 / 描边 / 阴影 / 透明度 / 填充的状态过渡；删除 `rating-bar.css` 里与全局重复的作用域版本。
+- **问号提示收敛为单一实现**：两处逐字相同的 CSS（`.jhs-tooltip-icon` / `.jhs-qs-tip`）合并为 `tip-icon.tsx` + `.jhs-tip-icon`（`role="img"` + `aria-label` 与 `data-tip` 同源）。
+- **对比度修正**：信息性文本 `#999`（白底 2.85:1）5 处改 `--jhs-color-text-secondary`（4.69:1）；浅底危险文字 `#f40`（3.45:1）3 处改 `#dc2626`（4.83:1）；序号/时间戳、非文字分隔线与四个移植保真组件的 `#f40` 按登记用途保留。
+- **修复既有缺陷（CSS 注入静默失效）**：v1.28.15 的注释格式化把样式表标记补成 `/* X */` 而替换串未同步，导致 `__HIDENAV2__`（`?hideNav=1` 隐藏原站导航）与 `__SCROLLBAR__`（自建滚动容器样式）两处注入**从未生效**。占位符现单点声明在 `style-injector.ts`，`main.tsx` 改用 `fillCssPlaceholder`，新增契约测试守住形态；两处注入恢复生效。
+- **设计系统文档**：`DESIGN.md` 新增 **The Contrast-On-Subtle Rule** / **The Danger-On-Light Rule**（含移植保真豁免）、The Declared-Not-Wired Rule 增补实测存量、Typography 标明平台回退字体；`.impeccable/design.json` 随 DESIGN.md 重新生成（narrative 逐字保真核验通过）。
+- 用例 419 → **428**（新增 `setting-switch-hit-area` 6 例、`css-placeholder` 3 例）；组件 139 → **140**（新增 `tip-icon.tsx`，核心模块仍 67）；`eslint` / `stylelint` / 四门禁 / `tsc -b` / `vite build` 全部通过。
+
+---
+
 ## v1.48.5
 
 ### 删除（列表页按钮组组件，doc/52）

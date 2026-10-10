@@ -48,7 +48,7 @@ export function CacheItemHtml({ text, cacheKey, title, size, count }: CacheItemH
             }}
         >
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{text}</div>
-            <div style={{ fontSize: '12px', color: '#999', marginBottom: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--jhs-color-text-secondary)', marginBottom: '8px' }}>
                 <span className="cache-size">{size}</span>
                 {' · '}
                 <span className="cache-count">{count}</span>

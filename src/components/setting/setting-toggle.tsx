@@ -21,11 +21,12 @@ export interface SettingToggleProps {
 
 /**
  * 渲染开关设置行。
- * @returns SettingRow 包裹的 `.jhs-toggle` 复选框 JSX。
+ * @returns SettingRow 包裹的 `.jhs-toggle` 复选框 JSX（标签经 `for` 联动，
+ * 命中区由 CSS 的 `::after` 向外括到 40×44）。
  */
 export function SettingToggle({ id, label, tooltip, className }: SettingToggleProps) {
     return (
-        <SettingRow label={label} tooltip={tooltip} className={className}>
+        <SettingRow label={label} tooltip={tooltip} className={className} controlId={id}>
             <input id={id} type="checkbox" className="jhs-toggle" />
         </SettingRow>
     );

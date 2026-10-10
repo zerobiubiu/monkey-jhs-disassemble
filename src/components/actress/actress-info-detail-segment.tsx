@@ -94,7 +94,9 @@ export function ActressInfoDetailSegment({
             <a href={wikiApiUrl + actressName} target="_blank">
                 {nameNode}
             </a>
-            <span style={{ marginLeft: '5px', color: '#999' }}>暂无此演员信息</span>
+            <span style={{ marginLeft: '5px', color: 'var(--jhs-color-text-secondary)' }}>
+                暂无此演员信息
+            </span>
         </div>
     );
 }

@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { TipIcon } from './tip-icon';
 
 /** SettingRow 的属性。 */
 export interface SettingRowProps {
@@ -18,22 +19,24 @@ export interface SettingRowProps {
     children: ReactNode;
     /** 附加在 .setting-item 上的类（如 do-hide）。 */
     className?: string;
+    /**
+     * 控件 id。给出时标签文案渲染为 `<label for>`，使「点标签切换控件」成立
+     * （开关这类自身命中区小于 44px 的控件尤其需要）。问号提示图标留在 label 外，
+     * 避免点提示误触控件。
+     */
+    controlId?: string;
 }
 
 /**
  * 渲染一行设置项：右侧对齐标签 + 控件列。
  * @returns `.setting-item` JSX。
  */
-export function SettingRow({ label, tooltip, children, className }: SettingRowProps) {
+export function SettingRow({ label, tooltip, children, className, controlId }: SettingRowProps) {
     return (
         <div className={`setting-item${className ? ' ' + className : ''}`}>
             <span className="setting-label">
-                {label}
-                {tooltip ? (
-                    <span className="jhs-tooltip-icon" data-tip={tooltip}>
-                        ?
-                    </span>
-                ) : null}
+                {controlId ? <label htmlFor={controlId}>{label}</label> : label}
+                {tooltip ? <TipIcon tip={tooltip} /> : null}
             </span>
             <div className="form-content">{children}</div>
         </div>

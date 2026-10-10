@@ -63,4 +63,5 @@ div.tabs.no-bottom,
 }
 
 /* 首页隐藏站点原生「大封面 / 小封面」切换（doc/51）：占位符由 main.tsx 按页面替换 */
-/*__HIDE_COVER_SIZE__*/
+
+/* __HIDE_COVER_SIZE__ */

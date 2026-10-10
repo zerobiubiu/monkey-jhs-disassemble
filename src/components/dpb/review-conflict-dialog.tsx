@@ -101,7 +101,7 @@ export function ReviewConflictDialog({ carNum, localDesc, serverDesc }: ReviewCo
                     取消
                 </button>
             </div>
-            <p style={{ margin: '12px 0 0', fontSize: '12px', color: '#999' }}>
+            <p style={{ margin: '12px 0 0', fontSize: '12px', color: 'var(--jhs-color-text-secondary)' }}>
                 选择后立即同步；冲突未处理前不会自动覆盖任一侧数据。
             </p>
         </div>
