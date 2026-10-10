@@ -11,8 +11,8 @@
  */
 import { isJavdbSite, isMissavSite } from '../constants/site';
 
-/** 页面类型枚举。 */
-export type PageType = 'detail' | 'list' | 'fc2' | 'unknown';
+/** 页面类型枚举。`home` = JavDB 首页（`/`，站点文档列为影片列表页；列表容器可能未检出）。 */
+export type PageType = 'detail' | 'list' | 'fc2' | 'home' | 'unknown';
 
 /** 站点类型枚举。 */
 export type SiteType = 'javdb' | 'missav' | 'unknown';
@@ -29,6 +29,15 @@ export interface PageContextResult {
     isListPage: boolean;
     /** 是否为 FC2 页面（advanced_search?type=3 或 type=100） */
     isFc2Page: boolean;
+    /**
+     * 是否为 JavDB 首页（pathname 为 `/`）。
+     *
+     * doc/47：站点文档把首页列为影片列表页（影片列表容器 h cols-4 vcols-8），
+     * 但首页列表若在 document-idle 时尚未出现，`isListPage` 会为 false ——
+     * 此时 `pageType` 记为 `home`，供过滤/筛选组件显式放行（历史行为：原脚本
+     * 无页面门控，首页一直展示过滤筛选组件）。
+     */
+    isHomePage: boolean;
     /** 是否为 javdb 站点 */
     isJavdbSite: boolean;
     /** 是否为 missav 站点 */
@@ -48,6 +57,9 @@ export function detectPageContext(): PageContextResult {
         (($('.movie-list').length > 0) || href.includes('advanced_search'));
     const isFc2Page =
         href.includes('advanced_search?type=3') || href.includes('advanced_search?type=100');
+    // doc/47：首页（pathname 为空或 `/`）本身就是一个影片列表页
+    const pathname = window.location.pathname;
+    const isHomePage = isJavdbSite && (pathname === '/' || pathname === '');
 
     const site: SiteType = isJavdbSite ? 'javdb' : isMissavSite ? 'missav' : 'unknown';
     const pageType: PageType = isDetailPage
@@ -56,7 +68,9 @@ export function detectPageContext(): PageContextResult {
           ? 'fc2'
           : isListPage
             ? 'list'
-            : 'unknown';
+            : isHomePage
+              ? 'home'
+              : 'unknown';
 
     return {
         site,
@@ -64,6 +78,7 @@ export function detectPageContext(): PageContextResult {
         isDetailPage,
         isListPage,
         isFc2Page,
+        isHomePage,
         isJavdbSite,
         isMissavSite
     };
@@ -79,6 +94,7 @@ export let pageContext: PageContextResult = {
     isDetailPage: false,
     isListPage: false,
     isFc2Page: false,
+    isHomePage: false,
     isJavdbSite: false,
     isMissavSite: false
 };
@@ -87,4 +103,18 @@ export let pageContext: PageContextResult = {
 export function initPageContext(): PageContextResult {
     pageContext = detectPageContext();
     return pageContext;
+}
+
+/**
+ * 是否为「影片列表语境」—— 过滤/筛选组件（卡片过滤、状态标签芯片栏、清单标签筛选栏）
+ * 的共用判定（doc/47）。
+ *
+ * 与 `window.isListPage`（纯 DOM 检测，首页列表可能迟于 document-idle）的区别：
+ * 首页按 URL 确定性放行，避免首页因 `isListPage=false` 整体不执行 ——
+ * 历史行为是首页一直展示这些组件（原脚本无页面门控）。
+ *
+ * @returns 列表页或 JavDB 首页为 true
+ */
+export function isVideoListContext(): boolean {
+    return pageContext.isListPage || pageContext.pageType === 'home';
 }

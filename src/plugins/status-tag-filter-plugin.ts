@@ -58,7 +58,7 @@
  *   stf-ui.ts      — createFilterChip / doBuild / findMountTarget
  * 本类保留同名薄委托方法，内部调用点签名不变。
  */
-import type { PageType } from '../core/page-context';
+import { isVideoListContext, type PageType } from '../core/page-context';
 import { normalizeCarNum } from '../core/domain/car-num';
 import { TaskSupervisor } from '../core/task-supervisor';
 
@@ -98,9 +98,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
         return 'StatusTagFilterPlugin';
     }
 
-    /** 仅在列表页激活（doc/140）。 */
+    /** 仅在列表页与 JavDB 首页激活（doc/140；首页见 doc/47）。 */
     get pageTypes(): PageType[] {
-        return ['list'];
+        return ['list', 'home'];
     }
 
     /**
@@ -122,7 +122,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
-        if (!window.isListPage) return;
+        if (!isVideoListContext()) return;
         this.init();
         // 预热本脚本评分索引（已读星级筛选用）；缓存未就绪时星级芯片不生成。
         await this.warmScoreIndex();

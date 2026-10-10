@@ -40,7 +40,7 @@ import { NO, YES } from '../constants/status';
 import { TaskSupervisor } from '../core/task-supervisor';
 import { readPersistentMap } from '../core/storage/persistent-data-store';
 import { getActressNames } from '../core/util/site/actress-links';
-import type { PageType } from '../core/page-context';
+import { isVideoListContext, type PageType } from '../core/page-context';
 
 import { BasePlugin } from './base-plugin';
 import { filterMovieList as _filterMovieList, renderItemStatusTag as _renderItemStatusTag } from './list-page/lp-filter';
@@ -91,9 +91,9 @@ export class ListPagePlugin extends BasePlugin {
         this.supervisor.abort();
     }
 
-    /** 仅在列表页激活（doc/140）。 */
+    /** 仅在列表页与 JavDB 首页激活（doc/140；首页见 doc/47）。 */
     get pageTypes(): PageType[] {
-        return ['list'];
+        return ['list', 'home'];
     }
 
     /**
@@ -198,7 +198,7 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 触发列表过滤。对应原 L8432-8440。 */
     async doFilter(): Promise<void> {
-        if (!window.isListPage) {
+        if (!isVideoListContext()) {
             return;
         }
         const itemEls = $(this.getSelector().itemSelector).toArray();

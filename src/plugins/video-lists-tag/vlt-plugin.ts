@@ -30,6 +30,7 @@
  * - vlt-plugin.tsx — 插件入口（本文件）
  */
 
+import { isVideoListContext } from '../../core/page-context';
 import { BasePlugin } from '../base-plugin';
 import { VltTags } from './vlt-tags';
 import {
@@ -115,8 +116,8 @@ export class VideoListsTagPlugin extends BasePlugin {
             return;
         }
 
-        // 列表页：标签显示 + 筛选
-        if (!window.isListPage) return;
+        // 列表页（含 JavDB 首页，doc/47）：标签显示 + 筛选
+        if (!isVideoListContext()) return;
 
         this.vltTags = new VltTags();
 
