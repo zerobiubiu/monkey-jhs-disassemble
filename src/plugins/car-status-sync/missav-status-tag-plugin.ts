@@ -51,7 +51,8 @@ import {
     restoreLocalCarsSnapshot,
     withSyncRevision
 } from './car-status-db';
-import { normalizeCarNum, renderBadges, isVideoPage } from './missav-renderer';
+import { normalizeCarNum } from '../../core/domain/car-num';
+import { renderBadges, isVideoPage } from './missav-renderer';
 import { createLogger } from './car-status-logger';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
@@ -256,7 +257,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 if (link) {
                     const cn = link.getAttribute('alt');
                     if (cn) {
-                        allCarNums.add(normalizeCarNum(cn));
+                        allCarNums.add(normalizeCarNum(cn, 'path'));
                     }
                 }
             }
@@ -337,7 +338,7 @@ export class MissavStatusTagPlugin extends BasePlugin {
                 const link = thumb.querySelector<HTMLAnchorElement>('a[alt]');
                 if (link) {
                     const cn = link.getAttribute('alt');
-                    if (cn) carNums.add(normalizeCarNum(cn));
+                    if (cn) carNums.add(normalizeCarNum(cn, 'path'));
                 }
             }
             if (carNums.size === 0) return;

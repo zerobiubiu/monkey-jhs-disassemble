@@ -7,6 +7,7 @@
  * 原对象字面量 `Utils.xxx` 改为模块级独立导出函数；`this.normalizeCode` /
  * `this.getCode` 等内部 this 引用改为直接函数调用，控制流不变。
  */
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { RATING_CONFIG } from './rating-config';
 
 /** 共享 DOMParser 实例（原 Utils.parser）。 */
@@ -109,25 +110,16 @@ function getSafeUrl(url: string, base: string = window.location.origin): string 
 }
 
 /**
- * 番号规范化：trim + 大写 + 空白转连字符。对应原 L108-111。
- * @param raw 原始番号文本
- * @returns 规范化番号；空入参返回空串
- */
-function normalizeCode(raw: string | null | undefined): string {
-    if (!raw) return '';
-    return raw.trim().toUpperCase().replace(/\s+/g, '-');
-}
-
-/**
  * 从卡片提取番号（优先 .video-title strong，回退 meta 文本）。
  * 提取结果缓存到 item.dataset.code 避免重复 DOM 查询。对应原 L116-123。
+ * 归一化走领域层 `rating` 策略（trim + 大写 + 空白转连字符）。
  * @param item 列表页卡片元素
  * @returns 规范化番号；提取失败返回空串
  */
 function getCode(item: HTMLElement): string {
     if (item.dataset.code) return item.dataset.code;
     const raw = item.querySelector('.video-title strong')?.textContent || '';
-    const code = normalizeCode(raw);
+    const code = normalizeCarNum(raw, 'rating');
     if (code) item.dataset.code = code;
     return code;
 }
@@ -148,7 +140,6 @@ export const RatingUtils = {
     debounce,
     createLimiter,
     getSafeUrl,
-    normalizeCode,
     getCode,
     getAnchor
 };

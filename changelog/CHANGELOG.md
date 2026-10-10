@@ -9,6 +9,16 @@
 
 ---
 
+## v1.47.6
+
+### 重构（领域驱动重构试点：番号身份共享内核，doc/46）
+- **新增领域层** `src/core/domain/car-num.ts`：番号（影片身份）的归一化 / 等价判定 / 西方格式**单点权威**，纯函数、零基础设施依赖。三种具名策略对应三套真实口径——`upper`（存储键：trim + 大写）、`rating`（评分键：+ 空白转连字符）、`path`（MissAV 页面形态：末段 / `FC2-PPV-<数字>` / 前两段）。
+- **收敛重复实现**：迁移前同一条规则有 8 处实现、3 套口径（`external-visit-ops`、`car-status-columnar/db/journal`、`rating-utils.normalizeCode`、`missav-renderer.normalizeCarNum`、`base-plugin._formatWesternCar`）。现已全部删除本地实现，改为引用领域层；下游依赖方的 `MissAV 番号归一` 也改从领域层取，顺带消除 1 条跨插件内部 import。
+- **业务规则出基类**：`BasePlugin._formatWesternCar` 下沉领域层，插件基类不再承载业务规则；`car-list-ops` 的 5 处内联大小写三元改为显式的 `carNumEquals` / `carNumKey`。
+- **不改变业务行为**：`caseInsensitiveCarNum` 在 `updateCarInfo` / `removeCar` / `batchRemoveCars` 三处原本就是精确匹配，本次**只标注不修**（差异写进 doc/46 §3.2，是否统一属产品决策）。
+- **门禁棘轮收紧**：`check-structure` 删除 4 条早已降到硬上限以下的过期 file-ceiling（实际 500/421/421/283 行），`DIR_CEILINGS` 中 `src/styles` 38→37、`src/core` 28→26。
+- **验证**：新增 18 用例（37 文件 / 388 用例全绿）；另做一次性等价性模糊比对（重构前实现逐字复制 vs 领域函数，60,023 条随机语料 + 20,000 组格式组合，共 **100,023 次比对 0 差异**）；`tsc` / `eslint` / `stylelint` / 四项门禁 / 构建全部通过。核心模块 63 → 64。
+
 ## v1.47.5
 
 ### 新增（视频详情页外部站点访问次数统计，doc/45）

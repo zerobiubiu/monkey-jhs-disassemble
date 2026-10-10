@@ -60,6 +60,7 @@
 | `43-dead-module-cleanup.md` | 变更 | v1.47.4 | 无引用模块清理：按 import 图（规格化说明符）核实并删除 7 个零引用文件（`core/image-preview.tsx` 及其两个专属组件与样式表、`core/list-dom-bus.ts`、`components/misc/url-auto-link.tsx`、`components/setting-panels/hr-style.ts`）；同步 catalog/AGENTS 计数、选择器棘轮基线、版本与 CHANGELOG。构建 + 362 用例通过，产物被删符号零残留 |
 | `44-leftover-deadcode-adjudication.md` | 决策 | v1.47.4 | 遗留死件裁决（承接 `43`）：对 6 项疑似死件（jhs-sync barrel、外站设置区 no-op 方法与其孤儿组件、`resetBtnTip` 空实现、`dpb-helpers` 死方法、Beyond60 死分支、`HAS_DOWN_TEXT`/`HAS_DOWN_STATUS`）做调用点/创建者/消费方/档案四查，全部裁决**保留**并给出依据与复核触发条件；本轮无 `src/` 改动 |
 | `45-external-site-visit-count.md` | 变更 | v1.47.5 | 详情页外部站点访问次数统计：只对**真实外跳**计数（点击时、仅已解析出 href、左键/中键/Ctrl+点击）；`document` 委托幂等绑定 + `WeakSet` 事件去重（`loadOtherSite` 会反复重建按钮）；新 namespace `externalVisit` 单条写入（预加载共用 `otherSite` 键空间故不复用）；`#otherSiteBox` 汇总行 + 按钮计数徽标，0 值不占位、读取失败降级为零且不覆盖；新增 8 用例（36 文件 / 370 用例） |
+| `46-domain-refactor-video-identity.md` | 变更 | v1.47.6 | 领域驱动重构（试点：番号身份共享内核）：实测依赖图（386 文件 / 6 处环，95 文件巨型 SCC **全部是类型层环**）、领域闭环与规则重复盘点；新增 `src/core/domain/car-num.ts` 作为番号归一化/等价判定/西方格式的**单点权威**（8 处实现收敛为 1），`normalizeCode`/`normalizeVisitCarNum`/`_formatWesternCar` 及 missav 归一化导出删除并迁移 11 个调用方；`BasePlugin` 不再承载业务规则；棘轮收紧（删 4 条过期 file-ceiling，dir-ceiling 下调）；新增 18 用例（37 文件 / 388 用例）+ 100,023 次迁移等价模糊比对 0 差异 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

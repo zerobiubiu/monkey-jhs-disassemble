@@ -9,6 +9,7 @@
 
 import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
+import { carNumEquals, carNumKey } from '../domain/car-num';
 import { featureFlags } from '../feature-flags';
 import { storageRevision } from '../storage-revision';
 import { failWithToast } from '../toast';
@@ -81,9 +82,9 @@ export function saveSingleCar(input: CarSaveInput, list: CarRecord[]): void {
     if (names) {
         names = names.trim();
     }
-    let car = featureFlags.caseInsensitiveCarNum
-        ? list.find((item) => item.carNum.toLowerCase() === carNum.toLowerCase())
-        : list.find((item) => item.carNum === carNum);
+    let car = list.find((item) =>
+        carNumEquals(item.carNum, carNum, featureFlags.caseInsensitiveCarNum)
+    );
     if (car) {
         if (names) {
             car.names = names;
@@ -159,11 +160,7 @@ export async function getCarList(sm: StorageManager): Promise<CarRecord[]> {
 /** 按番号查询单条记录。 @param carNum 番号 @returns 命中记录或 undefined */
 export async function getCar(sm: StorageManager, carNum: string): Promise<CarRecord | undefined> {
     const list = await getCarList(sm);
-    if (featureFlags.caseInsensitiveCarNum) {
-        const lower = carNum.toLowerCase();
-        return list.find((car) => car.carNum.toLowerCase() === lower);
-    }
-    return list.find((car) => car.carNum === carNum);
+    return list.find((car) => carNumEquals(car.carNum, carNum, featureFlags.caseInsensitiveCarNum));
 }
 
 /**
@@ -179,9 +176,7 @@ export async function saveCar(sm: StorageManager, input: CarSaveInput): Promise<
     sm.cacheCarList = list;
     await sm.removeNewVideoList([input.carNum]);
     // 增量通知：推送被修改的单条记录
-    const car = featureFlags.caseInsensitiveCarNum
-        ? list.find((c) => c.carNum.toLowerCase() === input.carNum.toLowerCase())
-        : list.find((c) => c.carNum === input.carNum);
+    const car = list.find((c) => carNumEquals(c.carNum, input.carNum, featureFlags.caseInsensitiveCarNum));
     if (car) sm.carListChangeCallback?.({ action: 'upsert', upserts: [car] });
 }
 
@@ -203,7 +198,8 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
         names = names.trim();
     }
     const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
-    const car = list.find((item) => item.carNum === carNum);
+    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
+    const car = list.find((item) => carNumEquals(item.carNum, carNum, false));
     if (!car) {
         const msg = '数据不存在: ' + carNum;
         failWithToast(msg);
@@ -248,12 +244,9 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
     storageRevision.increment();
     sm.cacheCarList = list;
     // 增量通知：推送所有被修改的记录
-    const numSet = featureFlags.caseInsensitiveCarNum
-        ? new Set(inputs.map((i) => i.carNum.toLowerCase()))
-        : new Set(inputs.map((i) => i.carNum));
-    const upserts = featureFlags.caseInsensitiveCarNum
-        ? list.filter((c) => numSet.has(c.carNum.toLowerCase()))
-        : list.filter((c) => numSet.has(c.carNum));
+    const caseInsensitive = featureFlags.caseInsensitiveCarNum;
+    const numSet = new Set(inputs.map((i) => carNumKey(i.carNum, caseInsensitive)));
+    const upserts = list.filter((c) => numSet.has(carNumKey(c.carNum, caseInsensitive)));
     if (upserts.length > 0) sm.carListChangeCallback?.({ action: 'upsert', upserts });
 }
 
@@ -265,7 +258,8 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
 export async function removeCar(sm: StorageManager, carNum: string): Promise<boolean> {
     const list = await getCarList(sm);
     const beforeLen = list.length;
-    const filtered = list.filter((item) => item.carNum !== carNum);
+    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
+    const filtered = list.filter((item) => !carNumEquals(item.carNum, carNum, false));
     if (filtered.length === beforeLen) {
         show.error(`${carNum} 不存在`);
         return false;
@@ -293,13 +287,12 @@ export async function clearCarWatchStatus(sm: StorageManager, carNums: string[])
     if (!carNums || carNums.length === 0) {
         return 0;
     }
-    const target = featureFlags.caseInsensitiveCarNum
-        ? new Set(carNums.map((n) => n.trim().toLowerCase()))
-        : new Set(carNums);
+    const caseInsensitive = featureFlags.caseInsensitiveCarNum;
+    const target = new Set(carNums.map((n) => carNumKey(n.trim(), caseInsensitive)));
     const list = await getCarList(sm);
     const changed: CarRecord[] = [];
     for (const car of list) {
-        const key = featureFlags.caseInsensitiveCarNum ? car.carNum.toLowerCase() : car.carNum;
+        const key = carNumKey(car.carNum, caseInsensitive);
         if (!target.has(key) || car.status !== HAS_WATCH_ACTION) {
             continue;
         }
@@ -325,6 +318,7 @@ export async function clearCarWatchStatus(sm: StorageManager, carNums: string[])
 export async function batchRemoveCars(sm: StorageManager, carNums: string[]): Promise<boolean | number> {
     const list = await getCarList(sm);
     const beforeLen = list.length;
+    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
     const numSet = new Set(carNums);
     const filtered = list.filter((item) => !numSet.has(item.carNum));
     const removed = beforeLen - filtered.length;

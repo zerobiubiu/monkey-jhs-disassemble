@@ -8,6 +8,7 @@
  * 再由 jhs 的 WebDav 备份链路上传（与 vlt-panel 模式一致）。
  */
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { withExclusiveLock } from '../../core/sync';
 
 import {
@@ -227,7 +228,7 @@ export function normalizeLocalRecord(record: LocalCarStatusRecord): LocalCarStat
         throw new Error(`车辆记录状态无效：${String(record.status)}`);
     }
     return {
-        carNum: record.carNum.trim().toUpperCase(),
+        carNum: normalizeCarNum(record.carNum, 'upper'),
         status: record.status.trim(),
         url_path: normalizeJavdbUrlPath(record.url_path)
     };
@@ -461,7 +462,7 @@ export interface LocalCarsSelectionSnapshot {
 /** 只读取增量会触及的番号，避免每条增量都复制整库。 */
 export async function readLocalCarsSelection(carNums: string[]): Promise<LocalCarsSelectionSnapshot> {
     const normalizedCarNums = Array.from(
-        new Set(carNums.map((carNum) => carNum.trim().toUpperCase()).filter(Boolean))
+        new Set(carNums.map((carNum) => normalizeCarNum(carNum, 'upper')).filter(Boolean))
     );
     if (normalizedCarNums.length === 0) return { carNums: [], records: [] };
     const db = await openLocalDB();
@@ -555,7 +556,7 @@ export async function replaceLocalCars(
                     const cursor = request.result;
                     if (!cursor) return;
                     const rawCarNum = String(cursor.primaryKey);
-                    const carNum = rawCarNum.toUpperCase();
+                    const carNum = normalizeCarNum(rawCarNum, 'upper');
                     if (!snapshotKeys.has(carNum) || rawCarNum !== carNum) {
                         cursor.delete();
                         deletedCount++;

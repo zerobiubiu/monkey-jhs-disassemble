@@ -5,33 +5,9 @@
  * 在 missav.ws 页面缩略图上挂载状态标签（已收藏/已观看/已屏蔽/已下载）。
  */
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { STATUS_CONFIG } from './car-status-config';
 import { sanitizeUrl } from '../../core/jsx-to-string';
-
-/**
- * 将 missav.ws 页面上的番号归一化为 JHS 数据库中的标准格式。
- * 来源：missavStatusTag.user.js L577-588 normalizeCarNum。
- *
- * - hmn-095-uncensored-leak → HMN-095
- * - ebod-857 → EBOD-857
- * - fc2-ppv-4771232 → FC2-PPV-4771232
- * - 112325_01 → 112325-01
- *
- * @param raw 页面 a[alt] 的原始值
- * @returns 归一化后的番号（大写）
- */
-export function normalizeCarNum(raw: string): string {
-    if (!raw) return '';
-    // 1) 取最后一段（去掉路径前缀）
-    const filename = raw.split('/').pop() || '';
-    // 2) FC2 系列特殊处理
-    if (/^FC2-PPV-\d+$/i.test(filename)) return filename.toUpperCase();
-    // 3) 按下划线或横线拆分，取前两段拼回
-    const sep = filename.includes('_') ? '_' : '-';
-    const parts = filename.split(sep);
-    const code = parts.length >= 2 ? parts[0] + '-' + parts[1] : filename;
-    return code.toUpperCase();
-}
 
 /**
  * 创建一个状态标签（<a> 元素，确保在 Alpine.js 事件层中可点击跳转）。
@@ -113,7 +89,7 @@ export function renderBadges(
         if (!carNum) continue;
 
         // 归一化番号后查库
-        const normalized = normalizeCarNum(carNum);
+        const normalized = normalizeCarNum(carNum, 'path');
         const record = carMap.get(normalized);
         if (!record) continue;
 

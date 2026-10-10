@@ -9,6 +9,7 @@
  * 远低于 GM 存储限制，适合跨域传递。
  */
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import type { CarRecord } from '../../core/storage-manager';
 import {
     STATUS_LIST,
@@ -346,7 +347,7 @@ export function validateColumnarSnapshot(
             if (!isSafeUrlPath(urlPath)) {
                 return { ok: false, reason: `状态 ${status} 包含不安全链接` };
             }
-            const normalizedCarNum = carNum.toUpperCase();
+            const normalizedCarNum = normalizeCarNum(carNum, 'upper');
             if (seenCarNums.has(normalizedCarNum)) {
                 return { ok: false, reason: `快照包含重复番号：${carNum}` };
             }

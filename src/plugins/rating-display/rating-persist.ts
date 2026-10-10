@@ -17,8 +17,8 @@
 
 import { HAS_WATCH_ACTION } from '../../constants/status';
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { RatingCache } from './rating-cache';
-import { RatingUtils } from './rating-utils';
 
 /** 日志前缀（与 rating-display 其它模块一致）。 */
 const LOG_PREFIX = '[JHS-Rating]';
@@ -55,7 +55,7 @@ export async function persistRating(code: string, rating: number): Promise<boole
     if (!code) return false;
     try {
         const list = await storageManager.getCarList();
-        const car = list.find((item) => RatingUtils.normalizeCode(item.carNum) === code);
+        const car = list.find((item) => normalizeCarNum(item.carNum, 'rating') === code);
         const decision = decideRatingPersist(car, rating);
         if (decision !== 'write' || !car) return false;
 

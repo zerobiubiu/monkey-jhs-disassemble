@@ -14,6 +14,7 @@
  * storageManager.forage 为 private 无法访问，且原脚本即用原生 API。
  */
 import { HAS_WATCH_ACTION } from '../../constants/status';
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { RATING_CONFIG } from './rating-config';
 import { RatingUtils } from './rating-utils';
 
@@ -56,7 +57,7 @@ async function buildWatchedMap(): Promise<Map<string, WatchedCarItem>> {
     const map = new Map<string, WatchedCarItem>();
     list.forEach((item) => {
         if (item && item.status === HAS_WATCH_ACTION && item.carNum) {
-            map.set(RatingUtils.normalizeCode(item.carNum), item);
+            map.set(normalizeCarNum(item.carNum, 'rating'), item);
         }
     });
     RatingUtils.log('WATCHED_MAP', `${map.size} 项`);

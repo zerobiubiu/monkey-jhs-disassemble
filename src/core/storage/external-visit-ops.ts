@@ -23,6 +23,7 @@
  * 读取失败时**不写入**——宁可少计一次，也不把已存计数覆盖成从 1 开始。
  */
 
+import { normalizeCarNum } from '../domain/car-num';
 import { readPersistentMap, writePersistentEntry } from './persistent-data-store';
 
 /** 一个视频的外站访问统计。 */
@@ -50,15 +51,6 @@ export const EXTERNAL_VISIT_LEGACY_KEY = 'jhs_external_visit';
 /** 空统计（零值：不显示徽标、不显示汇总行）。 */
 export function emptyExternalVisitStat(): ExternalVisitStat {
     return { total: 0, bySite: {}, updatedAt: 0 };
-}
-
-/**
- * 归一化视频标识：去空白 + 大写。
- * 与 `car-status-journal` 的压缩口径（`carNum.trim().toUpperCase()`）一致，
- * 保证同一番号的不同写法落到同一条记录。
- */
-export function normalizeVisitCarNum(carNum: string): string {
-    return carNum.trim().toUpperCase();
 }
 
 function createDefaultStore(): ExternalVisitStore {
@@ -99,7 +91,7 @@ function isStat(value: unknown): value is ExternalVisitStat {
  * @param carNum 番号（任意大小写，内部归一化）。
  */
 export function readExternalVisitStat(carNum: string): ExternalVisitStat {
-    const key = normalizeVisitCarNum(carNum);
+    const key = normalizeCarNum(carNum, 'upper');
     if (!key) return emptyExternalVisitStat();
     try {
         const stored = store.read(key);
@@ -123,7 +115,7 @@ export function readExternalVisitStat(carNum: string): ExternalVisitStat {
  * @param siteId 站点 id（`siteConfig.id`）。
  */
 export function recordExternalSiteVisit(carNum: string, siteId: string): ExternalVisitStat {
-    const key = normalizeVisitCarNum(carNum);
+    const key = normalizeCarNum(carNum, 'upper');
     if (!key || !siteId) return emptyExternalVisitStat();
     let current: ExternalVisitStat;
     try {

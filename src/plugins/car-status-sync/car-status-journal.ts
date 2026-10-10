@@ -9,6 +9,7 @@
  * 提取自 missav-status-tag-plugin.ts 与 car-list-reader-plugin.ts（doc/189 协议升级）。
  */
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import {
     CAR_STATUS_DELTA_COMPACT_THRESHOLD,
     STATUS_LIST,
@@ -83,7 +84,7 @@ export function compactDeltaJournal(journal: CarStatusDeltaJournal): CarStatusDe
     >();
     for (const payload of sortDeltaJournal(journal)) {
         for (const item of payload.items) {
-            latestByCar.set(item.carNum.trim().toUpperCase(), { payload, item });
+            latestByCar.set(normalizeCarNum(item.carNum, 'upper'), { payload, item });
         }
     }
     const grouped = new Map<string, CarStatusDeltaPayload>();

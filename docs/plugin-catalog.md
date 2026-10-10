@@ -85,7 +85,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **63 个文件**：顶层 26 + `storage/` 11 + `sync/` 4 + `util/` 22。`storage/`、`sync/`、`util/` 三个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **64 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 11 + `sync/` 4 + `util/` 22。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -93,6 +93,7 @@
 | libs.ts | 第三方库 CDN @require（externalGlobals）+ 挂全局（$/layer/Tabulator/Toastify/localforage/Viewer/md5），库 CSS 仍打包 |
 | _jquery-global.ts | jquery 副作用模块（先于 layer 挂 window.jQuery） |
 | storage-manager.ts | IndexedDB 存储管理（JAV-JHS/appData，localforage 实例；运行时缓存清理；CRUD 已按域委托至 `storage/`） |
+| domain/car-num.ts | 番号（影片身份）领域规则单点权威：三套归一化策略（upper 存储键 / rating 评分键 / path MissAV 页面形态）、匹配键与等价判定、西方番号格式化；纯函数、零基础设施依赖（doc/46） |
 | storage/blacklist-ops.ts | 黑名单演员/关键词读写 |
 | storage/blacklist-car-list-ops.ts | 黑名单番号清单读写（缓存 + 修订号） |
 | storage/cache-invalidation.ts | 按写入类型（data/settings）分流远程缓存失效（doc/39） |

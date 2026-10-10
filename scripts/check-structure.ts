@@ -12,18 +12,14 @@ const HARD_FILE_LIMIT = 800;
 const HARD_DIR_LIMIT = 20;
 
 // RATCHET: these are current oversized files. Lower a ceiling (or delete the entry once the file is <=800) when you split it. NEVER raise a ceiling. New files have no entry and are bound by HARD_FILE_LIMIT.
-const FILE_CEILINGS: Record<string, number> = {
-  "src/plugins/setting-plugin.tsx": 1568,
-  "src/core/storage-manager.ts": 1324,
-  "src/plugins/video-lists-tag/vlt-tags.ts": 1028,
-  "src/plugins/list-page-plugin.tsx": 846,
-};
+// 2026-10-10（doc/46）：四条存量项已全部降到 <=800（setting-plugin.tsx 500 / storage-manager.ts 421 / vlt-tags.ts 421 / list-page-plugin.tsx 283），按本节规则整项删除 —— 棘轮收紧为纯硬上限。
+const FILE_CEILINGS: Record<string, number> = {};
 
 // RATCHET: these are current over-flat directories. Lower a ceiling (or delete the entry once the dir is <=20) when you reorganize it. NEVER raise a ceiling. New dirs have no entry and are bound by HARD_DIR_LIMIT.
 const DIR_CEILINGS: Record<string, number> = {
   "src/plugins": 39,
-  "src/styles": 38,
-  "src/core": 28,
+  "src/styles": 37,
+  "src/core": 26,
 };
 
 const SRC = "src";

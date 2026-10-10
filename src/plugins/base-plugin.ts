@@ -19,6 +19,7 @@ import {
     DELETE_SVG as deleteSvg,
     REFRESH_SVG as refreshSvg,
 } from '../resources/icons';
+import { formatWesternCarNum } from '../core/domain/car-num';
 import { featureFlags } from '../core/feature-flags';
 import { failWithToast } from '../core/toast';
 import type { SiteType, PageType } from '../core/page-context';
@@ -281,7 +282,7 @@ export class BasePlugin {
             failWithToast(msg);
         }
         if (featureFlags.westernCarFormat) {
-            carNum = this._formatWesternCar(carNum, publishTime || '');
+            carNum = formatWesternCarNum(carNum, publishTime || '');
         }
         return {
             carNum,
@@ -289,21 +290,6 @@ export class BasePlugin {
             title: title || '',
             publishTime: publishTime || ''
         };
-    }
-
-    /**
-     * 西方番号格式化：纯字母 carNum + 日期 → carNum.YY.MM.DD。
-     * @param carNum 原始番号
-     * @param rawDate 发布时间文本
-     */
-    _formatWesternCar(carNum: string, rawDate: string): string {
-        if (!carNum || !rawDate) return carNum;
-        if (!/^[a-zA-Z\s]+$/.test(carNum)) return carNum;
-        const dateMatch = rawDate.match(/\d{2}(\d{2})-(\d{2})-(\d{2})/);
-        if (dateMatch) {
-            return `${carNum.replace(/\s+/g, '')}.${dateMatch[1]}.${dateMatch[2]}.${dateMatch[3]}`;
-        }
-        return carNum;
     }
 
     /** 提取当前列表页所有影片卡片的番号信息。对应原 L3283-3305。 */

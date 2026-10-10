@@ -36,7 +36,7 @@ export interface FeatureFlags {
     storageCacheDeepCopy: boolean;
     /** WebDAV 建目录幂等：先 PROPFIND 再 MKCOL（webdav.ts）。 */
     webdavIdempotentMkdir: boolean;
-    /** 西方番号格式归一（base-plugin._formatWesternCar）。 */
+    /** 西方番号格式归一（core/domain/car-num 的 formatWesternCarNum，原 base-plugin 方法已下沉领域层）。 */
     westernCarFormat: boolean;
     /** 演员名 user-select:all（经组件 prop 间接生效；保留覆盖键契约）。 */
     actressUserSelectAll: boolean;

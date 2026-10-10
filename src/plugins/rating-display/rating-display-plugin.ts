@@ -20,6 +20,7 @@
  */
 import { BasePlugin } from '../base-plugin';
 
+import { normalizeCarNum } from '../../core/domain/car-num';
 import { RatingRenderer } from './rating-renderer';
 import { buildWatchedMap, RatingCache } from './rating-cache';
 import { fetchRating } from './rating-net';
@@ -379,7 +380,7 @@ export class RatingDisplayPlugin extends BasePlugin {
             (e: Event) => {
                 const { carNum, status, op, score } = (e as CustomEvent<SyncPayload>).detail || {};
                 if (!carNum || !status || !op) return;
-                const code = RatingUtils.normalizeCode(carNum);
+                const code = normalizeCarNum(carNum, 'rating');
                 RatingUtils.log('SYNC_EVENT', code, status, op, score);
                 this._invalidateCards(code, status, op, score);
             },
@@ -392,7 +393,7 @@ export class RatingDisplayPlugin extends BasePlugin {
                 try {
                     const payload = JSON.parse(e.newValue) as SyncPayload;
                     if (payload && payload.carNum && payload.status && payload.op) {
-                        const code = RatingUtils.normalizeCode(payload.carNum);
+                        const code = normalizeCarNum(payload.carNum, 'rating');
                         RatingUtils.log(
                             'STORAGE_SYNC',
                             '跨标签页精确刷新',

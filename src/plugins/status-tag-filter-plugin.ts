@@ -59,11 +59,11 @@
  * 本类保留同名薄委托方法，内部调用点签名不变。
  */
 import type { PageType } from '../core/page-context';
+import { normalizeCarNum } from '../core/domain/car-num';
 import { TaskSupervisor } from '../core/task-supervisor';
 
 import { BasePlugin } from './base-plugin';
 import { RatingCache } from './rating-display/rating-cache';
-import { RatingUtils } from './rating-display/rating-utils';
 import { applyFilter } from './status-tag-filter/stf-apply';
 import { doBuild, findMountTarget, LOG } from './status-tag-filter/stf-ui';
 import { setCarRecords, setScoreFallbackResolver } from './status-tag-filter/stf-score';
@@ -162,7 +162,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
             clog.error('评分缓存加载失败: ' + (error instanceof Error ? error.message : String(error)));
         }
         setScoreFallbackResolver((carNum: string): number | null => {
-            const entry = RatingCache.get(RatingUtils.normalizeCode(carNum));
+            const entry = RatingCache.get(normalizeCarNum(carNum, 'rating'));
             return entry ? entry.rating : null;
         });
         this.ratingCacheUnsubscribe = RatingCache.addChangeListener((): void => {

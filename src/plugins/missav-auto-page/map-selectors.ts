@@ -4,7 +4,7 @@
  * 职责：从 MissAV 列表页 DOM 中提取「下一页链接 / 缩略图元素 / 番号数组」，
  * 不持有任何状态，供瀑布流获取/渲染流程复用的纯函数。
  */
-import { normalizeCarNum } from '../car-status-sync/missav-renderer';
+import { normalizeCarNum } from '../../core/domain/car-num';
 
 export const MAP_SEL = {
     thumb: '.thumbnail.group',
@@ -28,7 +28,7 @@ export function extractThumbs(container: ParentNode): HTMLElement[] {
 export function collectCarNums(thumbs: HTMLElement[]): string[] {
     return thumbs.map((t) => {
         const a = t.querySelector<HTMLAnchorElement>('a[alt]');
-        return a ? normalizeCarNum(a.getAttribute('alt') || '') : '';
+        return a ? normalizeCarNum(a.getAttribute('alt') || '', 'path') : '';
     }).filter(Boolean);
 }
 
