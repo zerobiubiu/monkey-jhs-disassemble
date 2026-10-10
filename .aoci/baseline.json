@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-10-04T06:02:32Z",
-  "updated_at": "2026-10-10T14:16:09Z",
+  "updated_at": "2026-10-10T14:34:23Z",
   "files": {
     ".agents/skills/userscript-integration/SKILL.md": {
       "role": "index",
@@ -59,9 +59,9 @@
     },
     ".impeccable/config.json": {
       "role": "index",
-      "sha256": "bc72ae7bc21ed29287f87f6343caa3ea5f540ca87af7e0e0469851d5f294eec1",
-      "size": 2881,
-      "normalized_sha256": "bc72ae7bc21ed29287f87f6343caa3ea5f540ca87af7e0e0469851d5f294eec1"
+      "sha256": "545f848223c466592fd5f40e605e92e0f0d95e57d236c761b5a4de501e76f3df",
+      "size": 2904,
+      "normalized_sha256": "545f848223c466592fd5f40e605e92e0f0d95e57d236c761b5a4de501e76f3df"
     },
     ".impeccable/design.json": {
       "role": "index",
@@ -113,9 +113,9 @@
     },
     "PRODUCT.md": {
       "role": "index",
-      "sha256": "9db9cbf3a93cc1d3b504c1879c6b84f7eb2a1e98d08d250a1911d18ec2206aef",
-      "size": 2041,
-      "normalized_sha256": "9db9cbf3a93cc1d3b504c1879c6b84f7eb2a1e98d08d250a1911d18ec2206aef"
+      "sha256": "c8b575b3509fb9e94ce85eef419c86722962e648693a8b3a5d7a45cafe293077",
+      "size": 6688,
+      "normalized_sha256": "c8b575b3509fb9e94ce85eef419c86722962e648693a8b3a5d7a45cafe293077"
     },
     "README.md": {
       "role": "index",
@@ -125,9 +125,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "9de936ce366990a3bddbe6ca7faabbae5febe2e5c46d6042c098ee9c7c0bb034",
-      "size": 382775,
-      "normalized_sha256": "9de936ce366990a3bddbe6ca7faabbae5febe2e5c46d6042c098ee9c7c0bb034"
+      "sha256": "3d5a82a47a5c9bf70ae957398d0521bf53946c5c47bb5755058d2d8afb265307",
+      "size": 383264,
+      "normalized_sha256": "3d5a82a47a5c9bf70ae957398d0521bf53946c5c47bb5755058d2d8afb265307"
     },
     "aoci.meta.txt": {
       "role": "index",
