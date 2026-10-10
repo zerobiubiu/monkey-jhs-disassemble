@@ -7,6 +7,7 @@
  * 本文件保留 UI 构建：
  * - buildFilterBar / buildFilterModeDropdown / createFilterChip / refreshChips / updateFilterBar
  */
+import { findListMountTarget } from '../../core/util/site/list-mount';
 import type { VltTags } from './vlt-tags';
 import {
     applyFilter,
@@ -228,11 +229,9 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
 export function buildFilterBar(plugin: VltTags): void {
     if (document.querySelector('.jhs-vlt-filter-bar')) return;
 
-    // 根据页面类型选择挂载目标
-    const isActorPage = /^\/actors\//.test(window.location.pathname);
-    const mountTarget = isActorPage
-        ? document.querySelector('body > section > div > div.actor-tags.tags')
-        : document.querySelector('body > section > div > div.tabs.is-boxed');
+    // 挂载目标：结构式 → 宽松式 → 容器兜底（共享单点，doc/48；
+    // 首页 `.tabs.is-boxed` 不在结构式路径上，此前这里命中 0 就静默返回）
+    const mountTarget = findListMountTarget();
     if (!mountTarget) return;
 
     const filterBar = document.createElement('div') as FilterBarEl;

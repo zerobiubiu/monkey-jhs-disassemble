@@ -167,13 +167,15 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 监听列表容器 DOM 变更并自动重过滤/重排序。对应原 L8360-8392。 */
     checkDom(): void {
-        if (!window.isListPage) {
+        // doc/48：与 doFilter 同口径（列表页或 JavDB 首页），此前仍用一次性 window.isListPage
+        if (!isVideoListContext()) {
             return;
         }
         const selectorConfig = this.getSelector();
         const containerEl = document.querySelector(selectorConfig.boxSelector);
         if (!containerEl) {
-            clog.error('没有找到容器节点!');
+            // 首页/改版页可能没有该容器：不报错，交给过滤/批量栏各自的选择器兜底
+            clog.debug('未找到列表容器节点，跳过 DOM 变更监听');
             return;
         }
         const observerOptions: MutationObserverInit = {

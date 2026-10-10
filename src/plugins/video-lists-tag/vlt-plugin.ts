@@ -163,6 +163,11 @@ export class VideoListsTagPlugin extends BasePlugin {
             if (newItems.length > 0) {
                 this.vltTags?.handleNewItems(newItems).then();
             }
+            // doc/48：挂载锚点（筛选标签栏/容器）可能晚于首屏出现 —— 列表发生变更时
+            // 若清单标签筛选栏仍缺席则重试挂载，避免「首页/改版页整轮不显示」。
+            if (this.vltTags && !document.querySelector('.jhs-vlt-filter-bar')) {
+                this.vltTags.buildFilterBar();
+            }
         });
         this.observer.observe(document.body, { childList: true, subtree: true });
     }

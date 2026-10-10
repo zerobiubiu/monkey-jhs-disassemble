@@ -6,6 +6,7 @@
  * findMountTarget：按优先级查找挂载目标（jhs-vlt-filter-bar → tabs → section）。
  */
 
+import { findListMountTarget } from '../../core/util/site/list-mount';
 import { collectStatusTagCounts, countNoStatusItems, NO_TAG_VALUE } from './stf-collect';
 import { applyFilter } from './stf-apply';
 import {
@@ -136,38 +137,17 @@ export function doBuild(mountTarget: Element): void {
 /**
  * 按优先级依次查找可用的挂载目标。对应原 L197-220。
  *
+ * doc/48：站点锚点部分改为共享单点 `findListMountTarget()`（结构式 → 宽松式 → 容器兜底），
+ * 与清单标签筛选栏共用同一锚点 —— 首页 `.tabs.is-boxed` 不在结构式路径上时，
+ * 此前只有本函数（有兜底）能挂，清单标签栏会静默不挂。
+ *
  * @returns 挂载目标元素或 null
  */
 export function findMountTarget(): Element | null {
-    // 1) 优先挂在 videoListsTag 的 .jhs-vlt-filter-bar 之后
+    // 1) 优先挂在 videoListsTag 的 .jhs-vlt-filter-bar 之后（两根栏相邻）
     const tagFilterBar = document.querySelector('.jhs-vlt-filter-bar');
     if (tagFilterBar) return tagFilterBar;
 
-    // 2) 挂在页面默认 tabs 容器之后
-    const isActorPage = /^\/actors\//.test(window.location.pathname);
-    if (isActorPage) {
-        const actorTags = document.querySelector('body > section > div > div.actor-tags.tags');
-        if (actorTags) return actorTags;
-    } else {
-        const tabsBoxed = document.querySelector('body > section > div > div.tabs.is-boxed');
-        if (tabsBoxed) return tabsBoxed;
-    }
-
-    // 3) 回退：挂在 section 容器的第一个子元素之前
-    const section = document.querySelector('body > section > div > div');
-    if (section && section.firstElementChild) {
-        if (!section.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
-            return section.firstElementChild;
-        }
-    }
-
-    // 4) 最终回退：挂在 body > section > div 的第一个子元素之前
-    const container = document.querySelector('body > section > div');
-    if (container && container.firstElementChild) {
-        if (!container.firstElementChild.matches('.jhs-vlt-filter-bar, .status-tag-filter-bar')) {
-            return container.firstElementChild;
-        }
-    }
-
-    return null;
+    // 2) 站点锚点（结构式 → 宽松式 → 容器首子元素）
+    return findListMountTarget();
 }
