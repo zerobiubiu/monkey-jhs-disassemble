@@ -41,7 +41,7 @@ export function CachePanel({ panelName, cacheItemsHtml }: CachePanelProps) {
                         id="cache-total-size"
                         style={{
                             fontSize: '13px',
-                            color: '#999'
+                            color: 'var(--jhs-color-text-secondary)'
                         }}
                     />
                     {/* 批量清理属于本面板的动作，放在本面板内——不放底栏，
@@ -53,7 +53,7 @@ export function CachePanel({ panelName, cacheItemsHtml }: CachePanelProps) {
                 </div>
                 <p
                     style={{
-                        color: '#999',
+                        color: 'var(--jhs-color-text-secondary)',
                         fontSize: '12px',
                         margin: '0 0 16px 0'
                     }}

@@ -29,7 +29,9 @@ function Row({
         <div className={stacked ? 'jhs-qs-row jhs-qs-row-stacked' : 'jhs-qs-row'}>
             <div className="jhs-qs-label">
                 {tip ? (
-                    <span className="jhs-qs-tip" data-tip={tip}>
+                    // doc/53：问号提示此前无可访问名称（读屏只念「问号」）。
+                    // role=img + aria-label 让提示内容进入可访问名称树，与视觉 tooltip 同源。
+                    <span className="jhs-qs-tip" role="img" aria-label={tip} data-tip={tip}>
                         ?
                     </span>
                 ) : null}
