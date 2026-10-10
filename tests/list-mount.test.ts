@@ -1,75 +1,95 @@
 // @vitest-environment jsdom
 /**
- * 列表页过滤/筛选栏挂载锚点（doc/48）。
+ * 列表页过滤/筛选栏挂载点（doc/48、doc/49）。
  *
- * 回归靶心：JavDB 首页实测 `.tabs.is-boxed` 计数为 1，但它**不在**
- * `body > section > div > div` 这一层 —— 结构式选择器命中 0。此前
- * `status-tag-filter` 有四级兜底（能挂上），`video-lists-tag` 的清单标签筛选栏
- * 只有结构式一条、命中 0 即静默 return，于是首页只显示前一根栏。
- *
- * 本用例固化共享单点的优先级：结构式 → 宽松式 → 容器首子元素 → null。
+ * 回归靶心两条（都是现场踩过的坑）：
+ * 1. 结构式选择器在首页命中 0（`.tabs.is-boxed` 计数 1 但不在标准层）→ 必须仍能找到锚点；
+ * 2. **不能把筛选栏插进卡片网格** —— 锚在影片列表「之前」（同层兄弟），
+ *    这是 doc/49 修掉的错乱根因（上一版用宽松式标签栏 + 插其后，栏被当成网格项）。
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { findListMountTarget } from '../src/core/util/site/list-mount';
+import { applyListMountPoint, findListMountPoint } from '../src/core/util/site/list-mount';
 
 afterEach(() => {
     document.body.innerHTML = '';
 });
 
-describe('findListMountTarget — 列表页/首页', () => {
-    it('结构式筛选标签栏存在 → 返回它', () => {
+describe('findListMountPoint — 列表页/首页', () => {
+    it('结构式筛选标签栏存在 → 挂在它之后（既有页面保持既有位置）', () => {
         document.body.innerHTML = `
             <section><div>
                 <div class="tabs is-boxed">结构式</div>
                 <div class="movie-list"></div>
             </div></section>`;
 
-        const target = findListMountTarget('/');
+        const mount = findListMountPoint('/');
 
-        expect(target).toBe(document.querySelector('body > section > div > div.tabs.is-boxed'));
+        expect(mount?.target).toBe(document.querySelector('.tabs.is-boxed'));
+        expect(mount?.position).toBe('afterend');
     });
 
-    it('标签栏嵌在别处（非结构式路径）→ 宽松式命中（首页回归）', () => {
+    it('首页形态：标签栏嵌在网格内、结构式命中 0 → 锚在影片列表之前', () => {
         document.body.innerHTML = `
             <section><div>
                 <div class="movie-list">
-                    <div class="wrapper"><div class="tabs is-boxed">宽松式</div></div>
+                    <div class="grid-item"><div class="tabs is-boxed">嵌在网格里的标签栏</div></div>
                 </div>
             </div></section>`;
 
-        const target = findListMountTarget('/');
+        const mount = findListMountPoint('/');
 
-        expect(target).toBe(document.querySelector('.tabs.is-boxed'));
+        expect(mount?.target).toBe(document.querySelector('.movie-list'));
+        expect(mount?.position).toBe('beforebegin');
+        // 结构式路径确实命中 0（本用例的前提）
         expect(document.querySelector('body > section > div > div.tabs.is-boxed')).toBeNull();
     });
 
-    it('演员页 → 演员标签区（宽松式）', () => {
+    it('锚在列表之前时，插入后筛选栏与列表同层（不会成为网格项）', () => {
         document.body.innerHTML = `
             <section><div>
-                <div><div class="actor-tags tags">演员标签</div></div>
-                <div class="tabs is-boxed">首页式标签栏</div>
+                <div class="movie-list"><div class="item">卡片</div></div>
             </div></section>`;
+        const mount = findListMountPoint('/');
+        const bar = document.createElement('div');
+        bar.className = 'jhs-vlt-filter-bar';
 
-        const target = findListMountTarget('/actors/MVzk');
+        applyListMountPoint(mount!, bar);
 
-        expect(target).toBe(document.querySelector('.actor-tags.tags'));
+        const list = document.querySelector('.movie-list')!;
+        expect(bar.nextElementSibling).toBe(list);
+        expect(bar.parentElement).toBe(list.parentElement);
+        expect(list.contains(bar)).toBe(false);
     });
 
-    it('无任何标签栏 → 兜底到内层容器首子元素', () => {
+    it('演员页 → 演员标签区之后', () => {
+        document.body.innerHTML = `
+            <section><div>
+                <div class="actor-tags tags">演员标签</div>
+                <div class="movie-list"></div>
+            </div></section>`;
+
+        const mount = findListMountPoint('/actors/MVzk');
+
+        expect(mount?.target).toBe(document.querySelector('.actor-tags.tags'));
+        expect(mount?.position).toBe('afterend');
+    });
+
+    it('无影片列表容器 → 挂到页面容器顶部（afterbegin）', () => {
         document.body.innerHTML = `
             <section><div>
                 <div><div class="toolbar">工具栏</div></div>
             </div></section>`;
 
-        const target = findListMountTarget('/');
+        const mount = findListMountPoint('/');
 
-        expect(target).toBe(document.querySelector('.toolbar'));
+        expect(mount?.position).toBe('afterbegin');
+        expect(mount?.target).toBe(document.querySelector('body > section > div > div'));
     });
 
     it('页面结构完全缺失 → null（调用方自决，如超时强挂）', () => {
         document.body.innerHTML = '';
 
-        expect(findListMountTarget('/')).toBeNull();
+        expect(findListMountPoint('/')).toBeNull();
     });
 });

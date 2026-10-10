@@ -174,15 +174,9 @@ export const SITE_SELECTORS = {
     tabsBoxed: { current: 'body > section > div > div.tabs.is-boxed' },
     /** 通用标签栏。 */
     tabs: { current: '.tabs' },
-    /**
-     * 筛选标签栏（宽松式）。doc/48：首页/站点改版后 `.tabs.is-boxed` 不一定在
-     * `body > section > div > div` 这一层，结构式选择器会命中 0 ——
-     * 过滤/筛选栏的挂载须「结构式 → 宽松式 → 容器兜底」逐级回退（见 util/site/list-mount）。
-     */
-    tabsBoxedLoose: { current: '.tabs.is-boxed' },
-    /** 列表页外层容器（挂载兜底：取其首子元素之后）。 */
+    /** 列表页外层容器（挂载兜底：作为其首子元素插入）。 */
     sectionList: { current: 'body > section > div' },
-    /** 列表页内层容器（挂载兜底：取其首子元素之后）。 */
+    /** 列表页内层容器（挂载兜底：作为其首子元素插入）。 */
     sectionListInner: { current: 'body > section > div > div' },
     /** 区块标题。 */
     sectionTitle: { current: 'h2.section-title' },

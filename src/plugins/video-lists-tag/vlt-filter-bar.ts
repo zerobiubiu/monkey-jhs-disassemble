@@ -7,7 +7,7 @@
  * 本文件保留 UI 构建：
  * - buildFilterBar / buildFilterModeDropdown / createFilterChip / refreshChips / updateFilterBar
  */
-import { findListMountTarget } from '../../core/util/site/list-mount';
+import { applyListMountPoint, findListMountPoint } from '../../core/util/site/list-mount';
 import type { VltTags } from './vlt-tags';
 import {
     applyFilter,
@@ -229,10 +229,10 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
 export function buildFilterBar(plugin: VltTags): void {
     if (document.querySelector('.jhs-vlt-filter-bar')) return;
 
-    // 挂载目标：结构式 → 宽松式 → 容器兜底（共享单点，doc/48；
-    // 首页 `.tabs.is-boxed` 不在结构式路径上，此前这里命中 0 就静默返回）
-    const mountTarget = findListMountTarget();
-    if (!mountTarget) return;
+    // 挂载点：共享单点（doc/48/49）——结构式标签栏之后、影片列表之前、页面容器顶部，
+    // 插入方位随锚点类型而定，避免把筛选栏插进卡片网格
+    const mount = findListMountPoint();
+    if (!mount) return;
 
     const filterBar = document.createElement('div') as FilterBarEl;
     filterBar.className = 'jhs-vlt-filter-bar';
@@ -288,8 +288,8 @@ export function buildFilterBar(plugin: VltTags): void {
 
     boundRefreshChips();
 
-    // 作为挂载目标的兄弟元素插入到它之后
-    mountTarget.insertAdjacentElement('afterend', filterBar);
+    // 按共享挂载点的方位插入（结构式之后 / 列表之前 / 容器顶部）
+    applyListMountPoint(mount, filterBar);
 
     // 保存 refreshChips 引用以便后续更新（与原脚本一致，挂在 DOM 元素上）
     filterBar._refreshChips = boundRefreshChips;
