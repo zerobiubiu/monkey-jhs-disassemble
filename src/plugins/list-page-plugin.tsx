@@ -34,11 +34,12 @@
  *
  * 本文件保留所有公共方法签名（getBean 可达面），方法体委托至对应辅助模块。
  */
-import { isJavdbSite } from '../constants/site';
+import { currentHref, isJavdbSite, isSearchOrUserPage } from '../constants/site';
 import { NO, YES } from '../constants/status';
 
 import { TaskSupervisor } from '../core/task-supervisor';
 import { readPersistentMap } from '../core/storage/persistent-data-store';
+import { siteSelector } from '../core/util/site/selectors';
 import { getActressNames } from '../core/util/site/actress-links';
 import { isVideoListContext, type PageType } from '../core/page-context';
 
@@ -165,6 +166,68 @@ export class ListPagePlugin extends BasePlugin {
         });
     }
 
+    /**
+     * 列表项排序：依 localStorage 的 jhs_sortMethod（default/rateCount/date）对
+     * .movie-list .item 重排；搜索/用户页、高级搜索页跳过。
+     *
+     * doc/52：从已删除的 ListPageButtonPlugin 迁入（原「排序切换」按钮随之删除）。
+     * 触发路径不变 —— 仍由 checkDom 的容器观察回调调用；jhs_sortMethod 无新的写入方，
+     * 仅对历史上已设置过该键的用户继续生效（键本身仍在备份白名单内）。
+     *
+     * @returns Promise<void>；无显式抛出
+     */
+    async sortItems(): Promise<void> {
+        if (currentHref.includes('handle') || currentHref.includes('advanced_search')) {
+            return;
+        }
+        if (isSearchOrUserPage) {
+            return;
+        }
+        const sortMethod = localStorage.getItem('jhs_sortMethod');
+        if (!sortMethod) {
+            return;
+        }
+        $(siteSelector('listItem')).each((index: number, element: HTMLElement) => {
+            if (!$(element).attr('data-original-index')) {
+                $(element).attr('data-original-index', index);
+            }
+        });
+        const listEl = $(siteSelector('list'));
+        const itemEls = $('.item', listEl);
+        if (sortMethod === 'default') {
+            itemEls
+                .get()
+                .sort(
+                    (itemA: HTMLElement, itemB: HTMLElement) =>
+                        $(itemA).data('original-index') - $(itemB).data('original-index')
+                )
+                .forEach((el: HTMLElement) => listEl.append(el));
+        } else {
+            const items = itemEls.get();
+            items.sort((itemA: HTMLElement, itemB: HTMLElement) => {
+                if (sortMethod === 'rateCount') {
+                    const getRateCount = (el: HTMLElement): number => {
+                        const match = $(el).find('.score .value').text().match(/由(\d+)人/);
+                        if (match) {
+                            return parseFloat(match[1]);
+                        } else {
+                            return 0;
+                        }
+                    };
+                    return getRateCount(itemB) - getRateCount(itemA);
+                } else {
+                    // 原 return new Date(t)；Date-Date 隐式 valueOf 减法在 TS 下不合法，改返回 .getTime()
+                    const getDate = (el: HTMLElement): number => {
+                        const dateStr = $(el).find('.meta').text().trim();
+                        return new Date(dateStr).getTime();
+                    };
+                    return getDate(itemB) - getDate(itemA);
+                }
+            });
+            listEl.empty().append(items);
+        }
+    }
+
     /** 监听列表容器 DOM 变更并自动重过滤/重排序。对应原 L8360-8392。 */
     checkDom(): void {
         // doc/48：与 doFilter 同口径（列表页或 JavDB 首页），此前仍用一次性 window.isListPage
@@ -189,7 +252,7 @@ export class ListPagePlugin extends BasePlugin {
                 this.addJumpPageControl();
                 await this.doFilter();
                 this.syncBatchCheckboxes();
-                await this.getBean('ListPageButtonPlugin').sortItems();
+                await this.sortItems();
                 $(this.getSelector().itemSelector + ' a').attr('target', '_blank');
                 this.getBean('AutoPagePlugin').checkLoad();
             } finally {

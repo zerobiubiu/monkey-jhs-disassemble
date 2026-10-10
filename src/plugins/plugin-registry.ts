@@ -21,7 +21,6 @@ import type { HistoryPlugin } from './history-plugin';
 import type { HitShowPlugin } from './hit-show-plugin';
 import type { ImageRecognitionPlugin } from './image-recognition-plugin';
 import type { KeyPageTurningPlugin } from './key-page-turning-plugin';
-import type { ListPageButtonPlugin } from './list-page-button-plugin';
 import type { ListPagePlugin } from './list-page-plugin';
 import type { ListReadingStatusPlugin } from './list-reading-status-plugin';
 import type { ListReflowPlugin } from './list-reflow/list-reflow-plugin';
@@ -69,7 +68,6 @@ export interface PluginMap {
     HitShowPlugin: HitShowPlugin;
     ImageRecognitionPlugin: ImageRecognitionPlugin;
     KeyPageTurningPlugin: KeyPageTurningPlugin;
-    ListPageButtonPlugin: ListPageButtonPlugin;
     ListPagePlugin: ListPagePlugin;
     ListReadingStatusPlugin: ListReadingStatusPlugin;
     ListReflowPlugin: ListReflowPlugin;

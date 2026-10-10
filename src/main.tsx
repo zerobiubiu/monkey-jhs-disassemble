@@ -52,7 +52,6 @@ import { Top250Plugin } from './plugins/top250-plugin';
 import { NavBarPlugin } from './plugins/nav-bar-plugin';
 import { OtherSitePlugin } from './plugins/other-site-plugin';
 import { ReviewPlugin } from './plugins/review-plugin';
-import { ListPageButtonPlugin } from './plugins/list-page-button-plugin';
 import { AutoPagePlugin } from './plugins/auto-page-plugin';
 import { BlacklistPlugin } from './plugins/blacklist-plugin';
 import { WantAndWatchedVideosPlugin } from './plugins/want-and-watched-videos-plugin';
@@ -309,7 +308,6 @@ const pluginManager: PluginManager = (function () {
         manager.register(ListPagePlugin);
         manager.register(AutoPagePlugin);
         manager.register(FoldCategoryPlugin);
-        manager.register(ListPageButtonPlugin);
         manager.register(HistoryPlugin);
         manager.register(SettingPlugin);
         manager.register(NavBarPlugin);

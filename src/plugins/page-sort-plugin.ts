@@ -19,7 +19,7 @@
  * + processPlugins() 在页面加载后执行，且保留 waitForContainer() 等待容器就绪。
  *
  * === 与 jhs 主项目排序系统的协调（doc/36 优化） ===
- * jhs 主项目的 ListPageButtonPlugin.sortItems() 已有排序功能（default/rateCount/
+ * jhs 主项目的 ListPagePlugin.sortItems() 已有排序功能（default/rateCount/
  * date），且 ListPagePlugin.checkDom() 的 MutationObserver 监听 .movie-list childList
  * 会在 DOM 变更后调用 sortItems()。PageSortPlugin 若独立运行会与 jhs 排序系统冲突：
  * 1. 双重排序互相覆盖（两者都 append .item 到 .movie-list）
