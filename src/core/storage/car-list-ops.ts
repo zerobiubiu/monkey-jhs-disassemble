@@ -198,8 +198,8 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
         names = names.trim();
     }
     const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
-    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
-    const car = list.find((item) => carNumEquals(item.carNum, carNum, false));
+    // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
+    const car = list.find((item) => carNumEquals(item.carNum, carNum, featureFlags.caseInsensitiveCarNum));
     if (!car) {
         const msg = '数据不存在: ' + carNum;
         failWithToast(msg);
@@ -258,8 +258,8 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
 export async function removeCar(sm: StorageManager, carNum: string): Promise<boolean> {
     const list = await getCarList(sm);
     const beforeLen = list.length;
-    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
-    const filtered = list.filter((item) => !carNumEquals(item.carNum, carNum, false));
+    // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
+    const filtered = list.filter((item) => !carNumEquals(item.carNum, carNum, featureFlags.caseInsensitiveCarNum));
     if (filtered.length === beforeLen) {
         show.error(`${carNum} 不存在`);
         return false;
@@ -318,9 +318,10 @@ export async function clearCarWatchStatus(sm: StorageManager, carNums: string[])
 export async function batchRemoveCars(sm: StorageManager, carNums: string[]): Promise<boolean | number> {
     const list = await getCarList(sm);
     const beforeLen = list.length;
-    // 现状：精确匹配（未跟随 caseInsensitiveCarNum，与 saveSingleCar/getCar 口径不同；见 doc/46 §二）
-    const numSet = new Set(carNums);
-    const filtered = list.filter((item) => !numSet.has(item.carNum));
+    // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
+    const caseInsensitive = featureFlags.caseInsensitiveCarNum;
+    const numSet = new Set(carNums.map((n) => carNumKey(n, caseInsensitive)));
+    const filtered = list.filter((item) => !numSet.has(carNumKey(item.carNum, caseInsensitive)));
     const removed = beforeLen - filtered.length;
     if (removed === 0) return false;
     await sm.forage.setItem(sm.car_list_key, filtered);
