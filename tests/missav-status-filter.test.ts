@@ -21,9 +21,9 @@ import {
     STATUS_ORDER,
     collectStatusCounts,
     getItemStatus,
-    isVideoDetailPath,
     statusToLabel
 } from '../src/plugins/missav-status-filter/mstf-collect';
+import { isVideoDetailPath } from '../src/core/util/site/missav-paths';
 import { applyFilter, shouldShow } from '../src/plugins/missav-status-filter/mstf-apply';
 
 const parse = (html: string): Document => new DOMParser().parseFromString(html, 'text/html');

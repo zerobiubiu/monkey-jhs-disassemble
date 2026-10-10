@@ -16,7 +16,7 @@ import { createBackToTopButton } from '../../core/util/back-to-top';
 
 import { BasePlugin } from '../base-plugin';
 import { isVideoPage } from '../car-status-sync/missav-renderer';
-import { isVideoDetailPath } from '../missav-status-filter/mstf-collect';
+import { isVideoDetailPath } from '../../core/util/site/missav-paths';
 import { fetchNextPage } from './map-fetch';
 import { MAP_SEL, collectCarNums, extractThumbs, findNextUrl } from './map-selectors';
 

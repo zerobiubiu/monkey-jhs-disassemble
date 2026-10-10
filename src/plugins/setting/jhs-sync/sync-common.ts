@@ -7,16 +7,11 @@
 
 import { RatingCache } from '../../rating-display/rating-cache';
 
+import { getCsrfToken } from '../../../core/util/site/csrf';
 import { siteSelector } from '../../../core/util/site/selectors';
 
 /** 抓取 want/watched 列表的最大页数保护。 */
 export const SYNC_PAGE_LIMIT = 200;
-
-/** 读取 CSRF token（meta[name=csrf-token]）。 */
-export function getCsrfToken(): string | null {
-    const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
-    return meta ? meta.content : null;
-}
 
 /** 从番号记录的 url 提取 JavDB videoId（/v/{id}）。 */
 export function extractVideoId(url: string | undefined): string | null {

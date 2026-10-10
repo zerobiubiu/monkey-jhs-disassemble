@@ -14,9 +14,9 @@
 import { VltDb } from './vlt-db';
 import { showToast } from './vlt-toast';
 import { broadcastListMgmt } from './vlt-broadcast';
+import { getCsrfToken } from '../../core/util/site/csrf';
 import {
     extractListIdFromHref,
-    getCsrfToken,
     LOG_PREFIX,
     refreshListPanel
 } from './vlt-helpers';

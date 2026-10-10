@@ -4,6 +4,7 @@
  */
 import { FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
+import { getCsrfToken } from '../../core/util/site/csrf';
 import { jsxToString } from '../../core/jsx-to-string';
 
 import { readServerReviewState } from './dpb-review-sync';
@@ -247,15 +248,6 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
                 '站点未同步: ' + (err instanceof Error ? err.message : String(err))
             );
         });
-}
-
-/**
- * 获取 javdb 的 CSRF token。对应原 L5900-5903。
- * @returns CSRF token 或 null
- */
-export function getCsrfToken(): string | null {
-    const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
-    return meta ? meta.content : null;
 }
 
 /**

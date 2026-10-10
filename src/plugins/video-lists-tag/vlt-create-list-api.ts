@@ -10,6 +10,7 @@
  * 改用 GM_xmlhttpRequest 绕过原生表单链路（JavDB 已迁移 Turbo，data-remote 失效）。
  */
 
+import { getCsrfTokenWithFormFallback } from '../../core/util/site/csrf';
 import { handleCheckboxChange } from './vlt-checkbox';
 import { fetchAuthoritativeCheckboxState } from './vlt-server';
 import {
@@ -71,9 +72,8 @@ export async function createList(listName: string): Promise<CreateListResult> {
         formData[nameInput.name] = listName;
     }
 
-    // ── CSRF token ──
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
-    const csrfToken = csrfMeta?.content || formData['authenticity_token'] || '';
+    // ── CSRF token（meta 优先，表单字段兜底；共享实现见 core/util/site/csrf）──
+    const csrfToken = getCsrfTokenWithFormFallback(formData);
 
     // ── 提交前快照 ──
     const beforeIds = new Set(

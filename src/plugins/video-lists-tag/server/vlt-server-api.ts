@@ -13,10 +13,10 @@ import {
 } from '../../../core/storage/persistent-data-store';
 import { fetchSimpleListsPage } from '../../../core/util/util-simple-lists';
 
+import { getCsrfToken } from '../../../core/util/site/csrf';
 import {
     extractListNameFromInput,
     getCheckboxCount,
-    getCsrfToken,
     LOG_PREFIX,
     PENDING_SYNC_PREFIX
 } from '../vlt-helpers';

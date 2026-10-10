@@ -170,12 +170,6 @@ export function extractListIdFromHref(href: string): string | null {
     return m ? m[1] : null;
 }
 
-/** 获取 CSRF token（从 meta[name=csrf-token] 读取）。 */
-export function getCsrfToken(): string {
-    const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
-    return meta?.content || '';
-}
-
 export function getCurrentListContainer(): HTMLElement | null {
     return document.querySelector(
         '#modal-save-list [data-list-target="listContainer"]'

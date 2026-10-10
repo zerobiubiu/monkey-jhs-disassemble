@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react';
 import { UNCENSORED, CENSORED } from '../../constants/site';
 
+import { getCsrfToken } from '../../core/util/site/csrf';
 import { jsxToString } from '../../core/jsx-to-string';
 
 import type { NewVideoPlugin } from '../new-video-plugin';
@@ -143,9 +144,7 @@ export async function renderActressCards(plugin: NewVideoPlugin): Promise<void> 
             if (!actress) return;
             utils.q(event as MouseEvent, `是否取消收藏 ${actress.name}?`, async () => {
                 const uncollectUrl: string = `${await plugin.getBean('OtherSitePlugin').getJavDbUrl()}/actors/${starId}/uncollect`;
-                const csrfToken: string =
-                    document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ??
-                    '';
+                const csrfToken: string = getCsrfToken() ?? '';
                 const response = await gmHttp.post(uncollectUrl, undefined, {
                     'x-csrf-token': csrfToken
                 });

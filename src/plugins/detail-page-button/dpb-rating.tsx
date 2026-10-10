@@ -220,7 +220,6 @@ export {
     quickSetHasWatch,
     quickBlock,
     quickConvertToFav,
-    getCsrfToken,
     getVideoId,
     getReviewId,
     execRailsJs,

@@ -18,7 +18,8 @@ import { TaskSupervisor } from '../../core/task-supervisor';
 
 import { BasePlugin } from '../base-plugin';
 import { isVideoPage } from '../car-status-sync/missav-renderer';
-import { NO_TAG_VALUE, STATUS_ORDER, collectStatusCounts, isVideoDetailPath, statusToLabel } from './mstf-collect';
+import { isVideoDetailPath } from '../../core/util/site/missav-paths';
+import { NO_TAG_VALUE, STATUS_ORDER, collectStatusCounts, statusToLabel } from './mstf-collect';
 import { applyFilter } from './mstf-apply';
 
 import missavStatusFilterCssRaw from '../../styles/missav-status-filter/missav-status-filter.css?raw';
