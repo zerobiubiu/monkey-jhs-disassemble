@@ -54,3 +54,6 @@ docs/troubleshooting/gitnexus-fts.md
 
 # omp 项目级 MCP 配置（机器绑定绝对路径，不入库；AOCI-CODE 要求）
 .omp/mcp.json
+
+# Pi 项目级 MCP 配置（机器绑定绝对路径，不入库）
+.pi/mcp.json
