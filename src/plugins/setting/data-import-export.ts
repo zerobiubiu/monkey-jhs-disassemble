@@ -5,7 +5,7 @@
  * VLT 收藏清单 / MissAV 车号状态的导入/导出/同步按钮处理函数。
  */
 
-import { encryptBackupV2, decryptBackupV2, isBackupV2 } from '../../core/backup-crypto';
+import { encryptBackupV2, decodeBackup } from '../../core/backup-crypto';
 import {
     collectLocalStorageBackup,
     collectPersistentDataBackup,
@@ -68,6 +68,16 @@ export async function buildBackupPayload(
     return exportData;
 }
 
+
+/** 完成写入与回读后保留可见结果，用户确认后再刷新。 */
+export function showBackupRestoreResult(mainKeyCount: number): void {
+    layer.alert(`备份恢复并校验成功：${mainKeyCount} 个主数据键及受支持的附加数据已恢复。点击确定刷新页面。`,
+        { title: '恢复完成', icon: 1 }, (index: number) => {
+            layer.close(index);
+            location.reload();
+        });
+}
+
 /** 从本地 JSON 文件导入数据（覆盖确认 + reload）。对应原 L10245-10291。 */
 export function importData(_plugin: SettingPlugin): void {
     try {
@@ -83,22 +93,10 @@ export function importData(_plugin: SettingPlugin): void {
             const reader = new FileReader();
             reader.onload = async (loadEvent: ProgressEvent<FileReader>) => {
                 try {
-                    let fileContent = String(loadEvent.target?.result ?? '');
-                    // V2 加密备份检测与解密
-                    if (isBackupV2(fileContent)) {
-                        const backupPassword = GM_getValue(GM_KEY_BACKUP_PASSWORD, '');
-                        if (!backupPassword) {
-                            show.error('该备份使用 V2 加密，请先在备份面板设置备份口令');
-                            return;
-                        }
-                        try {
-                            fileContent = await decryptBackupV2(fileContent, backupPassword);
-                        } catch {
-                            show.error('备份口令错误或文件已损坏');
-                            return;
-                        }
-                    }
-                    const parsedData = JSON.parse(fileContent);
+                    const fileContent = String(loadEvent.target?.result ?? '');
+                    const { data: parsedData } = await decodeBackup(
+                        fileContent, GM_getValue(GM_KEY_BACKUP_PASSWORD, '')
+                    );
                     layer.confirm(
                         '确定是否要覆盖导入？',
                         {
@@ -111,11 +109,10 @@ export function importData(_plugin: SettingPlugin): void {
                                 const extras = stripBackupExtras(parsedData);
                                 await storageManager.importData(parsedData);
                                 await applyBackupExtras(extras);
-                                show.ok('数据导入成功');
                                 layer.close(layerIndex);
-                                location.reload();
+                                showBackupRestoreResult(Object.keys(parsedData).length);
                             } catch (error: unknown) {
-                                console.error(error);
+                                clog.error(error);
                                 show.error(
                                     '导入失败：' +
                                         (error instanceof Error ? error.message : String(error))
@@ -124,9 +121,9 @@ export function importData(_plugin: SettingPlugin): void {
                         }
                     );
                 } catch (err: unknown) {
-                    console.error(err);
+                    clog.error(err);
                     show.error(
-                        '导入失败：文件内容不是有效的JSON格式 ' +
+                        '导入失败：' +
                             (err instanceof Error ? err.message : String(err))
                     );
                 }
@@ -140,7 +137,7 @@ export function importData(_plugin: SettingPlugin): void {
         fileInput.click();
         setTimeout(() => document.body.removeChild(fileInput), 1000);
     } catch (err: unknown) {
-        console.error(err);
+        clog.error(err);
         show.error('导入数据时出错: ' + (err instanceof Error ? err.message : String(err)));
     }
 }

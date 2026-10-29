@@ -11,6 +11,7 @@ import {
     type PersistentDataMeta,
     type PersistentDataRecord
 } from './persistent-data-backend';
+import { backupValuesEqual } from './backup-restore';
 
 export {
     PERSISTENT_DATA_DB_NAME,
@@ -202,6 +203,22 @@ export class PersistentDataStore {
             result[namespace] = this.getNamespace<unknown>(namespace);
         }
         return result;
+    }
+
+
+    /** 从持久后端回读而非读取内存镜像，确保恢复内容已真正落盘。 */
+    async verifyNamespaces(expected: Record<string, Record<string, unknown>>): Promise<void> {
+        await this.flush();
+        const records = await this.backend.loadRecords();
+        for (const [namespace, values] of Object.entries(expected)) {
+            const actual: Record<string, unknown> = Object.create(null);
+            for (const record of records) {
+                if (record.namespace === namespace) actual[record.entryKey] = record.value;
+            }
+            if (!backupValuesEqual(actual, values)) {
+                throw new Error(`持久数据恢复校验失败：${namespace}`);
+            }
+        }
     }
 
     async getMeta<T extends PersistentDataMeta>(key: string): Promise<T | null> {

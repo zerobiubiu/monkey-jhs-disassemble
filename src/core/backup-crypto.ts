@@ -17,6 +17,8 @@
  * }
  */
 
+import { decryptCredential, encryptCredential } from './webdav-crypto';
+
 const PBKDF2_ITERATIONS = 100000;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
@@ -137,4 +139,58 @@ export function isBackupV2(content: string): boolean {
     } catch {
         return false;
     }
+}
+
+
+/** 解析备份键值对象；不把接口元数据或解析片段送入存储和错误提示。 */
+function parseBackupObject(text: string): Record<string, unknown> {
+    let value: unknown;
+    try {
+        value = JSON.parse(text);
+    } catch {
+        throw new Error('备份内容无法解析，请重新下载原始备份文件；旧版错误下载的文件不含可恢复的正文');
+    }
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new Error('备份数据格式非法：必须是键值对对象');
+    }
+    const data = value as Record<string, unknown>;
+    if (data.type === 'file' && typeof data.path === 'string') {
+        throw new Error('该文件是 Git 接口元数据，不是备份正文，请更新脚本后重新下载');
+    }
+    return data;
+}
+
+/** 本地导入、云端导入与下载共用：明文不变，旧 Caesar 只在边界匹配时解密。 */
+export async function decodeBackup(
+    content: string,
+    password = ''
+): Promise<{ text: string; data: Record<string, unknown> }> {
+    let text = content.replace(/^\uFEFF/, '');
+    // 从现有加密实现取得前后标记，避免复制 salt 与位移规则。
+    const wrapper = encryptCredential('');
+    const marker = wrapper.slice(0, wrapper.length / 2);
+    const candidate = text.trim();
+    if (candidate.length >= wrapper.length && candidate.startsWith(marker) && candidate.endsWith(marker)) {
+        try {
+            text = decryptCredential(candidate);
+        } catch {
+            throw new Error('旧版备份已损坏，请重新下载原始备份文件');
+        }
+    }
+    let data = parseBackupObject(text);
+    if (data.alg === 'AES-GCM') {
+        if (data.v !== 2) {
+            throw new Error(`不支持的备份格式版本: ${String(data.v)}`);
+        }
+        if (!password) {
+            throw new Error('该备份使用 V2 加密，请先在备份面板设置备份口令');
+        }
+        try {
+            text = await decryptBackupV2(text, password);
+        } catch {
+            throw new Error('备份口令错误或文件已损坏');
+        }
+        data = parseBackupObject(text);
+    }
+    return { text, data };
 }

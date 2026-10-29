@@ -84,7 +84,7 @@
 
 ## 2. 核心模块 `src/core/`
 
-共 **67 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 11 + `sync/` 4 + `util/` 25。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **68 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 12 + `sync/` 4 + `util/` 25。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -96,12 +96,13 @@
 | storage/blacklist-ops.ts | 黑名单演员/关键词读写 |
 | storage/blacklist-car-list-ops.ts | 黑名单番号清单读写（缓存 + 修订号） |
 | storage/cache-invalidation.ts | 按写入类型（data/settings）分流远程缓存失效（doc/39） |
+| storage/backup-restore.ts | 备份全键写入、JSON 值深比较、持久化回读与失败补偿（不清空无关键） |
 | storage/car-list-ops.ts | 番号清单 car_list 增删改查（saveCar/removeCar/batchRemoveCars + 变更回调） |
 | storage/favorite-actress-ops.ts | 收藏演员清单读写 |
 | storage/keyword-ops.ts | 标题/评论过滤关键词读写 |
 | storage/storage-migrations.ts | 版本化存储迁移（含历史 snake_case 兼容步骤） |
 | storage/persistent-data-backend.ts | JAV-JHS-PersistentData 的 IndexedDB 连接、记录类型与批量事务后端 |
-| storage/persistent-data-store.ts | JavDB 大型缓存/恢复日志的独立 IndexedDB 存储与兼容读写 |
+| storage/persistent-data-store.ts | JavDB 大型缓存/恢复日志的独立 IndexedDB 存储、兼容读写与恢复后的后端回读校验 |
 | storage/persistent-data-migration.ts | localStorage → 持久数据 IndexedDB 的复制、校验、清理与旧备份迁移 |
 | storage/external-visit-ops.ts | 外部站点访问统计读写（按番号单条记录 + 站点分列；读取失败降级为零值） |
 | gm-http.ts | GM_xmlhttpRequest 封装（GET/POST/分块下载/重试） |
@@ -109,8 +110,8 @@
 | toast.ts / loading.ts / logger.tsx | Toastify 封装（show.ok/error/success）/ 加载遮罩 / 日志控制台（clog） |
 | viewer.ts | Viewer.js 配置 |
 | webdav.ts / webdav-crypto.ts / gfriends.ts | WebDav 客户端 / WebDav 加密解密 / GFriends 数据 |
-| backup-crypto.ts | 备份 payload 的 AES-GCM 加解密（凭证派生） |
-| backup-extra-storage.ts | 备份附加存储采集（GM 键 + localStorage 白名单，如阅读状态/清单插件主数据） |
+| backup-crypto.ts | 备份 AES-GCM 加解密（口令派生）与明文/V1/V2 统一解码、导入前格式校验 |
+| backup-extra-storage.ts | 备份附加存储采集、格式检查与恢复校验（GM/localStorage 白名单、持久 namespace） |
 | layer-wrapper.ts | layer.js 包装（默认 closeBtn/shadeClose + ESC 栈；注入 layer-fix.css） |
 | tooltip.ts / style-injector.ts | tooltip / CSS 注入（injectCss） |
 | jsx-to-string.ts | 轻量 JSX→HTML 字符串渲染器（替代 react-dom/server） |

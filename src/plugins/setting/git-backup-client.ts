@@ -15,8 +15,8 @@
  * - 客户端不做持久化，凭据由调用方从 GM 私有存储读取后注入。
  *
  * 已知限制：
- * - 单文件 >1MB 时 GitHub contents JSON 不返回 content 字段，读取自动回退
- *   raw 媒体类型（Gitee/GitLab API 形状不同，不在本期范围）；
+ * - 单文件 >1MB 时先回退 raw 媒体类型；若服务仍返回元数据，则按 SHA 读取同一 API 的 blob。
+ *   不追随元数据中的下载 URL，避免把 Token 发送至未配置的主机（Gitee/GitLab 不在范围内）。
  * - 与 WebDav 备份一致明文上传，强烈建议使用私有仓库。
  */
 
@@ -310,7 +310,7 @@ export class GitBackupClient implements BackupProvider {
 
     /**
      * 读取当前目录下文件的文本内容。
-     * 文件 >1MB 时 GitHub contents JSON 省略 content 字段，自动回退 raw 媒体类型。
+     * 大文件先取 raw；媒体协商被忽略时按原 SHA 取 blob，绝不返回元数据代替正文。
      * @param filename 文件名
      * @returns 文件文本内容
      * @throws 未先调用 getBackupList 设当前目录时抛 Error
@@ -323,16 +323,48 @@ export class GitBackupClient implements BackupProvider {
             content?: string;
             encoding?: string;
             size?: number;
+            sha?: string;
         };
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('Git 备份接口未返回文件正文');
+        }
         if (typeof parsed.content === 'string' && parsed.content !== '') {
             return parsed.encoding === 'base64' ? base64ToUtf8(parsed.content) : parsed.content;
         }
-        if ((parsed.size ?? 0) === 0) return '';
-        // 大文件：GitHub 省略 content，改用 raw 媒体类型直接取原文
+        if (parsed.size === 0) return '';
+        if (typeof parsed.size !== 'number' || !Number.isFinite(parsed.size) || parsed.size < 0) {
+            throw new Error('Git 备份接口未返回文件正文或有效的文件大小');
+        }
         const rawResponse = await this.sendRequest('GET', path, undefined, {
             Accept: 'application/vnd.github.raw+json'
         });
-        return rawResponse.responseText;
+        let rawData: Record<string, unknown> | null;
+        try {
+            rawData = JSON.parse(rawResponse.responseText);
+        } catch {
+            // 旧 Caesar 格式不是 JSON；格式校验交给统一备份解码器。
+            return rawResponse.responseText;
+        }
+        if (!rawData || !(rawData.encoding === 'none' ||
+            (rawData.type === 'file' && typeof rawData.path === 'string'))) {
+            return rawResponse.responseText;
+        }
+        if (typeof parsed.sha !== 'string' || !parsed.sha) {
+            throw new Error('Git 备份接口只返回元数据且缺少文件 SHA，无法读取正文');
+        }
+        // 绑定首次元数据的版本；仅使用已配置 API，不访问 download_url/git_url。
+        const blobResponse = await this.sendRequest('GET',
+            `/repos/${this.repo}/git/blobs/${encodeURIComponent(parsed.sha)}`);
+        let blob: { encoding?: unknown; content?: unknown } | null;
+        try {
+            blob = JSON.parse(blobResponse.responseText);
+        } catch {
+            throw new Error('Git 备份接口未返回 blob 正文，请检查服务的 Git Blobs API 支持');
+        }
+        if (!blob || blob.encoding !== 'base64' || typeof blob.content !== 'string' || !blob.content) {
+            throw new Error('Git 备份接口未返回 blob 正文，请检查服务的 Git Blobs API 支持');
+        }
+        return base64ToUtf8(blob.content);
     }
 
     /**

@@ -8,7 +8,7 @@
 import { createElement } from 'react';
 
 import { withLoading } from '../../core/util/util-async';
-import { isBackupV2, decryptBackupV2 } from '../../core/backup-crypto';
+import { decodeBackup } from '../../core/backup-crypto';
 import { stripBackupExtras, applyBackupExtras } from '../../core/backup-extra-storage';
 import { jsxToString } from '../../core/jsx-to-string';
 
@@ -20,7 +20,7 @@ import {
     GM_KEY_WEBDAV_PASSWORD,
     GM_KEY_BACKUP_PASSWORD
 } from './setting-keys';
-import { buildBackupPayload } from './data-import-export';
+import { buildBackupPayload, showBackupRestoreResult } from './data-import-export';
 
 import { BackupFileDialog } from '../../components/dialogs/backup-file-dialog';
 import { BackupActionCell } from '../../components/misc/backup-action-cell';
@@ -239,21 +239,8 @@ export function openFileListDialog(
                                                     GM_KEY_BACKUP_PASSWORD,
                                                     ''
                                                 );
-                                                let decrypted: string;
-                                                if (isBackupV2(fileContent)) {
-                                                    if (!backupPassword) {
-                                                        show.error('该备份使用 V2 加密，请先设置备份口令');
-                                                        return;
-                                                    }
-                                                    decrypted = await decryptBackupV2(
-                                                        fileContent,
-                                                        backupPassword
-                                                    );
-                                                } else {
-                                                    // V1 兼容：旧 Caesar 格式
-                                                    decrypted = window.decryptCredential(fileContent);
-                                                }
-                                                utils.download(decrypted, rowData.name);
+                                                const { text } = await decodeBackup(fileContent, backupPassword);
+                                                utils.download(text, rowData.name);
                                             });
                                         } catch (err: unknown) {
                                             clog.error(err);
@@ -277,42 +264,27 @@ export function openFileListDialog(
                                                 layer.close(layerIndex);
                                                 try {
                                                     await withLoading(async () => {
-                                                        let fileContent =
+                                                        const fileContent =
                                                             await provider.getFileContent(
                                                                 rowData.fileId
                                                             );
-                                                        show.info('解密文件内容...');
+                                                        show.info('校验备份文件...');
                                                         const backupPassword = GM_getValue(
                                                             GM_KEY_BACKUP_PASSWORD,
                                                             ''
                                                         );
-                                                        if (isBackupV2(fileContent)) {
-                                                            if (!backupPassword) {
-                                                                show.error(
-                                                                    '该备份使用 V2 加密，请先设置备份口令'
-                                                                );
-                                                                return;
-                                                            }
-                                                            fileContent = await decryptBackupV2(
-                                                                fileContent,
-                                                                backupPassword
-                                                            );
-                                                        } else {
-                                                            // V1 兼容：旧 Caesar 格式
-                                                            fileContent =
-                                                                window.decryptCredential(fileContent);
-                                                        }
-                                                        show.info('解密完成, 开始导入...');
-                                                        const parsedData = JSON.parse(fileContent);
+                                                        const { data: parsedData } = await decodeBackup(
+                                                            fileContent, backupPassword
+                                                        );
+                                                        show.info('文件校验完成, 开始导入...');
                                                         const extras = stripBackupExtras(parsedData);
                                                         await storageManager.importData(parsedData);
                                                         await applyBackupExtras(extras);
-                                                        show.ok('导入成功!');
-                                                        window.location.reload();
+                                                        showBackupRestoreResult(Object.keys(parsedData).length);
                                                     });
                                                 } catch (err: unknown) {
-                                                    console.error(err);
-                                                    show.error(String(err));
+                                                    clog.error(err);
+                                                    show.error('导入失败: ' + (err instanceof Error ? err.message : String(err)));
                                                 }
                                             }
                                         );

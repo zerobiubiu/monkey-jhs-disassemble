@@ -243,6 +243,110 @@ describe('GitBackupClient.getFileContent', () => {
         expect(bigFileCalls).toBe(2);
     });
 
+
+    it('raw 被忽略仍返回元数据时，按原 SHA 从同一 API 读取 blob', async () => {
+        const payload = '{"car_list":[{"carNum":"TEST-001"}]}';
+        const sha = 'a'.repeat(40);
+        responder = (details) => ({
+            status: 200, statusText: 'OK',
+            responseText: details.url.includes('/git/blobs/')
+                ? JSON.stringify({ sha, encoding: 'base64', content: utf8ToBase64(payload) })
+                : JSON.stringify({
+                    type: 'file', path: 'bk/big.json', sha, size: 28445950,
+                    content: '', encoding: 'none', download_url: 'https://untrusted.example/file'
+                })
+        });
+        const client = makeClient({ apiUrl: 'https://git.example.com/api/v1', branch: 'backup/ref' });
+        client.folderName = 'bk';
+        expect(await client.getFileContent('big.json')).toBe(payload);
+        expect(recorded).toHaveLength(3);
+        expect(recorded[1].headers?.Accept).toBe('application/vnd.github.raw+json');
+        expect(recorded[2].url).toBe(`https://git.example.com/api/v1/repos/tester/jhs-backup/git/blobs/${sha}`);
+        expect(recorded.every((request) => request.url.startsWith(client.apiUrl + '/repos/'))).toBe(true);
+        expect(recorded[2].headers?.Authorization).toBe('Bearer ghp_testtoken');
+    });
+
+    it('blob 没有正文时明确失败，不把元数据当文件交给导入或下载', async () => {
+        responder = () => ({
+            status: 200, statusText: 'OK',
+            responseText: JSON.stringify({
+                type: 'file', path: 'bk/big.json', sha: 'a'.repeat(40),
+                size: 28445950, content: '', encoding: 'none'
+            })
+        });
+        const client = makeClient();
+        client.folderName = 'bk';
+        await expect(client.getFileContent('big.json')).rejects.toThrow(/未返回.*正文/);
+        expect(recorded).toHaveLength(3);
+    });
+
+    it('raw 元数据缺少可用 SHA 时明确失败，不外跳 download_url', async () => {
+        responder = () => ({
+            status: 200, statusText: 'OK',
+            responseText: JSON.stringify({
+                type: 'file', path: 'bk/big.json', size: 28445950,
+                content: '', encoding: 'none', download_url: 'https://untrusted.example/file'
+            })
+        });
+        const client = makeClient();
+        client.folderName = 'bk';
+        await expect(client.getFileContent('big.json')).rejects.toThrow(/缺少.*SHA/);
+        expect(recorded).toHaveLength(2);
+    });
+
+    it('blob 权限错误保持失败，不继续尝试第三方下载地址', async () => {
+        responder = (details) => details.url.includes('/git/blobs/')
+            ? { status: 403, statusText: 'Forbidden', responseText: '{"message":"denied"}' }
+            : {
+                status: 200, statusText: 'OK',
+                responseText: JSON.stringify({
+                    type: 'file', path: 'bk/big.json', sha: 'a'.repeat(40),
+                    size: 28445950, content: '', encoding: 'none'
+                })
+            };
+        const client = makeClient();
+        client.folderName = 'bk';
+        await expect(client.getFileContent('big.json')).rejects.toMatchObject({ status: 403 });
+        expect(recorded).toHaveLength(3);
+    });
+
+    it('空文件必须明确声明 size 为 0', async () => {
+        responder = () => ({ status: 200, statusText: 'OK', responseText: '{"size":0,"content":""}' });
+        const client = makeClient();
+        client.folderName = 'bk';
+        expect(await client.getFileContent('empty.json')).toBe('');
+        expect(recorded).toHaveLength(1);
+    });
+
+    it('缺少正文且未声明 size 时不能默认为空文件', async () => {
+        responder = () => ({ status: 200, statusText: 'OK', responseText: '{}' });
+        const client = makeClient();
+        client.folderName = 'bk';
+        await expect(client.getFileContent('missing.json')).rejects.toThrow(/未返回.*正文/);
+    });
+
+
+    it('与现场同为 28,445,950 字节的正文经 blob 回退仍完整可解析', async () => {
+        const header = '{"car_list":[],"padding":"';
+        const footer = '"}';
+        const payload = header + 'x'.repeat(28445950 - header.length - footer.length) + footer;
+        const sha = 'b'.repeat(40);
+        const encoded = utf8ToBase64(payload);
+        responder = (details) => ({
+            status: 200, statusText: 'OK',
+            responseText: details.url.includes('/git/blobs/')
+                ? JSON.stringify({ sha, encoding: 'base64', content: encoded })
+                : JSON.stringify({ type: 'file', path: 'bk/big.json', sha,
+                    size: 28445950, content: '', encoding: 'none' })
+        });
+        const client = makeClient();
+        client.folderName = 'bk';
+        const restored = await client.getFileContent('big.json');
+        expect(restored).toBe(payload);
+        expect(JSON.parse(restored).car_list).toEqual([]);
+        expect(recorded).toHaveLength(3);
+    });
+
     it('未先 getBackupList 时抛错', async () => {
         const client = makeClient();
         await expect(client.getFileContent('a.json')).rejects.toThrow(/目录未初始化/);

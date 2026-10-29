@@ -28,6 +28,8 @@
 
 import { featureFlags } from './feature-flags';
 import { storageRevision } from './storage-revision';
+import { withExclusiveLock } from './sync/sync-lock';
+import { restoreBackupEntries } from './storage/backup-restore';
 import type { CarListChangeEvent, CarRecord, CarSaveInput } from './storage/car-list-ops';
 import {
     batchRemoveCars,
@@ -66,7 +68,10 @@ import {
     saveReviewFilterKeyword,
     saveTitleFilterKeyword
 } from './storage/keyword-ops';
-import { async_merge_other, clean_no_url_blacklist, runMigrations } from './storage/storage-migrations';
+import {
+    async_merge_other, clean_no_url_blacklist, runMigrations,
+    CURRENT_SCHEMA_VERSION, SCHEMA_VERSION_KEY
+} from './storage/storage-migrations';
 
 // Re-export types for external consumers (importers use `from '../core/storage-manager'`)
 export type { CarListChangeEvent, CarRecord, CarSaveInput } from './storage/car-list-ops';
@@ -338,63 +343,31 @@ export class StorageManager {
     // ===== 导入/导出 =====
 
     /**
-     * 原子性导入数据：先写入临时实例，成功后再切换到主实例。
-     * 任何步骤失败时主数据库保持不变，避免导入中途失败导致数据丢失。
-     * @param data 键值对数据（备份 JSON 解析结果）
-     * @throws 数据格式非法或写入/切换过程出错
+     * 恢复全部备份键并逐键回读校验；写入失败时补偿本次涉及的键。
+     * 不清空备份未涉及的数据；不宣称跨存储、跨崩溃的全局原子性。
      */
     async importData(data: Record<string, unknown>): Promise<void> {
-        // 1. 验证备份数据格式：必须是普通对象、非 null、非数组
-        if (
-            typeof data !== 'object' ||
-            data === null ||
-            Array.isArray(data)
-        ) {
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
             throw new Error('备份数据格式非法：必须是键值对对象');
         }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- localforage global is untyped
-        const tempInstance: any = localforage.createInstance({
-            driver: localforage.INDEXEDDB,
-            name: 'JAV-JHS',
-            storeName: 'appData_import_staging'
-        });
-
-        try {
-            const tasks: Promise<unknown>[] = [];
-            for (const key in data) {
-                tasks.push(tempInstance.setItem(key, data[key]));
-            }
-            await Promise.all(tasks);
-
-            // 4. 暂存写入成功 → 清空主实例 → 将临时数据复制到主实例
-            await tempInstance.iterate((value: unknown, key: string) => {
-                return this.forage.setItem(key, value);
-            });
-            storageRevision.increment();
-
-            // 5. 复制成功 → 清理临时实例
-            await tempInstance.clear();
-            await tempInstance.dropInstance();
-        } catch (err) {
-            // 6. 任何步骤失败 → 清理临时实例，主实例不变（或已被 clear 但属于极端情况）
+        await withExclusiveLock('jhs-backup-import', async () => {
             try {
-                await tempInstance.clear();
-                await tempInstance.dropInstance();
-            } catch {
-                // 清理失败不掩盖原始错误
+                await restoreBackupEntries(this.forage, data);
+            } finally {
+                // 补偿失败也不能继续使用导入前的缓存伪装成恢复成功。
+                this.cacheCarList = null;
+                this.cacheFavoriteActressList = null;
+                this.cache_filter_actor_actress_car_list = null;
+                this.cacheSettingObj = null;
+                storageRevision.increment();
+                storageRevision.incrementSettings();
             }
-            throw err;
-        }
-
-        // 7. 导入成功 → 清理所有运行时缓存
-        this.cacheCarList = null;
-        this.cacheFavoriteActressList = null;
-        this.cache_filter_actor_actress_car_list = null;
-        this.cacheSettingObj = null;
-
-        // 8. 对老备份数据执行迁移，确保结构升级到当前版本
-        await this.runMigrations();
+            await this.runMigrations();
+            const version: unknown = await this.forage.getItem(SCHEMA_VERSION_KEY);
+            if (typeof version !== 'number' || version < CURRENT_SCHEMA_VERSION) {
+                throw new Error('备份已写入，但数据结构迁移未完成；请保留原备份并查看错误日志');
+            }
+        });
     }
 
     async exportData(): Promise<Record<string, unknown>> {
