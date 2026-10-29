@@ -4,7 +4,7 @@
 # 流程：检出 → 安装 Bun → 安装依赖 → 构建 → 提取版本号与最新更新日志
 #       → 重命名产物 → 创建/更新对应版本号的 Release（并上传 .user.js）
 # 产物：javdb-power-tools.user.js（稳定文件名，便于 latest 永久安装链接）
-# 发布说明：自动提取 changelog/CHANGELOG.md 中最新版本条目
+# 发布说明：自动提取根目录 CHANGELOG.md 中最新版本条目
 
 name: 构建并发布
 
@@ -50,7 +50,7 @@ jobs:
                   # 从 CHANGELOG.md 提取最新版本条目：
                   #   从第一个 `## v` 行开始打印，直到遇到下一个版本标题（`## v`，不含该行）
                   #   （条目之间不要求 `---` 分隔；历史分隔线行不参与判定）
-                  awk '/^## v/{n++; if(n>1) exit} n>=1{print}' changelog/CHANGELOG.md \
+                  awk '/^## v/{n++; if(n>1) exit} n>=1{print}' CHANGELOG.md \
                     > release_notes.md
 
                   echo "::group::最新更新日志"

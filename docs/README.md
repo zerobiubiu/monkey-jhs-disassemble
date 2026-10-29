@@ -139,7 +139,7 @@
 - 小变更（几行代码的 bug 修复/优化）可合并到同一份 doc 中，但必须在背景部分说明合并了哪些变更。
 - 大变更（新增/删除插件、架构调整）必须独立一份 doc。
 - 文档必须包含：背景、方案、实施（修改文件清单）、执行验证记录（tsc + vite build 输出）、后续验证建议。
-- 同时更新本 README 的文档索引（§1.1 新增一行）+ `changelog/CHANGELOG.md` + `vite.config.ts` version（按 AGENTS.md §6.1.1 规则）。
+- 同时更新本 README 的文档索引（§1.1 新增一行）+ 根目录 `CHANGELOG.md` + `vite.config.ts` version（按 AGENTS.md §6.1.1 规则）。
 - 新增/删除插件或核心模块时，同步更新 [`plugin-catalog.md`](plugin-catalog.md)（AGENTS.md §3.3/§3.4 的目录数据落点），并用 `bun run check:docs` 校验（插件集合/计数/站点拆分/`src/core/` 文件数四项一致性门禁）。
 - **禁止**只改代码不写文档就回复用户。
 
@@ -180,3 +180,4 @@
 - 工程入口：`src/main.tsx`（完整启动序列）
 - 构建配置：`vite.config.ts`
 - 架构说明：根目录 `AGENTS.md`
+- 更新日志：[根目录 `CHANGELOG.md`](../CHANGELOG.md)；历史变更文档保留的 `changelog/CHANGELOG.md` 是迁移前路径，现统一使用根目录文件。

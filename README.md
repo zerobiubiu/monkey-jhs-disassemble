@@ -154,7 +154,7 @@ bun run test             # vitest run（13 个测试文件，183 个用例）
 
 ## 📝 更新日志
 
-详见 [`changelog/CHANGELOG.md`](./changelog/CHANGELOG.md)。
+详见 [`CHANGELOG.md`](./CHANGELOG.md)。
 
 ## 📄 License & Attribution
 

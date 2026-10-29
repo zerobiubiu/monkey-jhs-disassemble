@@ -207,7 +207,7 @@ A：先打开设置 → 📊 插件诊断，查看各插件执行状态并「复
 | v1.45.1 | 评价状态冲突弹窗（脚本记录 vs 网站数据 由你选择） |
 | v1.45.0 | 评价/收藏/清单与 JavDB 服务器状态自动校验同步 |
 
-完整变更记录见 [CHANGELOG.md](https://github.com/zerobiubiu/monkey-jhs-disassemble/blob/master/changelog/CHANGELOG.md)。
+完整变更记录见 [CHANGELOG.md](https://github.com/zerobiubiu/monkey-jhs-disassemble/blob/master/CHANGELOG.md)。
 
 ---
 

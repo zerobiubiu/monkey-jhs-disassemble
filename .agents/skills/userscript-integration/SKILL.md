@@ -266,7 +266,7 @@ if (isJavdbSite) {
 
 同步更新 `docs/README.md`：
 - §1.1 文档索引表追加一行
-- 按 §3.1 要求同步 `changelog/CHANGELOG.md` 与 `vite.config.ts` version
+- 按 §3.1 要求同步根目录 `CHANGELOG.md` 与 `vite.config.ts` version
 
 ### 第 6 步：验证
 

@@ -33,7 +33,7 @@ monkey-jhs-disassemble/
 ├── archetype/              # 原始脚本 + 独立油猴脚本（只读参考）
 ├── docs/                   # 文档中心（索引、规范与要求见 docs/README.md）
 ├── dist/                   # 构建产物（vite build 清空重建）
-├── changelog/              # 更新日志（CHANGELOG.md）
+├── CHANGELOG.md            # 更新日志（直接存放于根目录）
 ├── .agents/skills/         # Agent skills（userscript-integration）
 ├── PRODUCT.md              # 产品定位、品牌个性与界面设计原则
 └── vite.config.ts / tsconfig*.json / package.json / bun.lock
