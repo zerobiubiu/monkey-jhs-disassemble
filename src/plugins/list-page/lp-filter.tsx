@@ -18,6 +18,7 @@ import {
 
 import { featureFlags } from '../../core/feature-flags';
 import { jsxToString } from '../../core/jsx-to-string';
+import { siteSelector } from '../../core/util/site/selectors';
 import {
     STATUS_TAG_CONFIG,
     getStatusTagPositionStyle,
@@ -78,9 +79,11 @@ export async function renderItemStatusTag(item: HTMLElement, carNum: string): Pr
  * @param plugin ListPagePlugin 实例（读写当前页计数 + 番号提取 + 翻译）
  * @param itemEls .item 元素数组（jQuery .toArray() 结果）
  */
-export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLElement[]): Promise<void> {
-    utils.time('累计耗费时间');
-    utils.time('读取数据耗时');
+export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLElement[], trackCounts = true): Promise<void> {
+    if (trackCounts) {
+        utils.time('累计耗费时间');
+        utils.time('读取数据耗时');
+    }
     const [carList, titleFilterKeywords, blacklist, blacklistCarList, setting] =
         await Promise.all([
             storageManager.getCarList(),
@@ -89,7 +92,7 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
             storageManager.getBlacklistCarList(),
             storageManager.getSetting()
         ]);
-    const readDataTime = utils.time('读取数据耗时');
+    const readDataTime = trackCounts ? utils.time('读取数据耗时') : undefined;
     const useLower = featureFlags.caseInsensitiveCarNum;
     const statusCarSets: Record<string, Set<string>> = carList.reduce(
         (acc: Record<string, Set<string>>, car) => {
@@ -105,7 +108,7 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
             [HAS_WATCH_ACTION]: new Set<string>()
         }
     );
-    utils.time('组装数据耗时');
+    if (trackCounts) utils.time('组装数据耗时');
     const blacklistRoleMap = new Map(
         blacklist.map((item) => [item.starId, item.role])
     );
@@ -134,7 +137,7 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
             actressCarNumToNameMap: new Map<string, string | undefined>()
         }
     );
-    const assembleDataTime = utils.time('组装数据耗时');
+    const assembleDataTime = trackCounts ? utils.time('组装数据耗时') : undefined;
     const showFilterItem = setting?.showFilterItem ?? NO;
     const showFilterActorItem = setting?.showFilterActorItem ?? NO;
     const showFilterKeywordItem = setting?.showFilterKeywordItem ?? NO;
@@ -146,14 +149,16 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
         featureFlags.movieShowTypeVisibility
             ? setting?.movieShowType || 'hide'
             : 'hide';
-    plugin.currentPageFilterCount = 0;
-    plugin.currentPageFavoriteCount = 0;
-    plugin.currentPageHasWatchCount = 0;
-    plugin.currentPageKeywordFilterCount = 0;
-    plugin.currentPageActorFilterCount = 0;
-    plugin.currentPageWaitCheckCount = 0;
-    plugin.currentPageTotalCount = 0;
-    utils.time('处理页面耗时');
+    if (trackCounts) {
+        plugin.currentPageFilterCount = 0;
+        plugin.currentPageFavoriteCount = 0;
+        plugin.currentPageHasWatchCount = 0;
+        plugin.currentPageKeywordFilterCount = 0;
+        plugin.currentPageActorFilterCount = 0;
+        plugin.currentPageWaitCheckCount = 0;
+        plugin.currentPageTotalCount = 0;
+        utils.time('处理页面耗时');
+    }
     await Promise.all(
         itemEls.map(async (itemEl) => {
             const $item = $(itemEl);
@@ -244,10 +249,10 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
                 reasonText = actressCarNumToNameMap.get(carNum) || '';
             }
             reasonText ||= tagConfig.reasonType;
-            if (tagConfig.isCounted) {
+            if (trackCounts && itemEl.matches(siteSelector('listItem')) && tagConfig.isCounted) {
                 (plugin as unknown as Record<string, number>)[tagConfig.countKey]++;
             }
-            plugin.currentPageTotalCount++;
+            if (trackCounts && itemEl.matches(siteSelector('listItem'))) plugin.currentPageTotalCount++;
             $item.find('.status-tag').remove();
             const positionStyle = getStatusTagPositionStyle(tagPosition);
             if (tagConfig.text) {
@@ -259,12 +264,13 @@ export async function filterMovieList(plugin: ListPagePlugin, itemEls: HTMLEleme
                     positionStyle
                 );
                 if (isJavdbSite) {
-                    $item.find('.tags').append(tagHtml);
+                    injectStatusTag($item, tagHtml);
                 }
             }
             await plugin.translate($item);
         })
     );
+    if (!trackCounts) return;
     const processPageTime = utils.time('处理页面耗时');
     const totalTime = utils.time('累计耗费时间');
     $('#waitDownBtn span').text(`打开已收藏 (${statusCarSets.favorite.size})`);

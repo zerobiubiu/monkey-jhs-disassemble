@@ -53,6 +53,7 @@ import {
     bindClick as _bindClick
 } from './list-page/lp-dom';
 import { addJumpPageControl as _addJumpPageControl } from './list-page/lp-jump-page';
+import { WeeklyRecommendController } from './list-page/weekly-recommend';
 import {
     destroyBatchToolbar as _destroyBatchToolbar,
     initBatchToolbar as _initBatchToolbar,
@@ -61,6 +62,7 @@ import {
 
 import lpBatchCssRaw from '../styles/list-page/lp-batch.css?raw';
 import ratingBarCssRaw from '../styles/rating-bar.css?raw';
+import weeklyRecommendCssRaw from '../styles/list-page/weekly-recommend.css?raw';
 
 export class ListPagePlugin extends BasePlugin {
     // —— 当前页各类计数（原 i(this,"currentPage*",n)） ——
@@ -74,6 +76,11 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 统一生命周期管理：MutationObserver 等资源由此 supervisor 管控。 */
     private supervisor = new TaskSupervisor();
+    private weeklyRecommend = new WeeklyRecommendController(
+        () => { void this.refreshRecommendationItems(); },
+        () => this.getBean('OtherSitePlugin')
+    );
+    private recommendationRefresh = Promise.resolve();
 
     /** 翻译缓存（IndexedDB persistentDataStore，番号→译文）。 */
     cache: Record<string, string> = {};
@@ -88,6 +95,8 @@ export class ListPagePlugin extends BasePlugin {
 
     /** 销毁插件，清理 supervisor 管理的所有资源（MutationObserver 等）。 */
     destroy(): void {
+        $(document).off('.jhsListCard');
+        this.weeklyRecommend.destroy();
         _destroyBatchToolbar();
         this.supervisor.abort();
     }
@@ -104,11 +113,12 @@ export class ListPagePlugin extends BasePlugin {
     async initCss(): Promise<string> {
         // rating-bar.css：批量操作条与详情页快捷评分条**同构**（星 / 收藏 / 已读 / 拉黑
         // 复用同一套类名与样式契约），列表页也需注入；lp-batch.css 负责容器与选择栏。
-        return `${ratingBarCssRaw}\n${lpBatchCssRaw}`;
+        return `${ratingBarCssRaw}\n${lpBatchCssRaw}\n${weeklyRecommendCssRaw}`;
     }
 
     /** 列表页主处理。对应原 L8301-8339。 */
     async handle(): Promise<void> {
+        this.weeklyRecommend.init();
         this.cache = readPersistentMap<string>('translate', 'jhs_translate');
         new BroadcastChannel('channel-refresh').addEventListener(
             'message',
@@ -270,6 +280,26 @@ export class ListPagePlugin extends BasePlugin {
         if (itemEls.length) {
             await this.filterMovieList(itemEls);
         }
+        await this.refreshRecommendationItems();
+    }
+
+    /** 推荐沿用完整卡片解析；串行刷新，避免异步旧结果覆盖后续状态。 */
+    private refreshRecommendationItems(): Promise<void> {
+        this.recommendationRefresh = this.recommendationRefresh.then(async () => {
+            if (this.supervisor.aborted) return;
+            const items = Array.from(document.querySelectorAll<HTMLElement>(siteSelector('weeklyRecommendItem')))
+                .filter((item) => item.querySelector('a[href]') && (
+                    item.querySelector(siteSelector('listTitleStrong'))?.textContent?.trim() ||
+                    Array.from(item.querySelectorAll('date')).some((date) =>
+                        !!date.textContent?.trim() && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(date.textContent.trim()))
+                ));
+            if (items.length) {
+                this.replaceHdImg($(items).find(this.getSelector().coverImgSelector));
+                $(items).find('a').attr('target', '_blank');
+                await _filterMovieList(this, items, false);
+            }
+        }).catch((error: unknown) => clog.error('刷新推荐卡片失败:', error));
+        return this.recommendationRefresh;
     }
 
     /** 解析详情页女演员名称（若启用补录）。对应原 L8712-8739。 */
@@ -292,6 +322,7 @@ export class ListPagePlugin extends BasePlugin {
     // ── 过滤 / status-tag（lp-filter.tsx）─────────────────────────────────
 
     async renderItemStatusTag(item: HTMLElement, carNum: string): Promise<void> {
+        if (item.matches(siteSelector('weeklyRecommendItem'))) return this.refreshRecommendationItems();
         return _renderItemStatusTag(item, carNum);
     }
     async filterMovieList(itemEls: HTMLElement[]): Promise<void> {

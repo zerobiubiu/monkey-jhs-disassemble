@@ -35,12 +35,14 @@
  */
 import { isJavdbSite } from '../constants/site';
 import { YES } from '../constants/status';
+import { PRELOAD_FILTER_READY_EVENT, WEEKLY_RECOMMEND_ITEMS_EVENT, WEEKLY_RECOMMEND_VISIBILITY_EVENT } from '../constants/weekly-recommend';
 
 import { AsyncTaskQueue } from '../core/async-task-queue';
 import { readExternalVisitStat } from '../core/storage/external-visit-ops';
 import { TaskSupervisor } from '../core/task-supervisor';
 import { jsxToString } from '../core/jsx-to-string';
-import type { PageType } from '../core/page-context';
+import { pageContext, type PageType } from '../core/page-context';
+import { siteSelector } from '../core/util/site/selectors';
 
 import { BasePlugin } from './base-plugin';
 import { getEnabledSites, saveEnabledSites } from './other-site/osp-enabled-sites';
@@ -123,6 +125,8 @@ export class OtherSitePlugin extends BasePlugin {
     filterRefreshDebounce = 0;
     /** 是否显示预加载状态徽标与筛选栏（设置项 enablePreloadStatus，缺省开启）。 */
     preloadStatusEnabled = true;
+    /** 预加载总开关及配置已读取完成，供推荐区域安全构建独立预加载筛选栏。 */
+    preloadFilterReady = false;
     /** 预加载防抖延迟毫秒（设置项 preloadDebounce，缺省 300）。 */
     preloadDebounceMs = 300;
     /** 预加载并发数（设置项 preloadConcurrency，缺省 1=串行）。 */
@@ -145,7 +149,7 @@ export class OtherSitePlugin extends BasePlugin {
 
     /** 详情页 + 列表页激活（doc/140）。 */
     get pageTypes(): PageType[] {
-        return ['detail', 'list'];
+        return ['detail', 'list', 'home'];
     }
 
     /**
@@ -171,6 +175,7 @@ export class OtherSitePlugin extends BasePlugin {
      * @returns Promise<void>；无显式抛出
      */
     async handle(): Promise<void> {
+        this.preloadFilterReady = false;
         // 每次页面加载重置 Cloudflare 拦截标记，重新尝试
         this.blockedSiteIds.clear();
         // 外部网站预加载总开关：关闭则不渲染详情页按钮、不预加载、不挂筛选栏
@@ -179,7 +184,7 @@ export class OtherSitePlugin extends BasePlugin {
         }
         if (window.isDetailPage) {
             this.loadOtherSite().then();
-        } else if (document.querySelector('.movie-list')) {
+        } else if (document.querySelector(siteSelector('list')) || pageContext.isHomePage) {
             // 有 .movie-list 的页面（列表页/清单详情页/搜索页等）才预加载 + 挂筛选栏
             // /users/* 清单列表页无 .movie-list（容器是 #lists > ul），自动排除
             // 列表页预加载开关（enablePreload，缺省开启）；关闭则不预加载、不显示 UI
@@ -203,6 +208,17 @@ export class OtherSitePlugin extends BasePlugin {
             this.preloadQueue.setConcurrency(this.preloadConcurrency);
             this.preloadCacheTTLDays =
                 Number(await storageManager.getSetting('preloadCacheTTL', 0)) || 0;
+            this.preloadFilterReady = true;
+            document.dispatchEvent(new Event(PRELOAD_FILTER_READY_EVENT));
+            const preloadRecommendation = (): void => {
+                const hasVisibleRecommendation = Array.from(document.querySelectorAll(siteSelector('weeklyRecommendItem')))
+                    .some((item) => item.matches(siteSelector('preloadItem')));
+                if (!hasVisibleRecommendation) return;
+                syncAllBadges(this);
+                preloadListPage(this).catch((error: unknown) => clog.error('推荐预加载失败:', error));
+            };
+            this.supervisor.addEventListener(document, WEEKLY_RECOMMEND_VISIBILITY_EVENT, preloadRecommendation);
+            this.supervisor.addEventListener(document, WEEKLY_RECOMMEND_ITEMS_EVENT, preloadRecommendation);
             // 立即为所有 item 创建徽标（已缓存→成功匹配，未缓存→排队中），消除空窗
             syncAllBadges(this);
             preloadListPage(this).then();

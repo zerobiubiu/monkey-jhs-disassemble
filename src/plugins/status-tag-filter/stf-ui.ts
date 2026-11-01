@@ -9,9 +9,12 @@
 import {
     FILTER_BAR_PRIORITY,
     applyListMountPoint,
-    mountFilterBar,
     type ListMountPoint
 } from '../../core/util/site/list-mount';
+import { mountScopedFilterBar, queryFilterControls } from '../../core/util/site/filter-scope';
+
+import type { FilterScope } from '../../types/filter-scope';
+
 import { collectStatusTagCounts, countNoStatusItems, NO_TAG_VALUE } from './stf-collect';
 import { applyFilter } from './stf-apply';
 import {
@@ -24,6 +27,11 @@ import {
 /** 日志前缀。 */
 export const LOG = '[状态标签筛选]';
 
+/** 协调器持有各自筛选栏引用，只刷新对应范围的芯片。 */
+export interface StatusFilterBar extends HTMLDivElement {
+    _refreshChips: () => void;
+}
+
 /**
  * 创建单个筛选芯片。对应原 L130-145。
  *
@@ -35,7 +43,8 @@ export const LOG = '[状态标签筛选]';
 export function createFilterChip(
     labelText: string,
     value: string,
-    opts: { isNoTag?: boolean; count?: number } = {}
+    opts: { isNoTag?: boolean; count?: number } = {},
+    scope?: FilterScope
 ): HTMLSpanElement {
     const { isNoTag = false, count } = opts;
     const chip = document.createElement('span');
@@ -47,7 +56,7 @@ export function createFilterChip(
 
     chip.addEventListener('click', () => {
         chip.classList.toggle('active');
-        applyFilter();
+        applyFilter(scope);
     });
 
     return chip;
@@ -58,12 +67,15 @@ export function createFilterChip(
  * 内部定义 refreshChips（收集 status-tag 文本并重建芯片，保留已激活状态）。
  *
  * @param mount 可选：直挂点（超时兜底用）；缺省则按优先级入栈（doc/50）
+ * @param scope 可选：推荐等独立卡片区域；省略时只操作主页面筛选栏
  */
-export function doBuild(mount?: ListMountPoint): void {
-    if (document.querySelector('.status-tag-filter-bar')) return;
+export function doBuild(mount?: ListMountPoint, scope?: FilterScope): StatusFilterBar | undefined {
+    const existing = queryFilterControls<StatusFilterBar>('.status-tag-filter-bar', scope)[0];
+    if (existing) return existing;
 
-    const filterBar = document.createElement('div');
+    const filterBar = document.createElement('div') as StatusFilterBar;
     filterBar.className = 'status-tag-filter-bar';
+    if (scope) filterBar.dataset.jhsFilterScope = 'status';
 
     // 标签
     const label = document.createElement('span');
@@ -88,21 +100,25 @@ export function doBuild(mount?: ListMountPoint): void {
         chipsContainer.innerHTML = '';
 
         // "无状态标签" 芯片（始终在第一位，带计数）
-        const noCount = countNoStatusItems();
+        const noCount = countNoStatusItems(scope);
         const noTagChip = createFilterChip('无状态标签', NO_TAG_VALUE, {
             isNoTag: true,
             count: noCount
-        });
+        }, scope);
         if (activeValues.has(NO_TAG_VALUE)) noTagChip.classList.add('active');
         chipsContainer.appendChild(noTagChip);
 
         // 各状态标签芯片（根据页面实际内容动态生成，带计数）
-        const allCounts = collectStatusTagCounts();
-        const sortedTags = Object.keys(allCounts).sort();
+        const allCounts = collectStatusTagCounts(scope);
+        const tagNames = new Set(Object.keys(allCounts));
+        if (scope) activeValues.forEach((value) => {
+            if (value !== NO_TAG_VALUE && !value.startsWith(SCORE_VALUE_PREFIX)) tagNames.add(value);
+        });
+        const sortedTags = Array.from(tagNames).sort();
         sortedTags.forEach((tagName: string) => {
             const chip = createFilterChip(tagName, tagName, {
-                count: allCounts[tagName]
-            });
+                count: allCounts[tagName] ?? 0
+            }, scope);
             if (activeValues.has(tagName)) chip.classList.add('active');
             chipsContainer.appendChild(chip);
         });
@@ -110,12 +126,12 @@ export function doBuild(mount?: ListMountPoint): void {
         // 已读星级芯片（需求 doc/24）：按本脚本 car_list 的 score（0–5）分级过滤已读卡片。
         // 计数不依赖「已读」标签是否已渲染（有记录即计入）；
         // 展示口径与「已观看/已收藏/无状态标签」一致 —— 只显示当前页实际存在的档位。
-        const scoreCounts = countWatchedByScore();
+        const scoreCounts = countWatchedByScore(scope);
         visibleScoreChips(scoreCounts, activeValues).forEach((score: number) => {
             const value = `${SCORE_VALUE_PREFIX}${score}`;
             const chip = createFilterChip(formatScoreLabel(score), value, {
                 count: scoreCounts[score] ?? 0
-            });
+            }, scope);
             chip.classList.add('score-chip');
             if (activeValues.has(value)) chip.classList.add('active');
             chipsContainer.appendChild(chip);
@@ -126,13 +142,14 @@ export function doBuild(mount?: ListMountPoint): void {
     refreshChips();
 
     // 入栈（顺序权威=优先级）；无锚点时的超时兜底才走直挂
-    if (mount) applyListMountPoint(mount, filterBar);
-    else mountFilterBar(filterBar, FILTER_BAR_PRIORITY.status);
+    if (scope) mountScopedFilterBar(filterBar, FILTER_BAR_PRIORITY.status, scope);
+    else if (mount) applyListMountPoint(mount, filterBar);
+    else if (!mountScopedFilterBar(filterBar, FILTER_BAR_PRIORITY.status)) return undefined;
 
     // 保存 refreshChips 引用以便后续更新（与原脚本 filterBar._refreshChips 一致）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: storing function ref on element
-    (filterBar as any)._refreshChips = refreshChips;
+    filterBar._refreshChips = refreshChips;
 
     console.log(`${LOG} 筛选栏已挂载`);
+    return filterBar;
 }
 

@@ -58,15 +58,18 @@
  *   stf-ui.ts      — createFilterChip / doBuild（入栈或直挂）
  * 本类保留同名薄委托方法，内部调用点签名不变。
  */
+import { STATUS_FILTER_DATA_EVENT } from '../constants/weekly-recommend';
+
 import { isVideoListContext, type PageType } from '../core/page-context';
 import { normalizeCarNum } from '../core/domain/car-num';
 import { TaskSupervisor } from '../core/task-supervisor';
+import { queryFilterControls } from '../core/util/site/filter-scope';
+import { ensureFilterStack, findListMountPoint, type ListMountPoint } from '../core/util/site/list-mount';
 
 import { BasePlugin } from './base-plugin';
 import { RatingCache } from './rating-display/rating-cache';
 import { applyFilter } from './status-tag-filter/stf-apply';
-import { doBuild, LOG } from './status-tag-filter/stf-ui';
-import { ensureFilterStack, findListMountPoint, type ListMountPoint } from '../core/util/site/list-mount';
+import { doBuild, LOG, type StatusFilterBar } from './status-tag-filter/stf-ui';
 import { setCarRecords, setScoreFallbackResolver } from './status-tag-filter/stf-score';
 import { renderMissingStatusTags } from './status-tag-filter/stf-render';
 
@@ -141,6 +144,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
             // 从缓存补渲染缺失的状态标签（有 car_list 记录但页面未渲染的场景）
             await renderMissingStatusTags();
             this.updateFilterBar();
+            document.dispatchEvent(new Event(STATUS_FILTER_DATA_EVENT));
         } catch (error: unknown) {
             clog.error('状态索引加载失败: ' + (error instanceof Error ? error.message : String(error)));
         }
@@ -171,6 +175,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
             clearTimeout(this.scoreRefreshDebounce);
             this.scoreRefreshDebounce = this.supervisor.setTimeout(() => {
                 this.updateFilterBar();
+                document.dispatchEvent(new Event(STATUS_FILTER_DATA_EVENT));
             }, 200);
         });
     }
@@ -213,7 +218,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
         // 超时兜底（10 秒后强制结束等待，用最终回退位置强行挂载）
         const mountTimeout = this.supervisor.setTimeout(() => {
             mountObserver.disconnect();
-            if (!document.querySelector('.status-tag-filter-bar')) {
+            if (!queryFilterControls('.status-tag-filter-bar').length) {
                 // 有锚点 → 走入栈（顺序正确）；连锚点都没有 → 直挂到 body 顶部
                 const hasAnchor = findListMountPoint() !== null;
                 const fallback: ListMountPoint | null = hasAnchor
@@ -238,7 +243,7 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * @returns 是否成功构建
      */
     private tryBuild(): boolean {
-        if (document.querySelector('.status-tag-filter-bar')) return true;
+        if (queryFilterControls('.status-tag-filter-bar').length) return true;
 
         if (!ensureFilterStack()) return false;
 
@@ -250,11 +255,9 @@ export class StatusTagFilterPlugin extends BasePlugin {
      * 刷新筛选器：更新芯片列表并重新应用筛选。对应原 L234-240。
      */
     private updateFilterBar(): void {
-        const filterBar = document.querySelector('.status-tag-filter-bar');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: reading stored function ref
-        if (filterBar && (filterBar as any)._refreshChips) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- DOM augmentation: calling stored function ref
-            (filterBar as any)._refreshChips();
+        const filterBar = queryFilterControls<StatusFilterBar>('.status-tag-filter-bar')[0];
+        if (filterBar?._refreshChips) {
+            filterBar._refreshChips();
             applyFilter();
         }
     }

@@ -30,7 +30,13 @@
  * - vlt-plugin.tsx — 插件入口（本文件）
  */
 
+import { WEEKLY_RECOMMEND_ITEMS_EVENT } from '../../constants/weekly-recommend';
+
 import { isVideoListContext } from '../../core/page-context';
+import { TaskSupervisor } from '../../core/task-supervisor';
+import { queryFilterControls } from '../../core/util/site/filter-scope';
+import { siteSelector } from '../../core/util/site/selectors';
+
 import { BasePlugin } from '../base-plugin';
 import { VltTags } from './vlt-tags';
 import {
@@ -57,6 +63,21 @@ export class VideoListsTagPlugin extends BasePlugin {
     private vltTags: VltTags | null = null;
     /** 内容 MutationObserver（监听新 .item 加入）。 */
     private observer: MutationObserver | null = null;
+    private supervisor = new TaskSupervisor();
+
+    /** 原生推荐卡片晚填后，复用同一套增量标签解析。 */
+    private onRecommendationItems = (): void => {
+        const items = Array.from(document.querySelectorAll(siteSelector('weeklyRecommendItem')));
+        this.vltTags?.handleNewItems(items).catch((error: unknown) => {
+            clog.error('刷新推荐清单标签失败:', error);
+        });
+    };
+
+    destroy(): void {
+        this.supervisor.abort();
+        this.observer = null;
+        this.vltTags = null;
+    }
 
     /**
      * 返回插件名，供 PluginManager 注册去重。
@@ -123,9 +144,13 @@ export class VideoListsTagPlugin extends BasePlugin {
 
         // 初始化已有卡片
         await this.vltTags.initExistingItems();
+        if (this.supervisor.aborted) return;
 
         // MutationObserver：监听新 .item 加入（AutoPagePlugin 瀑布流 / listWaterfall）
         this.setupItemObserver();
+        this.supervisor.addEventListener(document, WEEKLY_RECOMMEND_ITEMS_EVENT, this.onRecommendationItems);
+        // 补齐初始化读取期间已到达的推荐变化，避免监听安装前的事件丢失。
+        this.onRecommendationItems();
 
         // 接收清单删除/改名广播：实时全量刷新标签
         setupListMgmtBroadcastListener(
@@ -147,7 +172,8 @@ export class VideoListsTagPlugin extends BasePlugin {
      * 对应原 videoListsTag.user.js L1165-1186。
      */
     private setupItemObserver(): void {
-        this.observer = new MutationObserver((mutations: MutationRecord[]) => {
+        this.observer?.disconnect();
+        this.observer = this.supervisor.observe(document.body, (mutations: MutationRecord[]) => {
             const newItems: Element[] = [];
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
@@ -165,10 +191,9 @@ export class VideoListsTagPlugin extends BasePlugin {
             }
             // doc/48：挂载锚点（筛选标签栏/容器）可能晚于首屏出现 —— 列表发生变更时
             // 若清单标签筛选栏仍缺席则重试挂载，避免「首页/改版页整轮不显示」。
-            if (this.vltTags && !document.querySelector('.jhs-vlt-filter-bar')) {
+            if (this.vltTags && !queryFilterControls('.jhs-vlt-filter-bar').length) {
                 this.vltTags.buildFilterBar();
             }
-        });
-        this.observer.observe(document.body, { childList: true, subtree: true });
+        }, { childList: true, subtree: true });
     }
 }

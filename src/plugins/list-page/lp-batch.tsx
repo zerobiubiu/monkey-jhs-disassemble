@@ -53,7 +53,7 @@ const ITEM_CLASS = 'jhs-lp-batch-item';
 const BAR_LAYER_CLASS = 'jhs-lp-batch-layer';
 /**
  * 左侧常驻竖排栏容器类名 —— 导出供其它插件**停靠**自己的按钮到同一组
- * （如 AutoPagePlugin 的「加载全部」，要求插到组内**第一位**：`container.prepend(btn)`；
+ * （首页「每周推荐」居首，其后为 AutoPagePlugin 的「加载全部」及选择组；
  * 停靠方自备 `is-docked` 样式，并**显式复位**浮层几何）。
  */
 export const BATCH_SIDE_CLASS = 'jhs-lp-batch-side';
@@ -262,32 +262,32 @@ function handleBarAction(btn: HTMLElement): void {
  *   五星这类**针对已选视频内容**的操作，随选择出现符合交互直觉。
  */
 function renderBatchToolbar(): void {
-    renderSideBar();
+    ensureBatchSideBar(ensureBatchSideBarContainer());
     renderActionBar();
 }
 
 /**
- * 渲染／刷新左侧常驻竖排栏。
+ * 获取／创建左侧常驻侧栏容器，供批量操作和首页推荐共用。
  *
  * 选择组是**静态结构**（只有「清空」的可用性会变），因此**只首次渲染一次**，
  * 之后仅同步动态态 —— 刻意不再重写 innerHTML：否则其它插件**停靠进本组**的按钮
- * （如 AutoPagePlugin 的「加载全部」，要求排在组内第一位）会被每次刷新冲掉。
+ * （如首页推荐和 AutoPagePlugin 的「加载全部」）会被每次刷新冲掉。
  */
-function renderSideBar(): void {
-    if (!sideEl) {
-        sideEl = document.createElement('div');
+export function ensureBatchSideBarContainer(): HTMLElement {
+    if (!sideEl?.isConnected) {
+        sideEl = document.querySelector<HTMLElement>('.' + BATCH_SIDE_CLASS) ?? document.createElement('div');
         sideEl.className = BATCH_SIDE_CLASS;
         document.body.appendChild(sideEl);
     }
-    ensureBatchSideBar(sideEl);
+    return sideEl;
 }
 
 /**
  * 确保侧栏容器已被渲染（只首次写入选择组「请求列表 / 全选 / 反选 / 清空」），
  * 并同步动态态（「清空」在无选择时禁用）。
  *
- * 已渲染时**不触碰其它子节点**，因此停靠进本组的按钮（如「加载全部」，由停靠方
- * 用 `container.prepend()` 插到**第一位**）可长期存活。
+ * 已渲染时**不触碰其它子节点**，因此停靠进本组的按钮（首页推荐、加载全部等）
+ * 可长期存活；相对顺序由停靠方维护。
  *
  * @param container 侧栏容器（`.jhs-lp-batch-side`）
  * @returns 容器本身

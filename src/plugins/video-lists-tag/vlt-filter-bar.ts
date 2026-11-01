@@ -7,7 +7,9 @@
  * 本文件保留 UI 构建：
  * - buildFilterBar / buildFilterModeDropdown / createFilterChip / refreshChips / updateFilterBar
  */
-import { FILTER_BAR_PRIORITY, ensureFilterStack, mountFilterBar } from '../../core/util/site/list-mount';
+import { queryFilterControls, mountScopedFilterBar } from '../../core/util/site/filter-scope';
+import { FILTER_BAR_PRIORITY, ensureFilterStack } from '../../core/util/site/list-mount';
+
 import type { VltTags } from './vlt-tags';
 import {
     applyFilter,
@@ -192,10 +194,10 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
     );
 
     chipsContainer.innerHTML = '';
-    const allCounts = collectTagCounts();
+    const allCounts = collectTagCounts(plugin.filterScope);
 
     // "无标签" 芯片（带计数）
-    const noCount = countNoTagItems();
+    const noCount = countNoTagItems(plugin.filterScope);
     const noTagChip = createFilterChip(plugin, '无标签', 'no-tag', {
         isNoTag: true,
         count: noCount
@@ -204,10 +206,12 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
     chipsContainer.appendChild(noTagChip);
 
     // 各标签芯片（带计数）—— 用 collectAllUniqueTags 获取去重排序的标签名
-    const sortedTags = collectAllUniqueTags();
+    const sortedTags = [...new Set(
+        [...collectAllUniqueTags(plugin.filterScope), ...activeValues].filter((value) => value !== 'no-tag')
+    )].sort();
     sortedTags.forEach((tagName: string) => {
         const chip = createFilterChip(plugin, tagName, tagName, {
-            count: allCounts[tagName]
+            count: allCounts[tagName] ?? 0
         });
         if (activeValues.has(tagName)) chip.classList.add('jhs-vlt-active');
         chipsContainer.appendChild(chip);
@@ -227,10 +231,10 @@ export function refreshChips(plugin: VltTags, chipsContainer: HTMLElement): void
  * @param plugin VltTags 实例
  */
 export function buildFilterBar(plugin: VltTags): void {
-    if (document.querySelector('.jhs-vlt-filter-bar')) return;
+    if (queryFilterControls('.jhs-vlt-filter-bar', plugin.filterScope).length) return;
 
     // 入栈（顺序权威=优先级，doc/50）：无可用锚点时不建栏
-    if (!ensureFilterStack()) return;
+    if (!plugin.filterScope && !ensureFilterStack()) return;
 
     const filterBar = document.createElement('div') as FilterBarEl;
     filterBar.className = 'jhs-vlt-filter-bar';
@@ -249,37 +253,39 @@ export function buildFilterBar(plugin: VltTags): void {
     chipsContainer.className = 'jhs-vlt-filter-chips';
     filterBar.appendChild(chipsContainer);
 
-    // ── 自动刷新开关 ──
-    const toggleWrapper = document.createElement('label');
-    toggleWrapper.className = 'jhs-vlt-auto-refresh-toggle';
-    toggleWrapper.title = '监听清单操作，自动刷新标签';
+    // 自动刷新由全局标签实例负责；范围内筛选不重复设置全局开关。
+    if (!plugin.filterScope) {
+        const toggleWrapper = document.createElement('label');
+        toggleWrapper.className = 'jhs-vlt-auto-refresh-toggle';
+        toggleWrapper.title = '监听清单操作，自动刷新标签';
 
-    const switchSpan = document.createElement('span');
-    switchSpan.className = 'jhs-vlt-auto-refresh-switch';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = plugin.autoRefreshEnabled;
-    const slider = document.createElement('span');
-    slider.className = 'jhs-vlt-auto-refresh-slider';
-    switchSpan.appendChild(checkbox);
-    switchSpan.appendChild(slider);
+        const switchSpan = document.createElement('span');
+        switchSpan.className = 'jhs-vlt-auto-refresh-switch';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = plugin.autoRefreshEnabled;
+        const slider = document.createElement('span');
+        slider.className = 'jhs-vlt-auto-refresh-slider';
+        switchSpan.appendChild(checkbox);
+        switchSpan.appendChild(slider);
 
-    const toggleLabel = document.createElement('span');
-    toggleLabel.textContent = '自动刷新';
+        const toggleLabel = document.createElement('span');
+        toggleLabel.textContent = '自动刷新';
 
-    toggleWrapper.appendChild(switchSpan);
-    toggleWrapper.appendChild(toggleLabel);
-    filterBar.appendChild(toggleWrapper);
+        toggleWrapper.appendChild(switchSpan);
+        toggleWrapper.appendChild(toggleLabel);
+        filterBar.appendChild(toggleWrapper);
 
-    checkbox.addEventListener('change', () => {
-        plugin.autoRefreshEnabled = checkbox.checked;
-        plugin.saveAutoRefreshState(plugin.autoRefreshEnabled);
-        if (plugin.autoRefreshEnabled) {
-            console.log('[视频清单标签] 自动刷新已开启');
-        } else {
-            console.log('[视频清单标签] 自动刷新已关闭');
-        }
-    });
+        checkbox.addEventListener('change', () => {
+            plugin.autoRefreshEnabled = checkbox.checked;
+            plugin.saveAutoRefreshState(plugin.autoRefreshEnabled);
+            if (plugin.autoRefreshEnabled) {
+                console.log('[视频清单标签] 自动刷新已开启');
+            } else {
+                console.log('[视频清单标签] 自动刷新已关闭');
+            }
+        });
+    }
 
     // 绑定 refreshChips 闭包（捕获 chipsContainer）
     const boundRefreshChips = (): void => refreshChips(plugin, chipsContainer);
@@ -287,7 +293,7 @@ export function buildFilterBar(plugin: VltTags): void {
     boundRefreshChips();
 
     // 按优先级入栈：顺序与挂载先后无关（doc/50）
-    mountFilterBar(filterBar, FILTER_BAR_PRIORITY.vlt);
+    mountScopedFilterBar(filterBar, FILTER_BAR_PRIORITY.vlt, plugin.filterScope);
 
     // 保存 refreshChips 引用以便后续更新（与原脚本一致，挂在 DOM 元素上）
     filterBar._refreshChips = boundRefreshChips;
@@ -300,7 +306,7 @@ export function buildFilterBar(plugin: VltTags): void {
  * @param plugin VltTags 实例
  */
 export function updateFilterBar(plugin: VltTags): void {
-    const filterBar = document.querySelector('.jhs-vlt-filter-bar') as FilterBarEl | null;
+    const filterBar = queryFilterControls<FilterBarEl>('.jhs-vlt-filter-bar', plugin.filterScope)[0];
     if (filterBar && filterBar._refreshChips) {
         filterBar._refreshChips();
         applyFilter(plugin);

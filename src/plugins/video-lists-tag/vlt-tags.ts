@@ -34,6 +34,9 @@
  * - handleNewItems：原 L1106-1163（流式增量 + 防抖）
  * - setupAutoRefreshListener：原 L1189-1282（三重监听）→ vlt-sync-listener
  */
+import { siteSelector } from '../../core/util/site/selectors';
+import type { FilterScope } from '../../types/filter-scope';
+
 import { VltDb } from './vlt-db';
 import {
     applyFilter,
@@ -71,6 +74,9 @@ const AUTO_REFRESH_KEY = 'jdb:auto-refresh-enabled';
  * 渲染/筛选/监听逻辑已提取到独立模块，类方法为薄委托。
  */
 export class VltTags {
+    /** 范围仅约束筛选 UI 与计数；未传入时沿用主页面行为。 */
+    constructor(readonly filterScope?: FilterScope) {}
+
     /** 标签缓存（替代原 mockTags）。null 表示尚未从 IDB 加载。 */
     private tagsCache: TagsCache | null = null;
 
@@ -144,7 +150,7 @@ export class VltTags {
      * 重新渲染所有卡片 → 更新筛选栏。
      */
     async refreshAllTags(): Promise<void> {
-        const items = document.querySelectorAll('.item');
+        const items = document.querySelectorAll(siteSelector('parsedItem'));
         const lists = Array.from(items)
             .map((item: Element) => {
                 const strong = item.querySelector('a > div.video-title > strong');
@@ -187,12 +193,12 @@ export class VltTags {
         console.log(`[视频清单标签] refreshDesignation: ${designation}`);
 
         // 找到页面上匹配该番号的卡片
-        const allItems = document.querySelectorAll('.item');
-        const targetItem = Array.from(allItems).find((item: Element) => {
+        const allItems = document.querySelectorAll(siteSelector('parsedItem'));
+        const targetItems = Array.from(allItems).filter((item: Element) => {
             const strong = item.querySelector('a > div.video-title > strong');
             return strong && strong.innerHTML === designation;
         });
-        if (!targetItem) {
+        if (targetItems.length === 0) {
             console.log(
                 `[视频清单标签] ${designation} 不在当前页面 (共 ${allItems.length} 张卡片)`
             );
@@ -213,6 +219,8 @@ export class VltTags {
         // 比对新旧数据，未变化则跳过 DOM 更新
         const newTags = this.tagsCache![designation] || [];
         if (tagsEqual(oldTags, newTags)) {
+            // 同番号可能同时出现在主列表与推荐中，补齐尚未渲染的新实例。
+            targetItems.forEach((item) => this.addTagDisplay(item));
             console.log(
                 `[视频清单标签] ${designation} 标签未变化，跳过 DOM 更新 (${newTags.length} 个标签)`
             );
@@ -220,9 +228,10 @@ export class VltTags {
         }
 
         // 移除旧容器，渲染新数据
-        const oldContainer = targetItem.querySelector('.jhs-vlt-tags-display');
-        if (oldContainer) oldContainer.remove();
-        this.addTagDisplay(targetItem);
+        for (const item of targetItems) {
+            item.querySelector('.jhs-vlt-tags-display')?.remove();
+            this.addTagDisplay(item);
+        }
 
         // 标签集合变化时刷新筛选栏
         this.updateFilterBar();
@@ -287,17 +296,17 @@ export class VltTags {
 
     /** 收集页面上所有唯一的标签名称。 */
     collectAllUniqueTags(): string[] {
-        return collectAllUniqueTags();
+        return collectAllUniqueTags(this.filterScope);
     }
 
     /** 收集每个标签的出现次数。 */
     collectTagCounts(): Record<string, number> {
-        return collectTagCounts();
+        return collectTagCounts(this.filterScope);
     }
 
     /** 计算无标签的卡片数。 */
     countNoTagItems(): number {
-        return countNoTagItems();
+        return countNoTagItems(this.filterScope);
     }
 
     // ==================== 初始化 ====================
@@ -310,7 +319,7 @@ export class VltTags {
         // 加载自动刷新开关状态（原脚本在 DOMContentLoaded 时调用，此处提前到初始化）
         this.loadAutoRefreshState();
 
-        const items = document.querySelectorAll('.item');
+        const items = document.querySelectorAll(siteSelector('parsedItem'));
         if (items.length === 0) return;
 
         // 收集所有番号
@@ -354,11 +363,13 @@ export class VltTags {
      * @param newItems 新增的 .item 元素数组
      */
     async handleNewItems(newItems: Element[]): Promise<void> {
+        const parsedItems = newItems.filter((item) => item.matches(siteSelector('parsedItem')));
+        if (parsedItems.length === 0) return;
         // 立即用已有数据渲染
-        newItems.forEach((item: Element) => this.addTagDisplay(item));
+        parsedItems.forEach((item: Element) => this.addTagDisplay(item));
 
         // 追加到待处理队列
-        this.pendingNewItems.push(...newItems);
+        this.pendingNewItems.push(...parsedItems);
 
         // 清除上一次定时器，重新计时
         if (this.debounceTimer) clearTimeout(this.debounceTimer);

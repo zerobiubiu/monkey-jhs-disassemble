@@ -216,10 +216,10 @@ export class BasePlugin {
         const type = siteType || JAVDB;
         const selectors: Record<string, SelectorConfig> = {
             javdb: {
-                boxSelector: '.movie-list',
-                itemSelector: '.movie-list .item',
+                boxSelector: siteSelector('list'),
+                itemSelector: siteSelector('listItem'),
                 coverImgSelector: '.cover img',
-                requestDomItemSelector: '.movie-list .item',
+                requestDomItemSelector: siteSelector('listItem'),
                 nextPageSelector: '.pagination-next'
             }
         };

@@ -73,6 +73,10 @@
 | `56-backup-import-format-and-git-large-file.md` | 变更 | v1.48.7 | 修复 Git 大文件 raw 返回元数据与明文误解密叠加问题；同 API 的 SHA blob 回退；本地导入/云端导入/下载统一解码明文/V1/V2；元数据与坏文件导入前拒绝；新增 41 用例（含 28.4 MB 合成正文与 15 项入口接线测试） |
 | `57-cloud-import-effect-verification.md` | 排查 | v1.48.7 快照，后续由 doc/58 修复 | 隔离 Chrome + 真实 localforage/IndexedDB 实测绿色导入按钮：六键备份只写结构版本键仍报成功，单键对照可恢复；定位 iterate 回调返回 Promise 导致提前停止 |
 | `58-backup-full-restore-and-verification.md` | 变更 | v1.48.8 | 全键写入/回读/失败补偿；主数据、GM/localStorage/持久数据校验通过才报告成功；确认结果后刷新；505 项测试及 7 项真实 IndexedDB 验收（含 28.4 MB 备份） |
+| `59-home-weekly-recommend-floating-panel.md` | 变更 | v1.48.9 | 首页每周推荐默认收起、按钮控制浮层；保留原生节点与销毁还原；推荐与主列表筛选、排序、翻页及预加载隔离；记录实时 Chrome 验收限制 |
+| `60-weekly-recommend-sidebar-dock.md` | 变更 | v1.48.10 | 首页推荐入口停靠侧栏首位，与操作区增加间距和分隔；加载全部保持第二位，侧栏刷新保活；延续 doc/59 浮层行为 |
+| `61-weekly-recommend-card-processing.md` | 变更 | v1.48.11 | 推荐复用普通卡片状态/标签/评分/翻译/点击；预加载仅打开时调度，去重与多实例同步；标题隐藏更新时间；52 文件 / 588 用例通过，承接 59/60 |
+| `62-weekly-recommend-scoped-filters.md` | 变更 | v1.48.12 | 隐藏原生持久收起链接；复用清单/状态星级/预加载三栏，主流与推荐范围独立，多栏交集与异步数据刷新；56 文件 / 623 项通过 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

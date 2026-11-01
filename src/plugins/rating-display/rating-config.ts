@@ -3,8 +3,9 @@
  *
  * 原 IIFE 闭包内的常量集合，模块化后改为独立导出，供 rating-utils /
  * rating-cache / rating-net / rating-renderer / rating-display-plugin 复用。
- * 各字段含义与原脚本一致，值未做任何调整。
+ * 请求与存储配置保持原值；卡片范围额外兼容首页推荐。
  */
+import { siteSelector } from '../../core/util/site/selectors';
 
 /** 评分显示功能运行配置 */
 export interface RatingConfig {
@@ -23,7 +24,7 @@ export interface RatingConfig {
     /** 评分缓存寄生写入 jhs IDB 的键名 */
     IDB_RATING_KEY: string;
 
-    /** 列表页卡片选择器（javdb 列表 + 用户页列） */
+    /** 展示卡片选择器（JavDB 主列表、首页推荐及用户页列）。 */
     ITEM_SELECTOR: string;
 
     /** 悬停延迟 ms（悬停卡片超过该时长才触发懒加载） */
@@ -36,7 +37,7 @@ export interface RatingConfig {
     FETCH_RETRY: number;
 }
 
-/** 评分显示功能运行配置（与原脚本 CONFIG 字段值逐字一致） */
+/** 评分显示功能运行配置，首页推荐复用已有评分处理和悬停监听。 */
 export const RATING_CONFIG: RatingConfig = {
     DEBUG_MODE: false,
 
@@ -50,7 +51,7 @@ export const RATING_CONFIG: RatingConfig = {
     IDB_RATING_KEY: 'jhsRatingDisplay_data',
 
     // 卡片选择器
-    ITEM_SELECTOR: '.movie-list .item, .is-user-page .column.is-one-quarter',
+    ITEM_SELECTOR: `${siteSelector('displayItem')}, .is-user-page .column.is-one-quarter`,
 
     // 请求控制
     HOVER_DELAY: 500, // 悬停延迟 ms

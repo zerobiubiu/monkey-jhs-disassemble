@@ -24,9 +24,9 @@ monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
 │   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 5）
 │   ├── core/               # 核心模块（含 domain/、storage/（含 backup-restore）、feature-flags、util/、sync/）
-│   ├── plugins/            # 插件模块（base-plugin + plugin-manager + 各功能插件）
-│   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录）
-│   ├── constants/          # 常量（site/status/video-quality/api）
+│   ├── plugins/            # 插件模块（list-page/ 含推荐浮层与三栏筛选协调器；other-site/ 含预加载编排、展示观察器和同番号卡片定位）
+│   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录；list-page/ 含推荐入口与浮层）
+│   ├── constants/          # 常量（site/status/video-quality/api/weekly-recommend 事件）
 │   ├── resources/          # 资源（icons SVG）
 │   ├── styles/             # CSS 文件（?raw import via initCss，含 list-reflow/ 等子目录）
 │   └── types/              # 类型声明（globals.d.ts）
@@ -64,7 +64,7 @@ monkey-jhs-disassemble/
 16. `registerDiagnosticsMenu()` — 插件诊断 Tampermonkey 菜单
 17. `beforeunload` → `pluginManager.destroyAll()` — 销毁插件资源（TaskSupervisor.abort）
 
-**关键点**：页面判定先于 `processCss()`；`window.isDetailPage` 等直接访问（无 `(window as any)`）；14 个插件声明 `pageTypes`（不匹配不注入 CSS/不执行 handle）；11 个资源密集型插件用 TaskSupervisor 管理定时器/Observer/事件；版本化迁移 6 步→版本 0→6；StorageRevision 16 个写入方法递增修订号 + BroadcastChannel 广播。
+**关键点**：页面判定先于 `processCss()`；`window.isDetailPage` 等直接访问（无 `(window as any)`）；14 个插件声明 `pageTypes`（不匹配不注入 CSS/不执行 handle）；12 个资源密集型插件用 TaskSupervisor 管理定时器/Observer/事件（含推荐卡片晚填监听所在的 VideoListsTagPlugin）；版本化迁移 6 步→版本 0→6；StorageRevision 16 个写入方法递增修订号 + BroadcastChannel 广播。
 
 ### 3.2 插件系统
 
@@ -88,13 +88,22 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-共 **68 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 42。
+共 **69 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 43。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
-### 3.5 组件 `src/components/`（140 个）
+### 3.5 组件 `src/components/`（141 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。不使用 react-dom/server。
+
+首页「每周推荐」由 `ListPagePlugin` 在首个异步操作前初始化 `list-page/weekly-recommend.tsx`：
+原生标题到 `#recommend-container` 的连续兄弟节点移入默认收起的非模态浮层；入口仅在首页显示，
+停靠于 `.jhs-lp-batch-side` 最上方，与加载全部及选择操作用间距和细线分隔，按钮控制开关，
+销毁时按注释锚点还原。推荐复用普通卡片的状态、评分、清单标签、翻译和点击处理，主列表排序、
+翻页、批量选择和筛选统计仍保持独立；推荐预加载仅在浮层打开时调度，同番号任务与徽标共享。
+推荐卡片身份或原生番号/链接变化触发增量处理，标签与徽标更新不反复触发；标题只展示推荐名称与更新周期。
+浮层复用清单、状态/星级、预加载三套筛选组件，以 `FilterScope` 分别维护挂载点、卡片范围、计数和选中状态；
+默认主页面查询排除局部范围控件，局部多栏隐藏标记组成交集。原生「收起到下次更新」链接在浮层标题内隐藏。
 
 ### 3.6 样式 `src/styles/`
 

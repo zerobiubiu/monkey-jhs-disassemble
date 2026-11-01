@@ -137,5 +137,14 @@ export function injectStatusTag($item: any, tagHtml: string): void {
         itemTagEl.append(tagHtml);
         return;
     }
-    $item.find('.photo-info > span > div').append(tagHtml);
+    const photoTags = $item.find('.photo-info > span > div');
+    if (photoTags.length) {
+        photoTags.append(tagHtml);
+        return;
+    }
+    // 新版推荐卡片可能没有原生标签槽，创建空挂载点后复用同一标签组件。
+    const container = document.createElement('div');
+    container.className = 'tags has-addons jhs-status-tags';
+    $item.append(container);
+    $(container).append(tagHtml);
 }

@@ -10,15 +10,17 @@ import { FAVORITE_ACTION, HAS_WATCH_ACTION, YES } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
 import { readPersistentMap, replacePersistentMap } from '../../core/storage/persistent-data-store';
-import { siteQuery } from '../../core/util/site/selectors';
+import { siteSelector } from '../../core/util/site/selectors';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { getEnabledSites } from './osp-enabled-sites';
-import { ensureFilterBar, refreshFilterBar } from './osp-filter-bar';
+import { refreshFilterBar } from './osp-filter-bar';
 import { getItemPreloadStatus, isCacheEntryValid } from './osp-helpers';
 import { orderItemsByPreloadPriority } from './osp-preload-order';
 import type { SiteConfig, SiteResult } from './osp-types';
 import { refreshPreloadQueuePanel } from './osp-preload-panel';
+import { findPreloadItemsByCarNum, findRelatedPreloadItems } from './osp-preload-items';
+import { observePreloadLists, syncPreloadBadges } from './osp-preload-observer';
 
 import {
     PRELOAD_STATUS_MAP,
@@ -56,7 +58,7 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
     }
 
     const enabledSiteIds = getEnabledSites(plugin);
-    const $items = $('.movie-list .item');
+    const $items = $(siteSelector('preloadItem'));
     if ($items.length === 0) {
         console.log(`${PRELOAD_LOG} 无 .item，跳过`);
         return;
@@ -97,6 +99,8 @@ export async function preloadListPage(plugin: OtherSitePlugin): Promise<void> {
     }
 
     $(orderedItems).each((_index: number, itemEl: HTMLElement) => {
+        // 设置/评分读取期间可能关掉推荐面板；排队前按当前可见范围重新判定。
+        if (!itemEl.isConnected || !itemEl.matches(siteSelector('preloadItem'))) return;
         const $item = $(itemEl);
         // 跳过被 jhs 屏蔽的卡片
         if ($item.attr('data-hide') === YES) {
@@ -163,6 +167,15 @@ export function enqueuePreloadTask(
     itemEl: HTMLElement | null
 ): string {
     const key = `${carNum}_${siteConfig.id}`;
+    if (itemEl?.matches(siteSelector('weeklyRecommendItem')) &&
+        (!itemEl.isConnected || !itemEl.matches(siteSelector('preloadItem')))) return key;
+    const active = plugin.preloadTasks.get(key);
+    if (active?.status === 'queued' || active?.status === 'requesting' ||
+        plugin.preloadQueue.getTasks().some((task) => task.key === key) || plugin.inflightPreloads.has(key)) {
+        if (itemEl) updatePreloadStatus(plugin, $(itemEl), siteConfig.id,
+            active?.status === 'requesting' ? 'requesting' : 'queued');
+        return key;
+    }
     plugin.preloadTasks.upsert(key, carNum, siteConfig.id, siteConfig.id.replace('Btn', ''));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
     const $item: any = itemEl ? $(itemEl) : null;
@@ -172,6 +185,14 @@ export function enqueuePreloadTask(
     plugin.preloadQueue.addTask(async (handle) => {
         if (handle.isCancelled()) {
             plugin.preloadTasks.setStatus(key, 'cancelled');
+            refreshPreloadQueuePanel(plugin);
+            return;
+        }
+        // 推荐排队后关闭时只跳过尚未开始的独占任务，同番号主列表任务仍可执行。
+        if (itemEl?.matches(siteSelector('weeklyRecommendItem')) &&
+            !findPreloadItemsByCarNum(plugin, carNum).some((item) => item.isConnected && item.matches(siteSelector('preloadItem')))) {
+            plugin.preloadTasks.setStatus(key, 'cancelled');
+            clearPreloadStatus(plugin, $item, siteConfig.id);
             refreshPreloadQueuePanel(plugin);
             return;
         }
@@ -211,7 +232,9 @@ export function retryPreloadTask(plugin: OtherSitePlugin, key: string): boolean 
     if (!record) return false;
     const siteConfig = plugin.siteConfigs.find((config) => config.id === record.siteId);
     if (!siteConfig) return false;
-    enqueuePreloadTask(plugin, record.carNum, siteConfig, findListItemByCarNum(plugin, record.carNum));
+    const item = findListItemByCarNum(plugin, record.carNum);
+    if (item?.matches(siteSelector('weeklyRecommendItem')) && !item.matches(siteSelector('preloadItem'))) return false;
+    enqueuePreloadTask(plugin, record.carNum, siteConfig, item);
     return true;
 }
 
@@ -245,18 +268,7 @@ export function cancelPreloadTask(plugin: OtherSitePlugin, key: string): boolean
  * @returns 命中的 `.item` 元素；已翻页/被重排而找不到时返回 null
  */
 function findListItemByCarNum(plugin: OtherSitePlugin, carNum: string): HTMLElement | null {
-    const listPagePlugin = plugin.getBean('ListPagePlugin');
-    if (!listPagePlugin) return null;
-    const target = carNum.trim().toLowerCase();
-    for (const el of siteQuery('listItem')) {
-        try {
-            const num = (listPagePlugin.findCarNumAndHref($(el)).carNum || '').trim().toLowerCase();
-            if (num === target) return el as HTMLElement;
-        } catch {
-            // 该卡片番号解析失败，跳过
-        }
-    }
-    return null;
+    return findPreloadItemsByCarNum(plugin, carNum)[0] ?? null;
 }
 
 /**
@@ -267,8 +279,8 @@ function findListItemByCarNum(plugin: OtherSitePlugin, carNum: string): HTMLElem
  * @param siteId 站点 id
  */
 export function clearPreloadStatus(plugin: OtherSitePlugin, $item: unknown, siteId: string): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery object
-    ($item as any).find(`.jhs-preload-status[data-site-id="${siteId}"]`).remove();
+    findRelatedPreloadItems(plugin, $item as JQuery<HTMLElement>)
+        .find(`.jhs-preload-status[data-site-id="${siteId}"]`).remove();
     refreshFilterBar(plugin);
 }
 
@@ -430,6 +442,16 @@ export function updatePreloadStatus(
     siteId: string,
     status: PreloadStatus
 ): void {
+    const items = findRelatedPreloadItems(plugin, $item as JQuery<HTMLElement>);
+    items?.each((_index: number, element: HTMLElement) => {
+        renderPreloadStatus(plugin, $(element), siteId, status);
+    });
+}
+
+/** 同一个任务可供主列表与推荐共享，每张展示卡片独立保留徽标节点。 */
+function renderPreloadStatus(
+    plugin: OtherSitePlugin, $item: JQuery<HTMLElement>, siteId: string, status: PreloadStatus
+): void {
     if (!plugin.preloadStatusEnabled) return;
     const $videoTitle = $item.find('.video-title').first();
     if ($videoTitle.length === 0) return;
@@ -456,92 +478,12 @@ export function updatePreloadStatus(
     refreshFilterBar(plugin);
 }
 
-/**
- * 返回需预加载的站点配置（已启用且无 initUrl——initUrl 站点如 SupJav
- * 详情页直接显示黄色、列表页不预加载，不产生徽标）。
- */
-function getPreloadableSites(plugin: OtherSitePlugin): SiteConfig[] {
-    const enabled = getEnabledSites(plugin);
-    return plugin.siteConfigs.filter((s) => enabled.includes(s.id) && !s.initUrl);
-}
-
-/**
- * 深度跟踪：扫描所有 .movie-list .item，为每个可预加载站点补全徽标——
- * 已缓存（jhs_other_site 有 carNum_siteId 键 = missav 曾命中）→「成功匹配」
- * 徽标；未缓存且无徽标 →「排队中」徽标。在 handle() 初始加载与
- * startPreloadObserver 回调（流式加载新 item）中调用，使所有 item 始终
- * 可见其预加载状态，消除「只有失败的显示、其他状态不显示」的空窗。
- *
- * 幂等：已显示「成功匹配」不重复写；已有徽标且非成功的不覆盖（避免降级
- * 正在请求/已失败的态——已缓存项不会进入请求流程，故仅无徽标或陈旧
- * 排队态会被纠正为成功）；被屏蔽（data-hide）/番号提取失败（跳过）。
- */
+/** 为当前可预加载卡片补齐徽标，展示层实现独立于网络编排。 */
 export function syncAllBadges(plugin: OtherSitePlugin): void {
-    if (!plugin.preloadStatusEnabled) return;
-    const listPagePlugin = plugin.getBean('ListPagePlugin');
-    if (!listPagePlugin) return;
-    const sites = getPreloadableSites(plugin);
-    if (sites.length === 0) return;
-    const cache: Record<string, unknown> = readPersistentMap<unknown>('otherSite', 'jhs_other_site');
-    $('.movie-list .item').each((_index: number, el: HTMLElement) => {
-        const $item = $(el);
-        if ($item.attr('data-hide') === YES) return;
-        let carNum: string;
-        try {
-            carNum = listPagePlugin.findCarNumAndHref($item).carNum;
-        } catch {
-            return;
-        }
-        if (!carNum) return;
-        for (const site of sites) {
-            const cacheKey = carNum + '_' + site.id.replace('Btn', '');
-            if (isCacheEntryValid(cache[cacheKey], plugin.preloadCacheTTLDays)) {
-                // 已缓存 = 曾命中 → 显示「成功匹配」（无徽标或陈旧排队态才纠正）
-                const $badge = $item.find(`[data-site-id="${site.id}"] .jhs-ps-badge`);
-                if (!$badge.length || !$badge.hasClass('jhs-ps-success')) {
-                    updatePreloadStatus(plugin, $item, site.id, 'success');
-                }
-            } else if (!$item.find(`[data-site-id="${site.id}"]`).length) {
-                // 未缓存且无徽标 → 预填「排队中」（等 preloadListPage 入队转「请求中」）
-                updatePreloadStatus(plugin, $item, site.id, 'queued');
-            }
-        }
-    });
+    syncPreloadBadges(plugin, updatePreloadStatus);
 }
 
-/**
- * 监听 .movie-list 子元素变化（AutoPage 瀑布流 append 新页 / PageSort 重排），
- * 同步徽标与筛选栏，并防抖后执行完整预加载。
- *
- * 与瀑布流的联动：
- * - AutoPagePlugin（.movie-list 瀑布流）：loadNextPage 往 .movie-list append
- *   新 item → 触发本 observer → 立即 syncAllBadges（为新 item 预填「排队中」
- *   徽标，消除流式加载徽标延迟）+ refreshFilterBar → 防抖后 preloadListPage
- *   入队并逐站点请求
- * - ListWaterfallPlugin（#lists > ul 瀑布流）：操作的是 #lists > ul 不是
- *   .movie-list，不触发本 observer
- * - PageSortPlugin 重排：移动 .item 节点（徽标随节点保留），触发本 observer
- *   → refreshFilterBar 重计芯片计数（徽标无需重建）
- *
- * observer 配置为 `{ childList: true }`（subtree 默认 false），仅响应
- * .movie-list 直接子节点（.item）的增删/重排，不响应 item 内部 DOM 变化
- * （如 updatePreloadStatus 注入徽标），不会自我循环触发。
- */
+/** 保持既有单参数 API，观察器通过回调接入编排，避免模块运行时循环依赖。 */
 export function startPreloadObserver(plugin: OtherSitePlugin): void {
-    const containerEl = document.querySelector('.movie-list');
-    if (!containerEl) return;
-
-    plugin.supervisor.observe(containerEl, () => {
-        // 立即为新出现的未缓存 item 预填「排队中」徽标（深度融合跟踪：不等防抖）
-        syncAllBadges(plugin);
-        // 确保筛选栏存在且紧随其他筛选栏（status-tag-filter 可能晚于本插件挂载）
-        ensureFilterBar(plugin);
-        // 实时刷新筛选栏计数
-        refreshFilterBar(plugin);
-        // 防抖后执行完整预加载（入队 + 逐站点请求）
-        clearTimeout(plugin.preloadDebounce);
-        plugin.preloadDebounce = plugin.supervisor.setTimeout(() => {
-            preloadListPage(plugin).then();
-        }, plugin.preloadDebounceMs);
-    }, { childList: true });
+    observePreloadLists(plugin, () => syncAllBadges(plugin), () => preloadListPage(plugin));
 }

@@ -6,6 +6,7 @@ import { isJavdbSite } from '../../constants/site';
 import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { broadcastSend, broadcastSubscribe } from '../../core/util/broadcast';
+import { siteSelector } from '../../core/util/site/selectors';
 
 import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
@@ -278,9 +279,7 @@ export function setupWantWatchedSyncListener(plugin: DetailPageButtonPlugin): vo
  */
 export function refreshItemStatusTag(plugin: DetailPageButtonPlugin, carNum: string): void {
     try {
-        const selectorConfig = plugin.getSelector();
-        const itemSelector = selectorConfig.itemSelector;
-        const items = document.querySelectorAll(itemSelector);
+        const items = document.querySelectorAll(siteSelector('displayItem'));
         for (const item of items) {
             const strongEl = item.querySelector('a > div.video-title > strong');
             if (!strongEl || strongEl.innerHTML !== carNum) continue;

@@ -132,7 +132,7 @@ export function createLoadAllBtn(plugin: AutoPagePlugin): void {
 /**
  * 把「加载全部」按钮停靠进左侧竖排栏（容器出现前先留浮层形态）。
  *
- * 停靠后加 `is-docked`：几何沿用 `.jhs-lp-batch-side-btn`，仅覆写配色与选择组区分。
+ * 停靠后加 `is-docked`：沿用侧栏按钮几何与原配色，首页排在「每周推荐」之后。
  * 容器由 ListPagePlugin 异步创建，两插件启动存在竞态，故用 supervisor 定时器重试。
  *
  * @param plugin AutoPagePlugin 实例
@@ -144,7 +144,10 @@ export function dockLoadAllBtn(plugin: AutoPagePlugin, attempt = 0): void {
         if (!btn) return true; // 已被移除，停止重试
         const side = document.querySelector('.' + BATCH_SIDE_CLASS);
         if (!side) return false;
-        if (btn.parentElement !== side) side.prepend(btn); // 组内第一位（用户要求）
+        if (btn.parentElement !== side) {
+            const recommend = side.querySelector('.jhs-weekly-recommend-toggle');
+            side.insertBefore(btn, recommend ? recommend.nextSibling : side.firstChild);
+        }
         btn.classList.add('is-docked');
         return true;
     };

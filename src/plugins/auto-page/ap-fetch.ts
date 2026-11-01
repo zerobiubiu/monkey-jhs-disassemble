@@ -50,7 +50,7 @@ export async function loadNextPage(plugin: AutoPagePlugin): Promise<void> {
                         top: scrollHeight,
                         url: plugin.nextUrl
                     });
-                    $('.movie-list').append(html);
+                    $(selectorConfig.boxSelector).append(html);
                 }
                 plugin.pagination.loadSuccess(beyondHasMore);
                 plugin.nextUrl = beyondNextUrl;

@@ -5,8 +5,12 @@
  * countNoStatusItems：计算无状态标签的卡片数（排除 jhs 屏蔽卡片）。
  */
 
-/** status-tag 选择器（与 jhs StatusTagHtml 生成的 class 一致）。 */
-export const STATUS_TAG_SELECTOR = '.item .tags.has-addons .tag.is-success.status-tag';
+import { queryFilterItems } from '../../core/util/site/filter-scope';
+
+import type { FilterScope } from '../../types/filter-scope';
+
+/** 卡片内部 status-tag 选择器；卡片范围由查询调用方或最近卡片校验保证。 */
+export const STATUS_TAG_SELECTOR = '.tags.has-addons .tag.is-success.status-tag';
 
 /**
  * jhs 主项目的隐藏标记属性名。
@@ -28,16 +32,14 @@ export const NO_TAG_VALUE = 'no-tag';
  *
  * @returns 标签文本→计数映射
  */
-export function collectStatusTagCounts(): Record<string, number> {
+export function collectStatusTagCounts(scope?: FilterScope): Record<string, number> {
     const counts: Record<string, number> = {};
-    document.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
-        // 向上查找最近的 .item 容器，跳过被 jhs 屏蔽的卡片
-        const itemEl = el.closest('.item');
-        if (itemEl && itemEl.hasAttribute(JHS_HIDE_ATTR)) return;
-        const text = el.textContent?.trim() || '';
-        if (text) {
-            counts[text] = (counts[text] || 0) + 1;
-        }
+    queryFilterItems(scope).forEach((item: Element) => {
+        if (item.hasAttribute(JHS_HIDE_ATTR)) return;
+        item.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
+            const text = el.textContent?.trim() || '';
+            if (text) counts[text] = (counts[text] || 0) + 1;
+        });
     });
     return counts;
 }
@@ -51,9 +53,9 @@ export function collectStatusTagCounts(): Record<string, number> {
  *
  * @returns 无状态标签的卡片数
  */
-export function countNoStatusItems(): number {
+export function countNoStatusItems(scope?: FilterScope): number {
     let count = 0;
-    document.querySelectorAll('.item').forEach((item: Element) => {
+    queryFilterItems(scope).forEach((item: Element) => {
         // 跳过被 jhs 屏蔽的卡片
         if (item.hasAttribute(JHS_HIDE_ATTR)) return;
         if (!item.querySelector(STATUS_TAG_SELECTOR)) {

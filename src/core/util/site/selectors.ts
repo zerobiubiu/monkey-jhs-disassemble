@@ -142,14 +142,28 @@ export const SITE_SELECTORS = {
     detailTabs: { current: '.tabs.no-bottom' },
 
     // ───── 列表页 ─────
-    /** 影片列表容器。 */
-    list: { current: '.movie-list' },
+    /** 首页每周推荐容器；独立于主列表，原地与移入浮层时均按此身份识别。 */
+    weeklyRecommend: { current: '#recommend-container' },
+    /** 首页每周推荐标题。 */
+    weeklyRecommendHeading: { current: 'body > section > div > h1' },
+    /** 推荐卡片（原地或浮层内）。 */
+    weeklyRecommendItem: { current: '#recommend-container .item' },
+    /** 展示卡片：主流与推荐共用状态、点击和精准同步处理。 */
+    displayItem: { current: '.movie-list .item, #recommend-container .item' },
+    /** 通用卡片解析，含推荐；不用于主列表筛选计数。 */
+    parsedItem: { current: '.item' },
+    /** 预加载仅包含主流与当前已打开浮层中的推荐。 */
+    preloadItem: { current: '.movie-list .item:not(#recommend-container, #recommend-container *), #jhs-weekly-recommend-panel:not([hidden]) #recommend-container .item' },
+    /** 影片主列表容器，排除每周推荐本体及内部列表（含翻页抓取的原始 HTML）。 */
+    list: { current: '.movie-list:not(#recommend-container, #recommend-container *)' },
     /** 首页列表容器（带列数类，供定位）。 */
-    listHome: { current: 'body > section > div > div.movie-list.h.cols-4.vcols-8' },
-    /** 列表卡片。 */
-    listItem: { current: '.movie-list .item' },
-    /** 列表卡片链接。 */
-    listItemLink: { current: '.movie-list .item a.box' },
+    listHome: { current: 'body > section > div > div.movie-list.h.cols-4.vcols-8:not(#recommend-container)' },
+    /** 主列表卡片，排除每周推荐。 */
+    listItem: { current: '.movie-list .item:not(#recommend-container, #recommend-container *)' },
+    /** 主列表卡片链接，排除每周推荐。 */
+    listItemLink: { current: '.movie-list .item a.box:not(#recommend-container, #recommend-container *)' },
+    /** 状态筛选的通用卡片（兼容非标准列表结构），排除每周推荐。 */
+    filterItem: { current: '.item:not(#recommend-container, #recommend-container *)' },
     /** 列表卡片标题（番号）。 */
     listTitleStrong: { current: '.video-title strong' },
     /** 列表卡片标题容器。 */

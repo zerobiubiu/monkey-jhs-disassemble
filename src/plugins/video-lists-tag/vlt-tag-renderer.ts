@@ -9,6 +9,8 @@
  * - addTagDisplay：给单个 .item 卡片添加标签显示
  * - renderTags：批量渲染所有卡片标签
  */
+import { siteSelector } from '../../core/util/site/selectors';
+
 import type { TagEntry, TagsCache, VltTags } from './vlt-tags';
 
 /** Bootstrap 标准颜色调色板（IDB 中 style 缺失时回退使用）。 */
@@ -101,12 +103,12 @@ export function createTagBadge(tag: TagEntry): HTMLElement {
  * 流程：
  * 1. 查找 `a > div.video-title > strong` 获取番号
  * 2. tagsCache 未加载时跳过（等数据就绪后由调用方重新触发渲染）
- * 3. 查找 `.meta` 作为插入点
+ * 3. 查找卡片元数据作为插入点，推荐缺失时回退标题区域
  * 4. 创建 `.jhs-vlt-tags-display` 容器
  * 5. 有标签：每个渲染为 `.jhs-vlt-tag-link`
  * 6. 无标签：渲染占位符 `—`（pointer-events: none，不可点击）
  * 7. 添加滚轮横向滚动监听（触达边界时交还页面纵向滚动）
- * 8. 插入到 `.meta` 之后
+ * 8. 插入到锚点之后
  *
  * @param plugin VltTags 实例
  * @param item 单个 .item 卡片元素
@@ -122,8 +124,8 @@ export function addTagDisplay(plugin: VltTags, item: Element): void {
     const tagsCache: TagsCache | null = plugin.getTagsCache();
     if (!tagsCache) return;
 
-    const meta = item.querySelector('.meta');
-    if (!meta) return;
+    const anchor = item.querySelector(siteSelector('listMeta')) || item.querySelector(siteSelector('listTitle'));
+    if (!anchor) return;
 
     const container = document.createElement('div');
     container.className = 'jhs-vlt-tags-display';
@@ -163,7 +165,7 @@ export function addTagDisplay(plugin: VltTags, item: Element): void {
         { passive: false }
     );
 
-    meta.insertAdjacentElement('afterend', container);
+    anchor.insertAdjacentElement('afterend', container);
 }
 
 /**
@@ -172,5 +174,5 @@ export function addTagDisplay(plugin: VltTags, item: Element): void {
  * @param plugin VltTags 实例
  */
 export function renderTags(plugin: VltTags): void {
-    document.querySelectorAll('.item').forEach((item: Element) => addTagDisplay(plugin, item));
+    document.querySelectorAll(siteSelector('parsedItem')).forEach((item: Element) => addTagDisplay(plugin, item));
 }

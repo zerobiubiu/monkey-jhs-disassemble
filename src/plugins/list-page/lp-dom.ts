@@ -10,6 +10,7 @@ import { isJavdbSite } from '../../constants/site';
 import { YES } from '../../constants/status';
 
 import { failWithToast } from '../../core/toast';
+import { siteSelector } from '../../core/util/site/selectors';
 
 import type { ListPagePlugin } from '../list-page-plugin';
 
@@ -118,10 +119,10 @@ export function replaceHdImg(plugin: ListPagePlugin, imgEls?: JQuery): void {
 
 /** 显示被隐藏的指定番号卡片（取消 data-hide）。对应原 L8874-8885。 */
 export function showCarNumBox(carNum: string): void {
-    const matchedEl = $('.movie-list .item')
+    const matchedEls = $(siteSelector('displayItem'))
         .toArray()
-        .find((itemEl: HTMLElement) => $(itemEl).find('.video-title strong').text() === carNum);
-    if (matchedEl) {
+        .filter((itemEl: HTMLElement) => $(itemEl).find('.video-title strong').text() === carNum);
+    for (const matchedEl of matchedEls) {
         const $matched = $(matchedEl);
         if ($matched.attr('data-hide') === `${carNum}-hide`) {
             $matched.show();
@@ -142,8 +143,11 @@ export function showCarNumBox(carNum: string): void {
  * `.item .cover`。
  */
 export async function bindClick(plugin: ListPagePlugin): Promise<void> {
-    const selectorConfig = plugin.getSelector();
-    $(selectorConfig.boxSelector).on('click', '.item .cover', async (event: MouseEvent) => {
+    // 稳定 document 委托兼容推荐骨架与卡片晚到；命名空间保证重复绑定幂等。
+    $(document).off('.jhsListCard');
+    const controlSelector = (child: string): string => siteSelector('displayItem')
+        .split(',').map((selector) => `${selector.trim()} ${child}`).join(', ');
+    $(document).on('click.jhsListCard', controlSelector('.cover'), async (event: MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
         if ($(event.target).closest('div.meta-buttons').length) {
@@ -161,7 +165,7 @@ export async function bindClick(plugin: ListPagePlugin): Promise<void> {
             window.open(aHref, '_blank', 'noopener,noreferrer');
         }
     });
-    $(selectorConfig.boxSelector).on('click', '.item video', async (event: Event) => {
+    $(document).on('click.jhsListCard', controlSelector('video'), async (event: Event) => {
         const videoEl = event.currentTarget as HTMLVideoElement;
         if (videoEl.paused) {
             videoEl.play().catch((err: unknown) => clog.error('播放失败:', err));
@@ -171,7 +175,7 @@ export async function bindClick(plugin: ListPagePlugin): Promise<void> {
         event.preventDefault();
         event.stopPropagation();
     });
-    $(selectorConfig.boxSelector).on('click', '.item .video-title', async (event: MouseEvent) => {
+    $(document).on('click.jhsListCard', controlSelector('.video-title'), async (event: MouseEvent) => {
         if ($(event.target).closest('[class^="jhs-match-"]').length) {
             return;
         }

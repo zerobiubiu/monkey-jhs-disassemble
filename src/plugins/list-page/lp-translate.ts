@@ -12,6 +12,7 @@ import { YES } from '../../constants/status';
 
 import { translateText } from '../../core/util/util-translate';
 import { writePersistentEntry } from '../../core/storage/persistent-data-store';
+import { siteSelector } from '../../core/util/site/selectors';
 
 import type { ListPagePlugin } from '../list-page-plugin';
 import { replaceTitleTextNodes } from './lp-dom';
@@ -58,8 +59,8 @@ export async function translate(plugin: ListPagePlugin, $item: JQuery): Promise<
 }
 
 /** 还原翻译后的标题为原文。对应原 L8998-9023。 */
-export async function revertTranslation(plugin: ListPagePlugin): Promise<void> {
-    $(plugin.getSelector().itemSelector)
+export async function revertTranslation(_plugin: ListPagePlugin): Promise<void> {
+    $(siteSelector('displayItem'))
         .toArray()
         .forEach((itemEl: HTMLElement) => {
             const $item = $(itemEl);

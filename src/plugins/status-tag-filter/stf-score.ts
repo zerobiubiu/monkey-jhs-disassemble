@@ -16,8 +16,12 @@
  */
 
 import { HAS_WATCH_ACTION } from '../../constants/status';
+
 import type { CarRecord } from '../../core/storage-manager';
+import { queryFilterItems } from '../../core/util/site/filter-scope';
 import { siteSelector } from '../../core/util/site/selectors';
+
+import type { FilterScope } from '../../types/filter-scope';
 
 import { JHS_HIDE_ATTR } from './stf-collect';
 
@@ -173,8 +177,8 @@ export function getItemCarNum(item: Element): string {
 }
 
 /** 遍历当前页未被其他脚本隐藏的卡片番号。 */
-function eachVisibleItemCarNum(visit: (carNum: string, item: Element) => void): void {
-    for (const item of Array.from(document.querySelectorAll('.item'))) {
+function eachVisibleItemCarNum(visit: (carNum: string, item: Element) => void, scope?: FilterScope): void {
+    for (const item of Array.from(queryFilterItems(scope))) {
         if (item.hasAttribute(JHS_HIDE_ATTR)) continue;
         visit(getItemCarNum(item), item);
     }
@@ -189,13 +193,13 @@ function eachVisibleItemCarNum(visit: (carNum: string, item: Element) => void): 
  *
  * @returns 分数 → 卡片数
  */
-export function countWatchedByScore(): Record<number, number> {
+export function countWatchedByScore(scope?: FilterScope): Record<number, number> {
     const counts: Record<number, number> = {};
     eachVisibleItemCarNum((carNum: string) => {
         const score = getScore(carNum);
         if (score === null) return;
         counts[score] = (counts[score] ?? 0) + 1;
-    });
+    }, scope);
     return counts;
 }
 

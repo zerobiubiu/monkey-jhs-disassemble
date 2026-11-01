@@ -47,7 +47,10 @@
  * 6. 再次点击已选中项取消选中并恢复原始顺序
  * 7. waitForContainer 用 MutationObserver 等待 body > section > div 出现
  */
+import { siteSelector } from '../core/util/site/selectors';
+
 import { BasePlugin } from './base-plugin';
+
 import pageSortCssRaw from '../styles/page-sort-plugin.css?raw';
 
 /** 日志前缀。 */
@@ -234,7 +237,7 @@ export class PageSortPlugin extends BasePlugin {
             console.warn(`${LOG} 未找到工具栏 .toolbar，跳过排序选择器注入`);
             return false;
         }
-        const $container = $('body > section > div > div.movie-list.h.cols-4.vcols-8');
+        const $container = $(siteSelector('listHome'));
         if (!$container.length) {
             console.warn(`${LOG} 未找到视频列表容器 .movie-list，跳过排序选择器注入`);
             return false;

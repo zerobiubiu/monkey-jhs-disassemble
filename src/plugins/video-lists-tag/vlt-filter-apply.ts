@@ -7,6 +7,9 @@
  * - collectTagCounts：收集标签计数
  * - countNoTagItems：计算无标签卡片数
  */
+import { queryFilterControls, queryFilterItems, reconcileFilterVisibility } from '../../core/util/site/filter-scope';
+import type { FilterScope } from '../../types/filter-scope';
+
 import type { VltTags } from './vlt-tags';
 
 /** 标记本脚本隐藏的卡片（与其他脚本的 hidden 属性区分，协同安全设计）。 */
@@ -26,17 +29,8 @@ export const FILTER_MODES = {
  *
  * @returns 去重排序后的标签名数组
  */
-export function collectAllUniqueTags(): string[] {
-    const tagNames = new Set<string>();
-    document
-        .querySelectorAll(".jhs-vlt-tag-link:not([style*='pointer-events: none'])")
-        .forEach((el: Element) => {
-            const name = el.textContent?.trim() || '';
-            if (name && name !== '\u2014') {
-                tagNames.add(name);
-            }
-        });
-    return [...tagNames].sort();
+export function collectAllUniqueTags(scope?: FilterScope): string[] {
+    return Object.keys(collectTagCounts(scope)).sort();
 }
 
 /**
@@ -45,16 +39,18 @@ export function collectAllUniqueTags(): string[] {
  *
  * @returns 标签名→计数映射
  */
-export function collectTagCounts(): Record<string, number> {
+export function collectTagCounts(scope?: FilterScope): Record<string, number> {
     const counts: Record<string, number> = {};
-    document
-        .querySelectorAll(".jhs-vlt-tag-link:not([style*='pointer-events: none'])")
-        .forEach((el: Element) => {
-            const name = el.textContent?.trim() || '';
-            if (name && name !== '\u2014') {
-                counts[name] = (counts[name] || 0) + 1;
-            }
-        });
+    const tags = new Set<Element>();
+    queryFilterItems(scope).forEach((item) => {
+        item.querySelectorAll(".jhs-vlt-tag-link:not([style*='pointer-events: none'])").forEach((el) => tags.add(el));
+    });
+    tags.forEach((el) => {
+        const name = el.textContent?.trim() || '';
+        if (name && name !== '\u2014') {
+            counts[name] = (counts[name] || 0) + 1;
+        }
+    });
     return counts;
 }
 
@@ -64,9 +60,9 @@ export function collectTagCounts(): Record<string, number> {
  *
  * @returns 无标签的卡片数
  */
-export function countNoTagItems(): number {
+export function countNoTagItems(scope?: FilterScope): number {
     let count = 0;
-    document.querySelectorAll('.item').forEach((item: Element) => {
+    queryFilterItems(scope).forEach((item: Element) => {
         const links = item.querySelectorAll(
             ".jhs-vlt-tag-link:not([style*='pointer-events: none'])"
         );
@@ -90,16 +86,18 @@ export function countNoTagItems(): number {
  * @param plugin VltTags 实例
  */
 export function applyFilter(plugin: VltTags): void {
-    const activeChips = document.querySelectorAll('.jhs-vlt-filter-chip.jhs-vlt-active');
+    const scope = plugin.filterScope;
+    const activeChips = queryFilterControls('.jhs-vlt-filter-chip.jhs-vlt-active', scope);
     const selectedValues = new Set(
         Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
     );
 
     // 无筛选时：仅恢复本脚本隐藏的卡片
     if (selectedValues.size === 0) {
-        document.querySelectorAll(`.item[${TAG_HIDDEN_ATTR}]`).forEach((item: Element) => {
+        queryFilterItems(scope, `[${TAG_HIDDEN_ATTR}]`).forEach((item: Element) => {
             (item as HTMLElement).removeAttribute(TAG_HIDDEN_ATTR);
-            (item as HTMLElement).style.display = '';
+            if (scope) reconcileFilterVisibility(item);
+            else (item as HTMLElement).style.display = '';
         });
         return;
     }
@@ -107,12 +105,12 @@ export function applyFilter(plugin: VltTags): void {
     const showNoTag = selectedValues.has('no-tag');
     const selectedTags = new Set([...selectedValues].filter((v: string) => v !== 'no-tag'));
 
-    document.querySelectorAll('.item').forEach((item: Element) => {
+    queryFilterItems(scope).forEach((item: Element) => {
         const htmlItem = item as HTMLElement;
         // 协同安全：已被其他脚本隐藏的卡片不纳入管理
         const hiddenByOther =
             htmlItem.style.display === 'none' && !htmlItem.hasAttribute(TAG_HIDDEN_ATTR);
-        if (hiddenByOther) return;
+        if (!scope && hiddenByOther) return;
 
         const tagLinks = item.querySelectorAll(
             ".jhs-vlt-tag-link:not([style*='pointer-events: none'])"
@@ -153,10 +151,10 @@ export function applyFilter(plugin: VltTags): void {
 
         if (shouldShow) {
             htmlItem.removeAttribute(TAG_HIDDEN_ATTR);
-            htmlItem.style.display = '';
         } else {
             htmlItem.setAttribute(TAG_HIDDEN_ATTR, '');
-            htmlItem.style.display = 'none';
         }
+        if (scope) reconcileFilterVisibility(htmlItem);
+        else htmlItem.style.display = shouldShow ? '' : 'none';
     });
 }
