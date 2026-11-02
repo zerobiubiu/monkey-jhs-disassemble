@@ -5,10 +5,31 @@
  * 评分缓存读取等基础设施，供 sync-engine 复用。
  */
 
-import { RatingCache } from '../../rating-display/rating-cache';
-
 import { getCsrfToken } from '../../../core/util/site/csrf';
 import { siteSelector } from '../../../core/util/site/selectors';
+
+import { RatingCache } from '../../rating-display/rating-cache';
+
+/** 站点请求有界等待；登录重定向、挑战页不属于成功回执。 */
+async function requestSite(url: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+        const response = await fetch(url, { ...init, signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (/\/(?:login|sign_in|sessions|users\/sign_in)(?:[/?#]|$)/i.test(response.url ?? '')) {
+            throw new Error('网站登录已失效，尚未确认同步');
+        }
+        // 在 timeout 内读取响应体，后续调用方仍可正常消费原始 Response。
+        const body = await response.clone().text();
+        if (/<title[^>]*>\s*(?:Just a moment|Attention Required)|cf-chl-|challenge-platform/i.test(body)) {
+            throw new Error('网站验证拦截，尚未确认同步');
+        }
+        return response;
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 /** 抓取 want/watched 列表的最大页数保护。 */
 export const SYNC_PAGE_LIMIT = 200;
@@ -22,7 +43,7 @@ export function extractVideoId(url: string | undefined): string | null {
 
 /** 同源抓取页面 HTML。 */
 export async function fetchPageHtml(url: string): Promise<string> {
-    const res = await fetch(url, { credentials: 'same-origin' });
+    const res = await requestSite(url, { credentials: 'same-origin', cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.text();
 }
@@ -31,7 +52,7 @@ export async function fetchPageHtml(url: string): Promise<string> {
 export async function postWantToWatch(videoId: string): Promise<void> {
     const token = getCsrfToken();
     if (!token) throw new Error('无法获取 CSRF token');
-    const res = await fetch(`/v/${videoId}/reviews/want_to_watch`, {
+    const res = await requestSite(`/v/${videoId}/reviews/want_to_watch`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -53,7 +74,7 @@ export async function postWatched(videoId: string, score: number = 0): Promise<v
     if (!token) throw new Error('无法获取 CSRF token');
     const tokenParam = `authenticity_token=${encodeURIComponent(token)}`;
     const body = `${tokenParam}&video_review[status]=watched&video_review[score]=${score}&video_review[content]=`;
-    const res = await fetch(`/v/${videoId}/reviews`, {
+    const res = await requestSite(`/v/${videoId}/reviews`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -109,7 +130,7 @@ export function findReviewIdInHtml(html: string): string | null {
 export async function deleteReview(videoId: string, reviewId: string): Promise<void> {
     const token = getCsrfToken();
     if (!token) throw new Error('无法获取 CSRF token');
-    const res = await fetch(`/v/${videoId}/reviews/${reviewId}`, {
+    const res = await requestSite(`/v/${videoId}/reviews/${reviewId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

@@ -17,7 +17,7 @@ import {
     reconcileListBeforeMutation,
     setupAutomaticListReconciliation
 } from './vlt-reconcile';
-import { enqueueAssociationTask } from './vlt-lock-queue';
+import { enqueueAssociationTask, listAssociationKey } from './vlt-lock-queue';
 import { handleCheckboxChange } from './vlt-checkbox';
 import {
     getListInfo,
@@ -36,6 +36,7 @@ import {
 } from './server/vlt-server-api';
 import type { PendingServerSync } from './server/vlt-server-api';
 import { commitAuthoritativeState, recoverPendingServerSyncs } from './server/vlt-server-recover';
+import { isCurrentListIntent } from './server/vlt-intent';
 
 export { fetchAuthoritativeCheckboxState };
 
@@ -46,7 +47,9 @@ async function performServerCheckboxMutation(
     listInfo: ListInfo,
     checked: boolean,
     input: HTMLInputElement | null,
-    checkedBeforeMutation: boolean
+    checkedBeforeMutation: boolean,
+    createdAt: number,
+    intentId: string
 ): Promise<void> {
     const listId = listInfo.list_id;
     let confirmedChecked: boolean | null = null;
@@ -64,11 +67,13 @@ async function performServerCheckboxMutation(
             desiredChecked: checked,
             movieInfo,
             listInfo,
-            createdAt: Date.now()
+            createdAt,
+            intentId
         };
         if (!pending.videoId) throw new Error('无法识别 JavDB 影片 ID');
         const journalKey = await createPendingJournal(pending);
-        if (!journalKey) throw new Error('无法建立清单同步恢复日志，本次操作已取消');
+        if (!journalKey) throw new Error('无法确认清单恢复日志与最新意图，本次未发送网站请求');
+        if (!pending.intentId || !isCurrentListIntent(pending.videoId, listId, pending.intentId)) return;
         const serverResult = await postJavdbListMutation(pending.videoId, listId, checked);
 
         if (serverResult.kind === 'rejected') {
@@ -113,6 +118,7 @@ async function performServerCheckboxMutation(
             checked
         );
         const result = reconciled
+            && pending.intentId && isCurrentListIntent(pending.videoId, listId, pending.intentId)
             ? await handleCheckboxChange(movieInfo, listInfo, checked, {
                   serverConfirmed: true
               })
@@ -150,14 +156,20 @@ export function enqueueServerCheckboxMutation(
     input: HTMLInputElement | null,
     checkedBeforeMutation: boolean
 ): Promise<void> {
-    const key = `${movieInfo.designation}::${listInfo.list_id}`;
+    const videoId = input?.value || movieInfo.info.href.match(/\/v\/([^/?#]+)/)?.[1] || '';
+    const key = listAssociationKey(videoId, listInfo.list_id);
+    // 点击时即确定顺序；等待关联锁期间不能把旧操作重新标为比后来的操作更新。
+    const createdAt = Date.now();
+    const intentId = crypto.randomUUID();
     return enqueueAssociationTask(key, () =>
         performServerCheckboxMutation(
             movieInfo,
             listInfo,
             checked,
             input,
-            checkedBeforeMutation
+            checkedBeforeMutation,
+            createdAt,
+            intentId
         )
     );
 }
@@ -211,5 +223,7 @@ export function setupCheckboxListener(): void {
     const currentVideoId = window.location.pathname.match(/\/v\/([^/?#]+)/)?.[1];
     const currentMovie = currentVideoId ? getMovieInfo(currentVideoId) : null;
     if (currentMovie) setupAutomaticListReconciliation(currentMovie.designation);
-    recoverPendingServerSyncs().then();
+    recoverPendingServerSyncs().catch((error: unknown) => {
+        clog.error(`${LOG_PREFIX} 未完成清单恢复暂时停止`, error);
+    });
 }

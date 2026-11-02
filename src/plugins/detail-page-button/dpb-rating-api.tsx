@@ -2,16 +2,17 @@
  * 详情页星星评分组件的 javdb 原生评价 API 与快捷操作。
  * 从 dpb-rating.tsx 提取，逻辑与原实现一致。
  */
-import { FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
+import { BATCH_RATING_SYNC_LOCK, FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { getCsrfToken } from '../../core/util/site/csrf';
 import { jsxToString } from '../../core/jsx-to-string';
+import { withExclusiveLock } from '../../core/sync/sync-lock';
 
 import { readServerReviewState } from './dpb-review-sync';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
-import { setOpSyncState, upsertOpSync } from '../setting/jhs-sync/op-sync-records';
+import { isCurrentOpSyncIntent, setOpSyncState, upsertOpSync, type OpSyncRecord } from '../setting/jhs-sync/op-sync-records';
 
 import { QuickBlockConfirmMessage } from '../../components/dpb/quick-block-confirm-message';
 
@@ -22,6 +23,7 @@ import { QuickBlockConfirmMessage } from '../../components/dpb/quick-block-confi
 export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: number): Promise<void> {
     const pageInfo = plugin.getPageInfo();
     if (!pageInfo.carNum) return;
+    let syncRecord: OpSyncRecord;
     // ---- JHS 端更新 ----
     try {
         const carRecord = await storageManager.getCar(pageInfo.carNum);
@@ -45,7 +47,7 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
             score: score
         });
         // 记账（doc/38）：本地已写 → 登记「待推送」，设置面板可见并可重试
-        upsertOpSync({
+        syncRecord = upsertOpSync({
             carNum: pageInfo.carNum,
             url: pageInfo.url ?? '',
             kind: 'watched',
@@ -73,21 +75,22 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
     // 串行化 javdb 原生端操作，避免连续点击并发冲突；
     // _wantWatchedSyncing 期间阻断 MutationObserver，完成后立即释放
     plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-        .then(async () => {
+        .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+            if (!isCurrentOpSyncIntent(syncRecord)) return;
             plugin._wantWatchedSyncing = true;
             try {
-                setOpSyncState(pageInfo.carNum!, 'watched', 'running');
+                if (!setOpSyncState(pageInfo.carNum!, 'watched', 'running', { expectedRevision: syncRecord.revision })) return;
                 await plugin._triggerJavdbReview(score);
                 plugin._syncRatingBar();
-                setOpSyncState(pageInfo.carNum!, 'watched', 'success', { error: '' });
+                setOpSyncState(pageInfo.carNum!, 'watched', 'success', { error: '', expectedRevision: syncRecord.revision });
             } finally {
                 plugin._wantWatchedSyncing = false;
             }
-        })
+        }))
         .catch((err: unknown) => {
             // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
             setOpSyncState(pageInfo.carNum!, 'watched', 'failed', {
-                error: err instanceof Error ? err.message : String(err)
+                error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
             });
             clog.warn('[JHS-快键] 站点评价同步失败', err instanceof Error ? err.message : String(err));
             show.error(
@@ -114,6 +117,7 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
         jsxToString(<QuickBlockConfirmMessage carNum={pageInfo.carNum!} />),
         async () => {
             plugin._setRatingBusy(true);
+            let syncRecord: OpSyncRecord;
             try {
                 // 1) JHS 端：先移除已有记录（避免 saveCar 抛"已在屏蔽列表中"），再写 FILTER_ACTION
                 const carRecord = await storageManager.getCar(pageInfo.carNum!);
@@ -128,7 +132,7 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                     publishTime: pageInfo.publishTime ?? undefined
                 });
                 // 记账（doc/38）：本地已写 FILTER_ACTION → 登记「待推送」（站点侧等价已读 0 星）
-                upsertOpSync({
+                syncRecord = upsertOpSync({
                     carNum: pageInfo.carNum!,
                     url: pageInfo.url ?? '',
                     kind: 'filter',
@@ -149,21 +153,22 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
             }
             // 3) javdb 原生端：设为已读0星（串行 + 阻断 observer）
             plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-                .then(async () => {
+                .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+                    if (!isCurrentOpSyncIntent(syncRecord)) return;
                     plugin._wantWatchedSyncing = true;
                     try {
-                        setOpSyncState(pageInfo.carNum!, 'filter', 'running');
+                        if (!setOpSyncState(pageInfo.carNum!, 'filter', 'running', { expectedRevision: syncRecord.revision })) return;
                         await plugin._triggerJavdbReview(0);
                         plugin._syncRatingBar();
-                        setOpSyncState(pageInfo.carNum!, 'filter', 'success', { error: '' });
+                        setOpSyncState(pageInfo.carNum!, 'filter', 'success', { error: '', expectedRevision: syncRecord.revision });
                     } finally {
                         plugin._wantWatchedSyncing = false;
                     }
-                })
+                }))
                 .catch((err: unknown) => {
                     // doc/37：站点推送在后台执行，失败必须可见（本地已落盘，不回滚）
                     setOpSyncState(pageInfo.carNum!, 'filter', 'failed', {
-                        error: err instanceof Error ? err.message : String(err)
+                        error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
                     });
                     clog.warn(
                         '[JHS-快键] 站点已读同步失败',
@@ -190,6 +195,7 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
 export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise<void> {
     const pageInfo = plugin.getPageInfo();
     if (!pageInfo.carNum) return;
+    let syncRecord: OpSyncRecord;
     try {
         // 修复（doc/234）：拦截条件改为「服务器已确认想看状态」。
         // 原实现只看本地记录——脚本已收藏但服务器未同步时，再点收藏会被误拦截。
@@ -208,7 +214,7 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
             publishTime: pageInfo.publishTime ?? undefined
         });
         // 记账（doc/38）：本地已写 → 登记「待推送」
-        upsertOpSync({
+        syncRecord = upsertOpSync({
             carNum: pageInfo.carNum,
             url: pageInfo.url ?? '',
             kind: 'favorite',
@@ -227,21 +233,22 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
         return;
     }
     plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-        .then(async () => {
+        .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+            if (!isCurrentOpSyncIntent(syncRecord)) return;
             plugin._wantWatchedSyncing = true;
             try {
-                setOpSyncState(pageInfo.carNum!, 'favorite', 'running');
+                if (!setOpSyncState(pageInfo.carNum!, 'favorite', 'running', { expectedRevision: syncRecord.revision })) return;
                 await plugin._triggerJavdbWant();
                 plugin._syncRatingBar();
-                setOpSyncState(pageInfo.carNum!, 'favorite', 'success', { error: '' });
+                setOpSyncState(pageInfo.carNum!, 'favorite', 'success', { error: '', expectedRevision: syncRecord.revision });
             } finally {
                 plugin._wantWatchedSyncing = false;
             }
-        })
+        }))
         .catch((err: unknown) => {
             // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
             setOpSyncState(pageInfo.carNum!, 'favorite', 'failed', {
-                error: err instanceof Error ? err.message : String(err)
+                error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
             });
             clog.warn('[JHS-快键] 站点收藏同步失败', err instanceof Error ? err.message : String(err));
             show.error(

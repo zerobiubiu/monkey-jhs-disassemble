@@ -79,7 +79,7 @@
   "src/plugins/translate-plugin.tsx": 5,
   "src/plugins/video-lists-tag/vlt-helpers.ts": 7,
   "src/plugins/video-lists-tag/vlt-list-mgmt.ts": 5,
-  "src/plugins/video-lists-tag/vlt-reconcile.ts": 4,
+  "src/plugins/video-lists-tag/server/vlt-reconcile-snapshot.ts": 4,
   "src/plugins/video-lists-tag/vlt-tag-renderer.ts": 2,
   "src/plugins/video-lists-tag/vlt-tags.ts": 4,
   "src/plugins/visit-history-plugin.ts": 2,

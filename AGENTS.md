@@ -24,7 +24,7 @@ monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
 │   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 5）
 │   ├── core/               # 核心模块（含 domain/、storage/（含 backup-restore）、feature-flags、util/、sync/）
-│   ├── plugins/            # 插件模块（list-page/ 含推荐浮层与三栏筛选协调器；other-site/ 含预加载编排、展示观察器和同番号卡片定位）
+│   ├── plugins/            # 插件模块（list-page/batch-lists/ 含可恢复批量清单操作；list-page/ 含推荐浮层与筛选；other-site/ 含预加载与同番号定位）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录；list-page/ 含推荐入口与浮层）
 │   ├── constants/          # 常量（site/status/video-quality/api/weekly-recommend 事件）
 │   ├── resources/          # 资源（icons SVG）
@@ -91,7 +91,7 @@ monkey-jhs-disassemble/
 共 **69 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 43。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
 
-### 3.5 组件 `src/components/`（141 个）
+### 3.5 组件 `src/components/`（142 个）
 
 所有组件都是 **React 函数组件**，返回 JSX，经 `jsxToString()` 转 HTML 字符串后
 供插件 `.append()` / `.html()` / `layer.open content` 消费。不使用 react-dom/server。
@@ -104,6 +104,25 @@ monkey-jhs-disassemble/
 推荐卡片身份或原生番号/链接变化触发增量处理，标签与徽标更新不反复触发；标题只展示推荐名称与更新周期。
 浮层复用清单、状态/星级、预加载三套筛选组件，以 `FilterScope` 分别维护挂载点、卡片范围、计数和选中状态；
 默认主页面查询排除局部范围控件，局部多栏隐藏标记组成交集。原生「收起到下次更新」链接在浮层标题内隐藏。
+
+列表批量操作由 `list-page/lp-batch.tsx` 管理选择与委托，`lp-batch-actions.ts` 负责评价写入。
+`list-page/batch-lists/` 按网站适配、GM 持久日志、执行器、恢复调度与模态交互分层；
+加入/移出清单先预写完整任务，串行回查网站目标状态并提交本地关联后才标成功。
+同源 Web Locks 保护多标签执行，原生 `dialog` 在运行中锁定焦点；可请求停止后续执行，已发请求确认后才能关闭；失败保留待恢复项，
+页面加载、联网与可见时按退避检查。手动停止即时持久化 `paused/pauseRevision` 并跳过自动恢复，较早排队的继续不能清除较新停止；结果窗和重新打开的选择窗均提供明确继续入口。
+执行清单前 `drainBatchRatings(targets)` 只接管本次任务视频已登记的未完成评价，其他视频继续后台异步同步，
+评价与清单分别回查真实网站状态。任务日志不混入正式清单数据，未完成日志不按容量淘汰。
+点击开始先在短日志锁内预写，再等待长执行锁；进度提交合并最新日志，保留并发登记的其他任务。
+原生与批量清单操作共用 `server/vlt-intent.ts` 的关联意图权威和基于 videoId 的锁；
+详情恢复与自动补推、整单快照回写均检查最新意图，避免旧任务反向覆盖后续操作。
+完整清单分页解析位于 `server/vlt-reconcile-snapshot.ts`，对账编排仍位于 `vlt-reconcile.ts`。
+批量清单选择复用详情页的 `buildMergeConfig/groupEntries`：只展示逻辑组，按序号与容量自动分配，
+满员续建下一编号，移出覆盖组内含片成员；具体路由和创建尝试在网站操作前保存到任务日志。
+「评价与清单」窗口可附带收藏或已读星级，一次开始先完整预写再准备评价并执行清单；
+`batch-lists/ratings.ts` 维护稳定评价身份与本地准备阶段，避免恢复重建新意图覆盖后续评分。
+原快捷评价按钮保持独立后台操作；组合窗口结束刷新卡片状态与星级索引并保留勾选。
+`core/storage/car-list-ops.ts` 的公开读改写共用本地短锁，组合评价通过条件提交检查新状态；
+其回执在任务日志确认交接前保留，避免大批操作中容量裁剪丢失成功证据。
 
 ### 3.6 样式 `src/styles/`
 

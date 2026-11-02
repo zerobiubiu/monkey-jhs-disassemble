@@ -12,6 +12,8 @@ export const FILTER_ACTION = 'filter';
 export const FAVORITE_ACTION = 'favorite';
 /** 原 p */
 export const HAS_WATCH_ACTION = 'hasWatch';
+/** 列表批量与详情快捷评价共同使用的跨标签页执行锁。 */
+export const BATCH_RATING_SYNC_LOCK = 'jhs:batch-ratings';
 /** 原 g（未删减版 Fc2Plugin 使用，删减版已移除但 Fc2Plugin 依赖） */
 export const HAS_DOWN_ACTION = 'hasDown';
 

@@ -192,6 +192,21 @@ describe('op-sync-records 清理与容量', () => {
 });
 
 describe('op-sync-records 耐久性与容错', () => {
+    it('容量超限仍保留全部失败记录，避免中断恢复意图被自动淘汰', () => {
+        for (let i = 0; i <= OP_SYNC_CAPACITY; i++) {
+            upsertOpSync({ carNum: `F-${i}`, url: `/v/f${i}`, kind: 'watched' });
+            setOpSyncState(`F-${i}`, 'watched', 'failed', { error: '尚未确认' });
+        }
+        expect(listOpSyncRecords({ states: ['failed'] })).toHaveLength(OP_SYNC_CAPACITY + 1);
+    });
+
+    it('旧 revision 回执不能覆盖同番号新星级意图', () => {
+        const previous = upsertOpSync({ carNum: 'A', url: '/v/A', kind: 'watched', score: 2 });
+        const latest = upsertOpSync({ carNum: 'A', url: '/v/A', kind: 'watched', score: 5 });
+        expect(setOpSyncState('A', 'watched', 'success', { expectedRevision: previous.revision })).toBeNull();
+        expect(getOpSyncRecord('A', 'watched')).toMatchObject({ score: 5, state: 'pending', revision: latest.revision });
+    });
+
     it('每次变更都写回注入的存储，重新读盘可复原', () => {
         upsertOpSync({ carNum: 'A-1', url: '/v/a1', kind: 'favorite' });
         setOpSyncState('A-1', 'favorite', 'success');

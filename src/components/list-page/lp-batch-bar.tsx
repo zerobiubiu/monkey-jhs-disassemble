@@ -157,6 +157,14 @@ export function LpBatchToolbar({ count, busy }: LpBatchToolbarProps) {
                 >
                     🚫 拉黑
                 </button>
+                <button
+                    type="button"
+                    className="a-primary"
+                    data-act="lists"
+                    disabled={disabled}
+                >
+                    评价与清单
+                </button>
             </span>
         </div>
     );

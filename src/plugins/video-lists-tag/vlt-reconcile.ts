@@ -5,21 +5,21 @@
  * 只有完整分页、总数、唯一性和二次首页稳定性全部通过后才允许写入本地。
  */
 
-import { fetchJavdbPageHtml } from '../../core/util/util-fetch-html';
-
 import { VltDb } from './vlt-db';
 import type { ListReconcileSnapshot, MovieRecord } from './vlt-db';
 import { showToast } from './vlt-toast';
-import { enqueueAssociationTask } from './vlt-lock-queue';
+import { enqueueAssociationTask, listAssociationKey } from './vlt-lock-queue';
 import {
     getListInfo,
     getMovieInfo,
     setListDisplayedCount
 } from './vlt-helpers';
 import { postJavdbListMutation } from './server/vlt-server-api';
+import { fetchCompleteListSnapshot } from './server/vlt-reconcile-snapshot';
+import { readCurrentListIntent } from './server/vlt-intent';
 
 const LOG_PREFIX = '[JavDB][清单对账]';
-const MAX_PAGES = 100;
+
 /** 自动对账巡检防抖延迟（ms）。默认 800；可由设置 autoReconcileDelay 经 setAutoReconcileDelay 调整（doc/206④）。 */
 let autoReconcileDelay = 800;
 /** 打开页面时自动将「本地有关联、服务器未勾选」的清单关系补推到 JavDB（doc/234）。默认开启；可由设置 autoServerSync 调整。 */
@@ -48,13 +48,6 @@ interface ReconcileExpectation {
     quiet?: boolean;
 }
 
-interface ParsedListPage {
-    expectedCount: number | null;
-    name: string | null;
-    movies: MovieRecord[];
-    nextUrl: string | null;
-}
-
 const reconcileQueues = new Map<string, Promise<boolean>>();
 let automaticReconciliationInstalled = false;
 let automaticReconciliationInstalling = false;
@@ -63,16 +56,6 @@ let automaticReconciliationRunning = false;
 
 function normalizeText(value: string | null | undefined): string {
     return (value || '').replace(/\s+/g, ' ').trim();
-}
-
-function getSeries(designation: string): string | null {
-    const index = designation.indexOf('-');
-    return index > 0 ? designation.slice(0, index) : designation || null;
-}
-
-function getCode(designation: string): string | null {
-    const index = designation.indexOf('-');
-    return index > 0 ? designation.slice(index + 1) : null;
 }
 
 function getDisplayedListCount(input: HTMLInputElement): number | null {
@@ -87,148 +70,6 @@ function getDisplayedListCount(input: HTMLInputElement): number | null {
 function getDisplayedListName(input: HTMLInputElement): string {
     const labelText = normalizeText(input.closest('label')?.textContent);
     return labelText.replace(/\s*\(\d+\).*$/, '').trim();
-}
-
-async function fetchHtmlDocument(url: string): Promise<Document> {
-    const html = await fetchJavdbPageHtml(url);
-    return new DOMParser().parseFromString(html, 'text/html');
-}
-
-function parseExpectedCountAndName(documentNode: Document): {
-    expectedCount: number;
-    name: string;
-} {
-    const headings = Array.from(documentNode.querySelectorAll('h1, h2, h3, .title'));
-    for (const heading of headings) {
-        const text = normalizeText(heading.textContent);
-        const match = text.match(/^(.*?)\s+(\d+)\s*部影片/);
-        if (!match) continue;
-        return { name: match[1].trim(), expectedCount: Number(match[2]) };
-    }
-    throw new Error('无法从清单标题读取服务端影片总数');
-}
-
-function parseMovie(item: Element, pageUrl: string): MovieRecord {
-    const link = item.querySelector('a[href*="/v/"]') as HTMLAnchorElement | null;
-    const designation = normalizeText(item.querySelector('.video-title strong')?.textContent);
-    const hrefValue = link?.getAttribute('href') || '';
-    if (!designation || !hrefValue) throw new Error('清单分页中存在无法识别的影片卡片');
-
-    const titleText = normalizeText(item.querySelector('.video-title')?.textContent);
-    const title = titleText.startsWith(designation)
-        ? titleText.slice(designation.length).trim()
-        : titleText;
-    const image = item.querySelector('img') as HTMLImageElement | null;
-    const coverValue =
-        image?.getAttribute('src') || image?.getAttribute('data-src') || image?.currentSrc || '';
-    const scoreText = normalizeText(item.querySelector('.score')?.textContent);
-    const scoreMatch = scoreText.match(/(\d+(?:\.\d+)?)/);
-    const releaseDate = normalizeText(item.querySelector('.meta')?.textContent);
-
-    return {
-        designation,
-        href: new URL(hrefValue, pageUrl).href,
-        title: title || null,
-        coverSrc: coverValue ? new URL(coverValue, pageUrl).href : null,
-        score: scoreMatch ? Number(scoreMatch[1]) : null,
-        releaseDate: releaseDate || null,
-        createdAt: null,
-        series: getSeries(designation),
-        code: getCode(designation)
-    };
-}
-
-function parseListPage(
-    documentNode: Document,
-    pageUrl: string,
-    listId: string,
-    firstPage: boolean
-): ParsedListPage {
-    const heading = firstPage ? parseExpectedCountAndName(documentNode) : null;
-    const movies = Array.from(documentNode.querySelectorAll('.movie-list .item')).map((item) =>
-        parseMovie(item, pageUrl)
-    );
-    const nextHref = (
-        documentNode.querySelector('a.pagination-next') as HTMLAnchorElement | null
-    )?.getAttribute('href');
-    let nextUrl: string | null = null;
-    if (nextHref) {
-        const candidate = new URL(nextHref, pageUrl);
-        const expectedPath = `/lists/${encodeURIComponent(listId)}`;
-        if (candidate.origin !== window.location.origin || candidate.pathname !== expectedPath) {
-            throw new Error(`清单下一页地址异常：${candidate.href}`);
-        }
-        nextUrl = candidate.href;
-    }
-    return {
-        expectedCount: heading?.expectedCount ?? null,
-        name: heading?.name ?? null,
-        movies,
-        nextUrl
-    };
-}
-
-/** 单次抓取并严格校验 JavDB 单个清单的全部分页。 */
-async function fetchCompleteListPass(listId: string): Promise<ListReconcileSnapshot> {
-    const firstUrl = new URL(`/lists/${encodeURIComponent(listId)}`, window.location.origin);
-    firstUrl.searchParams.set('locale', 'zh');
-
-    const visited = new Set<string>();
-    const movies: MovieRecord[] = [];
-    let expectedCount: number | null = null;
-    let name: string | null = null;
-    let nextUrl: string | null = firstUrl.href;
-
-    while (nextUrl) {
-        if (visited.size >= MAX_PAGES) throw new Error(`清单分页超过 ${MAX_PAGES} 页，已中止`);
-        const normalizedUrl = new URL(nextUrl).href;
-        if (visited.has(normalizedUrl)) throw new Error('清单分页出现循环，已中止');
-        visited.add(normalizedUrl);
-
-        const documentNode = await fetchHtmlDocument(normalizedUrl);
-        const parsed = parseListPage(documentNode, normalizedUrl, listId, visited.size === 1);
-        if (visited.size === 1) {
-            expectedCount = parsed.expectedCount;
-            name = parsed.name;
-        }
-        movies.push(...parsed.movies);
-        nextUrl = parsed.nextUrl;
-    }
-
-    if (expectedCount === null || name === null) throw new Error('清单首页信息不完整');
-    const uniqueDesignations = new Set(movies.map((movie) => movie.designation));
-    if (movies.length !== expectedCount || uniqueDesignations.size !== expectedCount) {
-        throw new Error(
-            `清单分页不完整或含重复番号：服务端 ${expectedCount}，抓取 ${movies.length}，唯一 ${uniqueDesignations.size}`
-        );
-    }
-
-    return {
-        listId,
-        name,
-        url: firstUrl.href,
-        expectedCount,
-        movies
-    };
-}
-
-/**
- * 连续抓取两份完整快照并比较全量番号顺序，防止后页发生等量替换时写入混合快照。
- */
-async function fetchCompleteListSnapshot(listId: string): Promise<ListReconcileSnapshot> {
-    const first = await fetchCompleteListPass(listId);
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const second = await fetchCompleteListPass(listId);
-    const firstSequence = first.movies.map((movie) => movie.designation).join('\u001f');
-    const secondSequence = second.movies.map((movie) => movie.designation).join('\u001f');
-    if (
-        first.expectedCount !== second.expectedCount ||
-        first.name !== second.name ||
-        firstSequence !== secondSequence
-    ) {
-        throw new Error('清单在两次完整抓取之间发生变化，已放弃本次快照');
-    }
-    return second;
 }
 
 function snapshotMatchesExpectation(
@@ -250,6 +91,18 @@ function snapshotMatchesExpectation(
     return true;
 }
 
+/** 本地与服务端影片的并集覆盖所有会被本次全量替换改变的关联。 */
+function snapshotRespectsLatestIntents(snapshot: ListReconcileSnapshot, currentMovies: MovieRecord[]): boolean {
+    const included = new Set(snapshot.movies.map((movie) => movie.href.match(/\/v\/([^/?#]+)/)?.[1]));
+    for (const movie of [...snapshot.movies, ...currentMovies]) {
+        const videoId = movie.href?.match(/\/v\/([^/?#]+)/)?.[1];
+        if (!videoId) return false;
+        const latest = readCurrentListIntent(videoId, snapshot.listId);
+        if (latest && !latest.supersedeOnly && latest.desiredChecked !== included.has(videoId)) return false;
+    }
+    return true;
+}
+
 async function performReconciliation(
     listId: string,
     expectation: ReconcileExpectation
@@ -262,7 +115,8 @@ async function performReconciliation(
                 throw new Error('服务端清单状态已变化，与触发对账时的状态不一致');
             }
 
-            const result = await VltDb.reconcileListSnapshot(snapshot, state.guard);
+            const result = await VltDb.reconcileListSnapshot(snapshot, state.guard,
+                (currentMovies) => snapshotRespectsLatestIntents(snapshot, currentMovies));
             if (result.status === 'conflict') {
                 console.warn(`${LOG_PREFIX} 本地数据在抓取期间变化，准备重试 listId=${listId}`);
                 continue;
@@ -363,8 +217,14 @@ async function pushLocalOnlyAssociation(listId: string, designation: string): Pr
     const listInfo = getListInfo(listId);
     if (!movieInfo || !listInfo.info.name) return;
 
-    await enqueueAssociationTask(`${designation}::${listId}`, async () => {
+    await enqueueAssociationTask(listAssociationKey(videoId, listId), async () => {
         try {
+            // 进入锁前的 DOM/本地快照可能已经过期，不能据此反向重放旧关联。
+            const latest = readCurrentListIntent(videoId, listId);
+            if (latest?.supersedeOnly || latest?.desiredChecked === false) return;
+            const before = await VltDb.getListReconcileState(listId, designation);
+            const checkedIntent = readCurrentListIntent(videoId, listId);
+            if (!before.hasDesignation || checkedIntent?.supersedeOnly || checkedIntent?.desiredChecked === false) return;
             const result = await postJavdbListMutation(videoId, listId, true);
             if (result.kind === 'confirmed') {
                 const state = await VltDb.getListReconcileState(listId);

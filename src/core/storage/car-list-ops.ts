@@ -12,6 +12,7 @@ import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constant
 import { carNumEquals, carNumKey } from '../domain/car-num';
 import { featureFlags } from '../feature-flags';
 import { storageRevision } from '../storage-revision';
+import { withExclusiveLock } from '../sync/sync-lock';
 import { failWithToast } from '../toast';
 import type { StorageManager } from '../storage-manager';
 
@@ -60,6 +61,13 @@ export interface CarSaveInput {
 
 /** 「已下载」状态兼容常量（原 g，已下载功能删除后保留以兼容历史数据） */
 const HAS_DOWN_STATUS = 'hasDown';
+/** 六个读改写入口及组合评价守卫共用，覆盖完整的读取、判定与提交。 */
+const CAR_LIST_WRITE_LOCK = 'jhs:car-list-write';
+
+/** 写入必须读取 IndexedDB 当前快照，不使用实例内可能过期的列表缓存。 */
+async function readFreshCarList(sm: StorageManager): Promise<CarRecord[]> {
+    return (await sm.forage.getItem(sm.car_list_key)) || [];
+}
 
 /**
  * 保存/更新单条番号记录到给定清单（同步，不落库）。
@@ -169,7 +177,11 @@ export async function getCar(sm: StorageManager, carNum: string): Promise<CarRec
  * @throws 透传 saveSingleCar
  */
 export async function saveCar(sm: StorageManager, input: CarSaveInput): Promise<void> {
-    const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => saveCarUnlocked(sm, input));
+}
+
+async function saveCarUnlocked(sm: StorageManager, input: CarSaveInput): Promise<void> {
+    const list = await readFreshCarList(sm);
     saveSingleCar(input, list);
     await sm.forage.setItem(sm.car_list_key, list);
     storageRevision.increment();
@@ -186,6 +198,10 @@ export async function saveCar(sm: StorageManager, input: CarSaveInput): Promise<
  * @throws 番号为空 / url 为空 / 数据不存在 / actionType 非法
  */
 export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Promise<void> {
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => updateCarInfoUnlocked(sm, input));
+}
+
+async function updateCarInfoUnlocked(sm: StorageManager, input: CarSaveInput): Promise<void> {
     const { carNum, url, actionType, remark } = input;
     let { names } = input;
     if (!carNum) {
@@ -197,7 +213,7 @@ export async function updateCarInfo(sm: StorageManager, input: CarSaveInput): Pr
     if (names) {
         names = names.trim();
     }
-    const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
+    const list = await readFreshCarList(sm);
     // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
     const car = list.find((item) => carNumEquals(item.carNum, carNum, featureFlags.caseInsensitiveCarNum));
     if (!car) {
@@ -236,7 +252,28 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
     if (!inputs || !Array.isArray(inputs) || inputs.length === 0) {
         failWithToast('记录列表为空!');
     }
-    const list: CarRecord[] = (await sm.forage.getItem(sm.car_list_key)) || [];
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => saveCarListUnlocked(sm, inputs));
+}
+
+/**
+ * 同一写锁内读取最新状态并执行同步守卫；拒绝时不写入、不通知、不递增修订号。
+ * 空 inputs 仍检查守卫，允许调用方只原子确认目标状态，不触发任何提交副作用。
+ */
+export async function saveCarListGuarded(
+    sm: StorageManager,
+    inputs: CarSaveInput[],
+    guard: (records: readonly CarRecord[]) => boolean
+): Promise<boolean> {
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, async () => {
+        const list = await readFreshCarList(sm);
+        if (!guard(list)) return false;
+        if (inputs.length > 0) await saveCarListUnlocked(sm, inputs, list);
+        return true;
+    });
+}
+
+async function saveCarListUnlocked(sm: StorageManager, inputs: CarSaveInput[], snapshot?: CarRecord[]): Promise<void> {
+    const list = snapshot ?? await readFreshCarList(sm);
     for (const item of inputs) {
         saveSingleCar(item, list);
     }
@@ -256,7 +293,11 @@ export async function saveCarList(sm: StorageManager, inputs: CarSaveInput[]): P
  * @returns 成功 true；不存在 false
  */
 export async function removeCar(sm: StorageManager, carNum: string): Promise<boolean> {
-    const list = await getCarList(sm);
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => removeCarUnlocked(sm, carNum));
+}
+
+async function removeCarUnlocked(sm: StorageManager, carNum: string): Promise<boolean> {
+    const list = await readFreshCarList(sm);
     const beforeLen = list.length;
     // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
     const filtered = list.filter((item) => !carNumEquals(item.carNum, carNum, featureFlags.caseInsensitiveCarNum));
@@ -284,12 +325,16 @@ export async function removeCar(sm: StorageManager, carNum: string): Promise<boo
  * @returns 实际清除的记录数（0 表示无变化，不写库）
  */
 export async function clearCarWatchStatus(sm: StorageManager, carNums: string[]): Promise<number> {
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => clearCarWatchStatusUnlocked(sm, carNums));
+}
+
+async function clearCarWatchStatusUnlocked(sm: StorageManager, carNums: string[]): Promise<number> {
     if (!carNums || carNums.length === 0) {
         return 0;
     }
     const caseInsensitive = featureFlags.caseInsensitiveCarNum;
     const target = new Set(carNums.map((n) => carNumKey(n.trim(), caseInsensitive)));
-    const list = await getCarList(sm);
+    const list = await readFreshCarList(sm);
     const changed: CarRecord[] = [];
     for (const car of list) {
         const key = carNumKey(car.carNum, caseInsensitive);
@@ -316,7 +361,11 @@ export async function clearCarWatchStatus(sm: StorageManager, carNums: string[])
  * @returns 删除条数（未删除返回 false）
  */
 export async function batchRemoveCars(sm: StorageManager, carNums: string[]): Promise<boolean | number> {
-    const list = await getCarList(sm);
+    return withExclusiveLock(CAR_LIST_WRITE_LOCK, () => batchRemoveCarsUnlocked(sm, carNums));
+}
+
+async function batchRemoveCarsUnlocked(sm: StorageManager, carNums: string[]): Promise<boolean | number> {
+    const list = await readFreshCarList(sm);
     const beforeLen = list.length;
     // 番号匹配跟随 caseInsensitiveCarNum（与 saveSingleCar/getCar 同口径，doc/47）
     const caseInsensitive = featureFlags.caseInsensitiveCarNum;

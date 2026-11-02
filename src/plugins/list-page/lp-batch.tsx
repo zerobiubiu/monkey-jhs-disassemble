@@ -12,30 +12,22 @@
  * 状态为模块级（单页单列表）：勾选集合 + 卡片信息表；`destroyBatchToolbar` 负责清理。
  */
 
-import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION, NO, YES } from '../../constants/status';
-
 import { jsxToString } from '../../core/jsx-to-string';
 import { getActressNames } from '../../core/util/site/actress-links';
 import { injectStatusTag } from '../../core/util/util-status-tag';
-import type { CarSaveInput } from '../../core/storage/car-list-ops';
 
-import {
-    LpBatchCheckbox,
-    LpBatchSideBar,
-    LpBatchToolbar
-} from '../../components/list-page/lp-batch-bar';
+import type { BatchListItem } from '../../types/batch-lists';
 
 import type { ListPagePlugin } from '../list-page-plugin';
-import {
-    BatchSelection,
-    planFavoriteBatch,
-    planFilterBatch,
-    planUnwatchBatch,
-    planWatchedBatch
-} from './lp-batch-state';
-import type { BatchActionKind, BatchItemInfo, BatchPlan } from './lp-batch-state';
-import { enqueueBatchPush, stopBatchSync } from './lp-batch-sync';
-import type { BatchPushKind } from './lp-batch-sync';
+import { executeBatchRating } from './lp-batch-actions';
+import { BatchSelection } from './lp-batch-state';
+import type { BatchActionKind, BatchItemInfo } from './lp-batch-state';
+import { stopBatchSync } from './lp-batch-sync';
+import { openBatchListDialog } from './batch-lists/dialog';
+import { startBatchListRecovery } from './batch-lists/recovery';
+import { extractVideoId } from '../setting/jhs-sync/sync-common';
+
+import { LpBatchCheckbox, LpBatchSideBar, LpBatchToolbar } from '../../components/list-page/lp-batch-bar';
 
 /** 日志前缀。 */
 const BATCH_LOG = '[列表页批量操作]';
@@ -80,6 +72,7 @@ let listenerBound = false;
 
 /** 当前活跃插件（委托监听里回调渲染用）。 */
 let activePlugin: ListPagePlugin | null = null;
+let stopRecovery: (() => void) | null = null;
 
 /**
  * 初始化批量操作 UI：绑定委托 + 注入勾选框 + 渲染工具栏。
@@ -92,6 +85,7 @@ export function initBatchToolbar(plugin: ListPagePlugin): void {
     bindBatchEvents();
     syncBatchCheckboxes(plugin);
     renderBatchToolbar();
+    stopRecovery ??= startBatchListRecovery();
 }
 
 /**
@@ -145,6 +139,8 @@ export function destroyBatchToolbar(): void {
     }
     // 终止后台 JavDB 同步队列（未推完的项由详情页校验兜底补齐）
     stopBatchSync();
+    stopRecovery?.();
+    stopRecovery = null;
     barEl?.remove();
     barEl = null;
     selection.clear();
@@ -194,6 +190,7 @@ function onDocumentClick(event: Event): void {
 
 /** 切换单张卡片的勾选态。 */
 function toggleItem(boxEl: HTMLElement): void {
+    if (busy) return;
     const carNum = boxEl.dataset.carNum ?? '';
     if (!carNum) return;
     const checked = selection.toggle(carNum);
@@ -235,7 +232,13 @@ function handleBarAction(btn: HTMLElement): void {
         | 'select-all'
         | 'invert'
         | 'filter'
+        | 'lists'
         | 'request-list';
+    if (busy) return;
+    if (act === 'lists') {
+        void runListBatch();
+        return;
+    }
     if (act === 'request-list') {
         // 请求列表属 other-site 预加载功能：经自定义事件解耦（避免跨插件 import）
         document.dispatchEvent(new CustomEvent(PRELOAD_QUEUE_TOGGLE_EVENT));
@@ -360,43 +363,7 @@ async function runBatch(plugin: ListPagePlugin, kind: BatchActionKind, score = 0
     busy = true;
     renderBatchToolbar();
     try {
-        const carNums = selection.list();
-        const carList = await storageManager.getCarList();
-        if (kind === 'favorite') {
-            const favorites = carList.filter((car) => car.status === FAVORITE_ACTION).map((car) => car.carNum);
-            await applyPlan(planFavoriteBatch(carNums, infoByCarNum, favorites), '收藏', {
-                kind: 'favorite',
-                score: 0
-            });
-        } else if (kind === 'watched') {
-            await applyPlan(planWatchedBatch(carNums, infoByCarNum, score), `已读 ${score}星`, {
-                kind: 'watched',
-                score
-            });
-        } else if (kind === 'filter') {
-            const filtered = carList.filter((car) => car.status === FILTER_ACTION).map((car) => car.carNum);
-            await applyPlan(planFilterBatch(carNums, infoByCarNum, filtered), '拉黑', {
-                kind: 'favorite',
-                score: 0
-            });
-        } else {
-            const watched = carList.filter((car) => car.status === HAS_WATCH_ACTION).map((car) => car.carNum);
-            const plan = planUnwatchBatch(carNums, watched);
-            const changed = plan.carNums.length
-                ? await storageManager.clearCarWatchStatus(plan.carNums)
-                : 0;
-            // 取消已读的服务端对应操作是**删除评价记录**（破坏性远端操作，见 doc/31 §4）
-            let unwatchQueued = 0;
-            if (plan.carNums.length > 0) {
-                const targets: CarSaveInput[] = [];
-                for (const carNum of plan.carNums) {
-                    const info = infoByCarNum.get(carNum);
-                    if (info) targets.push({ carNum: info.carNum, url: info.url });
-                }
-                unwatchQueued = await enqueueIfServerSyncEnabled(targets, { kind: 'unwatch', score: 0 });
-            }
-            reportResult('取消已读', changed, plan.skipped.length, 0, unwatchQueued);
-        }
+        await executeBatchRating(selection.list(), infoByCarNum, kind, score);
         await refreshAfterBatch(plugin);
     } catch (error: unknown) {
         show.error('批量操作失败: ' + (error instanceof Error ? error.message : String(error)));
@@ -407,79 +374,33 @@ async function runBatch(plugin: ListPagePlugin, kind: BatchActionKind, score = 0
     }
 }
 
-/**
- * 执行写入计划并汇报结果。
- *
- * @param plan 写入计划
- * @param label 结果文案前缀
- * @param push 需要后台推送到 JavDB 时给出操作类型与评分（**不阻塞**，立即返回）
- */
-async function applyPlan(
-    plan: BatchPlan,
-    label: string,
-    push?: { kind: BatchPushKind; score: number }
-): Promise<void> {
-    if (plan.inputs.length > 0) {
-        await storageManager.saveCarList(plan.inputs);
-    }
-    // 本地已写入成功 → 入队后台推送（节流串行、带重试，不等待网络）
-    let queued = 0;
-    if (push && plan.inputs.length > 0) {
-        queued = await enqueueIfServerSyncEnabled(plan.inputs, push);
-    }
-    reportResult(label, plan.inputs.length, plan.skipped.length, plan.missing.length, queued);
-}
-
-/**
- * 按 `autoServerSync` 设置决定是否入队后台推送（与详情页评价校验同一开关，默认开启）。
- *
- * @param inputs 刚写入的记录
- * @param push 操作类型与评分
- * @returns 实际入队数（设置关闭或无有效 videoId 时为 0）
- */
-async function enqueueIfServerSyncEnabled(
-    inputs: CarSaveInput[],
-    push: { kind: BatchPushKind; score: number }
-): Promise<number> {
+/** 锁住当前选择快照，弹窗内部负责预写、网站确认和失败重试。 */
+async function runListBatch(): Promise<void> {
+    if (busy || selection.size === 0) return;
+    const plugin = activePlugin;
+    busy = true;
+    renderBatchToolbar();
     try {
-        if ((await storageManager.getSetting('autoServerSync', YES)) === NO) {
-            clog.log(`${BATCH_LOG} autoServerSync 已关闭，跳过 JavDB 推送`);
-            return 0;
-        }
-    } catch {
-        // 读设置失败按开启处理（与详情页校验的默认一致）
+        const items: BatchListItem[] = selection.list().map((key) => {
+            const info = infoByCarNum.get(key);
+            const videoId = extractVideoId(info?.url);
+            if (!info || !videoId) throw new Error(`无法定位视频 ${key}，请刷新卡片后重新选择`);
+            return { ...info, videoId };
+        });
+        await openBatchListDialog(items);
+        if (plugin && activePlugin === plugin) await refreshAfterBatch(plugin, false);
+    } catch (error: unknown) {
+        show.error('批量清单操作失败：' + (error instanceof Error ? error.message : String(error)));
+        clog.error(`${BATCH_LOG} 批量清单操作失败`, error);
+    } finally {
+        busy = false;
+        renderBatchToolbar();
     }
-    return enqueueBatchPush(
-        inputs.map((input) => ({ carNum: input.carNum, url: String(input.url ?? '') })),
-        push.kind,
-        push.score
-    );
-}
-
-/** 汇报批量结果（成功/跳过分别说明原因）。 */
-function reportResult(
-    label: string,
-    done: number,
-    skipped: number,
-    missing: number,
-    syncQueued = 0
-): void {
-    const parts = [`${label} ${done} 项`];
-    if (skipped > 0) parts.push(`跳过 ${skipped} 项（已是目标状态）`);
-    if (missing > 0) parts.push(`跳过 ${missing} 项（卡片信息缺失）`);
-    if (syncQueued > 0) parts.push(`已提交后台同步 JavDB ${syncQueued} 项`);
-    const msg = parts.join('，');
-    if (done > 0) {
-        show.ok(msg);
-    } else {
-        show.info(msg);
-    }
-    clog.log(`${BATCH_LOG} ${msg}`);
 }
 
 /** 写入完成后刷新：清空选择、重建勾选框、重新过滤（刷新状态标签）+ 刷新星级索引。 */
-async function refreshAfterBatch(plugin: ListPagePlugin): Promise<void> {
-    selection.clear();
+async function refreshAfterBatch(plugin: ListPagePlugin, clearSelection = true): Promise<void> {
+    if (clearSelection) selection.clear();
     infoByCarNum.clear();
     await plugin.doFilter();
     syncBatchCheckboxes(plugin);

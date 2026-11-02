@@ -1,338 +1,388 @@
-/**
- * 列表页批量操作 → JavDB **后台推送队列**（doc/31）。
- *
- * 需求：批量「收藏 / 已读 N星」写完本地后应**立即**推送 JavDB，而不是等用户日后打开详情页
- * 由评价状态校验补推；推送**在后台懒加载、慢慢进行、不阻塞**批量操作本身。
- *
- * 设计要点：
- * - **不阻塞**：`enqueueBatchPush` 同步返回，调用方（批量写库）不等待任何网络；
- * - **节流**：逐项串行，每项之间 `PACING_MS`（默认 900ms），避免批量打满站点被 CF 拦截；
- * - **失败重试**：每项最多尝试 `MAX_ATTEMPTS`（默认 2）次，重试项退回队尾，最终失败的计入统计；
- * - **复用既有原语**：`sync-common` 的 `postWantToWatch` / `postWatched` / `extractVideoId`
- *   —— 与「JHS ↔ JavDB 同步」面板走同一条 API 路径，不重复实现；
- * - **尊重设置**：`autoServerSync` 关闭时调用方不入队（见 lp-batch.tsx）；
- * - **兜底**：队列只活在当前页面，未推完就离开页面时，详情页的评价状态自动校验（方向 1/3）
- *   仍会在下次打开该影片时补齐 —— 不会造成「本地与服务器永久不一致」。
- */
+/** 列表页评价后台队列及批量清单操作前的阻塞式补同步。 */
+import { BATCH_RATING_SYNC_LOCK, FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
+import { normalizeCarNum } from '../../core/domain/car-num';
+import { withExclusiveLock } from '../../core/sync/sync-lock';
+import { siteSelector } from '../../core/util/site/selectors';
+
+import { readServerReviewState } from '../detail-page-button/dpb-review-sync';
 import {
-    deleteReview,
-    extractVideoId,
-    fetchPageHtml,
-    findReviewIdInHtml,
-    postWantToWatch,
-    postWatched
+    deleteReview, extractVideoId, fetchPageHtml, findReviewIdInHtml,
+    postWantToWatch, postWatched
 } from '../setting/jhs-sync/sync-common';
-
 import {
-    cancelOpSyncRecord,
-    listOpSyncRecords,
-    setOpSyncState,
-    upsertOpSync,
-    type OpSyncKind,
-    type OpSyncOrigin
+    cancelOpSyncRecord, getOpSyncRecord, isCurrentOpSyncIntent, listOpSyncRecords, setOpSyncState, upsertOpSync, withStrictOpSyncPersistenceSync,
+    type OpSyncKind, type OpSyncOrigin, type OpSyncRecord
 } from '../setting/jhs-sync/op-sync-records';
 
-/**
- * 需要推送的操作类型。
- *
- * - `favorite`：设为 JavDB 想看；
- * - `watched`：设为已看 + 评分；
- * - `unwatch`：删除 JavDB 评价记录（= 服务器侧的「取消已读」）。这是**破坏性远端操作**
- *   （会一并移除服务器上该影片的评价正文），仅在用户明确意图下使用，见 doc/31 §4。
- */
 export type BatchPushKind = 'favorite' | 'watched' | 'unwatch';
-
-/** 待推送的一项（本地已完成写入）。 */
-export interface BatchPushItem {
-    /** 番号（仅用于日志与统计）。 */
-    carNum: string;
-    /** 详情页 url（`/v/{id}`，用于提取 videoId）。 */
-    url: string;
-}
-
-/** 队列内条目。 */
+export interface BatchPushItem { carNum: string; url: string }
 export interface BatchPushEntry extends BatchPushItem {
     kind: BatchPushKind;
     score: number;
     videoId: string;
     attempts: number;
+    revision?: string;
+    recordKind?: OpSyncKind;
+    origin?: OpSyncOrigin;
 }
-
-/** 队列状态快照。 */
 export interface BatchSyncStatus {
-    /** 仍在队列中的项数（含待重试）。 */
     pending: number;
-    /** 已成功推送数。 */
     succeeded: number;
-    /** 最终失败数（重试耗尽）。 */
     failed: number;
-    /** 是否有定时任务在跑。 */
     scheduled: boolean;
 }
 
-/** 两次推送之间的间隔（温和节流）。 */
 const DEFAULT_PACING_MS = 900;
-
-/** 单项最大尝试次数（含首次）。 */
 const MAX_ATTEMPTS = 2;
-
-/** 运行时 pacing（可被入队参数覆盖，便于测试）。 */
 let pacingMs = DEFAULT_PACING_MS;
-
-/** 待推送队列。 */
 let queue: BatchPushEntry[] = [];
-
-/** 定时器句柄（同一时刻最多一个）。 */
 let timer: ReturnType<typeof setTimeout> | null = null;
-
-/** 累计统计（一次连队跑完或停止时重置）。 */
+let active: Promise<void> | null = null;
+let activeEntry: BatchPushEntry | null = null;
+const claimedScopes = new Set<(item: BatchPushItem) => boolean>();
+const scopedExecutions = new Map<string, ReturnType<typeof executeEntry>>();
 const stats = { succeeded: 0, failed: 0 };
 
-/**
- * 构造推送计划（**纯函数**，便于单测）：解析 videoId、过滤无法定位的项。
- *
- * @param items 待推送项（通常为刚写入 car_list 的记录）
- * @param kind 操作类型
- * @param score 评分（仅 `watched` 有效，0–5）
- * @returns 可入队条目 + 因缺少 videoId 被跳过的番号
- */
-export function planBatchPush(
-    items: BatchPushItem[],
-    kind: BatchPushKind,
-    score = 0
-): { entries: BatchPushEntry[]; skipped: string[] } {
+/** 纯计划函数：URL 无法定位的项单独返回，不静默计为成功。 */
+export function planBatchPush(items: BatchPushItem[], kind: BatchPushKind, score = 0): {
+    entries: BatchPushEntry[]; skipped: string[];
+} {
     const entries: BatchPushEntry[] = [];
     const skipped: string[] = [];
     for (const item of items) {
         const videoId = extractVideoId(item.url);
-        if (!videoId) {
-            skipped.push(item.carNum);
-            continue;
-        }
-        entries.push({ carNum: item.carNum, url: item.url, kind, score, videoId, attempts: 0 });
+        if (!videoId) skipped.push(item.carNum);
+        else entries.push({ carNum: item.carNum, url: item.url, kind, score, videoId, attempts: 0 });
     }
     return { entries, skipped };
 }
 
-/**
- * 入队并启动后台推送（**同步返回，不等待网络**）。
- *
- * @param items 待推送项
- * @param kind 操作类型
- * @param score 评分（仅 `watched` 有效）
- * @param options.pacingMs 覆盖节流间隔（测试用）
- * @returns 实际入队数
- */
+/** 先登记持久化意图，再启动后台队列。清单补同步期间的新登记由排空循环接管。 */
 export function enqueueBatchPush(
-    items: BatchPushItem[],
-    kind: BatchPushKind,
-    score = 0,
-    options?: { pacingMs?: number; origin?: OpSyncOrigin }
+    items: BatchPushItem[], kind: BatchPushKind, score = 0,
+    options?: { pacingMs?: number; origin?: OpSyncOrigin; recordKind?: OpSyncKind }
 ): number {
     if (options?.pacingMs !== undefined) pacingMs = options.pacingMs;
     const { entries, skipped } = planBatchPush(items, kind, score);
-    if (skipped.length > 0) {
-        clog.warn(`[列表页批量操作] ${skipped.length} 项缺少 videoId，跳过 JavDB 推送: ${skipped.join(', ')}`);
-        // 记账（doc/38）：缺 videoId 也属「本地已写、网站未同步」，标 failed 在面板可见并可重试
-        for (const carNum of skipped) {
-            const item = items.find((i) => i.carNum === carNum);
-            upsertOpSync({ carNum, url: item?.url ?? '', kind, score, origin: options?.origin ?? 'list' });
-            setOpSyncState(carNum, kind, 'failed', { error: '缺少 videoId，无法定位详情页' });
+    for (const item of items) {
+        const recordKind = options?.recordKind ?? kind;
+        const record = upsertOpSync({ ...item, kind: recordKind, score, origin: options?.origin ?? 'list' });
+        const entry = entries.find((candidate) => candidate.carNum === item.carNum);
+        if (entry) {
+            entry.revision = record.revision;
+            entry.recordKind = recordKind;
+            entry.origin = record.origin;
+        } else {
+            setOpSyncState(item.carNum, recordKind, 'failed', {
+                error: '缺少 videoId，无法定位详情页', expectedRevision: record.revision
+            });
         }
     }
-    if (entries.length === 0) return 0;
-    // 记账（doc/38）：入队即登记为「待推送」，供设置面板展示进度与状态
-    for (const entry of entries) {
-        upsertOpSync({
-            carNum: entry.carNum,
-            url: entry.url,
-            kind: entry.kind,
-            score: entry.score,
-            origin: options?.origin ?? 'list'
-        });
-    }
+    if (skipped.length) clog.warn(`[列表页批量操作] ${skipped.length} 项缺少 videoId: ${skipped.join(', ')}`);
     queue.push(...entries);
-    schedule(0);
+    if (entries.length) schedule(0);
     return entries.length;
 }
 
-/** 当前队列状态快照。 */
 export function getBatchSyncStatus(): BatchSyncStatus {
-    return { pending: queue.length, succeeded: stats.succeeded, failed: stats.failed, scheduled: timer !== null };
+    return { pending: queue.length, ...stats, scheduled: timer !== null || active !== null };
 }
 
-/**
- * 停止后台推送并清空队列（插件销毁 / 页面卸载时调用）。
- * 未推完的项由详情页评价状态校验兜底补齐。
- */
+/** 页面退出只清内存；未确认的账本记录保留供后续恢复。 */
 export function stopBatchSync(): void {
-    if (timer !== null) {
-        clearTimeout(timer);
-        timer = null;
-    }
-    const dropped = queue.length;
-    if (dropped > 0) {
-        clog.warn(`[列表页批量操作] 后台同步中止，剩余 ${dropped} 项交由详情页校验补推`);
-    }
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
     queue = [];
-    resetStats();
+    stats.succeeded = 0;
+    stats.failed = 0;
 }
 
-/** 仅在测试中重置模块状态（不改生产行为）。 */
 export function resetBatchSyncForTest(): void {
     stopBatchSync();
     pacingMs = DEFAULT_PACING_MS;
 }
 
-/** 排队下一次执行（去重：同一时刻只挂一个定时器）。 */
 function schedule(delay: number): void {
-    if (timer !== null) return;
+    if (timer !== null || active || !queue.some((entry) => !isClaimed(entry))) return;
     timer = setTimeout(() => {
         timer = null;
-        void step();
+        active = step().finally(() => {
+            active = null;
+            activeEntry = null;
+            if (queue.some((entry) => !isClaimed(entry))) schedule(pacingMs);
+            else if (!queue.length) finish();
+        });
     }, delay);
 }
 
-/**
- * 执行单项推送。
- *
- * `unwatch` 需先拉详情页取 reviewId：服务器上本就无评价时直接视为已完成（不做多余请求）。
- *
- * @param entry 队列条目
- */
-async function pushEntry(entry: BatchPushEntry): Promise<void> {
-    if (entry.kind === 'favorite') {
-        await postWantToWatch(entry.videoId);
-        return;
-    }
-    if (entry.kind === 'watched') {
-        await postWatched(entry.videoId, entry.score);
-        return;
+/** 发请求前重新读 GM；旧意图、用户取消和其他标签页已完成的项不重推。 */
+function currentRecord(entry: BatchPushEntry): OpSyncRecord | null {
+    const kind = entry.recordKind ?? entry.kind;
+    const record = getOpSyncRecord(entry.carNum, kind);
+    return record && isCurrentOpSyncIntent({ carNum: entry.carNum, kind, revision: entry.revision }) ? record : null;
+}
+
+/** 恢复旧账本以当前本地评价为准，避免重推已经过期的收藏或星级。 */
+async function matchesLocal(record: OpSyncRecord): Promise<boolean> {
+    storageManager.clearCarListCache();
+    const car = await storageManager.getCar(record.carNum);
+    if (record.kind === 'favorite') return car?.status === FAVORITE_ACTION;
+    if (record.kind === 'watched') return car?.status === HAS_WATCH_ACTION && (car.score ?? 0) === record.score;
+    if (record.kind === 'filter') return car?.status === FILTER_ACTION;
+    return !car?.status;
+}
+
+/** 站点回读复用详情页原生评价解析器，HTTP 2xx 本身不计成功。 */
+async function pushEntry(entry: BatchPushEntry, signal?: AbortSignal): Promise<'confirmed' | 'stopped'> {
+    if (signal?.aborted) return 'stopped';
+    if (entry.kind === 'favorite') await postWantToWatch(entry.videoId);
+    else if (entry.kind === 'watched') await postWatched(entry.videoId, entry.score);
+    else {
+        const before = await fetchPageHtml(`/v/${entry.videoId}`);
+        const reviewId = findReviewIdInHtml(before);
+        // 获取 reviewId 属只读准备；停止后不能再启动删除这一新的站点写请求。
+        if (signal?.aborted) return 'stopped';
+        if (reviewId) await deleteReview(entry.videoId, reviewId);
     }
     const html = await fetchPageHtml(`/v/${entry.videoId}`);
-    const reviewId = findReviewIdInHtml(html);
-    if (!reviewId) return; // 服务器上无评价记录 → 已是目标状态
-    await deleteReview(entry.videoId, reviewId);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    if (!doc.querySelector(siteSelector('detailReviewButtons'))) throw new Error('未取得有效的网站评价状态');
+    const state = readServerReviewState(doc);
+    const confirmed = entry.kind === 'favorite' ? state.want
+        : entry.kind === 'watched' ? state.watched && state.score === entry.score
+        : !state.want && !state.watched;
+    if (!confirmed) throw new Error('网站回读尚未确认目标评价');
+    return 'confirmed';
 }
 
-/** 处理一项：成功计入统计，失败退回队尾重试，重试耗尽则计失败。 */
+/** 后台队列和补同步共用跨标签页锁，旧回执按 revision 回绑。 */
+async function executeEntry(entry: BatchPushEntry, checkLocal: boolean, signal?: AbortSignal): Promise<'success' | 'failed' | 'skipped' | 'stopped'> {
+    return withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+        if (signal?.aborted) return 'stopped';
+        const persist = <T,>(task: () => T): T => checkLocal ? withStrictOpSyncPersistenceSync(task) : task();
+        const record = persist(() => currentRecord(entry));
+        if (!record) return 'skipped';
+        const localMatches = !checkLocal || await matchesLocal(record);
+        if (signal?.aborted) return 'stopped';
+        if (!localMatches) {
+            persist(() => setOpSyncState(record.carNum, record.kind, 'cancelled', {
+                error: '当前本地评价已变化，不再重推旧操作', expectedRevision: record.revision
+            }));
+            return 'skipped';
+        }
+        if (!persist(() => currentRecord(entry))) return 'skipped';
+        if (signal?.aborted) return 'stopped';
+        const patch = { attempts: entry.attempts, expectedRevision: entry.revision };
+        if (!persist(() => setOpSyncState(record.carNum, record.kind, 'running', patch))) return 'skipped';
+        try {
+            const pushed = await pushEntry(entry, signal);
+            if (pushed === 'stopped') {
+                if (persist(() => currentRecord(entry))) {
+                    persist(() => setOpSyncState(record.carNum, record.kind, 'pending', { ...patch, error: '' }));
+                }
+                return 'stopped';
+            }
+            if (!persist(() => currentRecord(entry))) return 'skipped';
+            persist(() => setOpSyncState(record.carNum, record.kind, 'success', { ...patch, error: '' }));
+            return 'success';
+        } catch (error: unknown) {
+            entry.attempts++;
+            if (!persist(() => currentRecord(entry))) return 'skipped';
+            const reason = error instanceof Error ? error.message : String(error);
+            persist(() => setOpSyncState(record.carNum, record.kind, 'failed', {
+                attempts: entry.attempts, expectedRevision: entry.revision, error: reason
+            }));
+            clog.warn(`[列表页批量操作] 同步未完成 ${record.carNum}: ${reason}`);
+            return 'failed';
+        }
+    });
+}
+
 async function step(): Promise<void> {
-    const entry = queue.shift();
-    if (!entry) {
-        finish();
-        return;
+    const index = queue.findIndex((entry) => !isClaimed(entry));
+    if (index < 0) return;
+    const [entry] = queue.splice(index, 1);
+    activeEntry = entry;
+    const result = await executeEntry(entry, false);
+    if (result === 'success') stats.succeeded++;
+    if (result === 'failed') {
+        if (entry.attempts < MAX_ATTEMPTS) queue.push(entry);
+        else stats.failed++;
     }
-    setOpSyncState(entry.carNum, entry.kind, 'running', { attempts: entry.attempts });
-    try {
-        await pushEntry(entry);
-        stats.succeeded++;
-        setOpSyncState(entry.carNum, entry.kind, 'success', { attempts: entry.attempts, error: '' });
-        clog.log(`[列表页批量操作] 已同步 JavDB: ${entry.carNum}`);
-    } catch (error: unknown) {
-        entry.attempts++;
-        const reason = error instanceof Error ? error.message : String(error);
-        if (entry.attempts < MAX_ATTEMPTS) {
-            queue.push(entry);
-            setOpSyncState(entry.carNum, entry.kind, 'pending', { attempts: entry.attempts, error: reason });
-            clog.warn(`[列表页批量操作] 同步失败将重试（${entry.attempts}/${MAX_ATTEMPTS}）: ${entry.carNum} — ${reason}`);
-        } else {
-            stats.failed++;
-            setOpSyncState(entry.carNum, entry.kind, 'failed', { attempts: entry.attempts, error: reason });
-            clog.error(`[列表页批量操作] 同步 JavDB 失败: ${entry.carNum} — ${reason}`);
-        }
-    }
-    schedule(queue.length > 0 ? pacingMs : 0);
 }
 
-/** 队列清空后的收尾：汇总 toast（只在确实推过东西时提示）+ 统计重置。 */
 function finish(): void {
-    const { succeeded, failed } = stats;
-    if (succeeded > 0 || failed > 0) {
-        const msg =
-            `后台同步 JavDB 完成：成功 ${succeeded} 项` + (failed > 0 ? `，失败 ${failed} 项（详见日志）` : '');
-        if (failed > 0) {
-            show.error(msg);
-        } else {
-            show.ok(msg);
-        }
-        clog.log(`[列表页批量操作] ${msg}`);
+    if (stats.succeeded || stats.failed) {
+        const message = `后台同步 JavDB 完成：成功 ${stats.succeeded} 项，失败 ${stats.failed} 项`;
+        if (stats.failed) show.error(message); else show.ok(message);
     }
-    resetStats();
-}
-
-/** 重置累计统计。 */
-function resetStats(): void {
     stats.succeeded = 0;
     stats.failed = 0;
 }
 
 /**
- * 记录类型 → 站点推送类型。
- *
- * 拉黑在站点侧等价于「已读 0 星」（与详情页 quickBlock 语义一致），
- * 因此映射为 `watched`。
- *
- * @param kind 记录类型
- * @returns 队列推送类型
+ * 仅同步本次清单视频已有的未完成评价；其他视频保持后台异步。
+ * 各调用独立接管目标范围，不合并不同清单任务；失败留账供同范围恢复。
+ * 停止只阻止后续任务，不中止在途网络；total 仅计已处理项，stopped 表示仍需恢复。
  */
+export function drainBatchRatings(
+    targets: readonly BatchPushItem[],
+    onProgress?: (done: number, total: number, failed: number) => void,
+    signal?: AbortSignal
+): Promise<{ total: number; succeeded: number; failed: number; stopped?: boolean }> {
+    const matches = targetMatcher(targets);
+    const taken: BatchPushEntry[] = [];
+    claimedScopes.add(matches);
+    const run = async () => {
+        const handled = new Set<string>();
+        const result = { total: 0, succeeded: 0, failed: 0 };
+        if (signal?.aborted) return { ...result, stopped: true };
+        if (!targets.length) return result;
+        while (true) {
+            if (signal?.aborted) return { ...result, stopped: true };
+            const records = withStrictOpSyncPersistenceSync(() => listOpSyncRecords({ states: ['pending', 'running', 'failed'] }))
+                .filter((record) => matches(record) && !handled.has(identity(record)))
+                .sort((a, b) => (a.requestedAt ?? a.enqueuedAt) - (b.requestedAt ?? b.enqueuedAt));
+            const record = records[0];
+            if (!record) break;
+            handled.add(identity(record));
+            const kind = toBatchPushKind(record.kind);
+            const entry: BatchPushEntry = {
+                ...record, recordKind: record.kind, kind,
+                videoId: extractVideoId(record.url) ?? '', attempts: 0
+            };
+            taken.push(...removeClaimedEntry(record));
+            if (!withStrictOpSyncPersistenceSync(() => currentRecord(entry))) {
+                if (wasConfirmed(record)) {
+                    result.total++;
+                    result.succeeded++;
+                    onProgress?.(result.succeeded + result.failed, result.total + records.length - 1, result.failed);
+                }
+                continue;
+            }
+            result.total++;
+            onProgress?.(result.succeeded + result.failed, result.total + records.length - 1, result.failed);
+            let outcome: 'success' | 'failed' | 'skipped' | 'stopped' = 'stopped';
+            // 只等待该版本目标的在途任务；无关 active 不整体等待。
+            if (active && activeEntry && identity(activeEntry) === identity(record)) {
+                await active;
+                taken.push(...removeClaimedEntry(record));
+                if (wasConfirmed(record)) outcome = 'success';
+                else {
+                    const latest = withStrictOpSyncPersistenceSync(() => getOpSyncRecord(record.carNum, record.kind));
+                    if (latest?.revision === record.revision && latest?.state === 'failed') outcome = 'failed';
+                }
+            }
+            do {
+                if (signal?.aborted) break;
+                if (!entry.videoId) {
+                    outcome = 'failed';
+                    withStrictOpSyncPersistenceSync(() => setOpSyncState(record.carNum, record.kind, 'failed', {
+                        error: '缺少 videoId，无法定位详情页', expectedRevision: record.revision
+                    }));
+                    break;
+                }
+                const key = identity(record);
+                let execution = scopedExecutions.get(key);
+                if (!execution) {
+                    execution = executeEntry(entry, true, signal).finally(() => scopedExecutions.delete(key));
+                    scopedExecutions.set(key, execution);
+                }
+                outcome = await execution;
+                if (outcome === 'skipped' && wasConfirmed(record)) outcome = 'success';
+                if (outcome === 'failed') {
+                    const latest = withStrictOpSyncPersistenceSync(() => getOpSyncRecord(record.carNum, record.kind));
+                    if (latest && latest.revision === record.revision) entry.attempts = Math.max(entry.attempts, latest.attempts);
+                }
+                if (signal?.aborted) break;
+                if (outcome === 'failed' && entry.attempts < MAX_ATTEMPTS) await pause(signal);
+            } while ((outcome === 'failed' && entry.attempts < MAX_ATTEMPTS) || (outcome === 'stopped' && !signal?.aborted));
+            if (outcome === 'success') result.succeeded++;
+            else if (outcome === 'failed') result.failed++;
+            else result.total--;
+            onProgress?.(result.succeeded + result.failed, result.total + records.length - 1, result.failed);
+            if (signal?.aborted) return { ...result, stopped: true };
+            if (records.length > 1) await pause(signal);
+        }
+        return result;
+    };
+    return run().finally(() => {
+        claimedScopes.delete(matches);
+        // 只暂停清单的阻塞补同步；原本属于后台队列的未完成意图可继续后台执行。
+        if (signal?.aborted) {
+            for (const entry of taken) {
+                const latest = getOpSyncRecord(entry.carNum, entry.recordKind ?? entry.kind);
+                if (!latest || latest.revision !== entry.revision || latest.state === 'success' || latest.state === 'cancelled') continue;
+                if (latest.state === 'failed' && latest.attempts >= MAX_ATTEMPTS) continue;
+                if (!queue.some((queued) => identity(queued) === identity(entry))) {
+                    queue.push({ ...entry, attempts: latest.attempts });
+                }
+            }
+        }
+        if (!queue.length && !active) finish();
+        else schedule(0);
+    });
+}
+
+/** 两侧都有网站 ID 时只认 ID；缺 ID 时才回退到统一的番号归一化口径。 */
+function targetMatcher(targets: readonly BatchPushItem[]): (item: BatchPushItem) => boolean {
+    const scope = targets.map((item) => ({ videoId: extractVideoId(item.url), carNum: normalizeCarNum(item.carNum) }));
+    return (item) => {
+        const videoId = extractVideoId(item.url);
+        const carNum = normalizeCarNum(item.carNum);
+        return scope.some((target) => target.videoId && videoId
+            ? target.videoId === videoId : !!carNum && target.carNum === carNum);
+    };
+}
+
+function isClaimed(entry: BatchPushEntry): boolean {
+    return [...claimedScopes].some((matches) => matches(entry));
+}
+
+function removeClaimedEntry(record: OpSyncRecord): BatchPushEntry[] {
+    const removed = queue.filter((entry) => identity(entry) === identity(record));
+    queue = queue.filter((entry) => identity(entry) !== identity(record));
+    return removed;
+}
+
+/** 目标可能在读取待办后由在途任务确认，仍应计入本轮成功且不重发。 */
+function wasConfirmed(record: OpSyncRecord): boolean {
+    const latest = withStrictOpSyncPersistenceSync(() => getOpSyncRecord(record.carNum, record.kind));
+    return latest?.revision === record.revision && latest?.state === 'success';
+}
+
+function identity(record: Pick<OpSyncRecord, 'carNum' | 'kind' | 'revision' | 'score'> & { enqueuedAt?: number; recordKind?: OpSyncKind }): string {
+    return `${record.carNum}::${record.recordKind ?? record.kind}::${record.revision ?? `${record.enqueuedAt}:${record.score}`}`;
+}
+function pause(signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve) => {
+        const finish = () => {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', finish);
+            resolve();
+        };
+        const timer = setTimeout(finish, pacingMs);
+        signal?.addEventListener('abort', finish, { once: true });
+        if (signal?.aborted) finish();
+    });
+}
+
 export function toBatchPushKind(kind: OpSyncKind): BatchPushKind {
     return kind === 'filter' ? 'watched' : kind;
 }
-
-/**
- * 从设置面板**重试**一条记录（doc/38）：重新入队，走与批量操作同一条推送路径。
- *
- * @param record 待重试记录
- * @returns 是否已入队（url 无法定位 videoId 时为 false）
- */
-export function retryOpSync(record: {
-    carNum: string;
-    url: string;
-    kind: OpSyncKind;
-    score: number;
-    origin: OpSyncOrigin;
-}): boolean {
-    const queued = enqueueBatchPush([{ carNum: record.carNum, url: record.url }], toBatchPushKind(record.kind), record.score, {
-        origin: record.origin
-    });
-    return queued > 0;
+export function retryOpSync(record: Pick<OpSyncRecord, 'carNum' | 'url' | 'kind' | 'score' | 'origin'>): boolean {
+    return enqueueBatchPush([record], toBatchPushKind(record.kind), record.score, {
+        origin: record.origin, recordKind: record.kind
+    }) > 0;
 }
-
-/**
- * 从设置面板**重试全部失败记录**。
- *
- * @returns 实际入队条数
- */
 export function retryFailedOpSync(): number {
-    let queued = 0;
-    for (const record of listOpSyncRecords({ states: ['failed'] })) {
-        if (retryOpSync(record)) queued++;
-    }
-    return queued;
+    return listOpSyncRecords({ states: ['failed'] }).filter(retryOpSync).length;
 }
-
-/**
- * 从设置面板**取消**一条记录：先从内存队列移除，再把记录置 `cancelled`。
- *
- * 注意：只影响同步记录（不再自动重推），**不回滚 car_list 里已写入的本地状态**
- * —— 本地状态是用户明确执行过的操作行为，不应因远端同步被取消而消失。
- *
- * @param carNum 番号
- * @param kind 操作类型
- * @returns 是否找到并取消了记录
- */
 export function cancelOpSync(carNum: string, kind: OpSyncKind): boolean {
-    queue = queue.filter((e) => !(e.carNum === carNum && e.kind === kind));
+    queue = queue.filter((entry) => entry.carNum !== carNum || (entry.recordKind ?? entry.kind) !== kind);
     return cancelOpSyncRecord(carNum, kind);
 }
-
-/**
- * 当前内存队列中是否仍有该（番号 × 操作）—— 面板用于区分「排队中」与「已随页面离开而中断」。
- *
- * @param carNum 番号
- * @param kind 操作类型
- */
 export function isOpSyncQueued(carNum: string, kind: OpSyncKind): boolean {
-    return queue.some((e) => e.carNum === carNum && e.kind === kind);
+    return queue.some((entry) => entry.carNum === carNum && (entry.recordKind ?? entry.kind) === kind);
 }

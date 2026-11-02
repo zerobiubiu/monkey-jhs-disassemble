@@ -21,6 +21,7 @@ import {
     PENDING_SYNC_PREFIX
 } from '../vlt-helpers';
 import type { ListInfo, MovieInfo } from '../vlt-helpers';
+import { isCurrentListIntent, publishListIntent } from './vlt-intent';
 
 export interface PendingServerSync {
     version: 1;
@@ -29,6 +30,8 @@ export interface PendingServerSync {
     movieInfo: MovieInfo;
     listInfo: ListInfo;
     createdAt: number;
+    /** 旧版日志缺省；新版在预写完成后登记到跨入口最新意图权威。 */
+    intentId?: string;
 }
 
 export interface AuthoritativeCheckboxState {
@@ -49,12 +52,17 @@ export async function createPendingJournal(entry: PendingServerSync): Promise<st
                 ? crypto.randomUUID()
                 : `${Math.random().toString(36).slice(2)}-${Date.now()}`;
         const key = `${PENDING_SYNC_PREFIX}${entry.createdAt}:${randomPart}`;
+        entry.intentId ||= randomPart;
         await writePersistentValueAndWait(
             'vltPending',
             key.slice(PENDING_SYNC_PREFIX.length),
             key,
             entry
         );
+        publishListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId, entry.createdAt, entry.desiredChecked, { explicit: true });
+        if (!isCurrentListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId)) {
+            throw new Error('清单操作已被较新意图取代');
+        }
         return key;
     } catch (error) {
         clog.error(`${LOG_PREFIX} 无法写入清单同步恢复日志`, error);
@@ -85,7 +93,8 @@ export function readPendingJournals(): { key: string; entry: PendingServerSync }
             !entry.movieInfo?.designation ||
             !entry.listInfo?.list_id ||
             typeof entry.desiredChecked !== 'boolean' ||
-            typeof entry.createdAt !== 'number'
+            typeof entry.createdAt !== 'number' || !Number.isSafeInteger(entry.createdAt) || entry.createdAt < 0 ||
+            (entry.intentId !== undefined && (typeof entry.intentId !== 'string' || !entry.intentId.trim()))
         ) {
             removePersistentValue('vltPending', entryKey, key);
             continue;
@@ -103,6 +112,8 @@ export async function postJavdbListMutation(
     const csrfToken = getCsrfToken();
     if (!csrfToken) return { kind: 'rejected', message: '无法获取 CSRF token' };
 
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
         const response = await fetch(
             new URL('/users/save_video_to_list', window.location.origin).href,
@@ -113,6 +124,7 @@ export async function postJavdbListMutation(
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
+                signal: controller.signal,
                 credentials: 'same-origin'
             }
         );
@@ -129,6 +141,8 @@ export async function postJavdbListMutation(
             kind: 'unknown',
             message: error instanceof Error ? error.message : String(error)
         };
+    } finally {
+        window.clearTimeout(timeout);
     }
 }
 
@@ -142,7 +156,7 @@ export async function fetchAuthoritativeCheckboxState(
         url.searchParams.set('vid', videoId);
         const visited = new Set<string>();
 
-        for (let page = 0; url && page < 50; page++) {
+        while (url) {
             if (visited.has(url.href)) return null;
             visited.add(url.href);
             const result = await fetchSimpleListsPage(url.href, videoId);

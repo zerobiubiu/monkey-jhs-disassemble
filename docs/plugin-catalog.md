@@ -17,7 +17,7 @@
 
 | 插件 | 职责 |
 |------|------|
-| ListPagePlugin | 列表页主插件：过滤/状态标签/翻译/点击绑定；首页推荐复用卡片处理与独立三栏筛选，主流排序/翻页/筛选统计保持独立 |
+| ListPagePlugin | 列表页过滤/状态标签/翻译/点击；推荐浮层独立筛选；评价与聚合清单同批配置、自动路由、预写/回查/进度/恢复、手动停止与继续；仅目标视频评价阻塞同步，其余保持后台 |
 | AutoPagePlugin | 瀑布流自动翻页 |
 | FoldCategoryPlugin | 折叠分类 |
 | HistoryPlugin | 鉴定记录 |
@@ -27,7 +27,7 @@
 | Top250Plugin | Top250 排行榜 |
 | DetailPagePlugin | 详情页主插件 |
 | ReviewPlugin | 评论 |
-| DetailPageButtonPlugin | 详情页按钮（想看/观看/评分/清单/字幕/清单序号合并/评价状态自动校验同步） |
+| DetailPageButtonPlugin | 详情页想看/观看/评分/清单/字幕/清单序号合并/自动校验；快捷评价与列表同步共享执行锁及 revision 回执保护 |
 | HighlightMagnetPlugin | 高亮磁链 |
 | PreviewVideoPlugin | 预览视频 |
 | ActressInfoPlugin | 演员信息 |
@@ -53,7 +53,7 @@
 | ListWaterfallPlugin | listWaterfall.user.js |
 | ListReadingStatusPlugin | listReadingStatus.user.js |
 | ModalListDisablerPlugin | modalListDisabler.user.js |
-| VideoListsTagPlugin | listsOptionSync + videoListsTag |
+| VideoListsTagPlugin | listsOptionSync + videoListsTag；原生与批量清单共用最新意图及 videoId 关联锁，恢复、自动补推和快照回写拒绝旧意图 |
 | CarListReaderPlugin | jhsCarListReader.user.js |
 | MissavStatusTagPlugin | missavStatusTag.user.js |
 | MissavQuickCopyPlugin | MissAV Quick Copy & Javdb Search.user.js |
@@ -97,7 +97,7 @@
 | storage/blacklist-car-list-ops.ts | 黑名单番号清单读写（缓存 + 修订号） |
 | storage/cache-invalidation.ts | 按写入类型（data/settings）分流远程缓存失效（doc/39） |
 | storage/backup-restore.ts | 备份全键写入、JSON 值深比较、持久化回读与失败补偿（不清空无关键） |
-| storage/car-list-ops.ts | 番号清单 car_list 增删改查（saveCar/removeCar/batchRemoveCars + 变更回调） |
+| storage/car-list-ops.ts | 番号清单 car_list 增删改查与共享短写锁；条件批量提交保护组合评价；变更回调与修订号 |
 | storage/favorite-actress-ops.ts | 收藏演员清单读写 |
 | storage/keyword-ops.ts | 标题/评论过滤关键词读写 |
 | storage/storage-migrations.ts | 版本化存储迁移（含历史 snake_case 兼容步骤） |

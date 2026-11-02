@@ -10,7 +10,7 @@ import { handleCheckboxChange } from '../vlt-checkbox';
 import {
     reconcileListWithJavdb
 } from '../vlt-reconcile';
-import { enqueueAssociationTask } from '../vlt-lock-queue';
+import { enqueueAssociationTask, listAssociationKey } from '../vlt-lock-queue';
 import {
     LOG_PREFIX,
     setListCheckboxState,
@@ -24,12 +24,15 @@ import {
     removePendingJournal
 } from './vlt-server-api';
 import type { AuthoritativeCheckboxState, PendingServerSync } from './vlt-server-api';
+import { isCurrentListIntent, publishListIntent } from './vlt-intent';
 
 export async function commitAuthoritativeState(
     entry: PendingServerSync,
     authoritative: AuthoritativeCheckboxState,
     notify: boolean
 ): Promise<boolean> {
+    if (!entry.intentId || !isCurrentListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId)) return false;
+    if (!authoritative.name) return false;
     // doc/234：权威状态与用户期望相反 → 服务器大概率未写入该变更（网络抖动等），
     // 按「脚本记录优先」重试推送用户期望状态；重推确认后才以期望状态提交本地。
     if (authoritative.checked !== entry.desiredChecked) {
@@ -46,7 +49,7 @@ export async function commitAuthoritativeState(
             return false;
         }
         const recheck = await fetchAuthoritativeCheckboxState(entry.videoId, entry.listInfo.list_id);
-        if (!recheck || recheck.checked !== entry.desiredChecked) {
+        if (!recheck?.name || recheck.checked !== entry.desiredChecked) {
             console.warn(
                 `${LOG_PREFIX} 重推后仍无法确认期望状态，保留恢复日志：` +
                     `${entry.movieInfo.designation} ${entry.listInfo.list_id}`
@@ -87,6 +90,7 @@ export async function commitAuthoritativeState(
         }
     }
 
+    if (!isCurrentListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId)) return false;
     const result = await handleCheckboxChange(
         entry.movieInfo,
         listInfo,
@@ -123,9 +127,17 @@ export async function commitAuthoritativeState(
 }
 
 export async function recoverPendingServerSyncs(): Promise<void> {
-    for (const { key, entry } of readPendingJournals()) {
-        const associationKey = `${entry.movieInfo.designation}::${entry.listInfo.list_id}`;
+    // 尚无权威记录的升级场景先恢复最新日志，再让旧日志服从最新意图。
+    for (const { key, entry } of readPendingJournals().slice().reverse()) {
+        const associationKey = listAssociationKey(entry.videoId, entry.listInfo.list_id);
         await enqueueAssociationTask(associationKey, async () => {
+            // 枚举后可能等待另一个标签页的新操作，必须在关联锁内重新确认最新身份。
+            entry.intentId ||= `legacy:${key}`;
+            publishListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId, entry.createdAt, entry.desiredChecked);
+            if (!isCurrentListIntent(entry.videoId, entry.listInfo.list_id, entry.intentId)) {
+                removePendingJournal(key);
+                return;
+            }
             const authoritative = await fetchAuthoritativeCheckboxState(
                 entry.videoId,
                 entry.listInfo.list_id

@@ -18,7 +18,8 @@ import type {
     ListReconcileGuard,
     ListReconcileResult,
     ListReconcileSnapshot,
-    ListReconcileState
+    ListReconcileState,
+    MovieRecord
 } from './vlt-db-core';
 
 /**
@@ -66,7 +67,8 @@ export async function getListAssociationCounts(): Promise<Record<string, number>
  */
 export async function reconcileListSnapshot(
     snapshot: ListReconcileSnapshot,
-    guard: ListReconcileGuard
+    guard: ListReconcileGuard,
+    canApply?: (currentMovies: MovieRecord[]) => boolean
 ): Promise<ListReconcileResult> {
     validateSnapshot(snapshot);
     return withState('readwrite', (state) => {
@@ -81,6 +83,13 @@ export async function reconcileListSnapshot(
             currentGuard.fingerprint !== guard.fingerprint
         ) {
             return { status: 'conflict' };
+        }
+
+        // 在真实写事务内同步复核跨入口意图，避免排队等待 IDB 时新意图使快照过期。
+        if (canApply) {
+            const currentMovies = associationDesignations(state.movieInventory, snapshot.listId)
+                .map((designation) => state.movies[designation]);
+            if (currentMovies.some((movie) => !movie) || !canApply(currentMovies)) return { status: 'conflict' };
         }
 
         const previous = new Set(

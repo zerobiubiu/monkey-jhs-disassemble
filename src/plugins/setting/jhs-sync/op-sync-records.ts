@@ -29,6 +29,12 @@ export type OpSyncOrigin = 'list' | 'detail';
 
 /** 一条同步记录。 */
 export interface OpSyncRecord {
+    /** 本次用户意图身份；旧记录可缺省，回执不得覆盖新意图。 */
+    revision?: string;
+    /** 用户登记时间，与推送状态更新时间分开。 */
+    requestedAt?: number;
+    /** 组合任务尚未把回执交接到任务日志，暂不允许容量或清理操作淘汰。 */
+    retained?: boolean;
     /** 番号。 */
     carNum: string;
     /** 详情页 url（用于提取 videoId 重推）。 */
@@ -51,7 +57,7 @@ export interface OpSyncRecord {
     updatedAt: number;
 }
 
-/** 记录容量上限：超出时优先淘汰最旧的**终态**记录（success/cancelled/failed）。 */
+/** 软容量上限：仅淘汰已确认成功或用户取消的记录；失败仍需恢复，不可自动丢弃。 */
 export const OP_SYNC_CAPACITY = 400;
 
 /** GM 存储键。 */
@@ -59,6 +65,32 @@ export const OP_SYNC_GM_KEY = 'jhs:op-sync-records';
 
 /** 终态（不会再自动变化）。 */
 const TERMINAL_STATES: readonly OpSyncState[] = ['success', 'failed', 'cancelled'];
+
+/** 仅清单前置补同步临时启用；计数保证嵌套退出不会提前恢复宽松模式。 */
+let strictPersistenceDepth = 0;
+
+/** 在同步读写临界区启用严格持久化，不把网络等待期间的无关任务纳入作用域。 */
+export function withStrictOpSyncPersistenceSync<T>(task: () => T): T {
+    strictPersistenceDepth++;
+    cache = null;
+    try {
+        return task();
+    } finally {
+        strictPersistenceDepth--;
+        cache = null;
+    }
+}
+
+export async function withStrictOpSyncPersistence<T>(task: () => Promise<T>): Promise<T> {
+    strictPersistenceDepth++;
+    cache = null;
+    try {
+        return await task();
+    } finally {
+        strictPersistenceDepth--;
+        cache = null;
+    }
+}
 
 /** 记录存储读写接口（默认走 GM 存储；测试可注入替身）。 */
 export interface OpSyncStorage {
@@ -85,17 +117,24 @@ function createDefaultStorage(): OpSyncStorage {
         read: () => {
             try {
                 const raw = GM_getValue(OP_SYNC_GM_KEY, null) as unknown;
-                if (typeof raw === 'string') return JSON.parse(raw) as OpSyncRecord[];
+                if (typeof raw === 'string') {
+                    const parsed: unknown = JSON.parse(raw);
+                    if (strictPersistenceDepth && !Array.isArray(parsed)) throw new Error('评价同步账本格式损坏');
+                    return parsed as OpSyncRecord[];
+                }
                 if (Array.isArray(raw)) return raw as OpSyncRecord[];
+                if (strictPersistenceDepth && raw != null) throw new Error('评价同步账本格式损坏');
                 return null;
-            } catch {
+            } catch (error: unknown) {
+                if (strictPersistenceDepth) throw error;
                 return null;
             }
         },
         write: (records) => {
             try {
                 GM_setValue(OP_SYNC_GM_KEY, JSON.stringify(records));
-            } catch {
+            } catch (error: unknown) {
+                if (strictPersistenceDepth) throw error;
                 /* 存储不可用时保持内存态，不影响主流程 */
             }
         }
@@ -111,8 +150,17 @@ let cache: OpSyncRecord[] | null = null;
 function load(): OpSyncRecord[] {
     if (cache) return cache;
     const raw = storage.read();
-    cache = Array.isArray(raw) ? raw.filter(isRecord) : [];
+    if (strictPersistenceDepth && raw !== null && (!Array.isArray(raw) || !raw.every(isStrictRecord))) {
+        throw new Error('评价同步账本损坏，尚不能确认全部评价已完成');
+    }
+    cache = Array.isArray(raw) ? raw.filter(isRecord).map((record) => ({ ...record })) : [];
     return cache;
+}
+
+/** 重新读取 GM 账本，避免另一标签页的登记、取消被旧缓存覆盖。 */
+export function refreshOpSyncRecords(): OpSyncRecord[] {
+    cache = null;
+    return load();
 }
 
 /** 结构校验：忽略损坏条目而不是抛错（记录可重建，不能因脏数据拖垮设置面板）。 */
@@ -122,19 +170,42 @@ function isRecord(value: unknown): value is OpSyncRecord {
     return typeof rec.carNum === 'string' && typeof rec.kind === 'string' && typeof rec.state === 'string';
 }
 
-/** 落盘（容量超限时按「终态最旧优先」淘汰）。 */
+/** 严格补同步不能把损坏记录过滤成空账本，否则会误判评价已经全部完成。 */
+function isStrictRecord(value: unknown): value is OpSyncRecord {
+    if (!isRecord(value)) return false;
+    return !!value.carNum.trim() && typeof value.url === 'string' &&
+        ['favorite', 'watched', 'unwatch', 'filter'].includes(value.kind) &&
+        ['pending', 'running', 'success', 'failed', 'cancelled'].includes(value.state) &&
+        (value.origin === 'list' || value.origin === 'detail') && typeof value.error === 'string' &&
+        Number.isInteger(value.score) && value.score >= 0 && value.score <= 5 &&
+        Number.isInteger(value.attempts) && value.attempts >= 0 &&
+        Number.isFinite(value.enqueuedAt) && Number.isFinite(value.updatedAt) &&
+        (value.revision === undefined || typeof value.revision === 'string') &&
+        (value.requestedAt === undefined || Number.isFinite(value.requestedAt)) &&
+        (value.retained === undefined || typeof value.retained === 'boolean');
+}
+
+/** 落盘（仅已成功/用户取消的记录可按最旧优先自动淘汰）。 */
 function persist(): void {
     const records = load();
     if (records.length > OP_SYNC_CAPACITY) {
         const overflow = records.length - OP_SYNC_CAPACITY;
         const removable = records
-            .filter((r) => TERMINAL_STATES.includes(r.state))
+            .filter((r) => !r.retained && (r.state === 'success' || r.state === 'cancelled'))
             .sort((a, b) => a.updatedAt - b.updatedAt)
             .slice(0, overflow);
         const removeKeys = new Set(removable.map(recordKey));
         cache = records.filter((r) => !removeKeys.has(recordKey(r)));
     }
+    const expected = JSON.stringify(load());
     storage.write(load());
+    if (strictPersistenceDepth) {
+        const actual = storage.read();
+        if (!Array.isArray(actual) || !actual.every(isStrictRecord) || JSON.stringify(actual) !== expected) {
+            cache = null;
+            throw new Error('评价同步账本写入后回读不一致，尚不能确认持久化成功');
+        }
+    }
 }
 
 /** 记录唯一键。 */
@@ -158,12 +229,18 @@ export function upsertOpSync(input: {
     score?: number;
     origin?: OpSyncOrigin;
     now?: number;
+    revision?: string;
+    requestedAt?: number;
+    retained?: boolean;
 }): OpSyncRecord {
     const now = input.now ?? Date.now();
-    const records = load();
+    const records = refreshOpSyncRecords();
     const key = recordKey({ carNum: input.carNum, kind: input.kind });
     const index = records.findIndex((r) => recordKey(r) === key);
     const record: OpSyncRecord = {
+        revision: input.revision ?? `${now}:${Math.random().toString(36).slice(2)}`,
+        requestedAt: input.requestedAt ?? records.reduce((latest, r) => Math.max(latest, r.requestedAt ?? r.enqueuedAt ?? 0), now) + 1,
+        ...(input.retained === undefined ? {} : { retained: input.retained }),
         carNum: input.carNum,
         url: input.url,
         kind: input.kind,
@@ -181,6 +258,35 @@ export function upsertOpSync(input: {
     return record;
 }
 
+/** 已预写组合评价使用稳定身份，恢复时不得重新登记为较新的用户操作。调用方持评价锁。 */
+export function ensureOpSync(input: Parameters<typeof upsertOpSync>[0] & {
+    revision: string; requestedAt: number
+}): OpSyncRecord | null {
+    if (!input.revision.trim() || !Number.isSafeInteger(input.requestedAt) || input.requestedAt < 0) {
+        throw new Error('组合评价意图身份或登记时间无效');
+    }
+    const rows = refreshOpSyncRecords();
+    const matching = rows.filter((row) => row.carNum.trim().toLowerCase() === input.carNum.trim().toLowerCase());
+    if (matching.some((row) => row.revision !== input.revision &&
+        (row.requestedAt ?? row.enqueuedAt) >= input.requestedAt)) return null;
+    const own = matching.find((row) => row.kind === input.kind && row.revision === input.revision);
+    if (own) {
+        if (own.score !== (input.score ?? 0) || own.requestedAt !== input.requestedAt || own.url !== input.url) {
+            throw new Error('组合评价稳定身份不能复用为不同操作');
+        }
+        return own;
+    }
+    return upsertOpSync({ ...input, retained: true });
+}
+
+/** 任务日志已保存最终评价状态后释放回执保留；较新修订与其他记录不受影响。 */
+export function releaseRetainedOpSync(intent: Pick<OpSyncRecord, 'carNum' | 'kind' | 'revision'>): void {
+    const record = refreshOpSyncRecords().find((row) => recordKey(row) === recordKey(intent) && row.revision === intent.revision);
+    if (!record?.retained) return;
+    delete record.retained;
+    persist();
+}
+
 /**
  * 更新记录状态。
  *
@@ -194,12 +300,13 @@ export function setOpSyncState(
     carNum: string,
     kind: OpSyncKind,
     state: OpSyncState,
-    patch?: { error?: string; attempts?: number; now?: number }
+    patch?: { error?: string; attempts?: number; now?: number; expectedRevision?: string }
 ): OpSyncRecord | null {
-    const records = load();
+    const records = refreshOpSyncRecords();
     const key = recordKey({ carNum, kind });
     const record = records.find((r) => recordKey(r) === key);
     if (!record) return null;
+    if (patch?.expectedRevision !== undefined && record.revision !== patch.expectedRevision) return null;
     record.state = state;
     if (patch?.error !== undefined) record.error = patch.error;
     if (patch?.attempts !== undefined) record.attempts = patch.attempts;
@@ -211,7 +318,22 @@ export function setOpSyncState(
 /** 取一条记录（无则 null）。 */
 export function getOpSyncRecord(carNum: string, kind: OpSyncKind): OpSyncRecord | null {
     const key = recordKey({ carNum, kind });
-    return load().find((r) => recordKey(r) === key) ?? null;
+    return refreshOpSyncRecords().find((r) => recordKey(r) === key) ?? null;
+}
+
+/** 网站请求与回执共用意图校验；较新的其他评价类型也会替代旧意图。 */
+export function isCurrentOpSyncIntent(intent: Pick<OpSyncRecord, 'carNum' | 'kind' | 'revision'>): boolean {
+    const record = getOpSyncRecord(intent.carNum, intent.kind);
+    if (!record || record.revision !== intent.revision || record.state === 'cancelled' || record.state === 'success') return false;
+    const newer = listOpSyncRecords().some((other) =>
+        other.carNum.trim().toLowerCase() === record.carNum.trim().toLowerCase() &&
+        (other.requestedAt ?? other.enqueuedAt) > (record.requestedAt ?? record.enqueuedAt)
+    );
+    if (!newer) return true;
+    setOpSyncState(record.carNum, record.kind, 'cancelled', {
+        error: '已被较新的评价操作替代', expectedRevision: record.revision
+    });
+    return false;
 }
 
 /**
@@ -224,7 +346,7 @@ export function listOpSyncRecords(filter?: {
     states?: readonly OpSyncState[];
     limit?: number;
 }): OpSyncRecord[] {
-    let rows = [...load()].sort((a, b) => b.updatedAt - a.updatedAt);
+    let rows = [...refreshOpSyncRecords()].sort((a, b) => b.updatedAt - a.updatedAt);
     const states = filter?.states;
     if (states && states.length > 0) {
         rows = rows.filter((r) => states.includes(r.state));
@@ -248,9 +370,9 @@ export function summarizeOpSync(): Record<OpSyncState, number> {
 
 /** 删除一条记录。 */
 export function removeOpSyncRecord(carNum: string, kind: OpSyncKind): boolean {
-    const records = load();
+    const records = refreshOpSyncRecords();
     const key = recordKey({ carNum, kind });
-    const next = records.filter((r) => recordKey(r) !== key);
+    const next = records.filter((r) => r.retained || recordKey(r) !== key);
     if (next.length === records.length) return false;
     cache = next;
     persist();
@@ -264,8 +386,8 @@ export function removeOpSyncRecord(carNum: string, kind: OpSyncKind): boolean {
  * @returns 清除条数
  */
 export function clearOpSyncTerminal(): number {
-    const records = load();
-    const next = records.filter((r) => !TERMINAL_STATES.includes(r.state));
+    const records = refreshOpSyncRecords();
+    const next = records.filter((r) => r.retained || !TERMINAL_STATES.includes(r.state));
     const removed = records.length - next.length;
     if (removed > 0) {
         cache = next;

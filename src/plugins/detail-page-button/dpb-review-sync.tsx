@@ -38,8 +38,8 @@ export interface ServerReviewState {
  * .tag.is-success.is-light=已看、checked 的 score input）。
  * @returns 服务器端评价状态
  */
-export function readServerReviewState(): ServerReviewState {
-    const rb = document.querySelector('.review-buttons');
+export function readServerReviewState(root: ParentNode = document): ServerReviewState {
+    const rb = root.querySelector('.review-buttons');
     if (!rb) return { want: false, watched: false, score: 0 };
     const want = !!rb.querySelector("a[href='/users/want_watch_videos'] .tag.is-info.is-light");
     const watched = !!rb.querySelector(

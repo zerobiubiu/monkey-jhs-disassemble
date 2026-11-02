@@ -1,0 +1,270 @@
+/* 批量清单：浏览器模态层提供焦点约束，视觉沿用列表页与 Bulma 控件。 */
+.jhs-batch-lists-dialog {
+    box-sizing: border-box;
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: var(--jhs-space-xl);
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-lg);
+    background: var(--jhs-color-bg);
+    color: var(--jhs-color-text);
+    font: inherit;
+    font-size: var(--jhs-font-size-md);
+    line-height: 1.5;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.jhs-batch-lists-dialog::backdrop {
+    background: rgb(0 0 0 / 40%);
+}
+
+.jhs-batch-lists-dialog h2 {
+    margin: 0 0 var(--jhs-space-lg);
+    font-size: var(--jhs-font-size-xl);
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.jhs-batch-lists-dialog h3 {
+    margin: 0 0 var(--jhs-space-sm);
+    font-size: var(--jhs-font-size-lg);
+    font-weight: 600;
+}
+
+.jhs-batch-lists-description,
+.jhs-batch-lists-current {
+    margin: 0 0 var(--jhs-space-lg);
+    overflow-wrap: anywhere;
+}
+
+.jhs-batch-lists-rating {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--jhs-space-sm) var(--jhs-space-md);
+    margin-bottom: var(--jhs-space-lg);
+}
+
+.jhs-batch-lists-rating-kind {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.jhs-batch-lists-rating-score {
+    flex: 0 1 144px;
+}
+
+.jhs-batch-lists-rating-score[hidden] {
+    display: none;
+}
+
+.jhs-batch-lists-rating select {
+    display: block;
+    margin-top: var(--jhs-space-sm);
+}
+
+.jhs-batch-lists-rating-note {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--jhs-color-text-secondary);
+    font-size: var(--jhs-font-size-sm);
+}
+
+.jhs-batch-lists-direction {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--jhs-space-lg);
+    margin: 0 0 var(--jhs-space-lg);
+    padding: 0;
+    border: 0;
+}
+
+.jhs-batch-lists-direction legend,
+.jhs-batch-lists-search-label {
+    display: block;
+    margin-bottom: var(--jhs-space-sm);
+    font-weight: 600;
+}
+
+.jhs-batch-lists-direction label,
+.jhs-batch-lists-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--jhs-space-sm);
+    min-height: 36px;
+    cursor: pointer;
+}
+
+.jhs-batch-lists-dialog input[type="radio"] {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--jhs-color-primary);
+}
+
+.jhs-batch-lists-dialog input[type="search"],
+.jhs-batch-lists-dialog select {
+    box-sizing: border-box;
+    width: 100%;
+    height: 36px;
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-md);
+    background: var(--jhs-color-bg);
+    color: inherit;
+    font: inherit;
+}
+
+.jhs-batch-lists-dialog :focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+.jhs-batch-lists-choices {
+    max-height: min(32dvh, 240px);
+    margin-top: var(--jhs-space-sm);
+    padding: var(--jhs-space-xs) var(--jhs-space-sm);
+    border: 1px solid var(--jhs-color-border);
+    border-radius: var(--jhs-radius-md);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.jhs-batch-lists-choice {
+    padding: var(--jhs-space-xs) 0;
+    overflow-wrap: anywhere;
+}
+
+.jhs-batch-lists-choice span {
+    min-width: 0;
+}
+
+.jhs-batch-lists-auto-label {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--jhs-color-text-secondary);
+    font-size: var(--jhs-font-size-sm);
+    white-space: nowrap;
+}
+
+.jhs-batch-lists-choice[hidden] {
+    display: none;
+}
+
+.jhs-batch-lists-note {
+    margin: var(--jhs-space-lg) 0 0;
+    color: var(--jhs-color-text-secondary);
+    font-size: var(--jhs-font-size-sm);
+}
+
+.jhs-batch-lists-selected {
+    margin: var(--jhs-space-sm) 0 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.jhs-batch-lists-recovery {
+    margin-top: var(--jhs-space-lg);
+    padding-top: var(--jhs-space-lg);
+    border-top: 1px solid var(--jhs-color-border);
+}
+
+.jhs-batch-lists-recovery p {
+    margin: 0 0 var(--jhs-space-sm);
+}
+
+.jhs-batch-lists-recovery button {
+    margin: 0;
+}
+
+.jhs-batch-lists-error {
+    margin: var(--jhs-space-md) 0 0;
+    color: #dc2626;
+    overflow-wrap: anywhere;
+}
+
+.jhs-batch-lists-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--jhs-space-sm);
+    margin-top: var(--jhs-space-xl);
+}
+
+.jhs-batch-lists-footer button {
+    min-height: 36px;
+    margin: 0;
+}
+
+.jhs-batch-lists-dialog button:disabled,
+.jhs-lp-batch-actions [data-act="lists"]:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.jhs-batch-lists-progress progress {
+    display: block;
+    width: 100%;
+    height: 8px;
+    margin: var(--jhs-space-sm) 0 var(--jhs-space-lg);
+    border: 0;
+    border-radius: var(--jhs-radius-sm);
+    background: var(--jhs-color-border);
+    accent-color: var(--jhs-color-primary);
+    overflow: hidden;
+}
+
+.jhs-batch-lists-progress progress::-webkit-progress-bar {
+    background: var(--jhs-color-border);
+}
+
+.jhs-batch-lists-progress progress::-webkit-progress-value {
+    background: var(--jhs-color-primary);
+}
+
+.jhs-batch-lists-progress progress::-moz-progress-bar {
+    background: var(--jhs-color-primary);
+}
+
+.jhs-batch-lists-progress.is-incomplete progress::-webkit-progress-value {
+    background: var(--jhs-color-warning);
+}
+
+.jhs-batch-lists-progress.is-incomplete progress::-moz-progress-bar {
+    background: var(--jhs-color-warning);
+}
+
+.jhs-batch-lists-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--jhs-space-sm) var(--jhs-space-xl);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.jhs-batch-lists-summary div {
+    display: flex;
+    gap: var(--jhs-space-sm);
+}
+
+.jhs-batch-lists-summary dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+@media (width <= 768px) {
+    .jhs-batch-lists-dialog {
+        padding: var(--jhs-space-lg);
+    }
+
+    .jhs-batch-lists-direction label,
+    .jhs-batch-lists-choice,
+    .jhs-batch-lists-dialog select,
+    .jhs-batch-lists-recovery button,
+    .jhs-batch-lists-footer button {
+        min-height: var(--jhs-touch-target);
+    }
+}
