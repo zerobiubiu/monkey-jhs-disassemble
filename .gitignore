@@ -57,3 +57,4 @@ docs/troubleshooting/gitnexus-fts.md
 
 # Pi 项目级 MCP 配置（机器绑定绝对路径，不入库）
 .pi/mcp.json
+.markindex/
