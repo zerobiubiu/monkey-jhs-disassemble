@@ -81,6 +81,7 @@
 | `64-batch-list-groups-and-rating-scope.md` | 变更 | v1.49.1 | 仅目标视频评价阻塞、其他视频后台；详情同款聚合选择、自动编号路由、满员续建、手动停止与明确继续 |
 | `65-batch-rating-and-list-composition.md` | 变更 | v1.49.2 | 清单窗口可选收藏/已读星级，一次开始执行评价与清单；稳定评价身份、独立阶段恢复及原快捷评价保留 |
 | `66-batch-video-concurrency-and-multi-lists.md` | 变更 | v1.49.3 | 按视频合并评价与多选清单、可配置并发默认2、原子跨页恢复认领、v1日志迁移与真实双标签隔离验收 |
+| `67-batch-recovery-progress-minimize.md` | 变更 | v1.49.4 | 仅恢复进度可最小化、保留执行与页面交互、结束闪烁提醒及展开查看结果 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

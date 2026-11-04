@@ -5,12 +5,13 @@ import { emptyBatchListProgress, isBatchListExecutionRunning, recoverBatchListJo
 import { fetchBatchListChoices } from './site';
 import { isBatchListJobPending, readBatchListJobs } from './journal';
 
-import { BatchListsDialogShell, BatchListsPicker, BatchListsProgress } from '../../../components/list-page/batch-lists-dialog';
+import { BatchListsDialogShell, BatchListsFloatingButton, BatchListsPicker, BatchListsProgress, getBatchListProgressState } from '../../../components/list-page/batch-lists-dialog';
 
 import batchListsCss from '../../../styles/list-page/batch-lists.css?raw';
 
 let activeDialog: HTMLDialogElement | null = null;
 let activePromise: Promise<void> | null = null;
+let restoreActiveDialog: (() => void) | null = null;
 
 export function isBatchListDialogOpen(): boolean {
     return activeDialog?.isConnected === true;
@@ -48,7 +49,7 @@ function readSelectedLists(container: HTMLElement, choices: BatchListChoice[]): 
 }
 
 /** 使用浏览器模态层保护焦点，不受 layer 全局关闭逻辑影响。 */
-function createDialog(title: string) {
+function createDialog(title: string, canMinimize = false) {
     if (typeof HTMLDialogElement === 'undefined' || !HTMLDialogElement.prototype.showModal) {
         throw new Error('当前浏览器不支持模态对话框，无法安全显示批量执行进度');
     }
@@ -59,13 +60,20 @@ function createDialog(title: string) {
         document.head.appendChild(style);
     }
     const dialog = document.createElement('dialog');
+    dialog.id = 'jhs-batch-list-dialog';
     dialog.className = 'jhs-batch-lists-dialog jhs-scrollbar';
     dialog.tabIndex = -1;
     dialog.setAttribute('aria-labelledby', 'jhs-batch-list-title');
-    dialog.innerHTML = jsxToString(<BatchListsDialogShell title={title} />);
+    dialog.innerHTML = jsxToString(<BatchListsDialogShell title={title} canMinimize={canMinimize} />);
+    const floatingContainer = document.createElement('div');
+    if (canMinimize) floatingContainer.innerHTML = jsxToString(<BatchListsFloatingButton />);
+    const floating = floatingContainer.querySelector<HTMLButtonElement>('button');
     const body = dialog.querySelector<HTMLElement>('[data-role="batch-list-body"]')!;
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     let running = false;
+    let minimized = false;
+    // 原生 close 异步派发；快速展开后也要消费此前最小化产生的事件。
+    let pendingMinimizeCloses = 0;
     let requestStop = (): void => undefined;
     let resolveClosed: () => void = () => undefined;
     const closed = new Promise<void>((resolve) => { resolveClosed = resolve; });
@@ -79,7 +87,7 @@ function createDialog(title: string) {
         else dialog.close();
     };
     const onEscape = (event: KeyboardEvent): void => {
-        if (event.key !== 'Escape') return;
+        if (event.key !== 'Escape' || minimized) return;
         // window 捕获先于项目既有的 document 捕获关闭器，避免关掉底下的 layer。
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -92,10 +100,23 @@ function createDialog(title: string) {
         close();
     });
     dialog.addEventListener('click', (event) => {
+        const minimize = (event.target as Element).closest('[data-list-act="minimize"]');
+        if (minimize && floating && !minimized) {
+            minimized = true;
+            floating.hidden = false;
+            pendingMinimizeCloses++;
+            dialog.close();
+            floating.focus();
+            return;
+        }
         const button = (event.target as Element).closest<HTMLButtonElement>('[data-list-act="stop"]');
         if (button && !button.disabled && running) requestStop();
     });
     dialog.addEventListener('close', () => {
+        if (pendingMinimizeCloses > 0) {
+            pendingMinimizeCloses--;
+            return;
+        }
         // 手动关闭也仅请求停止后续执行；保留遮罩直到已发出的请求完成确认。
         if (running && dialog.isConnected) {
             requestStop();
@@ -105,16 +126,41 @@ function createDialog(title: string) {
         window.removeEventListener('keydown', onEscape, true);
         window.removeEventListener('beforeunload', beforeUnload);
         dialog.remove();
-        if (activeDialog === dialog) activeDialog = null;
+        floating?.remove();
+        if (activeDialog === dialog) {
+            activeDialog = null;
+            restoreActiveDialog = null;
+        }
         activePromise = null;
         returnFocus?.focus();
         resolveClosed();
     });
+    const restore = (): void => {
+        if (!minimized || !dialog.isConnected || !floating) return;
+        minimized = false;
+        floating.hidden = true;
+        floating.classList.remove('is-unread');
+        dialog.showModal();
+        dialog.querySelector<HTMLElement>('[data-role="progress-heading"]')?.focus();
+    };
     document.body.appendChild(dialog);
+    if (floating) {
+        document.body.appendChild(floating);
+        floating.addEventListener('click', restore);
+    }
     activeDialog = dialog;
+    restoreActiveDialog = restore;
     dialog.showModal();
     return {
         dialog, body, closed, close,
+        isMinimized: (): boolean => minimized,
+        updateFloating: (progress: BatchListProgress, executing: boolean, error: string, stopping: boolean): void => {
+            if (!floating) return;
+            const { state } = getBatchListProgressState(progress, executing, error, stopping);
+            floating.querySelector('[data-role="floating-state"]')!.textContent = state;
+            floating.querySelector('[data-role="floating-progress"]')!.textContent = `${progress.done} / ${progress.total} · ${executing ? '点击展开' : '查看结果'}`;
+            floating.classList.toggle('is-unread', minimized && !executing);
+        },
         isRunning: (): boolean => running,
         setStopHandler: (handler: () => void): void => { requestStop = handler; },
         setRunning: (value: boolean): void => { running = value; }
@@ -133,16 +179,17 @@ async function executeInDialog(
     let progress = emptyBatchListProgress();
     const render = (running: boolean, error = ''): void => {
         view.body.innerHTML = jsxToString(<BatchListsProgress progress={progress} running={running} stopping={stopping} error={error} />);
+        view.updateFloating(progress, running, error, stopping);
     };
     view.setStopHandler(() => {
         if (controller.signal.aborted) return;
         stopping = true;
         controller.abort();
         render(true);
-        view.dialog.focus();
+        if (!view.isMinimized()) view.dialog.focus();
     });
     render(true);
-    view.dialog.focus();
+    if (!view.isMinimized()) view.dialog.focus();
     let errorText = '';
     try {
         progress = await work((value) => { progress = value; render(true); }, controller.signal);
@@ -153,17 +200,17 @@ async function executeInDialog(
         view.setRunning(false);
         view.setStopHandler(() => undefined);
         render(false, errorText);
-        view.body.querySelector<HTMLButtonElement>('[data-list-act="close"]')?.focus();
+        if (!view.isMinimized()) view.body.querySelector<HTMLButtonElement>('[data-list-act="close"]')?.focus();
     }
 }
 
-/** 手动与自动恢复共用同一阻塞式进度视图。 */
+/** 独立恢复窗口允许收起；主动设置窗口的权限始终保持不变。 */
 export async function runBatchListProgress(
     work: (notify: (progress: BatchListProgress) => void, signal?: AbortSignal) => Promise<BatchListProgress>,
     title = '恢复批量清单操作'
 ): Promise<void> {
     if (isBatchListDialogOpen()) return activePromise ?? Promise.resolve();
-    const view = createDialog(title);
+    const view = createDialog(title, true);
     activePromise = view.closed;
     view.dialog.addEventListener('click', (event) => {
         const action = (event.target as Element).closest<HTMLElement>('[data-list-act]')?.dataset.listAct;
@@ -175,7 +222,10 @@ export async function runBatchListProgress(
 }
 
 export async function openBatchListDialog(items: BatchListItem[]): Promise<void> {
-    if (isBatchListDialogOpen()) return activePromise ?? Promise.resolve();
+    if (isBatchListDialogOpen()) {
+        restoreActiveDialog?.();
+        return activePromise ?? Promise.resolve();
+    }
     if (items.length === 0 || !items[0].videoId) throw new Error('请先选择具有有效影片信息的视频');
     const view = createDialog('批量设置评价与清单');
     activePromise = view.closed;

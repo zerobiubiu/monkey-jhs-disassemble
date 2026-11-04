@@ -70,6 +70,15 @@ export function BatchListsPicker({ count, choices, loading, error, hasRecoverabl
     );
 }
 
+/** 展开与最小化视图共用结果口径，结束不等同于全部成功。 */
+export function getBatchListProgressState(progress: BatchListProgress, running: boolean, error: string, stopping = false) {
+    const incomplete = progress.pending > 0 || progress.ratingFailed > 0 || progress.failed > 0 ||
+        (progress.ratingPending ?? 0) > 0 || progress.stopped === true || Boolean(error);
+    const state = running ? stopping ? '正在停止，等待当前请求确认' : '执行中'
+        : progress.stopped ? '已停止' : incomplete ? '仍有项目待完成' : '同步完成';
+    return { incomplete, state };
+}
+
 /** 进度表示已处理数；成功数独立列出，失败与待完成不会充当成功。 */
 export function BatchListsProgress({ progress, running, error, stopping = false }: {
     progress: BatchListProgress;
@@ -77,10 +86,7 @@ export function BatchListsProgress({ progress, running, error, stopping = false 
     error: string;
     stopping?: boolean;
 }) {
-    const incomplete = progress.pending > 0 || progress.ratingFailed > 0 ||
-        (progress.ratingPending ?? 0) > 0 || progress.stopped === true || Boolean(error);
-    const state = running ? stopping ? '正在停止，等待当前请求确认' : '执行中'
-        : progress.stopped ? '已停止' : incomplete ? '仍有项目待完成' : '同步完成';
+    const { incomplete, state } = getBatchListProgressState(progress, running, error, stopping);
     const value = progress.done;
     const total = progress.total;
     return (
@@ -116,10 +122,25 @@ export function BatchListsProgress({ progress, running, error, stopping = false 
     );
 }
 
-export function BatchListsDialogShell({ title }: { title: string }) {
+export function BatchListsFloatingButton() {
+    return (
+        <button type="button" className="jhs-batch-lists-floating" data-list-act="restore" hidden
+            aria-controls="jhs-batch-list-dialog" aria-expanded="false" title="展开批量任务进度">
+            <span>批量任务</span>
+            <strong data-role="floating-state" aria-live="polite" />
+            <span data-role="floating-progress" />
+        </button>
+    );
+}
+
+export function BatchListsDialogShell({ title, canMinimize = false }: { title: string; canMinimize?: boolean }) {
     return (
         <>
-            <h2 id="jhs-batch-list-title">{title}</h2>
+            <div className="jhs-batch-lists-header">
+                <h2 id="jhs-batch-list-title">{title}</h2>
+                {canMinimize && <button type="button" className="a-normal" data-list-act="minimize"
+                    title="收起进度，任务继续执行">最小化</button>}
+            </div>
             <div data-role="batch-list-body" />
         </>
     );

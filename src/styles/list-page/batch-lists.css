@@ -21,10 +21,81 @@
 }
 
 .jhs-batch-lists-dialog h2 {
-    margin: 0 0 var(--jhs-space-lg);
+    margin: 0;
     font-size: var(--jhs-font-size-xl);
     font-weight: 600;
     line-height: 1.35;
+}
+
+.jhs-batch-lists-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--jhs-space-md);
+    margin-bottom: var(--jhs-space-lg);
+}
+
+.jhs-batch-lists-header button {
+    flex-shrink: 0;
+    min-height: var(--jhs-touch-target);
+    margin: 0;
+}
+
+/* 位于底部选择栏上方；收起时只有按钮接收点击，页面没有遮罩。 */
+.jhs-batch-lists-floating {
+    position: fixed;
+    z-index: var(--jhs-z-page);
+    right: var(--jhs-space-lg);
+    bottom: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--jhs-space-xs);
+    box-sizing: border-box;
+    max-width: min(240px, calc(100vw - 32px));
+    min-height: var(--jhs-touch-target);
+    padding: var(--jhs-space-sm) var(--jhs-space-md);
+    border: 1px solid var(--jhs-color-primary);
+    border-radius: var(--jhs-radius-md);
+    background: var(--jhs-color-bg);
+    color: var(--jhs-color-text);
+    font: inherit;
+    font-size: var(--jhs-font-size-sm);
+    line-height: 1.5;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.jhs-batch-lists-floating[hidden] {
+    display: none;
+}
+
+.jhs-batch-lists-floating:hover {
+    background: var(--jhs-color-bg-secondary);
+}
+
+.jhs-batch-lists-floating:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+.jhs-batch-lists-floating.is-unread {
+    background: var(--jhs-color-primary-light);
+    animation: jhs-batch-result-flash 1.6s ease-in-out infinite;
+}
+
+@keyframes jhs-batch-result-flash {
+    50% {
+        border-color: var(--jhs-color-text);
+        background: var(--jhs-color-bg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jhs-batch-lists-floating.is-unread {
+        animation: none;
+    }
 }
 
 .jhs-batch-lists-dialog h3 {

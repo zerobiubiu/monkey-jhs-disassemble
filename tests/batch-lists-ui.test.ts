@@ -71,6 +71,17 @@ async function flush(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+/** 保留执行控制权，验证窗口收起与执行结算是两个独立生命周期。 */
+function deferredRecovery() {
+    let finish!: (progress: BatchListProgress) => void;
+    let fail!: (error: Error) => void;
+    const outcome = new Promise<BatchListProgress>((resolve, reject) => { finish = resolve; fail = reject; });
+    const work = vi.fn((_notify: (progress: BatchListProgress) => void, _signal?: AbortSignal) => outcome);
+    const closed = runBatchListProgress(work);
+    const [notify, signal] = work.mock.calls[0];
+    return { closed, finish, fail, work, notify, signal: signal! };
+}
+
 beforeEach(() => {
     mocks.choices.mockReset().mockResolvedValue(choices);
     mocks.start.mockReset().mockResolvedValue(done);
@@ -149,9 +160,11 @@ describe('批量清单视图', () => {
         mocks.start.mockResolvedValueOnce({ ...done, succeeded: 0, pending: 1, stopped: true });
         const first = openBatchListDialog(items);
         await flush();
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
         document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.click();
         click('start');
         await flush();
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
         click('close');
         await first;
         mocks.jobs.mockReturnValue([pausedJob]);
@@ -163,6 +176,8 @@ describe('批量清单视图', () => {
         selectRating('watched', 5);
         click('resume');
         await flush();
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
         expect(mocks.start).toHaveBeenCalledTimes(1);
         expect(mocks.recover).toHaveBeenCalledExactlyOnceWith(expect.any(Function), true, expect.any(AbortSignal));
         click('close');
@@ -422,6 +437,8 @@ describe('批量清单视图', () => {
         click('retry');
         await flush();
         const nextSignal = mocks.recover.mock.calls[0][2] as AbortSignal;
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
         expect(nextSignal).not.toBe(signal);
         expect(nextSignal.aborted).toBe(false);
         expect(mocks.recover).toHaveBeenCalledWith(expect.any(Function), true, nextSignal);
@@ -454,5 +471,179 @@ describe('批量清单视图', () => {
         expect(mocks.recover).toHaveBeenCalledWith(expect.any(Function), true, expect.any(AbortSignal));
         click('close');
         await promise;
+    });
+
+    it('恢复进度最小化后继续执行并释放页面交互，保留离页提示和活跃窗口保护', async () => {
+        const input = document.createElement('input');
+        const pageAction = document.createElement('button');
+        const onPageClick = vi.fn();
+        pageAction.addEventListener('click', onPageClick);
+        document.body.append(input, pageAction);
+        const task = deferredRecovery();
+        const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+        const floating = document.querySelector<HTMLButtonElement>('.jhs-batch-lists-floating')!;
+        let closed = false;
+        void task.closed.then(() => { closed = true; });
+        expect(floating.hidden).toBe(true);
+        task.notify({ ...done, total: 3, done: 1, succeeded: 1, pending: 2, phase: 'lists' });
+        click('minimize');
+        expect(dialog.open).toBe(false);
+        expect(floating.hidden).toBe(false);
+        expect(isBatchListDialogOpen()).toBe(true);
+        expect(task.signal.aborted).toBe(false);
+        input.focus();
+        pageAction.click();
+        expect(onPageClick).toHaveBeenCalledOnce();
+        const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        input.dispatchEvent(esc);
+        expect(esc.defaultPrevented).toBe(false);
+        expect(task.signal.aborted).toBe(false);
+        const unload = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(true);
+        task.notify({ ...done, total: 3, done: 2, succeeded: 2, pending: 1, phase: 'lists' });
+        expect(floating.textContent).toMatch(/2\s*\/\s*3/);
+        expect(document.activeElement).toBe(input);
+
+        const extraWork = vi.fn().mockResolvedValue(done);
+        const duplicate = runBatchListProgress(extraWork);
+        await flush();
+        expect(extraWork).not.toHaveBeenCalled();
+        expect(mocks.choices).not.toHaveBeenCalled();
+        expect(document.querySelectorAll('dialog')).toHaveLength(1);
+        expect(document.querySelectorAll('.jhs-batch-lists-floating')).toHaveLength(1);
+        expect(closed).toBe(false);
+        task.finish({ ...done, total: 3, done: 3, succeeded: 3 });
+        await flush();
+        expect(closed).toBe(false);
+        expect(dialog.open).toBe(false);
+        expect(document.activeElement).toBe(input);
+        expect(floating.classList.contains('is-unread')).toBe(true);
+        expect(floating.textContent).toContain('同步完成');
+        const after = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(after);
+        expect(after.defaultPrevented).toBe(false);
+        click('restore');
+        expect(dialog.open).toBe(true);
+        expect(floating.hidden).toBe(true);
+        expect(floating.classList.contains('is-unread')).toBe(false);
+        expect(task.work).toHaveBeenCalledOnce();
+        expect(document.querySelector<HTMLProgressElement>('progress')!.value).toBe(3);
+        click('close');
+        await Promise.all([task.closed, duplicate]);
+        expect(isBatchListDialogOpen()).toBe(false);
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
+    });
+
+    it.each([false, true])('主动入口展开同一个恢复窗口，不创建任务；关闭后新任务仍不可最小化（已结算：%s）', async (settled) => {
+        const task = deferredRecovery();
+        const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+        const floating = document.querySelector<HTMLButtonElement>('.jhs-batch-lists-floating')!;
+        task.notify({ ...done, total: 3, done: 1, succeeded: 1, pending: 2, phase: 'lists' });
+        click('minimize');
+        if (settled) { task.finish(done); await flush(); }
+        const manualOpen = openBatchListDialog(items);
+        expect(document.querySelector('dialog')).toBe(dialog);
+        expect(dialog.open).toBe(true);
+        expect(floating.hidden).toBe(true);
+        expect(floating.classList.contains('is-unread')).toBe(false);
+        expect(task.signal.aborted).toBe(false);
+        expect(task.work).toHaveBeenCalledOnce();
+        expect(mocks.choices).not.toHaveBeenCalled();
+        expect(mocks.start).not.toHaveBeenCalled();
+        expect(mocks.recover).not.toHaveBeenCalled();
+        if (!settled) { task.finish(done); await flush(); }
+        click('close');
+        await Promise.all([task.closed, manualOpen]);
+        expect(isBatchListDialogOpen()).toBe(false);
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
+
+        const next = openBatchListDialog(items);
+        await flush();
+        expect(document.querySelector('dialog')).not.toBe(dialog);
+        expect(mocks.choices).toHaveBeenCalledOnce();
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
+        document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.click();
+        click('start');
+        await flush();
+        expect(mocks.start).toHaveBeenCalledOnce();
+        expect(document.querySelector('[data-list-act="minimize"]')).toBeNull();
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
+        click('close');
+        await next;
+    });
+
+    it.each([false, true])('迟到的最小化 close 事件不会停止或移除已经展开的窗口（已结算：%s）', async (settled) => {
+        const closeEvents: (() => void)[] = [];
+        HTMLDialogElement.prototype.close = function () {
+            this.open = false;
+            closeEvents.push(() => this.dispatchEvent(new Event('close')));
+        };
+        const task = deferredRecovery();
+        const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+        // 两轮快速收起/展开，模拟浏览器尚未派发 close 的时序。
+        for (let count = 0; count < 2; count++) {
+            click('minimize');
+            click('restore');
+        }
+        expect(closeEvents).toHaveLength(2);
+        if (settled) { task.finish(done); await flush(); }
+        closeEvents.splice(0).forEach((dispatch) => dispatch());
+        expect(task.signal.aborted).toBe(false);
+        expect(dialog.open).toBe(true);
+        expect(dialog.isConnected).toBe(true);
+        expect(isBatchListDialogOpen()).toBe(true);
+        expect(task.work).toHaveBeenCalledOnce();
+        if (!settled) { task.finish(done); await flush(); }
+        click('close');
+        closeEvents.splice(0).forEach((dispatch) => dispatch());
+        await task.closed;
+        expect(document.querySelector('.jhs-batch-lists-floating')).toBeNull();
+    });
+
+    it.each([
+        ['部分失败', { ...done, succeeded: 0, failed: 1, pending: 1 }, '仍有项目待完成'],
+        ['评价待确认', { ...done, ratingPending: 1 }, '仍有项目待完成'],
+        ['手动停止', { ...done, stopped: true, pending: 1 }, '已停止']
+    ] as const)('最小化的%s结算保留真实状态，展开后可以继续', async (_scenario, result, label) => {
+        const task = deferredRecovery();
+        click('minimize');
+        task.finish(result);
+        await flush();
+        const floating = document.querySelector<HTMLButtonElement>('.jhs-batch-lists-floating')!;
+        expect(floating.textContent).toContain(label);
+        expect(floating.textContent).not.toContain('同步完成');
+        expect(floating.classList.contains('is-unread')).toBe(true);
+        click('restore');
+        expect(floating.classList.contains('is-unread')).toBe(false);
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
+        click('retry');
+        await flush();
+        expect(mocks.recover).toHaveBeenCalledExactlyOnceWith(expect.any(Function), true, expect.any(AbortSignal));
+        expect(document.querySelector('[data-list-act="minimize"]')).not.toBeNull();
+        click('close');
+        await task.closed;
+    });
+
+    it('最小化期间异常不会伪报完成或抢焦点，展开可见错误与最后计数', async () => {
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        const task = deferredRecovery();
+        task.notify({ ...done, total: 3, done: 1, succeeded: 1, pending: 2, phase: 'lists' });
+        click('minimize');
+        input.focus();
+        task.fail(new Error('日志写入失败'));
+        await flush();
+        const floating = document.querySelector<HTMLButtonElement>('.jhs-batch-lists-floating')!;
+        expect(floating.classList.contains('is-unread')).toBe(true);
+        expect(floating.textContent).toContain('仍有项目待完成');
+        expect(document.activeElement).toBe(input);
+        expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(false);
+        click('restore');
+        expect(document.querySelector('[role="alert"]')!.textContent).toContain('日志写入失败');
+        expect(document.querySelector<HTMLProgressElement>('progress')!.value).toBe(1);
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
+        click('close');
+        await task.closed;
     });
 });
