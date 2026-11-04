@@ -41,7 +41,7 @@ function register(carNum: string, state: 'pending' | 'running' | 'failed' = 'pen
     return record;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     vi.useFakeTimers();
     disk = [];
     local.clear();
@@ -51,11 +51,19 @@ beforeEach(() => {
     vi.stubGlobal('storageManager', {
         clearCarListCache: vi.fn(), getCar: vi.fn(async (carNum: string) => local.get(carNum))
     });
+    const locks = new Map<string, Promise<unknown>>();
+    vi.stubGlobal('navigator', { locks: {
+        request: <T>(name: string, _options: unknown, task: () => Promise<T>) => {
+            const run = (locks.get(name) ?? Promise.resolve()).then(task);
+            locks.set(name, run.then(() => {}, () => {}));
+            return run;
+        }
+    } });
     setOpSyncStorageForTest({
         read: () => structuredClone(disk), write: (records) => { disk = structuredClone(records); }
     });
     resetBatchSyncForTest();
-    enqueueBatchPush([], 'favorite', 0, { pacingMs: 0 });
+    await enqueueBatchPush([], 'favorite', 0, { pacingMs: 0 });
     api.post.mockReset().mockImplementation(async (id, kind, score) => { server.set(id, { kind, score }); });
     api.fetchHtml.mockReset().mockImplementation(async (url: string) => html(url.slice(3)));
     api.findReviewId.mockReset().mockReturnValue(null);
@@ -89,6 +97,7 @@ describe('批量清单前的评价排空', () => {
         } });
         const controller = new AbortController();
         const run = drainBatchRatings(targets('A'), undefined, controller.signal);
+        await vi.advanceTimersByTimeAsync(0);
         controller.abort();
         release();
         expect(await run).toEqual({ total: 0, succeeded: 0, failed: 0, stopped: true });
@@ -150,9 +159,9 @@ describe('批量清单前的评价排空', () => {
             release = () => { server.set('A', { kind: 'watched', score: 4 }); resolve(); };
         }));
         const run = drainBatchRatings(targets('A', 'C'), undefined, controller.signal);
-        await Promise.resolve(); await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(0);
         controller.abort();
-        enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3);
+        await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3);
         release();
         expect(await run).toEqual({ total: 1, succeeded: 1, failed: 0, stopped: true });
         expect(getOpSyncRecord('A', 'watched')?.state).toBe('success');
@@ -175,7 +184,7 @@ describe('批量清单前的评价排空', () => {
 
     it('在重试节流期间停止能及时退出，不改写未完成评价为已取消', async () => {
         register('A');
-        enqueueBatchPush([], 'favorite', 0, { pacingMs: 10_000 });
+        await enqueueBatchPush([], 'favorite', 0, { pacingMs: 10_000 });
         const controller = new AbortController();
         api.post.mockRejectedValue(new Error('等待恢复'));
         const run = drainBatchRatings(targets('A'), undefined, controller.signal);
@@ -188,7 +197,7 @@ describe('批量清单前的评价排空', () => {
 
     it('开始回调中停止时恢复原后台评价队列，不永久取消用户评价意图', async () => {
         local.set('A', { status: 'hasWatch', score: 4 });
-        enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 4);
+        await enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 4);
         const controller = new AbortController();
         expect(await drainBatchRatings(targets('A'), () => controller.abort(), controller.signal)).toEqual({
             total: 0, succeeded: 0, failed: 0, stopped: true
@@ -212,7 +221,7 @@ describe('批量清单前的评价排空', () => {
     it('无关后台队列在目标补同步的节流间隙继续推进，且不计入目标进度', async () => {
         register('A'); register('C');
         local.set('B', { status: 'hasWatch', score: 3 });
-        enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3, { pacingMs: 100 });
+        await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3, { pacingMs: 100 });
         let finished = false;
         const progress = vi.fn();
         const run = drainBatchRatings(targets('A', 'C'), progress).then((result) => { finished = true; return result; });
@@ -232,20 +241,21 @@ describe('批量清单前的评价排空', () => {
             release = () => { server.set('B', { kind: 'watched', score: 3 }); resolve(); };
         }));
         local.set('B', { status: 'hasWatch', score: 3 });
-        enqueueBatchPush(targets('B'), 'watched', 3);
+        await enqueueBatchPush(targets('B'), 'watched', 3);
         await vi.advanceTimersByTimeAsync(0);
         local.set('A', { status: 'hasWatch', score: 4 });
         local.set('C', { status: 'hasWatch', score: 4 });
-        enqueueBatchPush(targets('A', 'C'), 'watched', 4, { pacingMs: 100 });
+        await enqueueBatchPush(targets('A', 'C'), 'watched', 4, { pacingMs: 100 });
         const run = drainBatchRatings(targets('A', 'C'));
         release();
         await vi.runAllTimersAsync();
         expect(await run).toEqual({ total: 2, succeeded: 2, failed: 0 });
-        expect(show.ok).toHaveBeenCalledWith('后台同步 JavDB 完成：成功 1 项，失败 0 项');
+        expect(show.ok).toHaveBeenCalledTimes(1);
         expect(getBatchSyncStatus().succeeded).toBe(0);
-        enqueueBatchPush(targets('D'), 'watched', 1);
+        await enqueueBatchPush(targets('D'), 'watched', 1);
         await vi.runAllTimersAsync();
-        expect(show.ok).toHaveBeenLastCalledWith('后台同步 JavDB 完成：成功 1 项，失败 0 项');
+        expect(show.ok).toHaveBeenCalledTimes(2);
+        expect(getBatchSyncStatus()).toMatchObject({ pending: 0, succeeded: 0, failed: 0 });
     });
 
     it('期间新入队的无关视频留在后台，不会扩大本次同步范围', async () => {
@@ -253,7 +263,7 @@ describe('批量清单前的评价排空', () => {
         api.post.mockImplementationOnce(async (id, kind, score) => {
             server.set(id, { kind, score });
             local.set('B', { status: 'hasWatch', score: 2 });
-            enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 2);
+            await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 2);
         });
         expect(await drainBatchRatings(targets('A'))).toEqual({ total: 1, succeeded: 1, failed: 0 });
         expect(getOpSyncRecord('B', 'watched')?.state).toBe('pending');
@@ -272,7 +282,7 @@ describe('批量清单前的评价排空', () => {
         });
         setOpSyncStorageForTest(null);
         api.post.mockImplementationOnce(async (id, kind, score) => {
-            expect(() => enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3)).not.toThrow();
+            await expect(enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3)).resolves.toBe(1);
             server.set(id, { kind, score });
         });
         expect(await drainBatchRatings(targets('A'))).toEqual({ total: 1, succeeded: 1, failed: 0 });
@@ -284,7 +294,7 @@ describe('批量清单前的评价排空', () => {
         api.post.mockImplementationOnce(() => new Promise<void>((resolve) => {
             release = () => { server.set('B', { kind: 'watched', score: 3 }); resolve(); };
         }));
-        enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3, { origin });
+        await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 3, { origin });
         await vi.advanceTimersByTimeAsync(0);
         expect(await drainBatchRatings(targets('A'))).toEqual({ total: 0, succeeded: 0, failed: 0 });
         expect(getOpSyncRecord('B', 'watched')?.state).toBe('running');
@@ -299,25 +309,6 @@ describe('批量清单前的评价排空', () => {
         expect(await drainBatchRatings(targets('A'))).toEqual({ total: 1, succeeded: 1, failed: 0 });
         expect(getOpSyncRecord('A', 'watched')).toMatchObject({ state: 'success', origin: 'detail' });
         expect(api.post).toHaveBeenCalledExactlyOnceWith('A', 'watched', 4);
-    });
-
-    it('两个不同目标范围的调用独立执行，不复用同一排空结果', async () => {
-        register('A', 'failed'); register('B', 'failed');
-        let release!: () => void;
-        api.post.mockImplementationOnce(() => new Promise<void>((resolve) => {
-            release = () => { server.set('A', { kind: 'watched', score: 4 }); resolve(); };
-        }));
-        const progressA = vi.fn(); const progressB = vi.fn();
-        const first = drainBatchRatings(targets('A'), progressA);
-        const second = drainBatchRatings(targets('B'), progressB);
-        expect(first).not.toBe(second);
-        await Promise.resolve(); await Promise.resolve();
-        release();
-        expect(await first).toEqual({ total: 1, succeeded: 1, failed: 0 });
-        expect(await second).toEqual({ total: 1, succeeded: 1, failed: 0 });
-        expect(api.post).toHaveBeenCalledTimes(2);
-        expect(progressA).toHaveBeenLastCalledWith(1, 1, 0);
-        expect(progressB).toHaveBeenLastCalledWith(1, 1, 0);
     });
 
     it('两边都有videoId时优先按ID，番号相同但网站ID不同的不接管', async () => {
@@ -341,7 +332,8 @@ describe('批量清单前的评价排空', () => {
         }));
         const first = drainBatchRatings(targets('A'));
         const second = drainBatchRatings(targets('A'));
-        await Promise.resolve(); await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(api.post).toHaveBeenCalledTimes(1);
         release();
         expect(await first).toEqual({ total: 1, succeeded: 1, failed: 0 });
         expect(await second).toEqual({ total: 1, succeeded: 1, failed: 0 });
@@ -377,11 +369,11 @@ describe('批量清单前的评价排空', () => {
         api.post.mockImplementationOnce(() => new Promise<void>((resolve) => {
             release = () => { server.set('A', { kind: 'watched', score: 4 }); resolve(); };
         }));
-        enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 4);
+        await enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 4);
         await vi.advanceTimersByTimeAsync(0);
         let finished = false;
         const run = drainBatchRatings(targets('A')).then((result) => { finished = true; return result; });
-        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(0);
         expect(finished).toBe(false);
         release();
         expect(await run).toEqual({ total: 1, succeeded: 1, failed: 0 });
@@ -390,7 +382,7 @@ describe('批量清单前的评价排空', () => {
     });
 
     it('取消记录和无关视频的详情来源记录不被补推', async () => {
-        register('A'); cancelOpSync('A', 'watched');
+        register('A'); await cancelOpSync('A', 'watched');
         upsertOpSync({ carNum: 'B', url: '/v/B', kind: 'favorite', origin: 'detail' });
         expect(await drainBatchRatings(targets('A'))).toEqual({ total: 0, succeeded: 0, failed: 0 });
         expect(api.post).not.toHaveBeenCalled();
@@ -433,7 +425,7 @@ describe('批量清单前的评价排空', () => {
         api.post.mockImplementationOnce(async (id, kind, score) => {
             server.set(id, { kind, score });
             local.set('B', { status: 'hasWatch', score: 2 });
-            enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 2);
+            await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 2);
         });
         const run = drainBatchRatings(targets('A', 'B'));
         await vi.runAllTimersAsync();

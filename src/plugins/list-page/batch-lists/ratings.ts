@@ -1,9 +1,8 @@
 /** 组合评价的本地准备与回执交接；只入账，不启动后台网络队列。 */
-import { BATCH_RATING_SYNC_LOCK, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../../constants/status';
+import { FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../../constants/status';
 
 import { carNumEquals, normalizeCarNum } from '../../../core/domain/car-num';
 import { featureFlags } from '../../../core/feature-flags';
-import { withExclusiveLock } from '../../../core/sync/sync-lock';
 import { saveCarListGuarded } from '../../../core/storage/car-list-ops';
 import type { CarRecord } from '../../../core/storage/car-list-ops';
 
@@ -15,6 +14,7 @@ import {
     type OpSyncRecord
 } from '../../setting/jhs-sync/op-sync-records';
 import { extractVideoId } from '../../setting/jhs-sync/sync-common';
+import { withRatingStateLock } from '../../setting/jhs-sync/rating-locks';
 import { readBatchListJobs } from './journal';
 
 function strictRows(): OpSyncRecord[] {
@@ -124,15 +124,17 @@ async function applyLocal(
 }
 
 /** 完整组合任务已经预写后调用；每次恢复均先检查原始基线，不重放后来已改变的评价。 */
-export async function prepareBatchRatings(job: BatchListJob, persist: () => Promise<void>, signal?: AbortSignal): Promise<void> {
+export async function prepareBatchRatings(
+    job: BatchListJob, persist: () => Promise<void>, signal?: AbortSignal, items: readonly BatchListJournalItem[] = job.items
+): Promise<void> {
     const rating = job.rating;
     if (!rating) return;
     if (!['favorite', 'watched'].includes(rating.kind) || !Number.isInteger(rating.score) || rating.score < 0 || rating.score > 5) {
         throw new Error('组合评价类型或星级无效');
     }
-    for (const item of job.items) {
+    for (const item of items) {
         if (signal?.aborted) return;
-        await withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+        await withRatingStateLock(async () => {
             if (signal?.aborted) return;
             const intent = item.rating;
             if (!intent) throw new Error('组合评价完整预写记录缺失，尚未修改本地评价');
@@ -189,21 +191,27 @@ export async function prepareBatchRatings(job: BatchListJob, persist: () => Prom
 }
 
 /** 先将逐条回执交接到组合日志，再释放账本保留，避免大批任务被容量淘汰丢失成功证据。 */
-export async function finishBatchRatings(job: BatchListJob, persist: () => Promise<void>): Promise<void> {
-    if (!job.rating) return;
-    for (const item of job.items) {
-        const intent = item.rating;
-        if (!intent || intent.phase === 'success' || intent.phase === 'superseded') continue;
-        const rows = strictRows();
-        const own = ownRecord(item, job.rating, rows);
-        if (hasNewer(item, rows) || own?.state === 'cancelled') intent.phase = 'superseded';
-        else if (own?.state === 'success') intent.phase = 'success';
-    }
-    await persist();
-    for (const item of job.items) {
-        if (!item.rating || !['success', 'superseded'].includes(item.rating.phase)) continue;
-        withStrictOpSyncPersistenceSync(() => releaseRetainedOpSync({
-            carNum: item.carNum, kind: job.rating!.kind, revision: item.rating!.revision
-        }));
-    }
+export async function finishBatchRatings(
+    job: BatchListJob, persist: () => Promise<void>, items: readonly BatchListJournalItem[] = job.items
+): Promise<void> {
+    const rating = job.rating;
+    if (!rating || !items.length) return;
+    await withRatingStateLock(async () => {
+        for (const item of items) {
+            const intent = item.rating;
+            if (!intent || intent.phase === 'success' || intent.phase === 'superseded') continue;
+            const rows = strictRows();
+            const own = ownRecord(item, rating, rows);
+            if (hasNewer(item, rows) || own?.state === 'cancelled') intent.phase = 'superseded';
+            else if (own?.state === 'success') intent.phase = 'success';
+        }
+        await persist();
+        for (const item of items) {
+            const intent = item.rating;
+            if (!intent || !['success', 'superseded'].includes(intent.phase)) continue;
+            withStrictOpSyncPersistenceSync(() => releaseRetainedOpSync({
+                carNum: item.carNum, kind: rating.kind, revision: intent.revision
+            }));
+        }
+    });
 }

@@ -13,6 +13,7 @@ import {
     resetBatchSyncForTest,
     stopBatchSync
 } from '../src/plugins/list-page/lp-batch-sync';
+import { withRatingStateLock } from '../src/plugins/setting/jhs-sync/rating-locks';
 
 describe('planBatchPush', () => {
     it('从 /v/{id} 解析 videoId 并透传 kind / score', () => {
@@ -60,8 +61,8 @@ describe('enqueueBatchPush / 队列状态', () => {
         resetBatchSyncForTest();
     });
 
-    it('返回实际入队数，pending 同步增加（同步返回，不等网络）', () => {
-        const queued = enqueueBatchPush(
+    it('本地登记完成后返回实际入队数，不等待网站网络', async () => {
+        const queued = await enqueueBatchPush(
             [
                 { carNum: 'A-1', url: '/v/ok1' },
                 { carNum: 'B-2', url: '/v/ok2' },
@@ -76,14 +77,14 @@ describe('enqueueBatchPush / 队列状态', () => {
         expect(getBatchSyncStatus().succeeded).toBe(0);
     });
 
-    it('无可入队项时不启动队列', () => {
-        expect(enqueueBatchPush([{ carNum: 'X-9', url: '/actors/1' }], 'favorite')).toBe(0);
+    it('无可入队项时不启动队列', async () => {
+        expect(await enqueueBatchPush([{ carNum: 'X-9', url: '/actors/1' }], 'favorite')).toBe(0);
         expect(getBatchSyncStatus().pending).toBe(0);
         expect(getBatchSyncStatus().scheduled).toBe(false);
     });
 
-    it('stopBatchSync 清空队列（未推完的项交由详情页校验兜底）', () => {
-        enqueueBatchPush(
+    it('stopBatchSync 清空队列（未推完的项交由详情页校验兜底）', async () => {
+        await enqueueBatchPush(
             [
                 { carNum: 'A-1', url: '/v/ok1' },
                 { carNum: 'B-2', url: '/v/ok2' }
@@ -95,6 +96,17 @@ describe('enqueueBatchPush / 队列状态', () => {
         stopBatchSync();
         expect(getBatchSyncStatus().pending).toBe(0);
         expect(getBatchSyncStatus().scheduled).toBe(false);
+    });
+
+    it('等待短登记锁时退出页面，登记可保留恢复但不能重新启动已停止的内存队列', async () => {
+        const gate = Promise.withResolvers<void>();
+        const held = withRatingStateLock(() => gate.promise);
+        const pending = enqueueBatchPush([{ carNum: 'A-1', url: '/v/ok1' }], 'watched', 4);
+        stopBatchSync();
+        gate.resolve();
+        await held;
+        expect(await pending).toBe(1);
+        expect(getBatchSyncStatus()).toMatchObject({ pending: 0, scheduled: false });
     });
 });
 

@@ -6,6 +6,7 @@
  * 需要插件状态的函数以 SettingPlugin 实例为首参。
  */
 import { YES, NO } from '../../constants/status';
+import { normalizeBatchOperationConcurrency } from '../../constants/batch-operations';
 
 import {
     getCredentialId,
@@ -72,6 +73,7 @@ export async function loadForm(plugin: SettingPlugin): Promise<void> {
     $('#clogMsgCount').val(settings.clogMsgCount || 2000);
     $('#httpTimeout').val(settings.httpTimeout || 5000);
     $('#httpRetryCount').val(settings.httpRetryCount || 3);
+    $('#batchOperationConcurrency').val(normalizeBatchOperationConcurrency(settings.batchOperationConcurrency));
     // WebDAV 凭据：优先 GM 新格式，回退 settings 旧格式并迁移
     const webDavUrl = GM_getValue(GM_KEY_WEBDAV_URL, '') || settings.webDavUrl || '';
     const webDavUsername = GM_getValue(GM_KEY_WEBDAV_USERNAME, '') || settings.webDavUsername || '';
@@ -200,6 +202,7 @@ export async function saveForm(plugin: SettingPlugin): Promise<void> {
     settings.highlightedTagColor = $('#highlightedTagColor').val();
     settings.httpTimeout = $('#httpTimeout').val();
     settings.httpRetryCount = $('#httpRetryCount').val();
+    settings.batchOperationConcurrency = normalizeBatchOperationConcurrency($('#batchOperationConcurrency').val());
     settings.enableClog = $('#enableClog').val();
     if (settings.enableClog === YES) {
         clog.show();

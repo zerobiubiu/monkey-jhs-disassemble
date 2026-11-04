@@ -1,7 +1,7 @@
 import { jsxToString } from '../../../core/jsx-to-string';
-import type { BatchListItem, BatchListProgress, BatchRatingChoice } from '../../../types/batch-lists';
+import type { BatchListChoice, BatchListItem, BatchListProgress, BatchRatingChoice } from '../../../types/batch-lists';
 
-import { emptyBatchListProgress, recoverBatchListJobs, startBatchListJob } from './service';
+import { emptyBatchListProgress, isBatchListExecutionRunning, recoverBatchListJobs, startBatchListJob } from './service';
 import { fetchBatchListChoices } from './site';
 import { isBatchListJobPending, readBatchListJobs } from './journal';
 
@@ -16,9 +16,10 @@ export function isBatchListDialogOpen(): boolean {
     return activeDialog?.isConnected === true;
 }
 
-/** 每次展示入口均读取持久日志，包含手动停止且不会自动恢复的任务。 */
-function hasRecoverableJobs(): boolean {
+/** 活跃页面拥有执行锁时不提供恢复入口；手动停止的任务仍可继续。 */
+async function hasRecoverableJobs(): Promise<boolean> {
     try {
+        if (await isBatchListExecutionRunning()) return false;
         return readBatchListJobs().some(isBatchListJobPending);
     } catch (error: unknown) {
         clog.error('[批量清单] 无法读取未完成操作', error);
@@ -35,6 +36,15 @@ function readSelectedRating(container: HTMLElement): BatchRatingChoice | undefin
         return { kind, score };
     }
     return undefined;
+}
+
+/** 搜索仅隐藏目录行，所有勾选仍保留并作为同一个任务提交。 */
+function readSelectedLists(container: HTMLElement, choices: BatchListChoice[]): BatchListChoice[] {
+    const selectedIds = new Set(Array.from(
+        container.querySelectorAll<HTMLInputElement>('input[name="jhs-batch-list-choice"]:checked'),
+        (input) => input.value
+    ));
+    return choices.filter((choice) => selectedIds.has(choice.id));
 }
 
 /** 使用浏览器模态层保护焦点，不受 layer 全局关闭逻辑影响。 */
@@ -185,7 +195,9 @@ export async function openBatchListDialog(items: BatchListItem[]): Promise<void>
             view.closed.then(() => null)
         ]);
         if (!choices || !view.dialog.isConnected) return;
-        view.body.innerHTML = jsxToString(<BatchListsPicker count={items.length} choices={choices} loading={false} error="" hasRecoverable={hasRecoverableJobs()} />);
+        const hasRecoverable = await hasRecoverableJobs();
+        if (!view.dialog.isConnected) return;
+        view.body.innerHTML = jsxToString(<BatchListsPicker count={items.length} choices={choices} loading={false} error="" hasRecoverable={hasRecoverable} />);
         const search = view.body.querySelector<HTMLInputElement>('#jhs-batch-list-search')!;
         const start = view.body.querySelector<HTMLButtonElement>('[data-list-act="start"]')!;
         const rows = Array.from(view.body.querySelectorAll<HTMLElement>('.jhs-batch-lists-choice'));
@@ -205,37 +217,39 @@ export async function openBatchListDialog(items: BatchListItem[]): Promise<void>
             const score = view.body.querySelector<HTMLSelectElement>('#jhs-batch-rating-score');
             if (scoreRow) scoreRow.hidden = !watched;
             if (score) score.disabled = !watched;
-            const selected = view.body.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]:checked');
-            start.disabled = selected === null;
-            const choice = choices.find((entry) => entry.id === selected?.value);
+            const selected = readSelectedLists(view.body, choices);
+            start.disabled = selected.length === 0;
             const target = view.body.querySelector<HTMLElement>('[data-role="selected-target"]');
-            if (target) target.textContent = choice ? '已选清单：' + choice.name : '尚未选择清单';
+            if (target) target.textContent = selected.length > 0
+                ? `已选 ${selected.length} 个清单：${selected.map((choice) => choice.name).join('、')}`
+                : '尚未选择清单';
+            const groups = selected.filter((choice) => choice.group);
             const behavior = view.body.querySelector<HTMLElement>('[data-role="group-behavior"]');
             if (behavior) {
-                behavior.hidden = !choice?.group;
+                behavior.hidden = groups.length === 0;
                 const removing = view.body.querySelector<HTMLInputElement>('input[name="jhs-batch-list-direction"]:checked')?.value === 'remove';
-                behavior.textContent = !choice?.group ? '' : removing
-                    ? '将移出该清单组内已关联的清单。'
-                    : '将自动加入可用清单，全部满员时自动续建。';
+                behavior.textContent = groups.length === 0 ? '' : removing
+                    ? `所选 ${groups.length} 个清单组分别移出组内已关联的清单。`
+                    : `所选 ${groups.length} 个清单组分别自动分配到可用清单，全部满员时自动续建。`;
             }
         });
         view.dialog.addEventListener('click', (event) => {
             const action = (event.target as Element).closest<HTMLElement>('[data-list-act]')?.dataset.listAct;
             if (action !== 'start' || start.disabled) return;
-            const id = view.body.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]:checked')?.value;
-            const choice = choices.find((entry) => entry.id === id);
-            if (!choice) return;
+            const selected = readSelectedLists(view.body, choices);
+            if (selected.length === 0) return;
             const desired = view.body.querySelector<HTMLInputElement>('input[name="jhs-batch-list-direction"]:checked')?.value !== 'remove';
             const rating = readSelectedRating(view.body);
             start.disabled = true;
             void executeInDialog(view, (notify, signal) => rating
-                ? startBatchListJob(items, choice, desired, notify, signal, rating)
-                : startBatchListJob(items, choice, desired, notify, signal));
+                ? startBatchListJob(items, selected, desired, notify, signal, rating)
+                : startBatchListJob(items, selected, desired, notify, signal));
         });
         search.focus();
     } catch (error: unknown) {
+        const hasRecoverable = await hasRecoverableJobs();
         if (view.dialog.isConnected) {
-            view.body.innerHTML = jsxToString(<BatchListsPicker count={items.length} choices={[]} loading={false} error={'无法读取网站清单：' + (error instanceof Error ? error.message : String(error))} hasRecoverable={hasRecoverableJobs()} />);
+            view.body.innerHTML = jsxToString(<BatchListsPicker count={items.length} choices={[]} loading={false} error={'无法读取网站清单：' + (error instanceof Error ? error.message : String(error))} hasRecoverable={hasRecoverable} />);
         }
     }
     await view.closed;

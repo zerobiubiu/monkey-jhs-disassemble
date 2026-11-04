@@ -1,8 +1,8 @@
 /**
  * BasePanel —— 基础配置面板（React 函数组件，JSX）。
  *
- * 窗口数、标签位置、展示方式、演员补录、画质、评论区、高亮、超时/重试、
- * 日志配置，基于 setting/ 原子组件构建（分区 + 统一行网格）。
+ * 窗口数、标签位置、展示方式、演员补录、画质、评论区、高亮、批量并发、
+ * 超时/重试、日志配置，基于 setting/ 原子组件构建（分区 + 统一行网格）。
  */
 
 import { SettingColorRow } from '../setting/setting-color-row';
@@ -100,6 +100,13 @@ export function BasePanel({ panelName, qualityOptionsHtml, isJavdbSite }: BasePa
                 </SettingRow>
                 <SettingRow label="请求失败重试次数:">
                     <SettingInput id="httpRetryCount" type="number" min="0" max="10" />
+                </SettingRow>
+                <SettingRow
+                    label="批量操作并发视频数:"
+                    controlId="batchOperationConcurrency"
+                    tooltip="评价与清单按视频并发执行；每部完成评价及全部所选清单后再处理下一部。默认 2，填写正整数。"
+                >
+                    <SettingInput id="batchOperationConcurrency" type="number" min="1" step="1" />
                 </SettingRow>
             </SettingSection>
 

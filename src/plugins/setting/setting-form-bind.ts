@@ -31,6 +31,7 @@ import { backupDataByWebDav, backupListBtnByWebDav } from './webdav-operations';
 import { backupDataByGit, backupListBtnByGit } from './git-operations';
 import { cancelOpSync, retryFailedOpSync, retryOpSync } from '../list-page/lp-batch-sync';
 import { clearOpSyncTerminal, getOpSyncRecord, type OpSyncKind } from './jhs-sync/op-sync-records';
+import { withRatingStateLock } from './jhs-sync/rating-locks';
 import { saveForm } from './setting-form-load';
 
 /** 绑定设置弹层内各按钮/输入的点击/输入事件。对应原 L10066-10131。 */
@@ -109,25 +110,25 @@ export function bindClick(plugin: SettingPlugin): void {
         plugin.refreshOpSync();
         show.ok('同步状态已刷新');
     });
-    $('#op-sync-retry-all-btn').on('click', () => {
-        const queued = retryFailedOpSync();
+    $('#op-sync-retry-all-btn').on('click', async () => {
+        const queued = await retryFailedOpSync();
         plugin.refreshOpSync();
         if (queued > 0) show.ok(`已重新入队 ${queued} 条`);
         else show.info('没有可重试的失败记录');
     });
-    $('#op-sync-clear-btn').on('click', () => {
-        const removed = clearOpSyncTerminal();
+    $('#op-sync-clear-btn').on('click', async () => {
+        const removed = await withRatingStateLock(() => clearOpSyncTerminal());
         plugin.refreshOpSync();
         show.ok(removed > 0 ? `已清理 ${removed} 条已结束记录` : '没有已结束的记录');
     });
     // 行内操作（重试 / 取消）：委托到面板内容区，避免逐行绑定
-    $('#op-sync-content').on('click', '.op-sync-action', function (this: HTMLElement) {
+    $('#op-sync-content').on('click', '.op-sync-action', async function (this: HTMLElement) {
         const $row = $(this).closest('tr');
         const carNum = String($row.data('carnum') ?? '');
         const kind = String($row.data('kind') ?? '');
         const act = String($(this).data('act') ?? '');
         if (!carNum || !kind) return;
-        handleOpSyncRowAction(plugin, carNum, kind as OpSyncKind, act);
+        await handleOpSyncRowAction(plugin, carNum, kind as OpSyncKind, act);
     });
     // ===== 缓存管理面板事件绑定 =====
     // 初始化总量显示
@@ -176,14 +177,14 @@ export function bindClick(plugin: SettingPlugin): void {
  * @param kind 操作类型
  * @param act 动作（`retry` | `cancel`）
  */
-function handleOpSyncRowAction(
+async function handleOpSyncRowAction(
     plugin: SettingPlugin,
     carNum: string,
     kind: OpSyncKind,
     act: string
-): void {
+): Promise<void> {
     if (act === 'cancel') {
-        cancelOpSync(carNum, kind);
+        await cancelOpSync(carNum, kind);
         plugin.refreshOpSync();
         show.ok(`${carNum} 已取消同步（本地状态保留）`);
         return;
@@ -193,7 +194,7 @@ function handleOpSyncRowAction(
         plugin.refreshOpSync();
         return;
     }
-    const queued = retryOpSync(record);
+    const queued = await retryOpSync(record);
     plugin.refreshOpSync();
     if (queued) show.ok(`${carNum} 已重新入队同步`);
     else show.error(`${carNum} 无法重试：缺少可定位的详情页地址`);

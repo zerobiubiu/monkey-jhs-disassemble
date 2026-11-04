@@ -22,28 +22,47 @@ document.getElementById('toolbar').addEventListener('click', event => { if(event
 openBatchListDialog(items);
 `;
 const progressCode = `
+let running = false;
+export const isBatchListExecutionRunning = async () => running;
 export const emptyBatchListProgress = () => ({ total:0,done:0,succeeded:0,failed:0,pending:0,phase:'lists',current:'',ratingTotal:0,ratingDone:0,ratingFailed:0 });
-async function execute(notify, recovered=false, signal) {
-    const p = { ...emptyBatchListProgress(), total:5, pending:5, phase:'ratings', ratingTotal:2, current:'同步本次所选视频的未完成评价，其他视频继续后台同步' };
-    const pause = () => new Promise(resolve => setTimeout(resolve, 900));
-    const stopped = () => { p.phase='done'; p.stopped=true; p.current='已停止，未完成记录保留，等待手动继续'; notify({...p}); return p; };
+async function execute(items, lists, checked, notify, recovered=false, signal, rating) {
+    running = true;
+    const p = { ...emptyBatchListProgress(), total:items.length, pending:items.length, concurrency:Math.min(2,items.length), ratingTotal:rating ? items.length : 0 };
+    const pause = () => {
+        const {promise, resolve} = Promise.withResolvers();
+        setTimeout(resolve, 900);
+        return promise;
+    };
+    let next = 0;
     notify({...p});
-    if(signal?.aborted) return stopped();
-    await pause(); p.ratingDone=1; notify({...p});
-    if(signal?.aborted) return stopped();
-    await pause(); p.ratingDone=2;
-    p.phase='lists';
-    for(let i=1;i<=5;i++) {
-        if(signal?.aborted) return stopped();
-        p.current='DEMO-'+i+' → 值得复盘（加入）'; notify({...p}); await pause(); p.done=i;
-        if(!recovered && new URLSearchParams(location.search).get('scenario')==='failed' && i===3) p.failed++;
-        else {p.succeeded++;p.pending--;}
-        notify({...p});
-    }
-    p.phase='done'; p.current=p.pending ? '未完成项目已保留，将自动校验并继续执行' : '网站与本地数据已同步完成'; notify({...p}); return p;
+    try {
+        await Promise.all(Array.from({length:p.concurrency}, async () => {
+            while(next < items.length && !signal?.aborted) {
+                const index = next++;
+                const item = items[index];
+                if(rating) {
+                    p.current=item.carNum+'：确认评价'; notify({...p});
+                    await pause(); p.ratingDone++; notify({...p});
+                    if(signal?.aborted) return;
+                }
+                p.current=item.carNum+' → '+lists.map(list => list.name).join('、')+'（'+(checked ? '加入' : '移出')+'）';
+                notify({...p}); await pause(); p.done++;
+                if(!recovered && new URLSearchParams(location.search).get('scenario')==='failed' && index===2) p.failed++;
+                else {p.succeeded++;p.pending--;}
+                notify({...p});
+            }
+        }));
+        p.phase='done'; p.stopped=signal?.aborted===true;
+        p.current=p.stopped ? '已停止，未完成记录保留，等待手动继续'
+            : p.pending ? '未完成视频已保留，将自动校验并继续执行' : '所选视频的评价与清单已确认完成';
+        notify({...p}); return p;
+    } finally { running = false; }
 }
-export async function startBatchListJob(items,list,checked,notify,signal) { return execute(notify,false,signal); }
-export async function recoverBatchListJobs(notify,force=false,signal) { return execute(notify,true,signal); }
+export async function startBatchListJob(items,lists,checked,notify,signal,rating) { return execute(items,lists,checked,notify,false,signal,rating); }
+export async function recoverBatchListJobs(notify,force=false,signal) {
+    const items=Array.from({length:5},(_,i)=>({carNum:'DEMO-'+(i+1)}));
+    return execute(items,[{name:'值得复盘'},{name:'等待更新'}],true,notify,true,signal,{kind:'favorite',score:0});
+}
 `;
 const build = await Bun.build({
     entrypoints: [import.meta.path],
@@ -52,6 +71,7 @@ const build = await Bun.build({
     plugins: [{ name: 'batch-list-isolated-preview', setup(builder) {
         builder.onLoad({ filter: /tests[\\/]browser[\\/]batch-lists-ui\.ts$/ }, () => ({ contents: fixture, loader: 'ts', resolveDir: root }));
         builder.onLoad({ filter: /batch-lists[\\/]service\.ts$/ }, () => ({ contents: progressCode, loader: 'ts' }));
+        builder.onLoad({ filter: /batch-lists[\\/]journal\.ts$/ }, () => ({ contents: 'export const readBatchListJobs = () => []; export const isBatchListJobPending = () => false;', loader: 'ts' }));
         builder.onLoad({ filter: /batch-lists[\\/]site\.ts$/ }, () => ({ contents: `export async function fetchBatchListChoices() {
             if(new URLSearchParams(location.search).get('scenario')==='load-error') throw new Error('模拟未登录：请先登录网站后重试');
             return [

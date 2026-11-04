@@ -54,28 +54,38 @@ export interface BatchListProgress {
     failed: number;
     pending: number;
     superseded?: number;
+    /** 本轮实际同时处理的视频数量。 */
+    concurrency?: number;
     stopped?: boolean;
     phase: 'ratings' | 'lists' | 'done';
     current: string;
     ratingTotal: number;
     ratingDone: number;
     ratingFailed: number;
-    /** 同批新评价仍待确认的数量，独立于清单成功/失败。 */
+    /** 评价尚未全部确认的视频数；清单成功不能掩盖这部分未完成责任。 */
     ratingPending?: number;
+}
+
+export interface BatchListJournalOperation {
+    listId: string;
+    state: 'pending' | 'success' | 'superseded';
+    error: string;
+    route?: BatchListRoute;
 }
 
 export interface BatchListJournalItem extends BatchListItem {
     state: 'pending' | 'success' | 'superseded';
     error: string;
-    route?: BatchListRoute;
+    operations: BatchListJournalOperation[];
+    ratingsComplete: boolean;
     rating?: BatchRatingIntent;
 }
 
 export interface BatchListJob {
-    version: 1;
+    version: 2;
     id: string;
     origin: string;
-    list: BatchListChoice;
+    lists: BatchListChoice[];
     rating?: BatchRatingChoice;
     desiredChecked: boolean;
     createdAt: number;

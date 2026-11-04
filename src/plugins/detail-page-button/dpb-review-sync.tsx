@@ -12,8 +12,11 @@
 import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { jsxToString } from '../../core/jsx-to-string';
+import { siteSelector } from '../../core/util/site/selectors';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
+import { withRatingVideoLock } from '../setting/jhs-sync/rating-locks';
+import { extractVideoId, fetchPageHtml } from '../setting/jhs-sync/sync-common';
 
 import { ReviewConflictDialog } from '../../components/dpb/review-conflict-dialog';
 
@@ -275,18 +278,32 @@ function enqueuePush(
     return new Promise<void>((resolve) => {
         plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
             .then(async () => {
-                plugin._wantWatchedSyncing = true;
                 try {
-                    if (kind === 'want') {
-                        await plugin._triggerJavdbWant();
-                        show.ok(`${carNum} 已同步收藏到 JavDB`);
-                    } else {
-                        await plugin._triggerJavdbReview(score);
-                        show.ok(
-                            `${carNum} 已同步${score > 0 ? `评分 ${score} 星` : '已读'}到 JavDB`
-                        );
-                    }
-                    plugin._syncRatingBar();
+                    const videoId = extractVideoId(plugin.getPageInfo().url ?? '');
+                    if (!videoId) throw new Error('无法获取 videoId');
+                    await withRatingVideoLock(videoId, async () => {
+                        // 新页面的 DOM 可能早于在途评价；拿锁后重读两端，不能重放排队前的判断。
+                        storageManager.clearCarListCache();
+                        const current = await storageManager.getCar(carNum);
+                        const matchesLocal = kind === 'want' ? current?.status === FAVORITE_ACTION
+                            : (current?.status === HAS_WATCH_ACTION && (current.score ?? 0) === score) ||
+                                (current?.status === FILTER_ACTION && score === 0);
+                        if (!matchesLocal) return;
+                        const html = await fetchPageHtml(`/v/${videoId}`);
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        if (!doc.querySelector(siteSelector('detailReviewButtons'))) throw new Error('未取得有效的网站评价状态');
+                        const fresh = readServerReviewState(doc);
+                        if (kind === 'want' ? fresh.want : fresh.watched && fresh.score === score) return;
+                        plugin._wantWatchedSyncing = true;
+                        if (kind === 'want') {
+                            await plugin._triggerJavdbWant();
+                            show.ok(`${carNum} 已同步收藏到 JavDB`);
+                        } else {
+                            await plugin._triggerJavdbReview(score);
+                            show.ok(`${carNum} 已同步${score > 0 ? `评分 ${score} 星` : '已读'}到 JavDB`);
+                        }
+                        plugin._syncRatingBar();
+                    });
                 } catch (err) {
                     clog.error(`[JHS] 评价状态自动校验：推送失败 ${carNum}`, err);
                     show.error(

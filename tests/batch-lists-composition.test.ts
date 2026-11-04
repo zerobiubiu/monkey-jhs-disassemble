@@ -103,8 +103,8 @@ describe('评价与清单的真实组合恢复', () => {
             await new Promise<void>((resolve) => { release = resolve; });
         });
         await vi.advanceTimersByTimeAsync(0);
-        const first = startBatchListJob([item], list, true, vi.fn(), undefined, { kind: 'watched', score: 4 });
-        const second = startBatchListJob([item], list, true, vi.fn(), undefined, { kind: 'watched', score: 5 });
+        const first = startBatchListJob([item], [list], true, vi.fn(), undefined, { kind: 'watched', score: 4 });
+        const second = startBatchListJob([item], [list], true, vi.fn(), undefined, { kind: 'watched', score: 5 });
         await vi.advanceTimersByTimeAsync(0);
         const jobs = readBatchListJobs();
         expect(jobs).toHaveLength(2);
@@ -118,8 +118,8 @@ describe('评价与清单的真实组合恢复', () => {
 
     it('本地已提交但登记前中断，恢复相同身份且不重写本地，仍补网站账本及清单', async () => {
         interruptAfterLocalCommit();
-        await expect(startBatchListJob([item], list, true, vi.fn(), undefined, { kind: 'watched', score: 4 }))
-            .rejects.toThrow('账本登记前中断');
+        expect(await startBatchListJob([item], [list], true, vi.fn(), undefined, { kind: 'watched', score: 4 }))
+            .toMatchObject({ failed: 1, pending: 1, succeeded: 0 });
         const intent = readBatchListJobs()[0].items[0].rating!;
         expect(intent.phase).toBe('applying');
         expect(localCar()).toMatchObject({ status: HAS_WATCH_ACTION, score: 4 });
@@ -137,8 +137,8 @@ describe('评价与清单的真实组合恢复', () => {
 
     it('旧组合恢复遇到后来评分时不覆盖或重新登记旧评分，仍完成独立清单', async () => {
         interruptAfterLocalCommit();
-        await expect(startBatchListJob([item], list, true, vi.fn(), undefined, { kind: 'watched', score: 4 }))
-            .rejects.toThrow('账本登记前中断');
+        expect(await startBatchListJob([item], [list], true, vi.fn(), undefined, { kind: 'watched', score: 4 }))
+            .toMatchObject({ failed: 1, pending: 1, succeeded: 0 });
         const originalRevision = readBatchListJobs()[0].items[0].rating!.revision;
         vi.setSystemTime(Date.now() + 1000);
         await sm.saveCar({ ...item, actionType: HAS_WATCH_ACTION, score: 5 });
@@ -160,7 +160,7 @@ describe('评价与清单的真实组合恢复', () => {
             await new Promise<void>((resolve) => { release = resolve; });
             forage.data.set(key, structuredClone(value));
         });
-        const running = startBatchListJob([item], list, true, vi.fn(), undefined, { kind: 'watched', score: 4 });
+        const running = startBatchListJob([item], [list], true, vi.fn(), undefined, { kind: 'watched', score: 4 });
         await vi.advanceTimersByTimeAsync(0);
         expect(localWrites()).toBe(1);
         // 真实 saveCar 使用同一写锁；它必须等旧写提交后才读取并写入新评分。
@@ -187,7 +187,7 @@ describe('评价与清单的真实组合恢复', () => {
         const unrelated = upsertOpSync({ carNum: 'OTHER-002', url: `${origin}/v/other`, kind: 'watched', score: 3 });
         setOpSyncState(unrelated.carNum, unrelated.kind, 'failed', { expectedRevision: unrelated.revision, error: '原有失败' });
 
-        expect(await startBatchListJob([item], list, true, vi.fn())).toMatchObject({ succeeded: 1, pending: 0 });
+        expect(await startBatchListJob([item], [list], true, vi.fn())).toMatchObject({ succeeded: 1, pending: 0 });
         expect(localWrites()).toBe(0);
         expect(readBatchListJobs()[0].rating).toBeUndefined();
         expect(rows).toHaveLength(2);

@@ -17,7 +17,7 @@
 
 | 插件 | 职责 |
 |------|------|
-| ListPagePlugin | 列表页过滤/状态标签/翻译/点击；推荐浮层独立筛选；评价与聚合清单同批配置、自动路由、预写/回查/进度/恢复、手动停止与继续；仅目标视频评价阻塞同步，其余保持后台 |
+| ListPagePlugin | 列表页过滤/状态标签/翻译/点击；推荐浮层独立筛选；评价与多选聚合清单逐视频并发（默认2可设置）、自动路由、预写/回查/进度及原子跨页恢复、手动停止与继续 |
 | AutoPagePlugin | 瀑布流自动翻页 |
 | FoldCategoryPlugin | 折叠分类 |
 | HistoryPlugin | 鉴定记录 |
@@ -27,7 +27,7 @@
 | Top250Plugin | Top250 排行榜 |
 | DetailPagePlugin | 详情页主插件 |
 | ReviewPlugin | 评论 |
-| DetailPageButtonPlugin | 详情页想看/观看/评分/清单/字幕/清单序号合并/自动校验；快捷评价与列表同步共享执行锁及 revision 回执保护 |
+| DetailPageButtonPlugin | 详情页想看/观看/评分/清单/字幕/清单序号合并/自动校验；快捷评价与列表同步共享按视频网络锁、短账本锁及 revision 回执保护 |
 | HighlightMagnetPlugin | 高亮磁链 |
 | PreviewVideoPlugin | 预览视频 |
 | ActressInfoPlugin | 演员信息 |

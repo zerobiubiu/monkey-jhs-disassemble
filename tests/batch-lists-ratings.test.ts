@@ -41,10 +41,13 @@ function updateLocal(inputs: Array<{ carNum: string; url?: string; actionType?: 
 
 async function jobFor(kind: 'favorite' | 'watched' = 'watched', score = 5): Promise<BatchListJob> {
     return {
-        version: 1, id: 'job', origin: 'https://javdb.com', list: { id: 'L1', name: '清单', url: '/lists/L1' },
+        version: 2, id: 'job', origin: 'https://javdb.com', lists: [{ id: 'L1', name: '清单', url: '/lists/L1' }],
         rating: { kind, score }, desiredChecked: true, createdAt: 1000, updatedAt: 1000,
         attempts: 0, retryAt: 1000, ratingsComplete: false,
-        items: [{ ...item, state: 'pending', error: '', rating: await captureBatchRating(item, 'job:v1', 1000) }]
+        items: [{
+            ...item, state: 'pending', error: '', operations: [{ listId: 'L1', state: 'pending', error: '' }], ratingsComplete: false,
+            rating: await captureBatchRating(item, 'job:v1', 1000)
+        }]
     };
 }
 
@@ -112,6 +115,23 @@ describe('完整预写前的只读捕获', () => {
 });
 
 describe('组合评价本地准备与稳定账本', () => {
+    it('逐影片准备只修改传入目标，其他视频评价保持原样直到取得自己的槽位', async () => {
+        const job = await jobFor();
+        const other = { carNum: 'TEST-002', videoId: 'v2', url: '/v/v2' };
+        cars.set(other.carNum, { ...other, status: '', score: 0 });
+        job.items.push({
+            ...other, state: 'pending', error: '', operations: [{ listId: 'L1', state: 'pending', error: '' }], ratingsComplete: false,
+            rating: await captureBatchRating(other, 'job:v2', 1000)
+        });
+        await prepareBatchRatings(job, vi.fn(), undefined, [job.items[0]]);
+        expect(job.items.map((row) => row.rating?.phase)).toEqual(['registered', 'pending']);
+        expect(cars.get(other.carNum)?.status).toBe('');
+        expect(getOpSyncRecord(other.carNum, 'watched')).toBeNull();
+        await prepareBatchRatings(job, vi.fn(), undefined, [job.items[1]]);
+        expect(job.items.map((row) => row.rating?.phase)).toEqual(['registered', 'registered']);
+        expect(listOpSyncRecords()).toHaveLength(2);
+    });
+
     it('同毫秒同时捕获的两组合任务按预写保留顺序执行，后点五星可覆盖已知前序二星', async () => {
         const first = await jobFor('watched', 2);
         const second = await jobFor('watched', 5);
@@ -270,7 +290,10 @@ describe('组合评价本地准备与稳定账本', () => {
         const other = { carNum: 'OLD-0', videoId: 'old0', url: '/v/old0' };
         cars.set(other.carNum, { ...other, status: FAVORITE_ACTION, score: 0 });
         const job = await jobFor();
-        job.items.push({ ...other, state: 'pending', error: '', rating: await captureBatchRating(other, 'job:old0', 1000) });
+        job.items.push({
+            ...other, state: 'pending', error: '', operations: [{ listId: 'L1', state: 'pending', error: '' }], ratingsComplete: false,
+            rating: await captureBatchRating(other, 'job:old0', 1000)
+        });
         await prepareBatchRatings(job, vi.fn());
         expect(job.items.map((row) => row.rating?.phase)).toEqual(['registered', 'registered']);
         expect(getOpSyncRecord(other.carNum, 'watched')?.revision).toBe('job:old0');
@@ -278,6 +301,25 @@ describe('组合评价本地准备与稳定账本', () => {
 });
 
 describe('严格回执向组合日志交接', () => {
+    it('逐影片回执只交接传入目标，不提前结束或释放另一个视频的恢复证据', async () => {
+        const job = await jobFor();
+        const other = { carNum: 'TEST-002', videoId: 'v2', url: '/v/v2' };
+        cars.set(other.carNum, { ...other, status: '', score: 0 });
+        job.items.push({
+            ...other, state: 'pending', error: '', operations: [{ listId: 'L1', state: 'pending', error: '' }], ratingsComplete: false,
+            rating: await captureBatchRating(other, 'job:v2', 1000)
+        });
+        await prepareBatchRatings(job, vi.fn());
+        for (const target of job.items) setOpSyncState(target.carNum, 'watched', 'success', { expectedRevision: target.rating!.revision });
+        await finishBatchRatings(job, vi.fn(), [job.items[0]]);
+        expect(job.items.map((row) => row.rating?.phase)).toEqual(['success', 'registered']);
+        expect(getOpSyncRecord(item.carNum, 'watched')?.retained).toBeUndefined();
+        expect(getOpSyncRecord(other.carNum, 'watched')?.retained).toBe(true);
+        await finishBatchRatings(job, vi.fn(), [job.items[1]]);
+        expect(job.items[1].rating?.phase).toBe('success');
+        expect(getOpSyncRecord(other.carNum, 'watched')?.retained).toBeUndefined();
+    });
+
     it('网站成功先写入任务日志，再释放retained；未确认记录保持registered', async () => {
         const job = await jobFor(); await prepareBatchRatings(job, vi.fn());
         await finishBatchRatings(job, vi.fn());
@@ -313,6 +355,7 @@ describe('严格回执向组合日志交接', () => {
         const job = await jobFor();
         job.items = (disk as OpSyncRecord[]).map((record) => ({
             carNum: record.carNum, videoId: record.url.split('/').pop()!, url: record.url, state: 'pending', error: '',
+            operations: [{ listId: 'L1', state: 'pending', error: '' }], ratingsComplete: false,
             rating: { revision: record.revision!, requestedAt: record.requestedAt!, baseline: '[]', before: { status: '', score: 0 }, phase: 'registered' }
         }));
         job.rating = { kind: 'favorite', score: 0 };

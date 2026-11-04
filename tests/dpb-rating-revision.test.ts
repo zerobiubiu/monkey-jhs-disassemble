@@ -12,9 +12,9 @@ vi.mock('../src/plugins/setting/jhs-sync/sync-common', () => ({
     deleteReview: vi.fn()
 }));
 
-import { BATCH_RATING_SYNC_LOCK } from '../src/constants/status';
 import { quickBlock, quickConvertToFav, quickSetHasWatch } from '../src/plugins/detail-page-button/dpb-rating-api';
 import type { DetailPageButtonPlugin } from '../src/plugins/detail-page-button-plugin';
+import { autoSyncReviewState } from '../src/plugins/detail-page-button/dpb-review-sync';
 import { drainBatchRatings, enqueueBatchPush, resetBatchSyncForTest } from '../src/plugins/list-page/lp-batch-sync';
 import {
     getOpSyncRecord, setOpSyncStorageForTest, upsertOpSync, type OpSyncRecord
@@ -23,7 +23,6 @@ import {
 let local: { status: string; score: number };
 let remote: { kind: string; score: number };
 let events: string[];
-let lockNames: string[];
 let disk: OpSyncRecord[];
 
 function deferred() {
@@ -54,20 +53,18 @@ function createPlugin(gate: ReturnType<typeof deferred>) {
     };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     vi.useFakeTimers();
     document.body.innerHTML = '';
     local = { status: 'hasWatch', score: 0 };
     remote = { kind: 'watched', score: 0 };
     events = [];
-    lockNames = [];
     disk = [];
-    let chain = Promise.resolve();
+    const locks = new Map<string, Promise<unknown>>();
     vi.stubGlobal('navigator', { locks: {
         request: <T>(name: string, _options: unknown, task: () => Promise<T>) => {
-            lockNames.push(name);
-            const run = chain.then(task);
-            chain = run.then(() => {}, () => {});
+            const run = (locks.get(name) ?? Promise.resolve()).then(task);
+            locks.set(name, run.then(() => {}, () => {}));
             return run;
         }
     } });
@@ -84,7 +81,7 @@ beforeEach(() => {
     vi.stubGlobal('utils', { closePage: vi.fn(), q: vi.fn() });
     setOpSyncStorageForTest({ read: () => structuredClone(disk), write: (rows) => { disk = structuredClone(rows); } });
     resetBatchSyncForTest();
-    enqueueBatchPush([], 'favorite', 0, { pacingMs: 0 });
+    await enqueueBatchPush([], 'favorite', 0, { pacingMs: 0 });
     api.post.mockReset().mockImplementation(async (_id, kind, score) => {
         events.push(`列表完成:${score}`);
         remote = { kind, score };
@@ -99,9 +96,9 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-function enqueueFiveStars() {
+async function enqueueFiveStars() {
     local = { status: 'hasWatch', score: 5 };
-    enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 5);
+    await enqueueBatchPush([{ carNum: 'A', url: '/v/A' }], 'watched', 5);
 }
 
 describe('详情与列表评价共同执行锁及意图回执', () => {
@@ -111,7 +108,7 @@ describe('详情与列表评价共同执行锁及意图回执', () => {
         await quickSetHasWatch(plugin as unknown as DetailPageButtonPlugin, 2);
         await vi.advanceTimersByTimeAsync(0);
         expect(events).toEqual(['详情开始:2']);
-        enqueueFiveStars();
+        await enqueueFiveStars();
         const run = drainBatchRatings([{ carNum: 'A', url: '/v/A' }]);
         await vi.advanceTimersByTimeAsync(0);
         expect(api.post).not.toHaveBeenCalled();
@@ -121,7 +118,24 @@ describe('详情与列表评价共同执行锁及意图回执', () => {
         expect(events).toEqual(['详情开始:2', '详情完成:2', '列表完成:5']);
         expect(remote).toEqual({ kind: 'watched', score: 5 });
         expect(getOpSyncRecord('A', 'watched')).toMatchObject({ score: 5, state: 'success', origin: 'list' });
-        expect(lockNames.every((name) => name === BATCH_RATING_SYNC_LOCK)).toBe(true);
+    });
+
+    it('详情A网络未返回时，列表B已完成评价且不改变A的待确认账本', async () => {
+        const gate = deferred();
+        const plugin = createPlugin(gate);
+        await quickSetHasWatch(plugin as unknown as DetailPageButtonPlugin, 2);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(events).toEqual(['详情开始:2']);
+        await enqueueBatchPush([{ carNum: 'B', url: '/v/B' }], 'watched', 2);
+        expect(await drainBatchRatings([{ carNum: 'B', url: '/v/B' }])).toEqual({ total: 1, succeeded: 1, failed: 0 });
+        expect(getOpSyncRecord('B', 'watched')?.state).toBe('success');
+        expect(getOpSyncRecord('A', 'watched')?.state).toBe('running');
+        expect(events).toEqual(['详情开始:2', '列表完成:2']);
+        gate.resolve();
+        await plugin._reviewChain;
+        expect(getOpSyncRecord('A', 'watched')?.state).toBe('success');
+        expect(getOpSyncRecord('B', 'watched')?.state).toBe('success');
+        await vi.runAllTimersAsync();
     });
 
     it('详情旧2星尚在自身队列时，列表5星成功后旧请求不再发送', async () => {
@@ -130,7 +144,7 @@ describe('详情与列表评价共同执行锁及意图回执', () => {
         const plugin = createPlugin(gate);
         plugin._reviewChain = previous.promise;
         await quickSetHasWatch(plugin as unknown as DetailPageButtonPlugin, 2);
-        enqueueFiveStars();
+        await enqueueFiveStars();
         await drainBatchRatings([{ carNum: 'A', url: '/v/A' }]);
         previous.resolve();
         await plugin._reviewChain;
@@ -144,7 +158,7 @@ describe('详情与列表评价共同执行锁及意图回执', () => {
         const plugin = createPlugin(gate);
         await quickSetHasWatch(plugin as unknown as DetailPageButtonPlugin, 2);
         await vi.advanceTimersByTimeAsync(0);
-        enqueueFiveStars();
+        await enqueueFiveStars();
         gate.reject(new Error('旧请求失败'));
         await plugin._reviewChain;
         expect(getOpSyncRecord('A', 'watched')).toMatchObject({ score: 5, state: 'pending' });
@@ -185,12 +199,51 @@ describe('详情与列表评价共同执行锁及意图回执', () => {
         const plugin = createPlugin(gate);
         plugin._reviewChain = previous.promise;
         await quickConvertToFav(plugin as unknown as DetailPageButtonPlugin);
-        enqueueFiveStars();
+        await enqueueFiveStars();
         await drainBatchRatings([{ carNum: 'A', url: '/v/A' }]);
         previous.resolve();
         await plugin._reviewChain;
         expect(plugin._triggerJavdbWant).not.toHaveBeenCalled();
         expect(remote).toEqual({ kind: 'watched', score: 5 });
         expect(getOpSyncRecord('A', 'favorite')?.state).toBe('cancelled');
+    });
+    it('新详情页自动对账等待在途批量评价，并按新鲜网站状态跳过重复提交', async () => {
+        const pending = deferred();
+        const activePage = createPlugin(pending);
+        const immediate = deferred(); immediate.resolve();
+        const newPage = createPlugin(immediate);
+        document.body.innerHTML = '<div class="review-buttons"></div>';
+        await quickSetHasWatch(activePage as unknown as DetailPageButtonPlugin, 4);
+        await vi.advanceTimersByTimeAsync(0);
+        const reconciliation = autoSyncReviewState(newPage as unknown as DetailPageButtonPlugin);
+        await vi.advanceTimersByTimeAsync(0);
+        try {
+            expect(newPage._triggerJavdbReview).not.toHaveBeenCalled();
+        } finally {
+            pending.resolve();
+            await activePage._reviewChain;
+            await reconciliation;
+        }
+        expect(newPage._triggerJavdbReview).not.toHaveBeenCalled();
+        expect(remote).toEqual({ kind: 'watched', score: 4 });
+    });
+
+    it('自动对账等待期间本地出现新评分，不按旧快照覆盖后续明确操作', async () => {
+        const pending = deferred();
+        const activePage = createPlugin(pending);
+        const immediate = deferred(); immediate.resolve();
+        const newPage = createPlugin(immediate);
+        document.body.innerHTML = '<div class="review-buttons"></div>';
+        await quickSetHasWatch(activePage as unknown as DetailPageButtonPlugin, 2);
+        await vi.advanceTimersByTimeAsync(0);
+        const reconciliation = autoSyncReviewState(newPage as unknown as DetailPageButtonPlugin);
+        await vi.advanceTimersByTimeAsync(0);
+        await enqueueFiveStars();
+        const latest = drainBatchRatings([{ carNum: 'A', url: '/v/A' }]);
+        pending.resolve();
+        await vi.runAllTimersAsync();
+        await Promise.all([activePage._reviewChain, reconciliation, latest]);
+        expect(newPage._triggerJavdbReview).not.toHaveBeenCalled();
+        expect(remote).toEqual({ kind: 'watched', score: 5 });
     });
 });

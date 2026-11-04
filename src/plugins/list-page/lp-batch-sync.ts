@@ -1,8 +1,7 @@
 /** 列表页评价后台队列及批量清单操作前的阻塞式补同步。 */
-import { BATCH_RATING_SYNC_LOCK, FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
+import { FAVORITE_ACTION, FILTER_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { normalizeCarNum } from '../../core/domain/car-num';
-import { withExclusiveLock } from '../../core/sync/sync-lock';
 import { siteSelector } from '../../core/util/site/selectors';
 
 import { readServerReviewState } from '../detail-page-button/dpb-review-sync';
@@ -14,6 +13,7 @@ import {
     cancelOpSyncRecord, getOpSyncRecord, isCurrentOpSyncIntent, listOpSyncRecords, setOpSyncState, upsertOpSync, withStrictOpSyncPersistenceSync,
     type OpSyncKind, type OpSyncOrigin, type OpSyncRecord
 } from '../setting/jhs-sync/op-sync-records';
+import { withRatingStateLock, withRatingVideoLock } from '../setting/jhs-sync/rating-locks';
 
 export type BatchPushKind = 'favorite' | 'watched' | 'unwatch';
 export interface BatchPushItem { carNum: string; url: string }
@@ -37,6 +37,7 @@ const DEFAULT_PACING_MS = 900;
 const MAX_ATTEMPTS = 2;
 let pacingMs = DEFAULT_PACING_MS;
 let queue: BatchPushEntry[] = [];
+let queueGeneration = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let active: Promise<void> | null = null;
 let activeEntry: BatchPushEntry | null = null;
@@ -59,29 +60,32 @@ export function planBatchPush(items: BatchPushItem[], kind: BatchPushKind, score
 }
 
 /** 先登记持久化意图，再启动后台队列。清单补同步期间的新登记由排空循环接管。 */
-export function enqueueBatchPush(
+export async function enqueueBatchPush(
     items: BatchPushItem[], kind: BatchPushKind, score = 0,
     options?: { pacingMs?: number; origin?: OpSyncOrigin; recordKind?: OpSyncKind }
-): number {
+): Promise<number> {
     if (options?.pacingMs !== undefined) pacingMs = options.pacingMs;
     const { entries, skipped } = planBatchPush(items, kind, score);
-    for (const item of items) {
-        const recordKind = options?.recordKind ?? kind;
-        const record = upsertOpSync({ ...item, kind: recordKind, score, origin: options?.origin ?? 'list' });
-        const entry = entries.find((candidate) => candidate.carNum === item.carNum);
-        if (entry) {
-            entry.revision = record.revision;
-            entry.recordKind = recordKind;
-            entry.origin = record.origin;
-        } else {
-            setOpSyncState(item.carNum, recordKind, 'failed', {
-                error: '缺少 videoId，无法定位详情页', expectedRevision: record.revision
-            });
+    const generation = queueGeneration;
+    await withRatingStateLock(() => {
+        for (const item of items) {
+            const recordKind = options?.recordKind ?? kind;
+            const record = upsertOpSync({ ...item, kind: recordKind, score, origin: options?.origin ?? 'list' });
+            const entry = entries.find((candidate) => candidate.carNum === item.carNum);
+            if (entry) {
+                entry.revision = record.revision;
+                entry.recordKind = recordKind;
+                entry.origin = record.origin;
+            } else {
+                setOpSyncState(item.carNum, recordKind, 'failed', {
+                    error: '缺少 videoId，无法定位详情页', expectedRevision: record.revision
+                });
+            }
         }
-    }
+        if (generation === queueGeneration) queue.push(...entries);
+    });
     if (skipped.length) clog.warn(`[列表页批量操作] ${skipped.length} 项缺少 videoId: ${skipped.join(', ')}`);
-    queue.push(...entries);
-    if (entries.length) schedule(0);
+    if (entries.length && generation === queueGeneration) schedule(0);
     return entries.length;
 }
 
@@ -91,6 +95,7 @@ export function getBatchSyncStatus(): BatchSyncStatus {
 
 /** 页面退出只清内存；未确认的账本记录保留供后续恢复。 */
 export function stopBatchSync(): void {
+    queueGeneration++;
     if (timer !== null) clearTimeout(timer);
     timer = null;
     queue = [];
@@ -156,43 +161,50 @@ async function pushEntry(entry: BatchPushEntry, signal?: AbortSignal): Promise<'
     return 'confirmed';
 }
 
-/** 后台队列和补同步共用跨标签页锁，旧回执按 revision 回绑。 */
+/** 网络按影片互斥；短账本锁内重读、校验意图并写回，绝不跨网络持有全局锁。 */
 async function executeEntry(entry: BatchPushEntry, checkLocal: boolean, signal?: AbortSignal): Promise<'success' | 'failed' | 'skipped' | 'stopped'> {
-    return withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
+    return withRatingVideoLock(entry.videoId, async () => {
         if (signal?.aborted) return 'stopped';
-        const persist = <T,>(task: () => T): T => checkLocal ? withStrictOpSyncPersistenceSync(task) : task();
-        const record = persist(() => currentRecord(entry));
+        const persist = <T,>(task: () => T): Promise<T> => withRatingStateLock(() =>
+            checkLocal ? withStrictOpSyncPersistenceSync(task) : task());
+        const record = await persist(() => currentRecord(entry));
         if (!record) return 'skipped';
         const localMatches = !checkLocal || await matchesLocal(record);
         if (signal?.aborted) return 'stopped';
         if (!localMatches) {
-            persist(() => setOpSyncState(record.carNum, record.kind, 'cancelled', {
-                error: '当前本地评价已变化，不再重推旧操作', expectedRevision: record.revision
-            }));
+            await persist(() => {
+                if (currentRecord(entry)) setOpSyncState(record.carNum, record.kind, 'cancelled', {
+                    error: '当前本地评价已变化，不再重推旧操作', expectedRevision: record.revision
+                });
+            });
             return 'skipped';
         }
-        if (!persist(() => currentRecord(entry))) return 'skipped';
-        if (signal?.aborted) return 'stopped';
         const patch = { attempts: entry.attempts, expectedRevision: entry.revision };
-        if (!persist(() => setOpSyncState(record.carNum, record.kind, 'running', patch))) return 'skipped';
+        const started = await persist(() => {
+            if (signal?.aborted || !currentRecord(entry)) return false;
+            return !!setOpSyncState(record.carNum, record.kind, 'running', patch);
+        });
+        if (!started) return signal?.aborted ? 'stopped' : 'skipped';
         try {
             const pushed = await pushEntry(entry, signal);
-            if (pushed === 'stopped') {
-                if (persist(() => currentRecord(entry))) {
-                    persist(() => setOpSyncState(record.carNum, record.kind, 'pending', { ...patch, error: '' }));
+            return await persist(() => {
+                if (pushed === 'stopped') {
+                    if (currentRecord(entry)) setOpSyncState(record.carNum, record.kind, 'pending', { ...patch, error: '' });
+                    return 'stopped';
                 }
-                return 'stopped';
-            }
-            if (!persist(() => currentRecord(entry))) return 'skipped';
-            persist(() => setOpSyncState(record.carNum, record.kind, 'success', { ...patch, error: '' }));
-            return 'success';
+                if (!currentRecord(entry)) return 'skipped';
+                return setOpSyncState(record.carNum, record.kind, 'success', { ...patch, error: '' }) ? 'success' : 'skipped';
+            });
         } catch (error: unknown) {
             entry.attempts++;
-            if (!persist(() => currentRecord(entry))) return 'skipped';
             const reason = error instanceof Error ? error.message : String(error);
-            persist(() => setOpSyncState(record.carNum, record.kind, 'failed', {
-                attempts: entry.attempts, expectedRevision: entry.revision, error: reason
-            }));
+            const updated = await persist(() => {
+                if (!currentRecord(entry)) return false;
+                return !!setOpSyncState(record.carNum, record.kind, 'failed', {
+                    attempts: entry.attempts, expectedRevision: entry.revision, error: reason
+                });
+            });
+            if (!updated) return 'skipped';
             clog.warn(`[列表页批量操作] 同步未完成 ${record.carNum}: ${reason}`);
             return 'failed';
         }
@@ -253,7 +265,7 @@ export function drainBatchRatings(
                 videoId: extractVideoId(record.url) ?? '', attempts: 0
             };
             taken.push(...removeClaimedEntry(record));
-            if (!withStrictOpSyncPersistenceSync(() => currentRecord(entry))) {
+            if (!await withRatingStateLock(() => withStrictOpSyncPersistenceSync(() => currentRecord(entry)))) {
                 if (wasConfirmed(record)) {
                     result.total++;
                     result.succeeded++;
@@ -278,9 +290,9 @@ export function drainBatchRatings(
                 if (signal?.aborted) break;
                 if (!entry.videoId) {
                     outcome = 'failed';
-                    withStrictOpSyncPersistenceSync(() => setOpSyncState(record.carNum, record.kind, 'failed', {
+                    await withRatingStateLock(() => withStrictOpSyncPersistenceSync(() => setOpSyncState(record.carNum, record.kind, 'failed', {
                         error: '缺少 videoId，无法定位详情页', expectedRevision: record.revision
-                    }));
+                    })));
                     break;
                 }
                 const key = identity(record);
@@ -371,17 +383,20 @@ function pause(signal?: AbortSignal): Promise<void> {
 export function toBatchPushKind(kind: OpSyncKind): BatchPushKind {
     return kind === 'filter' ? 'watched' : kind;
 }
-export function retryOpSync(record: Pick<OpSyncRecord, 'carNum' | 'url' | 'kind' | 'score' | 'origin'>): boolean {
-    return enqueueBatchPush([record], toBatchPushKind(record.kind), record.score, {
+export async function retryOpSync(record: Pick<OpSyncRecord, 'carNum' | 'url' | 'kind' | 'score' | 'origin'>): Promise<boolean> {
+    return await enqueueBatchPush([record], toBatchPushKind(record.kind), record.score, {
         origin: record.origin, recordKind: record.kind
     }) > 0;
 }
-export function retryFailedOpSync(): number {
-    return listOpSyncRecords({ states: ['failed'] }).filter(retryOpSync).length;
+export async function retryFailedOpSync(): Promise<number> {
+    const results = await Promise.all(listOpSyncRecords({ states: ['failed'] }).map(retryOpSync));
+    return results.filter(Boolean).length;
 }
-export function cancelOpSync(carNum: string, kind: OpSyncKind): boolean {
-    queue = queue.filter((entry) => entry.carNum !== carNum || (entry.recordKind ?? entry.kind) !== kind);
-    return cancelOpSyncRecord(carNum, kind);
+export async function cancelOpSync(carNum: string, kind: OpSyncKind): Promise<boolean> {
+    return withRatingStateLock(() => {
+        queue = queue.filter((entry) => entry.carNum !== carNum || (entry.recordKind ?? entry.kind) !== kind);
+        return cancelOpSyncRecord(carNum, kind);
+    });
 }
 export function isOpSyncQueued(carNum: string, kind: OpSyncKind): boolean {
     return queue.some((entry) => entry.carNum === carNum && (entry.recordKind ?? entry.kind) === kind);

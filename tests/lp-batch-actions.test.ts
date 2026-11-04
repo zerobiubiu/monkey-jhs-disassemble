@@ -4,7 +4,7 @@ import { FILTER_ACTION, HAS_WATCH_ACTION } from '../src/constants/status';
 import { executeBatchRating } from '../src/plugins/list-page/lp-batch-actions';
 import { enqueueBatchPush } from '../src/plugins/list-page/lp-batch-sync';
 
-vi.mock('../src/plugins/list-page/lp-batch-sync', () => ({ enqueueBatchPush: vi.fn(() => 1) }));
+vi.mock('../src/plugins/list-page/lp-batch-sync', () => ({ enqueueBatchPush: vi.fn(async () => 1) }));
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 it('批量拉黑登记为屏蔽意图并推送已读零星，避免清单补同步误判为过期收藏', async () => {

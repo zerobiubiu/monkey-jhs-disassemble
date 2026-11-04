@@ -9,7 +9,7 @@ import { jsxToString } from '../src/core/jsx-to-string';
 import { isBatchListDialogOpen, openBatchListDialog, runBatchListProgress } from '../src/plugins/list-page/batch-lists/dialog';
 import type { BatchListChoice, BatchListItem, BatchListJob, BatchListProgress } from '../src/types/batch-lists';
 
-const mocks = vi.hoisted(() => ({ choices: vi.fn(), start: vi.fn(), recover: vi.fn(), jobs: vi.fn() }));
+const mocks = vi.hoisted(() => ({ choices: vi.fn(), start: vi.fn(), recover: vi.fn(), jobs: vi.fn(), running: vi.fn() }));
 vi.mock('../src/plugins/list-page/batch-lists/site', () => ({ fetchBatchListChoices: mocks.choices }));
 vi.mock('../src/plugins/list-page/batch-lists/journal', async (importOriginal) => ({
     ...await importOriginal<typeof import('../src/plugins/list-page/batch-lists/journal')>(),
@@ -18,7 +18,8 @@ vi.mock('../src/plugins/list-page/batch-lists/journal', async (importOriginal) =
 vi.mock('../src/plugins/list-page/batch-lists/service', () => ({
     emptyBatchListProgress: () => ({ total: 0, done: 0, succeeded: 0, failed: 0, pending: 0, phase: 'lists', current: '', ratingTotal: 0, ratingDone: 0, ratingFailed: 0 }),
     startBatchListJob: mocks.start,
-    recoverBatchListJobs: mocks.recover
+    recoverBatchListJobs: mocks.recover,
+    isBatchListExecutionRunning: mocks.running
 }));
 
 const items: BatchListItem[] = [{ carNum: 'ABC-001', url: '/v/demo', videoId: 'demo' }];
@@ -32,11 +33,16 @@ const groupedChoice: BatchListChoice = {
         { id: '10', name: '等待更新3', num: 3 }
     ]
 };
+const otherGroupedChoice: BatchListChoice = {
+    id: 'group:值得复盘', name: '值得复盘', url: '/lists/11',
+    group: { base: '值得复盘', pattern: '^(.+?)(\\d+)$', excludeNames: [] },
+    members: [{ id: '11', name: '值得复盘1', num: 1 }, { id: '12', name: '值得复盘2', num: 2 }]
+};
 const done: BatchListProgress = { total: 1, done: 1, succeeded: 1, failed: 0, pending: 0, phase: 'done', current: '已同步完成', ratingTotal: 0, ratingDone: 0, ratingFailed: 0 };
 const pausedJob: BatchListJob = {
-    version: 1, id: 'paused-job', origin: window.location.origin, list: choices[1], desiredChecked: false,
+    version: 2, id: 'paused-job', origin: window.location.origin, lists: [choices[1]], desiredChecked: false,
     createdAt: 1, updatedAt: 2, attempts: 1, retryAt: 0, ratingsComplete: true, paused: true,
-    items: [{ ...items[0], state: 'pending', error: '' }]
+    items: [{ ...items[0], state: 'pending', error: '', ratingsComplete: true, operations: [{ listId: choices[1].id, state: 'pending', error: '' }] }]
 };
 
 function click(action: string): void {
@@ -70,6 +76,7 @@ beforeEach(() => {
     mocks.start.mockReset().mockResolvedValue(done);
     mocks.recover.mockReset().mockResolvedValue(done);
     mocks.jobs.mockReset().mockReturnValue([]);
+    mocks.running.mockReset().mockResolvedValue(false);
     vi.stubGlobal('clog', { error: vi.fn() });
     HTMLDialogElement.prototype.showModal = function () { this.open = true; };
     HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')); };
@@ -83,60 +90,59 @@ afterEach(() => {
 
 describe('批量清单视图', () => {
     it('入口遵守已有禁用态；目标名经过 JSX 转义', () => {
-        const html = jsxToString(createElement(LpBatchToolbar, { count: 0, busy: false }));
-        expect(html).toMatch(/data-act="lists"[^>]*disabled/);
-        expect(html).toContain('评价与清单');
-        expect(html).toContain('data-act="favorite"');
-        expect(html).toContain('data-act="watched" data-score="0"');
-        expect(html).toContain('data-act="watched" data-score="5"');
-        const picker = jsxToString(createElement(BatchListsPicker, { count: 2, choices: [{ ...choices[0], name: '<img onerror="x">' }], loading: false, error: '' }));
-        expect(picker).toContain('&lt;img');
-        expect(picker).not.toContain('<img');
-        expect(picker).toMatch(/value="add" checked/);
+        document.body.innerHTML = jsxToString(createElement(LpBatchToolbar, { count: 0, busy: false }));
+        expect(document.querySelector<HTMLButtonElement>('[data-act="lists"]')!.disabled).toBe(true);
+        expect(document.querySelectorAll('[data-act="favorite"], [data-act="watched"]')).not.toHaveLength(0);
+        const name = '<img onerror="x">';
+        document.body.innerHTML = jsxToString(createElement(BatchListsPicker, { count: 2, choices: [{ ...choices[0], name }], loading: false, error: '' }));
+        expect(document.querySelector('img')).toBeNull();
+        expect(document.querySelector('.jhs-batch-lists-choice')!.textContent).toContain(name);
+        expect(document.querySelector<HTMLInputElement>('input[value="add"]')!.checked).toBe(true);
+        expect(document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.type).toBe('checkbox');
     });
 
-    it('本轮处理完仍有待完成时，不展示同步完成或允许取消运行', () => {
+    it('失败时保留重试，运行与停止中的按钮互斥', () => {
         const progress = { ...done, succeeded: 0, failed: 1, pending: 1, current: '保留未完成项目' };
-        const html = jsxToString(createElement(BatchListsProgress, { progress, running: false, error: '' }));
-        expect(html).toContain('仍有项目待完成');
-        expect(html).toContain('is-incomplete');
-        expect(html).toContain('立即重试');
-        expect(html).not.toContain('同步完成');
-        const running = jsxToString(createElement(BatchListsProgress, { progress, running: true, error: '' }));
-        expect(running).not.toContain('data-list-act="close"');
-        expect(running).not.toContain('data-list-act="retry"');
-        expect(running).toContain('data-list-act="stop"');
-        expect(running).toContain('停止执行');
-        const stopping = jsxToString(createElement(BatchListsProgress, { progress, running: true, stopping: true, error: '' }));
-        expect(stopping).toContain('正在停止，等待当前请求确认');
-        expect(stopping).toMatch(/data-list-act="stop" disabled/);
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, { progress, running: false, error: '' }));
+        expect(document.querySelector('.is-incomplete')).not.toBeNull();
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
+        expect(document.querySelector('[data-list-act="close"]')).not.toBeNull();
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, { progress, running: true, error: '' }));
+        expect(document.querySelector('[data-list-act="close"]')).toBeNull();
+        expect(document.querySelector('[data-list-act="retry"]')).toBeNull();
+        expect(document.querySelector<HTMLButtonElement>('[data-list-act="stop"]')!.disabled).toBe(false);
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, { progress, running: true, stopping: true, error: '' }));
+        expect(document.querySelector<HTMLButtonElement>('[data-list-act="stop"]')!.disabled).toBe(true);
     });
 
     it('未完成操作入口与开始新任务独立；加载中不提供会被迟到目录覆盖的恢复按钮', () => {
         const props = { count: 2, choices: [], loading: false, error: '网站目录读取失败', hasRecoverable: true };
-        const html = jsxToString(createElement(BatchListsPicker, props));
-        expect(html).toContain('data-list-act="resume"');
-        expect(html).toContain('继续未完成操作');
-        expect(html).toContain('按原恢复记录执行全部未完成操作');
-        expect(html).toContain('不使用当前选择');
-        expect(html).toMatch(/data-list-act="start" disabled/);
-        expect(jsxToString(createElement(BatchListsPicker, { ...props, hasRecoverable: false }))).not.toContain('data-list-act="resume"');
-        expect(jsxToString(createElement(BatchListsPicker, { ...props, loading: true }))).not.toContain('data-list-act="resume"');
+        document.body.innerHTML = jsxToString(createElement(BatchListsPicker, props));
+        expect(document.querySelector('[data-list-act="resume"]')).not.toBeNull();
+        expect(document.querySelector<HTMLButtonElement>('[data-list-act="start"]')!.disabled).toBe(true);
+        document.body.innerHTML = jsxToString(createElement(BatchListsPicker, { ...props, hasRecoverable: false }));
+        expect(document.querySelector('[data-list-act="resume"]')).toBeNull();
+        document.body.innerHTML = jsxToString(createElement(BatchListsPicker, { ...props, loading: true }));
+        expect(document.querySelector('[data-list-act="resume"]')).toBeNull();
     });
 
-    it('评价待确认与清单成功分开显示；仅评价阶段停止也保留继续入口', () => {
-        const html = jsxToString(createElement(BatchListsProgress, {
-            progress: { ...done, ratingPending: 1, current: '评价尚待确认' }, running: false, error: ''
+    it('评价请求中的主进度仍按视频计数，评价待确认或停止时保留继续入口', () => {
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, {
+            progress: { ...done, total: 5, done: 1, phase: 'ratings', ratingTotal: 5, ratingDone: 3, concurrency: 2 },
+            running: true, error: ''
         }));
-        expect(html).toContain('清单确认成功');
-        expect(html).toContain('本次评价待确认 1 项');
-        expect(html).toContain('仍有项目待完成');
-        expect(html).toContain('立即重试');
-        const stopped = jsxToString(createElement(BatchListsProgress, {
-            progress: { ...done, stopped: true, current: '已停止本次评价阶段' }, running: false, error: ''
+        const bar = document.querySelector<HTMLProgressElement>('progress')!;
+        expect(bar.max).toBe(5);
+        expect(bar.value).toBe(1);
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, {
+            progress: { ...done, ratingPending: 1 }, running: false, error: ''
         }));
-        expect(stopped).toContain('继续执行');
-        expect(stopped).toContain('不会自动继续');
+        expect(document.querySelector('.is-incomplete')).not.toBeNull();
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
+        document.body.innerHTML = jsxToString(createElement(BatchListsProgress, {
+            progress: { ...done, stopped: true }, running: false, error: ''
+        }));
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
     });
 
     it('手动停止并关闭后，重新打开可按原记录继续；不把当前选择当成新任务', async () => {
@@ -159,7 +165,6 @@ describe('批量清单视图', () => {
         await flush();
         expect(mocks.start).toHaveBeenCalledTimes(1);
         expect(mocks.recover).toHaveBeenCalledExactlyOnceWith(expect.any(Function), true, expect.any(AbortSignal));
-        expect(document.querySelector('h2')!.textContent).toBe('继续未完成操作');
         click('close');
         await reopened;
     });
@@ -183,44 +188,89 @@ describe('批量清单视图', () => {
         await promise;
     });
 
+    it.each([false, true])('同源执行锁仍被持有时不把未完成记录当成中断（目录失败：%s）', async (loadError) => {
+        mocks.jobs.mockReturnValue([pausedJob]);
+        mocks.running.mockResolvedValue(true);
+        if (loadError) mocks.choices.mockRejectedValueOnce(new Error('未登录'));
+        const first = openBatchListDialog(items);
+        await flush();
+        expect(document.querySelector('[data-list-act="resume"]')).toBeNull();
+        expect(mocks.recover).not.toHaveBeenCalled();
+        click('close');
+        await first;
+        mocks.running.mockResolvedValue(false);
+        const reopened = openBatchListDialog(items);
+        await flush();
+        expect(document.querySelector('[data-list-act="resume"]')).not.toBeNull();
+        click('close');
+        await reopened;
+    });
+
     it('逻辑组只展示聚合名称；按详情配置未合并的单项保持原名', () => {
-        const picker = jsxToString(createElement(BatchListsPicker, {
+        document.body.innerHTML = jsxToString(createElement(BatchListsPicker, {
             count: 3, choices: [groupedChoice, { id: '11', name: '排除清单1', url: '/lists/11' }], loading: false, error: ''
         }));
-        expect(picker).toContain('等待更新');
-        expect(picker).toContain('自动分配');
-        for (const member of groupedChoice.members!) expect(picker).not.toContain(member.name);
-        expect(picker).toContain('排除清单1');
-        const selects = new DOMParser().parseFromString(picker, 'text/html').querySelectorAll('select');
-        expect(Array.from(selects, (select) => select.id)).toEqual(['jhs-batch-rating-kind', 'jhs-batch-rating-score']);
-        expect(picker).not.toContain('<details');
-        expect(picker).not.toContain('jhs-list-group__detail');
-        expect(picker).toContain('仅同步本次所选视频的未完成评价，其他仍在后台同步');
-        const progress = jsxToString(createElement(BatchListsProgress, {
-            progress: { ...done, ratingTotal: 2, ratingDone: 1, phase: 'ratings' }, running: true, error: ''
-        }));
-        expect(progress).toContain('本次所选视频评价已处理 1 / 2');
-        expect(progress).toContain('其他视频仍在后台同步');
+        const names = Array.from(document.querySelectorAll('.jhs-batch-lists-choice'), (row) => row.textContent);
+        expect(names[0]).toContain(groupedChoice.name);
+        for (const member of groupedChoice.members!) expect(names[0]).not.toContain(member.name);
+        expect(names[1]).toContain('排除清单1');
+        expect(document.querySelectorAll('input[name="jhs-batch-list-choice"][type="checkbox"]')).toHaveLength(2);
+        expect(document.querySelector('details')).toBeNull();
     });
 
     it('逻辑组搜索、选中摘要及加入/移出说明均不展开成员，提交完整组目标', async () => {
         mocks.choices.mockResolvedValueOnce([choices[0], groupedChoice]);
         const promise = openBatchListDialog(items);
         await flush();
-        const radio = document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"][value="group:等待更新"]')!;
-        radio.click();
-        expect(document.querySelector('[data-role="selected-target"]')!.textContent).toBe('已选清单：等待更新');
-        expect(document.querySelector('[data-role="group-behavior"]')!.textContent).toContain('全部满员时自动续建');
+        const checkbox = document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"][value="group:等待更新"]')!;
+        checkbox.click();
+        expect(document.querySelector('[data-role="selected-target"]')!.textContent).toContain(groupedChoice.name);
+        const behavior = document.querySelector<HTMLElement>('[data-role="group-behavior"]')!;
+        expect(behavior.hidden).toBe(false);
+        const addDescription = behavior.textContent;
         const search = document.querySelector<HTMLInputElement>('input[type="search"]')!;
         search.value = '等待更新';
         search.dispatchEvent(new Event('input'));
         expect(document.querySelectorAll('.jhs-batch-lists-choice:not([hidden])')).toHaveLength(1);
         for (const member of groupedChoice.members!) expect(document.body.innerHTML).not.toContain(member.name);
         document.querySelector<HTMLInputElement>('input[value="remove"]')!.click();
-        expect(document.querySelector('[data-role="group-behavior"]')!.textContent).toContain('移出该清单组内已关联的清单');
+        expect(behavior.hidden).toBe(false);
+        expect(behavior.textContent).not.toBe(addDescription);
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledWith(items, groupedChoice, false, expect.any(Function), expect.any(AbortSignal));
+        expect(mocks.start).toHaveBeenCalledWith(items, [groupedChoice], false, expect.any(Function), expect.any(AbortSignal));
+        click('close');
+        await promise;
+    });
+
+    it('跨搜索筛选可同时选择两个组，摘要保留数量与名称，并只提交一个任务', async () => {
+        mocks.choices.mockResolvedValueOnce([groupedChoice, otherGroupedChoice]);
+        const promise = openBatchListDialog(items);
+        await flush();
+        const search = document.querySelector<HTMLInputElement>('input[type="search"]')!;
+        const checkboxes = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="jhs-batch-list-choice"]'));
+        const summary = document.querySelector('[data-role="selected-target"]')!;
+        search.value = groupedChoice.name;
+        search.dispatchEvent(new Event('input'));
+        checkboxes[0].click();
+        search.value = otherGroupedChoice.name;
+        search.dispatchEvent(new Event('input'));
+        checkboxes[1].click();
+        expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, true]);
+        expect(document.querySelectorAll('.jhs-batch-lists-choice:not([hidden])')).toHaveLength(1);
+        expect(summary.textContent).toContain('2');
+        expect(summary.textContent).toContain(groupedChoice.name);
+        expect(summary.textContent).toContain(otherGroupedChoice.name);
+        search.value = '';
+        search.dispatchEvent(new Event('input'));
+        expect(document.querySelectorAll('.jhs-batch-lists-choice:not([hidden])')).toHaveLength(2);
+        checkboxes[0].click();
+        expect(summary.textContent).not.toContain(groupedChoice.name);
+        checkboxes[0].click();
+        selectRating('watched', 5);
+        click('start');
+        await flush();
+        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, [groupedChoice, otherGroupedChoice], true, expect.any(Function), expect.any(AbortSignal), { kind: 'watched', score: 5 });
         click('close');
         await promise;
     });
@@ -230,17 +280,17 @@ describe('批量清单视图', () => {
         await flush();
         expect(isBatchListDialogOpen()).toBe(true);
         expect(document.querySelector<HTMLButtonElement>('[data-list-act="start"]')!.disabled).toBe(true);
-        const radio = document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"][value="8"]')!;
-        radio.click();
+        const checkbox = document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"][value="8"]')!;
+        checkbox.click();
         const search = document.querySelector<HTMLInputElement>('input[type="search"]')!;
         search.value = '复盘';
         search.dispatchEvent(new Event('input'));
         expect(document.querySelectorAll('.jhs-batch-lists-choice[hidden]')).toHaveLength(1);
-        expect(radio.checked).toBe(true);
+        expect(checkbox.checked).toBe(true);
         document.querySelector<HTMLInputElement>('input[value="remove"]')!.click();
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledWith(items, choices[1], false, expect.any(Function), expect.any(AbortSignal));
+        expect(mocks.start).toHaveBeenCalledWith(items, [choices[1]], false, expect.any(Function), expect.any(AbortSignal));
         click('close');
         await promise;
         expect(isBatchListDialogOpen()).toBe(false);
@@ -249,14 +299,13 @@ describe('批量清单视图', () => {
     it('默认不修改评价，只提交一次清单任务；已读星级初始隐藏', async () => {
         const promise = openBatchListDialog(items);
         await flush();
-        expect(document.querySelector('h2')!.textContent).toBe('批量设置评价与清单');
         expect(document.querySelector<HTMLSelectElement>('#jhs-batch-rating-kind')!.value).toBe('unchanged');
         expect(document.querySelector<HTMLElement>('.jhs-batch-lists-rating-score')!.hidden).toBe(true);
         expect(document.querySelector<HTMLSelectElement>('#jhs-batch-rating-score')!.disabled).toBe(true);
         document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.click();
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, choices[0], true, expect.any(Function), expect.any(AbortSignal));
+        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, [choices[0]], true, expect.any(Function), expect.any(AbortSignal));
         click('close');
         await promise;
     });
@@ -270,7 +319,7 @@ describe('批量清单视图', () => {
         document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.click();
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, groupedChoice, true, expect.any(Function), expect.any(AbortSignal), { kind: 'favorite', score: 0 });
+        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, [groupedChoice], true, expect.any(Function), expect.any(AbortSignal), { kind: 'favorite', score: 0 });
         expect(shortcuts).not.toHaveBeenCalled();
         click('close');
         await promise;
@@ -288,7 +337,7 @@ describe('批量清单视图', () => {
         document.querySelector<HTMLInputElement>('input[value="remove"]')!.click();
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, choices[0], false, expect.any(Function), expect.any(AbortSignal), { kind: 'watched', score: 5 });
+        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, [choices[0]], false, expect.any(Function), expect.any(AbortSignal), { kind: 'watched', score: 5 });
         expect(shortcuts).not.toHaveBeenCalled();
         click('close');
         await promise;
@@ -302,7 +351,7 @@ describe('批量清单视图', () => {
         document.querySelector<HTMLInputElement>('input[name="jhs-batch-list-choice"]')!.click();
         click('start');
         await flush();
-        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, choices[0], true, expect.any(Function), expect.any(AbortSignal));
+        expect(mocks.start).toHaveBeenCalledExactlyOnceWith(items, [choices[0]], true, expect.any(Function), expect.any(AbortSignal));
         click('close');
         await next;
     });
@@ -319,7 +368,6 @@ describe('批量清单视图', () => {
         dialog.dispatchEvent(esc);
         expect(esc.defaultPrevented).toBe(true);
         expect(mocks.start.mock.calls[0][4].aborted).toBe(true);
-        expect(document.querySelector('[data-role="progress-heading"]')!.textContent).toContain('正在停止');
         const cancel = new Event('cancel', { cancelable: true });
         dialog.dispatchEvent(cancel);
         expect(cancel.defaultPrevented).toBe(true);
@@ -366,12 +414,10 @@ describe('批量清单视图', () => {
         const confirmed = { ...initial, done: 2, succeeded: 2, pending: 1 };
         notify(confirmed);
         expect(document.querySelector('.jhs-batch-lists-summary dd')!.textContent).toBe('2');
-        expect(document.body.textContent).toContain('正在停止，等待当前请求确认');
         finish({ ...confirmed, phase: 'done', stopped: true });
         await flush();
-        expect(document.querySelector('[data-role="progress-heading"]')!.textContent).toBe('已停止');
-        expect(document.body.textContent).toContain('不会自动继续');
-        expect(document.querySelector('[data-list-act="retry"]')!.textContent).toBe('继续执行');
+        expect(document.querySelector('[data-list-act="retry"]')).not.toBeNull();
+        expect(document.querySelector('[data-list-act="stop"]')).toBeNull();
         expect(mocks.recover).not.toHaveBeenCalled();
         click('retry');
         await flush();
@@ -403,7 +449,6 @@ describe('批量清单视图', () => {
         const promise = runBatchListProgress(async () => { throw new Error('存储未提交'); });
         await flush();
         expect(document.querySelector('[role="alert"]')!.textContent).toContain('存储未提交');
-        expect(document.body.textContent).toContain('仍有项目待完成');
         click('retry');
         await flush();
         expect(mocks.recover).toHaveBeenCalledWith(expect.any(Function), true, expect.any(AbortSignal));

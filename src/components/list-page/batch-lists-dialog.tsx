@@ -33,21 +33,21 @@ export function BatchListsPicker({ count, choices, loading, error, hasRecoverabl
 }) {
     return (
         <>
-            <p className="jhs-batch-lists-description">为选中的 <strong>{count}</strong> 部视频设置清单，可同时修改评价。</p>
+            <p className="jhs-batch-lists-description">为选中的 <strong>{count}</strong> 部视频设置一个或多个清单，可同时修改评价。</p>
             <BatchRatingControls disabled={loading || choices.length === 0} />
             <fieldset className="jhs-batch-lists-direction" disabled={loading || choices.length === 0}>
                 <legend>操作</legend>
                 <label><input type="radio" name="jhs-batch-list-direction" value="add" checked /> 加入清单</label>
                 <label><input type="radio" name="jhs-batch-list-direction" value="remove" /> 移出清单</label>
             </fieldset>
-            <label className="jhs-batch-lists-search-label" htmlFor="jhs-batch-list-search">选择视频清单</label>
+            <label className="jhs-batch-lists-search-label" htmlFor="jhs-batch-list-search">选择视频清单（可多选）</label>
             <input id="jhs-batch-list-search" type="search" placeholder="搜索清单名称" autoComplete="off" disabled={loading || choices.length === 0} />
             <div className="jhs-batch-lists-choices jhs-scrollbar" role="group" aria-label="网站视频清单" aria-busy={loading}>
                 {loading && <p role="status">正在读取网站清单…</p>}
                 {!loading && choices.length === 0 && !error && <p>网站暂无可用清单，请先在网站创建清单。</p>}
                 {choices.map((choice) => (
                     <label className="jhs-batch-lists-choice" key={choice.id}>
-                        <input type="radio" name="jhs-batch-list-choice" value={choice.id} />
+                        <input type="checkbox" name="jhs-batch-list-choice" value={choice.id} />
                         <span>{choice.name}</span>
                         {choice.group && <span className="jhs-batch-lists-auto-label">自动分配</span>}
                     </label>
@@ -57,7 +57,7 @@ export function BatchListsPicker({ count, choices, loading, error, hasRecoverabl
             <p className="jhs-batch-lists-selected" data-role="selected-target" aria-live="polite">尚未选择清单</p>
             <p className="jhs-batch-lists-note" data-role="group-behavior" hidden />
             {error && <p className="jhs-batch-lists-error" role="alert">{error}</p>}
-            <p className="jhs-batch-lists-note">仅在网站确认后更新本地清单；意外中断后会自动核对并继续。仅同步本次所选视频的未完成评价，其他仍在后台同步。</p>
+            <p className="jhs-batch-lists-note">按基础设置中的并发数处理视频；每部视频先处理评价，再处理全部所选清单。清单经网站确认后才更新本地关联，意外中断后自动核对并继续。</p>
             {hasRecoverable && !loading && <div className="jhs-batch-lists-recovery">
                 <p>将按原恢复记录执行全部未完成操作（含手动停止的操作），不使用当前选择。</p>
                 <button type="button" className="a-normal" data-list-act="resume">继续未完成操作</button>
@@ -81,20 +81,23 @@ export function BatchListsProgress({ progress, running, error, stopping = false 
         (progress.ratingPending ?? 0) > 0 || progress.stopped === true || Boolean(error);
     const state = running ? stopping ? '正在停止，等待当前请求确认' : '执行中'
         : progress.stopped ? '已停止' : incomplete ? '仍有项目待完成' : '同步完成';
-    const value = progress.phase === 'ratings' ? progress.ratingDone : progress.done;
-    const total = progress.phase === 'ratings' ? progress.ratingTotal : progress.total;
+    const value = progress.done;
+    const total = progress.total;
     return (
         <div className={`jhs-batch-lists-progress${!running && incomplete ? ' is-incomplete' : ''}`} aria-busy={running}>
             <h3 tabIndex={-1} data-role="progress-heading">{state}</h3>
             <p className="jhs-batch-lists-current" role="status" aria-live="polite">{stopping && running ? '正在停止，等待当前请求确认' : progress.current || '正在准备执行…'}</p>
-            <label htmlFor="jhs-batch-list-progress">{progress.phase === 'ratings' ? '评价同步' : '清单处理'}：{value} / {total}</label>
+            <label htmlFor="jhs-batch-list-progress">视频处理：{value} / {total}</label>
             <progress id="jhs-batch-list-progress" max={Math.max(total, 1)} value={value} />
             <dl className="jhs-batch-lists-summary">
-                <div><dt>清单确认成功</dt><dd>{progress.succeeded}</dd></div>
-                <div><dt>清单待完成</dt><dd>{progress.pending}</dd></div>
-                <div><dt>清单本轮失败</dt><dd>{progress.failed}</dd></div>
+                <div><dt>视频确认完成</dt><dd>{progress.succeeded}</dd></div>
+                <div><dt>视频待完成</dt><dd>{progress.pending}</dd></div>
+                <div><dt>视频本轮失败</dt><dd>{progress.failed}</dd></div>
                 {(progress.superseded ?? 0) > 0 && <div><dt>后续操作已替代</dt><dd>{progress.superseded}</dd></div>}
             </dl>
+            <p className="jhs-batch-lists-note">{progress.concurrency
+                ? `按视频并发执行，最多同时处理 ${progress.concurrency} 部视频；每部依次处理评价和全部所选清单。`
+                : '按视频并发执行；每部依次处理评价和全部所选清单。'}</p>
             {progress.ratingTotal > 0 && <p className="jhs-batch-lists-note">本次所选视频评价已处理 {progress.ratingDone} / {progress.ratingTotal}，失败 {progress.ratingFailed}；其他视频仍在后台同步。</p>}
             {(progress.ratingPending ?? 0) > 0 && <p className="jhs-batch-lists-note">本次评价待确认 {progress.ratingPending} 项。</p>}
             {error && <p className="jhs-batch-lists-error" role="alert">{error}</p>}

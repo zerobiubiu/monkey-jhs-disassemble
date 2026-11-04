@@ -2,19 +2,57 @@
  * 详情页星星评分组件的 javdb 原生评价 API 与快捷操作。
  * 从 dpb-rating.tsx 提取，逻辑与原实现一致。
  */
-import { BATCH_RATING_SYNC_LOCK, FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
+import { FILTER_ACTION, FAVORITE_ACTION, HAS_WATCH_ACTION } from '../../constants/status';
 
 import { getCsrfToken } from '../../core/util/site/csrf';
 import { jsxToString } from '../../core/jsx-to-string';
-import { withExclusiveLock } from '../../core/sync/sync-lock';
 
 import { readServerReviewState } from './dpb-review-sync';
 
 import type { DetailPageButtonPlugin } from '../detail-page-button-plugin';
 import { removeFromNonProtectedListsOnWatch } from '../video-lists-tag/vlt-sync';
 import { isCurrentOpSyncIntent, setOpSyncState, upsertOpSync, type OpSyncRecord } from '../setting/jhs-sync/op-sync-records';
+import { withRatingStateLock, withRatingVideoLock } from '../setting/jhs-sync/rating-locks';
+import { extractVideoId } from '../setting/jhs-sync/sync-common';
 
 import { QuickBlockConfirmMessage } from '../../components/dpb/quick-block-confirm-message';
+
+/** 保留详情页自身点击顺序，同时与列表共用影片网络锁和短账本锁。 */
+function queueRatingSync(
+    plugin: DetailPageButtonPlugin, record: OpSyncRecord, push: () => Promise<void>, failureLabel: string
+): void {
+    plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
+        .then(async () => {
+            const videoId = extractVideoId(record.url) ?? getVideoId();
+            if (!videoId) throw new Error('无法获取 videoId');
+            await withRatingVideoLock(videoId, async () => {
+                const started = await withRatingStateLock(() => isCurrentOpSyncIntent(record) &&
+                    !!setOpSyncState(record.carNum, record.kind, 'running', { expectedRevision: record.revision }));
+                if (!started) return;
+                plugin._wantWatchedSyncing = true;
+                try {
+                    await push();
+                    plugin._syncRatingBar();
+                    await withRatingStateLock(() => {
+                        if (isCurrentOpSyncIntent(record)) setOpSyncState(record.carNum, record.kind, 'success', {
+                            error: '', expectedRevision: record.revision
+                        });
+                    });
+                } finally {
+                    plugin._wantWatchedSyncing = false;
+                }
+            });
+        })
+        .catch(async (err: unknown) => {
+            await withRatingStateLock(() => {
+                if (isCurrentOpSyncIntent(record)) setOpSyncState(record.carNum, record.kind, 'failed', {
+                    error: err instanceof Error ? err.message : String(err), expectedRevision: record.revision
+                });
+            });
+            clog.warn(`[JHS-快键] ${failureLabel}`, err instanceof Error ? err.message : String(err));
+            show.error('站点未同步: ' + (err instanceof Error ? err.message : String(err)));
+        });
+}
 
 /**
  * 一键设为已观看并设置评鉴分数。对应原 L5846-5895。
@@ -47,13 +85,13 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
             score: score
         });
         // 记账（doc/38）：本地已写 → 登记「待推送」，设置面板可见并可重试
-        syncRecord = upsertOpSync({
-            carNum: pageInfo.carNum,
+        syncRecord = await withRatingStateLock(() => upsertOpSync({
+            carNum: pageInfo.carNum!,
             url: pageInfo.url ?? '',
             kind: 'watched',
             score,
             origin: 'detail'
-        });
+        }));
         plugin.broadcastWantWatchedSync({
             carNum: pageInfo.carNum,
             status: HAS_WATCH_ACTION,
@@ -72,31 +110,8 @@ export async function quickSetHasWatch(plugin: DetailPageButtonPlugin, score: nu
         show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
         return;
     }
-    // 串行化 javdb 原生端操作，避免连续点击并发冲突；
-    // _wantWatchedSyncing 期间阻断 MutationObserver，完成后立即释放
-    plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-        .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
-            if (!isCurrentOpSyncIntent(syncRecord)) return;
-            plugin._wantWatchedSyncing = true;
-            try {
-                if (!setOpSyncState(pageInfo.carNum!, 'watched', 'running', { expectedRevision: syncRecord.revision })) return;
-                await plugin._triggerJavdbReview(score);
-                plugin._syncRatingBar();
-                setOpSyncState(pageInfo.carNum!, 'watched', 'success', { error: '', expectedRevision: syncRecord.revision });
-            } finally {
-                plugin._wantWatchedSyncing = false;
-            }
-        }))
-        .catch((err: unknown) => {
-            // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
-            setOpSyncState(pageInfo.carNum!, 'watched', 'failed', {
-                error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
-            });
-            clog.warn('[JHS-快键] 站点评价同步失败', err instanceof Error ? err.message : String(err));
-            show.error(
-                '站点未同步: ' + (err instanceof Error ? err.message : String(err))
-            );
-        });
+    // 站点推送保持后台执行，本地已落盘后不等待网络。
+    queueRatingSync(plugin, syncRecord, () => plugin._triggerJavdbReview(score), '站点评价同步失败');
 }
 
 /**
@@ -132,13 +147,13 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                     publishTime: pageInfo.publishTime ?? undefined
                 });
                 // 记账（doc/38）：本地已写 FILTER_ACTION → 登记「待推送」（站点侧等价已读 0 星）
-                syncRecord = upsertOpSync({
+                syncRecord = await withRatingStateLock(() => upsertOpSync({
                     carNum: pageInfo.carNum!,
                     url: pageInfo.url ?? '',
                     kind: 'filter',
                     score: 0,
                     origin: 'detail'
-                });
+                }));
                 // 2) 广播 filter+add（列表页实时隐藏该卡片）
                 plugin.broadcastWantWatchedSync({
                     carNum: pageInfo.carNum!,
@@ -152,30 +167,7 @@ export async function quickBlock(plugin: DetailPageButtonPlugin): Promise<void> 
                 return;
             }
             // 3) javdb 原生端：设为已读0星（串行 + 阻断 observer）
-            plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-                .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
-                    if (!isCurrentOpSyncIntent(syncRecord)) return;
-                    plugin._wantWatchedSyncing = true;
-                    try {
-                        if (!setOpSyncState(pageInfo.carNum!, 'filter', 'running', { expectedRevision: syncRecord.revision })) return;
-                        await plugin._triggerJavdbReview(0);
-                        plugin._syncRatingBar();
-                        setOpSyncState(pageInfo.carNum!, 'filter', 'success', { error: '', expectedRevision: syncRecord.revision });
-                    } finally {
-                        plugin._wantWatchedSyncing = false;
-                    }
-                }))
-                .catch((err: unknown) => {
-                    // doc/37：站点推送在后台执行，失败必须可见（本地已落盘，不回滚）
-                    setOpSyncState(pageInfo.carNum!, 'filter', 'failed', {
-                        error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
-                    });
-                    clog.warn(
-                        '[JHS-快键] 站点已读同步失败',
-                        err instanceof Error ? err.message : String(err)
-                    );
-                    show.error('站点未同步: ' + (err instanceof Error ? err.message : String(err)));
-                });
+            queueRatingSync(plugin, syncRecord, () => plugin._triggerJavdbReview(0), '站点已读同步失败');
             // 只需等本地持久化（journal/GM 写入）落盘；站点推送不阻塞关页（doc/37）
             const clr2 = plugin.getBean('CarListReaderPlugin');
             if (clr2) {
@@ -214,13 +206,13 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
             publishTime: pageInfo.publishTime ?? undefined
         });
         // 记账（doc/38）：本地已写 → 登记「待推送」
-        syncRecord = upsertOpSync({
-            carNum: pageInfo.carNum,
+        syncRecord = await withRatingStateLock(() => upsertOpSync({
+            carNum: pageInfo.carNum!,
             url: pageInfo.url ?? '',
             kind: 'favorite',
             score: 0,
             origin: 'detail'
-        });
+        }));
         plugin.broadcastWantWatchedSync({
             carNum: pageInfo.carNum,
             status: FAVORITE_ACTION,
@@ -232,29 +224,7 @@ export async function quickConvertToFav(plugin: DetailPageButtonPlugin): Promise
         show.error('操作失败: ' + (err instanceof Error ? err.message : String(err)));
         return;
     }
-    plugin._reviewChain = (plugin._reviewChain || Promise.resolve())
-        .then(() => withExclusiveLock(BATCH_RATING_SYNC_LOCK, async () => {
-            if (!isCurrentOpSyncIntent(syncRecord)) return;
-            plugin._wantWatchedSyncing = true;
-            try {
-                if (!setOpSyncState(pageInfo.carNum!, 'favorite', 'running', { expectedRevision: syncRecord.revision })) return;
-                await plugin._triggerJavdbWant();
-                plugin._syncRatingBar();
-                setOpSyncState(pageInfo.carNum!, 'favorite', 'success', { error: '', expectedRevision: syncRecord.revision });
-            } finally {
-                plugin._wantWatchedSyncing = false;
-            }
-        }))
-        .catch((err: unknown) => {
-            // doc/37：站点推送在后台执行，失败必须可见（本地状态已落盘，不回滚；开页校验会重试）
-            setOpSyncState(pageInfo.carNum!, 'favorite', 'failed', {
-                error: err instanceof Error ? err.message : String(err), expectedRevision: syncRecord.revision
-            });
-            clog.warn('[JHS-快键] 站点收藏同步失败', err instanceof Error ? err.message : String(err));
-            show.error(
-                '站点未同步: ' + (err instanceof Error ? err.message : String(err))
-            );
-        });
+    queueRatingSync(plugin, syncRecord, () => plugin._triggerJavdbWant(), '站点收藏同步失败');
 }
 
 /**

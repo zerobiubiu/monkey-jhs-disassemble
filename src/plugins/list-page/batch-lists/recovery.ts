@@ -2,8 +2,7 @@ import { TaskSupervisor } from '../../../core/task-supervisor';
 import { getCsrfToken } from '../../../core/util/site/csrf';
 
 import { isBatchListDialogOpen, runBatchListProgress } from './dialog';
-import { isBatchListJobPending, readBatchListJobs } from './journal';
-import { recoverBatchListJobs } from './service';
+import { runAutomaticBatchListRecovery } from './service';
 
 /** 仅在脚本运行且联网时恢复；关页后的工作留待下次加载，不依赖常驻后台服务。 */
 export function startBatchListRecovery(): () => void {
@@ -14,11 +13,11 @@ export function startBatchListRecovery(): () => void {
             document.visibilityState === 'hidden' || navigator.onLine === false || !getCsrfToken()) return;
         checking = true;
         try {
-            const jobs = readBatchListJobs();
-            if (!jobs.some((job) => !job.paused && isBatchListJobPending(job) && job.retryAt <= Date.now())) return;
-            const locks = await navigator.locks?.query();
-            if (supervisor.aborted || locks?.held?.some((lock) => lock.name === 'jhs:batch-lists:' + window.location.origin)) return;
-            await runBatchListProgress((notify, signal) => recoverBatchListJobs(notify, false, signal), '继续未完成的批量清单操作');
+            // 必须先原子取得执行权，再展示恢复窗口；已有执行者时立即返回，不排队唤醒。
+            await runAutomaticBatchListRecovery(async (work) => {
+                if (supervisor.aborted || isBatchListDialogOpen() || document.visibilityState === 'hidden') return;
+                await runBatchListProgress(work, '继续未完成的批量清单操作');
+            });
         } catch (error: unknown) {
             clog.error('[批量清单] 自动恢复暂未完成', error);
         } finally {
