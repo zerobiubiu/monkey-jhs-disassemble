@@ -1,6 +1,6 @@
 # JavDB Power Tools
 
-> 当前版本：**v1.49.3** ｜ 支持站点：**JavDB**（javdb.com）与 **MissAV**（missav.ws / missav.live / missav.ai）
+> [版本与更新记录](https://github.com/zerobiubiu/monkey-jhs-disassemble/releases/latest) ｜ 支持站点：**JavDB**（javdb.com）与 **MissAV**（missav.ws / missav.live / missav.ai）
 >
 > 一个注入 JavDB / MissAV 的用户脚本工具箱，覆盖收藏管理、屏蔽过滤、跨站同步、榜单、清单维护与云备份。
 > 由原单文件脚本 JAV-JHS 3.3.6（MIT）二次开发而来（详见文末「开源与许可」）。
@@ -69,7 +69,7 @@
 | 功能 | 说明 |
 |------|------|
 | 热播榜单 | 拦截「播放排行」改写为日 / 周 / 月热播榜 + 评分渲染 |
-| Top250 | 拦截「猜你喜欢」改写为 Top250 排行榜（分类 / 年份 / 字幕切换 + 登录） |
+| Top250 | 原站 `/rankings/top` 按 `page` 翻页。其他页面的 TOP250 主导航及旧「猜你喜欢」标签使用 `/search_advanced` 打开增强榜单；需先登录网站，增强榜单另按需提示移动端登录。支持分类 / 年份 / 字幕切换 |
 
 ### 📚 清单管理
 

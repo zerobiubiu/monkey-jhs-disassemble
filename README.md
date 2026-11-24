@@ -10,7 +10,7 @@
 ## ✨ 功能总览
 
 脚本在 **JavDB** 与 **MissAV** 两个站点运行，覆盖列表页、详情页、演员页、清单页等场景，
-提供 **44 个功能插件**（JavDB 39 + MissAV 5）。
+完整插件清单以[可校验的目录](./docs/plugin-catalog.md)为准。
 
 | 分类 | 核心能力 |
 |------|----------|
@@ -85,7 +85,7 @@ bun run build    # = tsc -b && vite build
 
 | 站点 | 域名 | 插件数 |
 |------|------|--------|
-| JavDB | `javdb.com` | 39 个 |
+| JavDB | `javdb.com` | 38 个 |
 | MissAV | `missav.ws` / `missav.live` / `missav.ai` | 5 个（状态标签/快速复制/瀑布流/状态筛选/视频预览） |
 
 ## 🔧 技术架构
@@ -95,7 +95,7 @@ bun run build    # = tsc -b && vite build
 - **UI 框架**：React 19（jsxToString 渲染 HTML 字符串，不依赖 react-dom）
 - **CSS 处理**：lightningcss（errorRecovery 容错 IE hack）
 - **包管理**：Bun
-- **代码质量**：ESLint（0 errors / 0 warnings）+ Stylelint（0 errors）+ Vitest（13 个测试文件 / 183 用例）
+- **代码质量**：ESLint、Stylelint、Vitest；测试数与结果以本次 `bun run test` 输出为准。
 - **第三方库**：jQuery / Tabulator / layer.js / Toastify / localforage / Viewer.js / blueimp-md5 —— 7 库 CDN `@require` 外部引入（`externalGlobals` 自动生成，URL 与原始脚本一致），库 CSS 仍打包
 
 ### 插件系统
@@ -137,15 +137,15 @@ saveCar → callback                    jhs_car_status_delta        GM_addValueC
 
 ```
 src/
-├── main.tsx              # 入口：启动序列 + 注册 44 插件
-├── core/                 # 核心模块（22 个 + util/ 工具集 + sync/ 子目录）
+├── main.tsx              # 入口：启动序列与分站点插件注册
+├── core/                 # 核心模块，含 domain/、storage/、util/ 和 sync/
 │   ├── util/             # 核心工具（broadcast/back-to-top/esc-layer/util-fetch-html 等）
 │   └── sync/             # 跨站同步共享基础设施（Web Lock / 队列 / 意图日志）
-├── plugins/              # 插件模块（44 个，含 car-status-sync/ 和 video-lists-tag/ 子目录）
-├── components/           # React 函数组件（139 个，26 个子目录）
+├── plugins/              # 功能插件，含 car-status-sync/ 和 video-lists-tag/ 等子目录
+├── components/           # 按插件域组织的 React 函数组件
 ├── constants/            # 常量
 ├── resources/            # 资源（icons SVG）
-├── styles/               # CSS 文件（41 个，含 design-tokens 设计令牌）
+├── styles/               # 插件样式与设计令牌
 └── types/                # 类型声明
 ```
 
@@ -154,7 +154,7 @@ src/
 ### 测试
 
 ```bash
-bun run test             # vitest run（13 个测试文件，183 个用例）
+bun run test             # 运行 Vitest 套件
 ```
 
 ### 文档

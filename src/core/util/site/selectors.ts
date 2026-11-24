@@ -66,8 +66,8 @@ export const SITE_SELECTORS = {
     navFeedback: { current: 'a[href*="/feedbacks/new"]' },
     /** 热播榜入口。 */
     navRankPlayback: { current: 'a[href*="rankings/playback"]' },
-    /** TOP250 入口。 */
-    navRankTop: { current: 'a[href*="rankings/top"]' },
+    /** 导航栏的 TOP250 总入口，不匹配页码、筛选或正文中的榜单链接。 */
+    navRankTop: { current: '.main-nav a.navbar-item[href="/rankings/top"]' },
     /** 外站导航链接。 */
     navThePornDude: { current: 'a[href*="theporndude.com"]' },
     /** 导航主容器。 */

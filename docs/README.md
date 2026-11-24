@@ -82,6 +82,8 @@
 | `65-batch-rating-and-list-composition.md` | 变更 | v1.49.2 | 清单窗口可选收藏/已读星级，一次开始执行评价与清单；稳定评价身份、独立阶段恢复及原快捷评价保留 |
 | `66-batch-video-concurrency-and-multi-lists.md` | 变更 | v1.49.3 | 按视频合并评价与多选清单、可配置并发默认2、原子跨页恢复认领、v1日志迁移与真实双标签隔离验收 |
 | `67-batch-recovery-progress-minimize.md` | 变更 | v1.49.4 | 仅恢复进度可最小化、保留执行与页面交互、结束闪烁提醒及展开查看结果 |
+| [`68-top250-native-pagination.md`](68-top250-native-pagination.md) | 变更 | v1.49.5 | 原站榜单不再被增强入口劫持；区分主导航、原生分页与增强页，记录浏览器 GET 验收及项目文档口径修正 |
+| [`69-top250-host-route.md`](69-top250-host-route.md) | 变更 | v1.49.6 | 更正 doc/68 增强入口的旧承载路由；记录线上 404 与登录重定向、真实 HTTP 导航回归及字幕筛选传递 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

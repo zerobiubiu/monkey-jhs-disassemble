@@ -19,6 +19,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
+import { top250Href } from '../../constants/top250';
 
 /** Top250YearButton 的属性。 */
 export interface Top250YearButtonProps {
@@ -39,7 +40,7 @@ export function Top250YearButton({ year, typeValue, hasCnsub }: Top250YearButton
         <a
             style={{ padding: '18px 18px !important' }}
             className={`button is-small ${typeValue === year.toString() ? 'is-info' : ''}`}
-            href={`/advanced_search?handleTop=1&handleType=year&type_value=${year}&has_cnsub=${hasCnsub}`}
+            href={top250Href('year', year, hasCnsub)}
         >
             {year}
         </a>

@@ -306,7 +306,7 @@ setupLayerWrapper();
 // 库 CSS（layer/toastify/viewer/tabulator）已由 src/core/libs.ts 以 ESM import
 // 打包进产物，运行时注入 <style>，不再走 utils.importResource CDN 动态加载。
 
-// ===== 启动序列：PluginManager + 注册 44 插件（javdb 39 [34 常驻 + 5 feature-flagged] + missav 5） =====
+// ===== 启动序列：按站点注册常驻插件与可选插件 =====
 const pluginManager: PluginManager = (function () {
     const manager = new PluginManager();
     // pluginManager 仅通过模块级 const + this.pluginManager 内部访问，不暴露到 unsafeWindow
@@ -351,7 +351,7 @@ const pluginManager: PluginManager = (function () {
         if (featureFlags.imageRecognitionPlugin) manager.register(ImageRecognitionPlugin, 'imageRecognitionPlugin');
         if (featureFlags.fc2By123AvPlugin) manager.register(Fc2By123AvPlugin, 'fc2By123AvPlugin');
     }
-    // MissAV 站点单独注册 missav 专属插件（不注册 javdb 的 39 个插件）
+    // MissAV 只注册自己的插件。
     if (isMissavSite) {
         manager.register(MissavStatusTagPlugin);
         manager.register(MissavQuickCopyPlugin);

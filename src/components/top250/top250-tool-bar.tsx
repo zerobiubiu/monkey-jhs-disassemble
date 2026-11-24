@@ -24,6 +24,7 @@
  * `jsxToString` 渲染为 HTML 字符串（仅类型依赖 react，零运行时依赖，不引入
  * react-dom/server）。属性值不做转义。
  */
+import { top250Href } from '../../constants/top250';
 
 /** Top250ToolBar 的属性。 */
 export interface Top250ToolBarProps {
@@ -57,35 +58,35 @@ export function Top250ToolBar({
                 <a
                     style={{ padding: '18px 18px !important' }}
                     className={`button is-small ${handleType === 'all' ? 'is-info' : ''}`}
-                    href={`/advanced_search?handleTop=1&handleType=all&type_value=&has_cnsub=${hasCnsub}`}
+                    href={top250Href('all', '', hasCnsub)}
                 >
                     全部
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}
                     className={`button is-small ${typeValue === '0' ? 'is-info' : ''}`}
-                    href={`/advanced_search?handleTop=1&handleType=video_type&type_value=0&has_cnsub=${hasCnsub}`}
+                    href={top250Href('video_type', 0, hasCnsub)}
                 >
                     有码
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}
                     className={`button is-small ${typeValue === '1' ? 'is-info' : ''}`}
-                    href={`/advanced_search?handleTop=1&handleType=video_type&type_value=1&has_cnsub=${hasCnsub}`}
+                    href={top250Href('video_type', 1, hasCnsub)}
                 >
                     无码
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}
                     className={`button is-small ${typeValue === '2' ? 'is-info' : ''}`}
-                    href={`/advanced_search?handleTop=1&handleType=video_type&type_value=2&has_cnsub=${hasCnsub}`}
+                    href={top250Href('video_type', 2, hasCnsub)}
                 >
                     欧美
                 </a>{' '}
                 <a
                     style={{ padding: '18px 18px !important' }}
                     className={`button is-small ${typeValue === '3' ? 'is-info' : ''}`}
-                    href={`/advanced_search?handleTop=1&handleType=video_type&type_value=3&has_cnsub=${hasCnsub}`}
+                    href={top250Href('video_type', 3, hasCnsub)}
                 >
                     Fc2
                 </a>{' '}

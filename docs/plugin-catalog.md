@@ -24,7 +24,7 @@
 | SettingPlugin | 设置弹窗（侧栏+面板）+ WebDav/Git 备份 + 缓存清理 |
 | NavBarPlugin | 导航栏 |
 | HitShowPlugin | 热播 |
-| Top250Plugin | Top250 排行榜 |
+| Top250Plugin | 保留原站 Top250 分页；从榜单外的导航入口打开增强榜单，按分类、年份、字幕和页码展示 |
 | DetailPagePlugin | 详情页主插件 |
 | ReviewPlugin | 评论 |
 | DetailPageButtonPlugin | 详情页想看/观看/评分/清单/字幕/清单序号合并/自动校验；快捷评价与列表同步共享按视频网络锁、短账本锁及 revision 回执保护 |

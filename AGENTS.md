@@ -10,7 +10,7 @@
 将单文件混淆用户脚本 `archetype/jhs.user.js`（11605 行）拆分重构为基于
 `vite-plugin-monkey` + React + TypeScript + SWC 的工程化项目。
 要求打包产物在功能逻辑与执行效果上与原始脚本零偏差。后续集成了多个独立油猴脚本，
-形成 JavDB / MissAV 双站增强工具箱，共 44 个功能插件（JavDB 39 + MissAV 5）。
+形成 JavDB / MissAV 双站增强工具箱，插件计数与站点拆分见 §3.3。
 
 - **构建**：Vite 8 + vite-plugin-monkey 8；`bun run build` = `tsc -b && vite build`
 - **语言**：TypeScript 6（strict，全量去 @ts-nocheck）
@@ -22,11 +22,11 @@
 ```
 monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
-│   ├── main.tsx            # 入口：启动序列 + 注册插件（javdb 含升级插件 + missav 5）
+│   ├── main.tsx            # 入口：启动序列 + 按站点注册常驻与可选插件
 │   ├── core/               # 核心模块（含 domain/、storage/（含 backup-restore）、feature-flags、util/、sync/）
 │   ├── plugins/            # 插件模块（list-page/batch-lists/ 含可恢复批量清单操作；list-page/ 含推荐浮层与筛选；other-site/ 含预加载与同番号定位）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录；list-page/ 含推荐入口与浮层）
-│   ├── constants/          # 常量（site/status/video-quality/api/weekly-recommend 事件）
+│   ├── constants/          # 站点与领域常量；top250.ts 统一增强榜单的承载路径和筛选地址
 │   ├── resources/          # 资源（icons SVG）
 │   ├── styles/             # CSS 文件（?raw import via initCss，含 list-reflow/ 等子目录）
 │   └── types/              # 类型声明（globals.d.ts）
@@ -54,7 +54,7 @@ monkey-jhs-disassemble/
 6. clog 日志控制台 + 全局异常捕获
 7. tooltip
 8. encryptCredential/decryptCredential + setupLayerWrapper
-9. **PluginManager 实例化 + 注册 44 插件**（javdb 39 + missav 5，按 `if (isJavdbSite/isMissavSite)` 块）
+9. **PluginManager 实例化 + 注册插件**（按 `if (isJavdbSite/isMissavSite)` 块，清单见 §3.3）
 10. **页面判定**（`initPageContext()` → `window.isDetailPage/isListPage/isFc2Page`）— **先于 CSS**
 11. `await processCss()` — 并发执行插件 initCss（按 pageTypes 过滤不匹配插件）
 12. `await storageManager.runMigrations()` — 版本化迁移（javdb only，后续启动仅读版本号 ~1ms）
@@ -89,7 +89,7 @@ monkey-jhs-disassemble/
 ### 3.4 核心模块 `src/core/`
 
 共 **69 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 43。
-**完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 会校验本文件的插件/模块计数与 catalog 是否一致。
+**完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 校验 catalog 与实际注册和核心目录，不校验其他文档。
 
 ### 3.5 组件 `src/components/`（142 个）
 
