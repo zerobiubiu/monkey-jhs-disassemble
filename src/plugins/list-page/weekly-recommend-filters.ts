@@ -7,6 +7,8 @@ import type { FilterScope } from '../../types/filter-scope';
 
 import type { OtherSitePlugin } from '../other-site-plugin';
 import { buildFilterBar, refreshScopedPreloadFilter } from '../other-site/osp-filter-bar';
+import { SITE_TAG_HIDDEN_ATTR } from '../site-tag-filter/stgf-collect';
+import { refreshSiteTagFilterBar } from '../site-tag-filter/stgf-ui';
 import { applyFilter as applyStatusFilter } from '../status-tag-filter/stf-apply';
 import { doBuild } from '../status-tag-filter/stf-ui';
 import { VltTags } from '../video-lists-tag/vlt-tags';
@@ -55,12 +57,18 @@ export class WeeklyRecommendFilters {
             buildFilterBar(otherSite, this.scope);
             refreshScopedPreloadFilter(this.scope);
         }
+        refreshSiteTagFilterBar(this.scope);
     }
 
     destroy(): void {
         this.supervisor.abort();
         queryFilterItems(this.scope).forEach((item) => {
-            const attributes = ['data-status-tag-hidden', 'data-video-lists-tag-hidden', 'data-preload-hidden'];
+            const attributes = [
+                'data-status-tag-hidden',
+                'data-video-lists-tag-hidden',
+                'data-preload-hidden',
+                SITE_TAG_HIDDEN_ATTR
+            ];
             if (!attributes.some((attribute) => item.hasAttribute(attribute))) return;
             attributes.forEach((attribute) => item.removeAttribute(attribute));
             reconcileFilterVisibility(item);

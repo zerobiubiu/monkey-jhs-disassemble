@@ -7,7 +7,12 @@
  * - collectTagCounts：收集标签计数
  * - countNoTagItems：计算无标签卡片数
  */
-import { queryFilterControls, queryFilterItems, reconcileFilterVisibility } from '../../core/util/site/filter-scope';
+import {
+    isHiddenByUnknownScript,
+    queryFilterControls,
+    queryFilterItems,
+    reconcileFilterVisibility
+} from '../../core/util/site/filter-scope';
 import type { FilterScope } from '../../types/filter-scope';
 
 import type { VltTags } from './vlt-tags';
@@ -92,12 +97,11 @@ export function applyFilter(plugin: VltTags): void {
         Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
     );
 
-    // 无筛选时：仅恢复本脚本隐藏的卡片
+    // 无筛选时：仅恢复本脚本隐藏的卡片，同时尊重其他筛选栏与基础屏蔽的交集标记
     if (selectedValues.size === 0) {
         queryFilterItems(scope, `[${TAG_HIDDEN_ATTR}]`).forEach((item: Element) => {
             (item as HTMLElement).removeAttribute(TAG_HIDDEN_ATTR);
-            if (scope) reconcileFilterVisibility(item);
-            else (item as HTMLElement).style.display = '';
+            reconcileFilterVisibility(item);
         });
         return;
     }
@@ -107,10 +111,8 @@ export function applyFilter(plugin: VltTags): void {
 
     queryFilterItems(scope).forEach((item: Element) => {
         const htmlItem = item as HTMLElement;
-        // 协同安全：已被其他脚本隐藏的卡片不纳入管理
-        const hiddenByOther =
-            htmlItem.style.display === 'none' && !htmlItem.hasAttribute(TAG_HIDDEN_ATTR);
-        if (!scope && hiddenByOther) return;
+        // 协同安全：基础屏蔽与未知外部脚本隐藏的卡片不纳入管理；已知筛选栏走交集标记
+        if (!scope && (htmlItem.hasAttribute('data-hide') || isHiddenByUnknownScript(htmlItem))) return;
 
         const tagLinks = item.querySelectorAll(
             ".jhs-vlt-tag-link:not([style*='pointer-events: none'])"
@@ -154,7 +156,6 @@ export function applyFilter(plugin: VltTags): void {
         } else {
             htmlItem.setAttribute(TAG_HIDDEN_ATTR, '');
         }
-        if (scope) reconcileFilterVisibility(htmlItem);
-        else htmlItem.style.display = shouldShow ? '' : 'none';
+        reconcileFilterVisibility(htmlItem);
     });
 }

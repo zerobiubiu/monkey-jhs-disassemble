@@ -9,7 +9,7 @@
 
 ## 1. 插件清单
 
-共 43 个功能插件（JavDB 38 + MissAV 5）。多模块插件的子目录拆分见各插件源码目录（`src/plugins/<name>/`）。
+共 44 个功能插件（JavDB 39 + MissAV 5）。多模块插件的子目录拆分见各插件源码目录（`src/plugins/<name>/`）。
 
 ### 1.1 主脚本拆分插件（21 个）
 
@@ -70,7 +70,7 @@
 | ImageRecognitionPlugin | imageRecognitionPlugin | 以图识图 |
 | Fc2By123AvPlugin | fc2By123AvPlugin | 123Av FC2 浏览 |
 
-### 1.4 新增功能插件（5 个）
+### 1.4 新增功能插件（6 个）
 
 本项目自创（非 archetype 拆分/集成/升级）
 
@@ -78,6 +78,7 @@
 |------|------|
 | VisitHistoryPlugin | 访问记录：详情页元数据链接悬浮「最近打开时间」 |
 | ListReflowPlugin | 清单页编号整理：压实计划预览（期1）+ 压实执行引擎（期2） |
+| SiteTagFilterPlugin | 站点原生卡片标签筛选：实时采集卡片 `div.tags.has-addons` 内原生 `span`（排除 `.status-tag`），不预设名单动态渲染芯片，支持 OR 多选/无标签/瀑布流增量刷新与推荐浮层交集协同 |
 | MissavAutoPagePlugin | MissAV 列表页瀑布流：点击加载下一页 + 加载全部 + 回到顶部；修复懒加载封面（data-src→src）；视频页守卫 |
 | MissavStatusFilterPlugin | MissAV 状态筛选：dataset.status → 芯片筛选栏（OR 过滤，data-mstf-hidden 协同）；nord 暗色样式；cell 级显隐 |
 | MissavVideoPreviewPlugin | MissAV 视频流 iframe 详情弹窗：捕获阶段拦截 + 修饰键保留原生新标签 + 可嵌套弹窗 |

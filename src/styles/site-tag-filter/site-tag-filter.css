@@ -1,0 +1,82 @@
+/**
+ * site-tag-filter 插件样式 —— 站点原生卡片标签筛选栏芯片态。
+ *
+ * 设计约束简述（Workflow B）：
+ * - 内容层级：主项 = 已激活原生标签芯片（实底白字）；次项 = 未激活原生标签芯片（白底描边）；
+ *   三级 = 「标签:」前缀与「无标签」虚线芯片。
+ * - 基础尺寸/布局/圆角/过渡复用 filter-chip-base.css；本表仅补充 button 重置、
+ *   active 配色（--jhs-color-primary-hover #4a73b0 配 #fff，对比度 4.87:1 ≥ AA）、
+ *   无标签虚线态、键盘焦点环（--jhs-color-primary）与暗色主题适配。
+ */
+
+.jhs-site-tag-filter-chip {
+    margin: 0;
+    font-family: inherit;
+    appearance: none;
+}
+
+.jhs-site-tag-filter-chip:focus-visible {
+    outline: 2px solid var(--jhs-color-primary);
+    outline-offset: 2px;
+}
+
+.jhs-site-tag-filter-chip.active,
+.jhs-site-tag-filter-chip.active:hover {
+    background: var(--jhs-color-primary-hover);
+    border-color: var(--jhs-color-primary-hover);
+    color: var(--jhs-color-bg);
+}
+
+.jhs-site-tag-filter-chip.active:hover {
+    opacity: 0.9;
+}
+
+.jhs-site-tag-filter-chip.is-no-tag {
+    border-style: dashed;
+    color: var(--jhs-color-text-secondary);
+}
+
+.jhs-site-tag-filter-chip.is-no-tag.active,
+.jhs-site-tag-filter-chip.is-no-tag.active:hover {
+    background: var(--jhs-color-text-secondary);
+    border-color: var(--jhs-color-text-secondary);
+    border-style: solid;
+    color: var(--jhs-color-bg);
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-bar {
+    border-bottom-color: #333;
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-label {
+    color: #b5b5b5;
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-chip {
+    background: #242424;
+    border-color: #4c566a;
+    color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-chip:hover {
+    background: #333;
+    border-color: #64748b;
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.active,
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.active:hover {
+    background: var(--jhs-color-primary-hover);
+    border-color: var(--jhs-color-primary-hover);
+    color: var(--jhs-color-bg);
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.is-no-tag {
+    color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.is-no-tag.active,
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.is-no-tag.active:hover {
+    background: #475569;
+    border-color: #475569;
+    color: var(--jhs-color-bg);
+}

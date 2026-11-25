@@ -69,6 +69,7 @@ import { Fc2Plugin } from './plugins/fc2-plugin';
 import { KeyPageTurningPlugin } from './plugins/key-page-turning-plugin';
 import { ModMyListOpenWayPlugin } from './plugins/mod-my-list-open-way-plugin';
 import { PageSortPlugin } from './plugins/page-sort-plugin';
+import { SiteTagFilterPlugin } from './plugins/site-tag-filter/site-tag-filter-plugin';
 import { StatusTagFilterPlugin } from './plugins/status-tag-filter-plugin';
 import { ListWaterfallPlugin } from './plugins/list-waterfall-plugin';
 import { ListReadingStatusPlugin } from './plugins/list-reading-status-plugin';
@@ -337,6 +338,7 @@ const pluginManager: PluginManager = (function () {
         manager.register(ModMyListOpenWayPlugin);
         manager.register(PageSortPlugin);
         manager.register(StatusTagFilterPlugin);
+        manager.register(SiteTagFilterPlugin);
         manager.register(ListWaterfallPlugin);
         manager.register(ListReadingStatusPlugin);
         manager.register(ModalListDisablerPlugin);

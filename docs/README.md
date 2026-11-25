@@ -84,6 +84,7 @@
 | `67-batch-recovery-progress-minimize.md` | 变更 | v1.49.4 | 仅恢复进度可最小化、保留执行与页面交互、结束闪烁提醒及展开查看结果 |
 | [`68-top250-native-pagination.md`](68-top250-native-pagination.md) | 变更 | v1.49.5 | 原站榜单不再被增强入口劫持；区分主导航、原生分页与增强页，记录浏览器 GET 验收及项目文档口径修正 |
 | [`69-top250-host-route.md`](69-top250-host-route.md) | 变更 | v1.49.6 | 更正 doc/68 增强入口的旧承载路由；记录线上 404 与登录重定向、真实 HTTP 导航回归及字幕筛选传递 |
+| [`70-site-native-tag-filter.md`](70-site-native-tag-filter.md) | 变更 | v1.50.0 | 新增站点原生卡片标签筛选插件 `SiteTagFilterPlugin`：实时采集 `div.tags.has-addons` 原生 `span`（排除 `.status-tag`），不预设名单动态渲染，支持无标签筛选、瀑布流增量、推荐浮层与主列表四栏交集协同 |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

@@ -24,7 +24,7 @@ monkey-jhs-disassemble/
 ├── src/                    # 源码（tsconfig include）
 │   ├── main.tsx            # 入口：启动序列 + 按站点注册常驻与可选插件
 │   ├── core/               # 核心模块（含 domain/、storage/（含 backup-restore）、feature-flags、util/、sync/）
-│   ├── plugins/            # 插件模块（list-page/batch-lists/ 含可恢复批量清单操作；list-page/ 含推荐浮层与筛选；other-site/ 含预加载与同番号定位）
+│   ├── plugins/            # 插件模块（list-page/batch-lists/ 含可恢复批量清单操作；list-page/ 含推荐浮层与筛选；site-tag-filter/ 含站点原生卡片标签筛选；other-site/ 含预加载与同番号定位）
 │   ├── components/         # React 函数组件（jsxToString 转 HTML 字符串，按插件域分子目录；list-page/ 含推荐入口与浮层）
 │   ├── constants/          # 站点与领域常量；top250.ts 统一增强榜单的承载路径和筛选地址
 │   ├── resources/          # 资源（icons SVG）
@@ -83,7 +83,7 @@ monkey-jhs-disassemble/
 
 ### 3.3 插件清单
 
-共 **43 个功能插件**（JavDB 38 + MissAV 5）：主脚本拆分 21 + 独立脚本集成 12 + 升级新插件 5（feature flag 可关）+ 新增功能插件 5。
+共 **44 个功能插件**（JavDB 39 + MissAV 5）：主脚本拆分 21 + 独立脚本集成 12 + 升级新插件 5（feature flag 可关）+ 新增功能插件 6。
 **完整清单（含职责/来源脚本/flag）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删插件时同步更新该文件。
 
 ### 3.4 核心模块 `src/core/`
@@ -102,8 +102,8 @@ monkey-jhs-disassemble/
 销毁时按注释锚点还原。推荐复用普通卡片的状态、评分、清单标签、翻译和点击处理，主列表排序、
 翻页、批量选择和筛选统计仍保持独立；推荐预加载仅在浮层打开时调度，同番号任务与徽标共享。
 推荐卡片身份或原生番号/链接变化触发增量处理，标签与徽标更新不反复触发；标题只展示推荐名称与更新周期。
-浮层复用清单、状态/星级、预加载三套筛选组件，以 `FilterScope` 分别维护挂载点、卡片范围、计数和选中状态；
-默认主页面查询排除局部范围控件，局部多栏隐藏标记组成交集。原生「收起到下次更新」链接在浮层标题内隐藏。
+浮层复用清单、状态/星级、预加载及站点原生标签四套筛选组件，以 `FilterScope` 分别维护挂载点、卡片范围、计数和选中状态；
+默认主页面查询排除局部范围控件，主列表与浮层均通过 `filter-scope` 隐藏标记组成多栏交集。原生「收起到下次更新」链接在浮层标题内隐藏。
 
 列表批量操作由 `list-page/lp-batch.tsx` 管理选择与委托，`lp-batch-actions.ts` 负责评价写入。
 `list-page/batch-lists/` 按网站适配、GM 持久日志、执行器、恢复调度与模态交互分层；

@@ -63,15 +63,15 @@ export function applyListMountPoint(mount: ListMountPoint, bar: HTMLElement): vo
     mount.target.insertAdjacentElement(mount.position, bar);
 }
 
-/** 筛选栏统一容器（三根栏都进这个栈，顺序由优先级决定）。 */
+/** 筛选栏统一容器（所有列表筛选栏都进这个栈，顺序由优先级决定）。 */
 export const FILTER_STACK_CLASS = 'jhs-filter-stack';
 
 /**
  * 筛选栏显示优先级（**唯一的顺序权威**，与挂载先后无关）。
  *
- * 现场口径：筛选（清单标签）→ 状态（状态标签芯片）→ 预加载（外站预加载）。
+ * 现场口径：筛选（清单标签）→ 状态（状态标签芯片）→ 预加载（外站预加载）→ 标签（卡片原生标签）。
  */
-export const FILTER_BAR_PRIORITY = { vlt: 10, status: 20, preload: 30 } as const;
+export const FILTER_BAR_PRIORITY = { vlt: 10, status: 20, preload: 30, siteTag: 40 } as const;
 
 /** 优先级在栈内子元素上的属性名。 */
 const STACK_PRIORITY_ATTR = 'data-jhs-filter-priority';

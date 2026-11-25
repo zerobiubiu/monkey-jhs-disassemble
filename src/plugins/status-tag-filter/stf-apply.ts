@@ -4,7 +4,12 @@
  * 根据当前激活的芯片显示/隐藏 .item 元素。协同安全：被 jhs 或其他脚本
  * 隐藏的卡片不纳入管理（doc/48 增强：检查 data-hide 属性）。
  */
-import { queryFilterControls, queryFilterItems, reconcileFilterVisibility } from '../../core/util/site/filter-scope';
+import {
+    isHiddenByUnknownScript,
+    queryFilterControls,
+    queryFilterItems,
+    reconcileFilterVisibility
+} from '../../core/util/site/filter-scope';
 
 import type { FilterScope } from '../../types/filter-scope';
 
@@ -37,15 +42,8 @@ export function applyFilter(scope?: FilterScope): void {
     if (selectedValues.size === 0) {
         queryFilterItems(scope, scope ? '' : `[${HIDDEN_ATTR}]`).forEach((item: Element) => {
             const htmlItem = item as HTMLElement;
-            if (scope) {
-                htmlItem.removeAttribute(HIDDEN_ATTR);
-                reconcileFilterVisibility(htmlItem);
-                return;
-            }
-            // 被jhs 屏蔽的卡片不恢复显示（保持隐藏）
-            if (htmlItem.hasAttribute(JHS_HIDE_ATTR)) return;
             htmlItem.removeAttribute(HIDDEN_ATTR);
-            htmlItem.style.display = '';
+            reconcileFilterVisibility(htmlItem);
         });
         return;
     }
@@ -71,9 +69,7 @@ export function applyFilter(scope?: FilterScope): void {
         // （jQuery empty+append 移动节点不丢属性）。同时保留 style.display
         // 检查作为兼底（兼容未知脚本的隐藏）。
         const hiddenByJhs = htmlItem.hasAttribute(JHS_HIDE_ATTR);
-        const hiddenByOther =
-            htmlItem.style.display === 'none' && !htmlItem.hasAttribute(HIDDEN_ATTR);
-        if (!scope && (hiddenByJhs || hiddenByOther)) return;
+        if (!scope && (hiddenByJhs || isHiddenByUnknownScript(htmlItem))) return;
 
         // 收集当前卡片内所有 status-tag 的文本
         const itemStatusTags = new Set<string>();
@@ -102,7 +98,6 @@ export function applyFilter(scope?: FilterScope): void {
         } else {
             htmlItem.setAttribute(HIDDEN_ATTR, '');
         }
-        if (scope) reconcileFilterVisibility(htmlItem);
-        else htmlItem.style.display = shouldShow ? '' : 'none';
+        reconcileFilterVisibility(htmlItem);
     });
 }

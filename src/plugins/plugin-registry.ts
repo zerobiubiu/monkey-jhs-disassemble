@@ -42,6 +42,7 @@ import type { RelatedPlugin } from './related-plugin';
 import type { ReviewPlugin } from './review-plugin';
 import type { ScreenShotPlugin } from './screenshot-plugin';
 import type { SettingPlugin } from './setting-plugin';
+import type { SiteTagFilterPlugin } from './site-tag-filter/site-tag-filter-plugin';
 import type { StatusTagFilterPlugin } from './status-tag-filter-plugin';
 import type { Top250Plugin } from './top250-plugin';
 import type { TranslatePlugin } from './translate-plugin';
@@ -90,6 +91,7 @@ export interface PluginMap {
     ReviewPlugin: ReviewPlugin;
     ScreenShotPlugin: ScreenShotPlugin;
     SettingPlugin: SettingPlugin;
+    SiteTagFilterPlugin: SiteTagFilterPlugin;
     StatusTagFilterPlugin: StatusTagFilterPlugin;
     Top250Plugin: Top250Plugin;
     TranslatePlugin: TranslatePlugin;

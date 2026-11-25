@@ -178,6 +178,8 @@ export const SITE_SELECTORS = {
     listMeta: { current: '.meta' },
     /** 列表卡片标签组。 */
     listTags: { current: '.tags.has-addons' },
+    /** 列表卡片站点原生标签（排除扩展注入的 .status-tag 与扩展兜底容器 .jhs-status-tags）。 */
+    listNativeTag: { current: '.tags.has-addons:not(.jhs-status-tags) > span:not(.status-tag)' },
     /** 列表工具栏。 */
     listToolbar: { current: 'body > section > div > div.toolbar' },
     /**

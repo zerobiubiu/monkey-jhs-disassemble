@@ -11,12 +11,22 @@ export function queryFilterControls<T extends Element = HTMLElement>(selector: s
 }
 
 const HIDDEN_ATTRIBUTES = [
-    'data-hide', 'data-lrs-hidden', 'data-status-tag-hidden', 'data-video-lists-tag-hidden', 'data-preload-hidden'
+    'data-hide',
+    'data-lrs-hidden',
+    'data-status-tag-hidden',
+    'data-video-lists-tag-hidden',
+    'data-preload-hidden',
+    'data-site-tag-hidden'
 ];
 
 /** 已知隐藏标记的合并结果，供同一区域的多栏筛选组成交集。 */
 export function hasFilterHiddenMarker(item: Element): boolean {
     return HIDDEN_ATTRIBUTES.some((attribute) => item.hasAttribute(attribute));
+}
+
+/** 被未知外部脚本隐藏（display:none 且不带任何已知筛选/屏蔽标记）时跳过，避免误恢复。 */
+export function isHiddenByUnknownScript(item: HTMLElement): boolean {
+    return item.style.display === 'none' && !hasFilterHiddenMarker(item);
 }
 
 /** 每栏只维护自己的标记，最终显隐不能清除另一栏或基础屏蔽的决定。 */

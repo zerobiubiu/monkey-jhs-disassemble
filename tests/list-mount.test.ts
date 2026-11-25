@@ -112,10 +112,11 @@ describe('jhs-filter-stack — 三根栏的顺序权威（doc/50）', () => {
         return bar;
     };
 
-    it('无论挂载先后，栈内顺序恒为 筛选 → 状态 → 预加载', () => {
+    it('无论挂载先后，栈内顺序恒为 筛选 → 状态 → 预加载 → 标签', () => {
         document.body.innerHTML = LIST_HTML;
 
         // 故意逆序挂载
+        mountFilterBar(makeBar('jhs-site-tag-filter-bar'), FILTER_BAR_PRIORITY.siteTag);
         mountFilterBar(makeBar('preload-filter-bar'), FILTER_BAR_PRIORITY.preload);
         mountFilterBar(makeBar('status-tag-filter-bar'), FILTER_BAR_PRIORITY.status);
         mountFilterBar(makeBar('jhs-vlt-filter-bar'), FILTER_BAR_PRIORITY.vlt);
@@ -124,7 +125,8 @@ describe('jhs-filter-stack — 三根栏的顺序权威（doc/50）', () => {
         expect([...stack.children].map((el) => el.className)).toEqual([
             'jhs-vlt-filter-bar',
             'status-tag-filter-bar',
-            'preload-filter-bar'
+            'preload-filter-bar',
+            'jhs-site-tag-filter-bar'
         ]);
     });
 

@@ -1,6 +1,7 @@
 import type { FilterScope } from '../../types/filter-scope';
 
 import {
+    isHiddenByUnknownScript,
     mountScopedFilterBar,
     queryFilterControls,
     queryFilterItems,
@@ -39,7 +40,8 @@ export const OTHER_HIDDEN_ATTRS = [
     'data-hide',
     'data-lrs-hidden',
     'data-status-tag-hidden',
-    'data-video-lists-tag-hidden'
+    'data-video-lists-tag-hidden',
+    'data-site-tag-hidden'
 ];
 
 /** 每个 DOM 筛选栏保留自己的刷新闭包，不共享选中状态或防抖计时器。 */
@@ -186,26 +188,19 @@ function applyPreloadFilter(scope?: FilterScope): void {
     if (selected.size === 0) {
         document.querySelectorAll(`${siteSelector('filterItem')}[${HIDDEN}]`).forEach((item: Element) => {
             const el = item as HTMLElement;
-            if (OTHER_HIDDEN_ATTRS.some((a) => el.hasAttribute(a))) return;
             el.removeAttribute(HIDDEN);
-            el.style.display = '';
+            reconcileFilterVisibility(el);
         });
         return;
     }
 
     document.querySelectorAll(siteSelector('listItem')).forEach((item: Element) => {
         const el = item as HTMLElement;
-        // 协同安全：被其他插件隐藏的卡片不管理
-        if (OTHER_HIDDEN_ATTRS.some((a) => el.hasAttribute(a))) return;
-        if (el.style.display === 'none' && !el.hasAttribute(HIDDEN)) return;
+        // 协同安全：基础屏蔽与未知外部脚本隐藏的卡片不纳入管理；其他已知筛选栏由标记交集协调
+        if (el.hasAttribute('data-hide') || isHiddenByUnknownScript(el)) return;
         const st = getItemPreloadStatus(el);
-        if (selected.has(st)) {
-            el.removeAttribute(HIDDEN);
-            el.style.display = '';
-        } else {
-            el.setAttribute(HIDDEN, '');
-            el.style.display = 'none';
-        }
+        el.toggleAttribute(HIDDEN, !selected.has(st));
+        reconcileFilterVisibility(el);
     });
 }
 
