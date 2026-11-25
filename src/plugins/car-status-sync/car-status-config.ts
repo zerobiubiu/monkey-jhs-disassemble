@@ -121,14 +121,28 @@ export const VIDEO_ROUTE_PREFIX = '/v/';
 /** missav 端本地 IndexedDB 配置（来源：missavStatusTag.user.js L38-40）。 */
 export const MISSAV_DB_NAME = 'MissAV-CarStatus';
 export const MISSAV_DB_STORE = 'cars';
-/** 同步元数据仓库：跨标签页防止旧全量覆盖新增量。 */
+/** 同步元数据仓库：跨标签页防止旧全量覆盖新增量，兼存清单字典与收藏同步元数据。 */
 export const MISSAV_DB_META_STORE = 'sync_meta';
-/** MissAV 端 IndexedDB 版本（v2 起含 sync_meta 仓库）。 */
-export const MISSAV_DB_VERSION = 2;
-/** sync_meta 中记录已应用修订号的键。 */
+/** JavDB 归属清单本地索引仓库（主键 carNum → { carNum, listIds }）。 */
+export const MISSAV_DB_VLT_CARS_STORE = 'vlt_cars';
+/** MissAV 原生收藏本地索引仓库（主键 slug → { slug, carNum, savedAt }）。 */
+export const MISSAV_DB_SAVED_STORE = 'missav_saved';
+/** MissAV 端 IndexedDB 版本（v2 含 sync_meta，v3 新增 vlt_cars 与 missav_saved）。 */
+export const MISSAV_DB_VERSION = 3;
+/** sync_meta 中记录已应用车辆状态修订号的键。 */
 export const MISSAV_SYNC_META_KEY = 'car_status_revision';
+/** sync_meta 中记录 JavDB 清单元数据列表的键。 */
+export const MISSAV_VLT_INVENTORY_META_KEY = 'vlt_inventory';
+/** sync_meta 中记录 JavDB 清单已应用修订号的键。 */
+export const MISSAV_VLT_REV_META_KEY = 'vlt_lists_revision';
+/** sync_meta 中记录 MissAV 原生收藏同步元数据的键。 */
+export const MISSAV_SAVED_META_KEY = 'missav_saved_meta';
 /** MissAV 端跨标签页写入互斥的 Web Lock 名称。 */
 export const MISSAV_SYNC_LOCK_NAME = 'jhs-missav-car-status-sync';
+/** MissAV 端 JavDB 清单消费互斥的 Web Lock 名称。 */
+export const MISSAV_VLT_SYNC_LOCK_NAME = 'jhs-missav-vlt-lists-sync';
+/** MissAV 端原生收藏写入互斥的 Web Lock 名称。 */
+export const MISSAV_SAVED_LOCK_NAME = 'jhs-missav-saved-sync';
 
 /** 同步类型。 */
 export type CarStatusSyncKind = 'full' | 'delta';

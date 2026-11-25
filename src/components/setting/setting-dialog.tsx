@@ -224,11 +224,12 @@ export function SettingDialog({
                         icon="🎬"
                         description={
                             <>
-                                在 MissAV 站点显示 JHS 鉴定状态标签（已收藏/已观看/已屏蔽/已下载）。
+                                在 MissAV 站点显示 JHS 鉴定状态标签（已收藏/已观看/已屏蔽/已下载）与
+                                JavDB 归属清单标签。
                                 <br />
                                 数据通过油猴 GM 存储跨域同步，无需后端服务器。
                                 <br />
-                                <strong>立即同步</strong>：读取当前 car_list 并推送到 GM 存储。
+                                <strong>立即同步</strong>：读取当前 car_list 与归属清单并推送到 GM 存储。
                                 <br />
                                 <strong>导入</strong>：从后端服务器导出的 JSON 导入历史数据。
                                 <br />

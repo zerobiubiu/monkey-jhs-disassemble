@@ -125,6 +125,14 @@ const KEYS = {
     META: 'vlt_meta'
 } as const;
 
+/** VltDb 写入完成回调（供跨站同步发布侧监听，零强耦合）。 */
+let vltChangeCallback: (() => void) | null = null;
+
+/** 注册或清除 VltDb 写入完成回调（每次 readwrite 事务提交成功后触发）。 */
+export function setVltChangeCallback(cb: (() => void) | null): void {
+    vltChangeCallback = cb;
+}
+
 export function randomBootstrapStyle(): { name: string; bg: string; text: string } {
     return BOOTSTRAP_COLORS[Math.floor(Math.random() * BOOTSTRAP_COLORS.length)];
 }
@@ -222,6 +230,13 @@ export async function withState<T>(
         }
 
         await done;
+        if (mode === 'readwrite' && vltChangeCallback) {
+            try {
+                vltChangeCallback();
+            } catch {
+                /* 通知监听方失败不影响已提交的 IDB 事务 */
+            }
+        }
         return result;
     } catch (error) {
         try {
@@ -389,6 +404,17 @@ export async function check(
 /** 获取全部清单。 */
 export async function getAllInventory(): Promise<Record<string, InventoryRecord>> {
     return withState('readonly', (state) => state.inventory);
+}
+
+/** 读取清单元数据与关联关系只读快照（供跨站同步发布侧消费）。 */
+export async function readListSnapshot(): Promise<{
+    inventory: Record<string, InventoryRecord>;
+    movieInventory: Record<string, boolean>;
+}> {
+    return withState('readonly', (state) => ({
+        inventory: state.inventory,
+        movieInventory: state.movieInventory
+    }));
 }
 
 /** 删除清单和其全部关联；不删除影片记录。 */

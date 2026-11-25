@@ -18,6 +18,7 @@ import { getCredentialId, DEFAULT_AUTO_BACKUP_CONFIG } from '../../core/auto-bac
 
 import { GM_KEY_BACKUP_PASSWORD } from './setting-keys';
 import { publishFullSnapshot, type PublishFailureReason } from '../car-status-sync/car-status-publish';
+import { publishVltSnapshot } from '../car-status-sync/vlt-sync-protocol';
 import {
     columnarToFlat,
     buildJavdbUrl
@@ -242,15 +243,21 @@ export async function handleMissavSync(): Promise<void> {
     const $status = $('#missav-status');
     $status.text('⏳ 同步中...').css('color', '#0d6efd');
     try {
-        const result = await publishFullSnapshot(() => storageManager.getCarList());
+        const [result, vltResult] = await Promise.all([
+            publishFullSnapshot(() => storageManager.getCarList()),
+            publishVltSnapshot(() => VltDb.readListSnapshot())
+        ]);
         if (!result.ok) {
             const reason = result.reason ? MISSAV_SYNC_FAILURE_TEXT[result.reason] : '同步失败';
             $status.text(`✗ ${reason}`).css('color', '#dc3545');
             showToast(`✗ 同步未完成：${reason}`, 'error');
             return;
         }
-        $status.html(`✓ 同步完成：${result.count} 条记录已推送到 GM 存储`).css('color', '#198754');
-        showToast(`✓ 同步完成：${result.count} 条`, 'success');
+        const vltNote = vltResult.ok
+            ? `，归属清单 ${vltResult.listCount} 个（${vltResult.movieCount} 部影片）`
+            : '（归属清单同步未完成）';
+        $status.text(`✓ 同步完成：${result.count} 条状态记录${vltNote}已推送到 GM 存储`).css('color', '#198754');
+        showToast(`✓ 同步完成：${result.count} 条状态${vltResult.ok ? ` + ${vltResult.listCount} 个清单` : ''}`, 'success');
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         $status.text(`✗ 同步失败：${msg}`).css('color', '#dc3545');

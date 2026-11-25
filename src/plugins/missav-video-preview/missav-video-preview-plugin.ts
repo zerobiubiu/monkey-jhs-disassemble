@@ -76,8 +76,9 @@ export class MissavVideoPreviewPlugin extends BasePlugin {
                 const target = e.target as Element | null;
                 const card = target?.closest<HTMLElement>(CARD_SEL);
                 if (!card || !isPlainLeftClick(e)) return;
-                // 放行状态徽章（.missav-status-tag，target=_blank 跳转 javdb）的原生行为，避免被弹窗拦截吞掉
-                if (target?.closest('.missav-status-tag')) return;
+                // 放行状态徽章（.missav-status-tag）与底部独立信息区（.jhs-missav-card-meta：MissAV 收藏与 JavDB 清单链接），
+                // 避免点击清单跳转或滚轮浏览清单条时误触发视频预览弹窗。
+                if (target?.closest('.missav-status-tag, .jhs-missav-card-meta')) return;
                 const url = findDetailUrl(card);
                 if (!url) return;
                 e.preventDefault();

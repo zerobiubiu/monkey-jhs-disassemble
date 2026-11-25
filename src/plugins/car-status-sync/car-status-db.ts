@@ -14,8 +14,10 @@ import { withExclusiveLock } from '../../core/sync';
 import {
     MISSAV_DB_META_STORE,
     MISSAV_DB_NAME,
+    MISSAV_DB_SAVED_STORE,
     MISSAV_DB_STORE,
     MISSAV_DB_VERSION,
+    MISSAV_DB_VLT_CARS_STORE,
     MISSAV_SYNC_LOCK_NAME,
     MISSAV_SYNC_META_KEY,
     STATUS_LIST,
@@ -35,12 +37,17 @@ export function openLocalDB(): Promise<IDBDatabase> {
         const request = indexedDB.open(MISSAV_DB_NAME, MISSAV_DB_VERSION);
         request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const oldVersion = event.oldVersion;
             if (!db.objectStoreNames.contains(MISSAV_DB_STORE)) {
                 db.createObjectStore(MISSAV_DB_STORE, { keyPath: 'carNum' });
             }
-            if (oldVersion < MISSAV_DB_VERSION && !db.objectStoreNames.contains(MISSAV_DB_META_STORE)) {
+            if (!db.objectStoreNames.contains(MISSAV_DB_META_STORE)) {
                 db.createObjectStore(MISSAV_DB_META_STORE, { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains(MISSAV_DB_VLT_CARS_STORE)) {
+                db.createObjectStore(MISSAV_DB_VLT_CARS_STORE, { keyPath: 'carNum' });
+            }
+            if (!db.objectStoreNames.contains(MISSAV_DB_SAVED_STORE)) {
+                db.createObjectStore(MISSAV_DB_SAVED_STORE, { keyPath: 'slug' });
             }
         };
         request.onsuccess = () => resolve(request.result);

@@ -17,8 +17,10 @@
  * 的 remote=true 表示变更来自其他标签页/域名实例。
  */
 
-import { BasePlugin } from '../base-plugin';
 import type { CarListChangeEvent } from '../../core/storage-manager';
+
+import { BasePlugin } from '../base-plugin';
+import { VltDb } from '../video-lists-tag/vlt-db';
 import {
     CAR_STATUS_DELTA_MAX_ITEMS,
     GM_KEY_CAR_STATUS_DATA,
@@ -30,6 +32,11 @@ import {
 import { allocateRevision, appendDeltaJournal, publishFullSnapshot } from './car-status-publish';
 import { normalizeUrl } from './car-status-columnar';
 import { createLogger } from './car-status-logger';
+import {
+    GM_KEY_VLT_SYNC_DATA,
+    GM_KEY_VLT_SYNC_LAST_TS,
+    publishVltSnapshot
+} from './vlt-sync-protocol';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_JHS);
 
@@ -61,13 +68,20 @@ export class CarListReaderPlugin extends BasePlugin {
             }
         );
 
+        // 清单变更回调同样在所有帧（含 JavDB 详情页 iframe）注册，
+        // 勾选/取消清单、对账、删改名、导入后合批推送紧凑快照到 MissAV。
+        VltDb.setChangeCallback(() => {
+            this.scheduleVltPublish();
+        });
+
         // 菜单命令、全量同步、诊断仅在 top frame 执行（避免 iframe 重复注册）
         if (window.self !== window.top) return;
 
         // 注册菜单命令
         try {
-            GM_registerMenuCommand('🔁 全量同步车辆状态到 missav', () => {
+            GM_registerMenuCommand('🔁 全量同步车辆状态与清单到 missav', () => {
                 void this.syncFullCarStatus();
+                void this.syncVltLists();
             });
         } catch {
             /* 某些环境不支持 GM_registerMenuCommand */
@@ -126,6 +140,57 @@ export class CarListReaderPlugin extends BasePlugin {
             }, 2000);
         } else {
             logInfo('跳过全量同步', `数据未变更 (rev=${currentRev})，上次同步 ${new Date(lastSyncTime).toLocaleString()}`);
+        }
+
+        // 清单跨站快照兜底：首次尚未发布或超过 24 小时时自动同步一次
+        const hasVltPayload = !!GM_getValue(GM_KEY_VLT_SYNC_DATA);
+        const lastVltSync: number = GM_getValue(GM_KEY_VLT_SYNC_LAST_TS, 0);
+        if (!hasVltPayload || Date.now() - lastVltSync > DAILY_SYNC_INTERVAL) {
+            setTimeout(() => {
+                void this.syncVltLists();
+            }, 2500);
+        }
+    }
+
+    /** 清单变更防抖定时器（合并批量清单操作与连续勾选）。 */
+    private vltPublishTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /** 调度清单跨站发布（300ms 防抖合批，避免单次批量操作写爆 GM 存储）。 */
+    scheduleVltPublish(): void {
+        if (this.vltPublishTimer !== null) clearTimeout(this.vltPublishTimer);
+        this.vltPublishTimer = setTimeout(() => {
+            this.vltPublishTimer = null;
+            void this.syncVltLists();
+        }, 300);
+    }
+
+    /** 将本地 JavDB 清单归属发布到 GM 跨站通道。 */
+    async syncVltLists(): Promise<boolean> {
+        if (isVltSyncing) {
+            vltResyncRequested = true;
+            return false;
+        }
+        isVltSyncing = true;
+        try {
+            const result = await publishVltSnapshot(() => VltDb.readListSnapshot());
+            if (!result.ok) {
+                logWarn('清单同步未完成', `原因=${result.reason}`, `revision=${result.revision}`);
+                return false;
+            }
+            logOk(
+                '清单同步完成',
+                `清单=${result.listCount}，影片=${result.movieCount}，revision=${result.revision}`
+            );
+            return true;
+        } catch (err: unknown) {
+            logErr('清单同步失败', err instanceof Error ? err.message : String(err), err);
+            return false;
+        } finally {
+            isVltSyncing = false;
+            if (vltResyncRequested) {
+                vltResyncRequested = false;
+                setTimeout(() => void this.syncVltLists(), 0);
+            }
         }
     }
 
@@ -278,3 +343,6 @@ export class CarListReaderPlugin extends BasePlugin {
 let isFullSyncing = false;
 /** 全量进行中又收到大批变更时，结束后再补发一次最新快照。 */
 let fullResyncRequested = false;
+/** 清单跨站同步并发锁与补发标记。 */
+let isVltSyncing = false;
+let vltResyncRequested = false;

@@ -23,6 +23,8 @@ import {
     readPendingIntents,
     cleanStaleIntents
 } from '../../core/sync';
+import { TaskSupervisor } from '../../core/task-supervisor';
+import { isMissavSavedPage, isVideoDetailPath } from '../../core/util/site/missav-paths';
 
 import { BasePlugin } from '../base-plugin';
 import {
@@ -51,25 +53,53 @@ import {
     restoreLocalCarsSnapshot,
     withSyncRevision
 } from './car-status-db';
-import { normalizeCarNum } from '../../core/domain/car-num';
 import { renderBadges, isVideoPage } from './missav-renderer';
+import { extractCardIdentity, renderCardMeta } from './missav-card-meta';
 import { createLogger } from './car-status-logger';
+import {
+    GM_KEY_VLT_SYNC_DATA,
+    validateVltSnapshot,
+    type MissavVltListMeta,
+    type MissavVltSyncPayload
+} from './vlt-sync-protocol';
+import {
+    clearMissavVltRevision,
+    queryMissavVltLists,
+    replaceMissavVltData
+} from './missav-vlt-db';
+import { queryMissavSaved } from './missav-saved-db';
+import {
+    observeDetailSaveButton,
+    reconcileCurrentSavedPage,
+    subscribeMissavSavedEvent,
+    syncAllMissavSavedPages
+} from './missav-saved-sync';
+
+import missavCardMetaCssRaw from '../../styles/car-status-sync/missav-card-meta.css?raw';
 
 const { info: logInfo, ok: logOk, warn: logWarn, err: logErr } = createLogger(LOG_PREFIX_MISSAV);
 
 export class MissavStatusTagPlugin extends BasePlugin {
     /** 串行消费全量和增量，避免两类 IDB 写入交错（键控串行队列，doc/195）。 */
     private consumeQueue = new KeyedQueue();
-    /** 当前页面实例已应用的最高修订号。 */
+    /** 统一生命周期管理（广播订阅、详情收藏按钮观察、页面监听清理）。 */
+    private supervisor = new TaskSupervisor();
+    /** 当前页面实例已应用的最高车辆状态修订号。 */
     private lastAppliedRevision = -1;
     private lastAppliedKind: CarStatusSyncKind | null = null;
+    /** 当前页面实例已应用的最高 JavDB 清单修订号。 */
+    private lastAppliedVltRevision = -1;
 
     getName(): string {
         return 'MissavStatusTagPlugin';
     }
 
     async initCss(): Promise<string> {
-        return '';
+        return missavCardMetaCssRaw;
+    }
+
+    destroy(): void {
+        this.supervisor.abort();
     }
 
     async handle(): Promise<void> {
@@ -84,18 +114,20 @@ export class MissavStatusTagPlugin extends BasePlugin {
             /* 某些环境不支持 GM_registerMenuCommand */
         }
 
-        // 强制重新同步菜单：清除水位线后重新消费全量 + 增量（恢复手段）
+        // 强制重新同步菜单：清除水位线后重新消费全量 + 增量 + 归属清单（恢复手段）
         try {
             GM_registerMenuCommand('🔄 强制重新同步（清除水位线）', () => {
                 void (async () => {
                     try {
                         show.ok('正在清除同步水位线...');
-                        await clearAppliedRevisionLocal();
+                        await Promise.all([clearAppliedRevisionLocal(), clearMissavVltRevision()]);
                         this.lastAppliedRevision = -1;
                         this.lastAppliedKind = 'delta';
+                        this.lastAppliedVltRevision = -1;
                         show.ok('水位线已清除，开始重新消费...');
                         await this.consumeFull(undefined);
                         await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
+                        await this.consumeVltLists(undefined);
                         await this.processAll();
                         show.ok('强制重新同步完成');
                     } catch (err: unknown) {
@@ -105,6 +137,17 @@ export class MissavStatusTagPlugin extends BasePlugin {
             });
         } catch {
             /* 某些环境不支持 GM_registerMenuCommand */
+        }
+
+        // 手动同步 MissAV 自身收藏菜单（仅在 top frame 注册，避免 iframe 重复注册）
+        if (window.self === window.top) {
+            try {
+                GM_registerMenuCommand('❤️ 同步 MissAV 自身收藏', () => {
+                    void this.triggerManualSavedSync();
+                });
+            } catch {
+                /* 某些环境不支持 GM_registerMenuCommand */
+            }
         }
 
         // 诊断菜单命令：转储跨站同步消费侧状态（doc/191）
@@ -208,12 +251,47 @@ export class MissavStatusTagPlugin extends BasePlugin {
             /* ignore */
         }
 
+        // 3.5) 注册 JavDB 归属清单跨站监听（实时更新卡片底部清单标签）
+        try {
+            GM_addValueChangeListener(
+                GM_KEY_VLT_SYNC_DATA,
+                (_key: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
+                    if (remote && newValue) {
+                        logInfo('收到 javdb 端归属清单通知');
+                        void this.consumeVltLists(newValue as MissavVltSyncPayload);
+                    }
+                }
+            );
+        } catch {
+            /* ignore */
+        }
+
+        // 3.6) 监听 MissAV 原生收藏跨帧/跨标签页广播（iframe 详情页点收藏 → 父窗口列表卡片秒级刷新）
+        subscribeMissavSavedEvent(() => {
+            void this.processAll();
+        }, this.supervisor.signal);
+
+        // 3.7) 同窗口事件（手动同步按钮 / 收藏页校对后刷新当前页）
+        this.supervisor.addEventListener(document, 'jhs-missav-saved-local-sync', () => {
+            void this.processAll();
+        });
+
+        // 3.8) 详情页（含 iframe 预览弹窗！）监听原生收藏按钮；收藏页（/{lang}/saved）自动校对当前页
+        if (isVideoPage() || isVideoDetailPath(window.location.pathname)) {
+            observeDetailSaveButton(this.supervisor, () => {
+                void this.processAll();
+            });
+        } else if (isMissavSavedPage(window.location.pathname)) {
+            void reconcileCurrentSavedPage().then(() => this.processAll());
+        }
+
         // 4) 先启动渲染（用 IDB 已有数据立即渲染首屏，不阻塞于全量/增量消费）
         this.observeAndProcess();
 
-        // 5) 页面加载时读取当前 GM 存储全量数据初始化
+        // 5) 页面加载时读取当前 GM 存储全量数据与归属清单初始化
         await this.consumeFull(undefined);
         await this.consumeDeltaJournal(GM_getValue(GM_KEY_CAR_STATUS_DELTA));
+        await this.consumeVltLists(undefined);
 
         // 5.5) 消费验证：对比 GM 存储最新修订号与 IDB 水位线
         try {
@@ -244,116 +322,200 @@ export class MissavStatusTagPlugin extends BasePlugin {
     }
 
     /**
-     * 全量处理：从本地 IndexedDB 查出所有记录，然后渲染所有页面区域。
-     * 来源：missavStatusTag.user.js L797-823 processAll。
+     * 全量处理：并发从本地 IndexedDB 查出 JavDB 状态、JavDB 归属清单与 MissAV 原生收藏，
+     * 然后渲染页面全部区域（即使车辆状态为空，仍渲染底部清单与 MissAV 收藏区）。
      */
     async processAll(): Promise<void> {
         try {
-            // 收集页面所有番号
             const allCarNums = new Set<string>();
+            const allSlugs = new Set<string>();
             const allThumbs = document.querySelectorAll<HTMLElement>('.thumbnail.group');
             for (const thumb of allThumbs) {
-                const link = thumb.querySelector<HTMLAnchorElement>('a[alt]');
-                if (link) {
-                    const cn = link.getAttribute('alt');
-                    if (cn) {
-                        allCarNums.add(normalizeCarNum(cn, 'path'));
-                    }
-                }
+                const identity = extractCardIdentity(thumb);
+                if (!identity) continue;
+                if (identity.carNum) allCarNums.add(identity.carNum);
+                if (identity.slug) allSlugs.add(identity.slug);
             }
 
-            if (allCarNums.size === 0) return;
+            if (allCarNums.size === 0 && allSlugs.size === 0) return;
 
-            const carMap = await queryLocalCars(Array.from(allCarNums));
-            if (carMap.size === 0) return;
+            const carNumArr = Array.from(allCarNums);
+            const slugArr = Array.from(allSlugs);
+            const [carMap, vltMap, savedSet] = await Promise.all([
+                queryLocalCars(carNumArr),
+                queryMissavVltLists(carNumArr),
+                queryMissavSaved(slugArr)
+            ]);
 
-            this.processPage(carMap);
+            this.processPage(carMap, vltMap, savedSet);
         } catch (err: unknown) {
             logErr('处理页面失败', err instanceof Error ? err.message : String(err));
         }
     }
 
     /**
-     * 收集页面所有番号，去重后批量查库，再统一渲染。
-     * 来源：missavStatusTag.user.js L606-677 processPage/processVideoPage/processListPage。
+     * 按页面类型分发渲染（视频播放页分区 / 列表页全页）。
      */
-    processPage(carMap: Map<string, { status: string; url: string }>): void {
+    processPage(
+        carMap: Map<string, { status: string; url: string }>,
+        vltMap: Map<string, MissavVltListMeta[]>,
+        savedSet: Set<string>
+    ): void {
         if (isVideoPage()) {
-            this.processVideoPage(carMap);
+            this.processVideoPage(carMap, vltMap, savedSet);
         } else {
-            this.processListPage(carMap);
+            this.processListPage(carMap, vltMap, savedSet);
         }
     }
 
     /**
      * 处理视频播放页：底部推荐网格 + 侧边推荐列表。
-     * 来源：missavStatusTag.user.js L618-663 processVideoPage。
      */
-    processVideoPage(carMap: Map<string, { status: string; url: string }>): void {
+    processVideoPage(
+        carMap: Map<string, { status: string; url: string }>,
+        vltMap: Map<string, MissavVltListMeta[]>,
+        savedSet: Set<string>
+    ): void {
         const bottomGrid = document.querySelector<HTMLElement>(
             'body > div:nth-child(3) > div.sm\\:container.mx-auto.px-4.content-without-search.pb-12 > div > div.flex-1.order-first > div.relative.overflow-hidden > div.grid.grid-cols-2.md\\:grid-cols-3.xl\\:grid-cols-4.gap-5'
         );
         if (bottomGrid) {
-            this.queryAndRender(bottomGrid, carMap.size > 0 ? carMap : null, '视频页-底部推荐');
+            void this.queryAndRender(bottomGrid, carMap, vltMap, savedSet, '视频页-底部推荐');
         }
 
         const sideContainer = document.querySelector<HTMLElement>(
             'body > div:nth-child(3) > div.sm\\:container.mx-auto.px-4.content-without-search.pb-12 > div > div.hidden.lg\\:flex.h-full.ml-6.order-last > div'
         );
         if (sideContainer) {
-            this.queryAndRender(sideContainer, carMap.size > 0 ? carMap : null, '视频页-侧边推荐');
+            void this.queryAndRender(sideContainer, carMap, vltMap, savedSet, '视频页-侧边推荐');
         }
 
         // 兜底：精确选择器均未命中时（missav 改版），用 document.body 全页扫描
         if (!bottomGrid && !sideContainer) {
             logWarn('视频页选择器未命中，回退到全页扫描');
-            this.queryAndRender(document.body, carMap.size > 0 ? carMap : null, '视频页-兜底全页');
+            void this.queryAndRender(document.body, carMap, vltMap, savedSet, '视频页-兜底全页');
         }
     }
 
     /**
      * 处理列表页：视频卡片网格。
-     * 来源：missavStatusTag.user.js L669-677 processListPage。
      */
-    processListPage(carMap: Map<string, { status: string; url: string }>): void {
-        this.queryAndRender(document.body, carMap.size > 0 ? carMap : null, '列表页');
+    processListPage(
+        carMap: Map<string, { status: string; url: string }>,
+        vltMap: Map<string, MissavVltListMeta[]>,
+        savedSet: Set<string>
+    ): void {
+        void this.queryAndRender(document.body, carMap, vltMap, savedSet, '列表页');
     }
 
     /**
-     * 统一的"查询 + 渲染"流程。
-     * 来源：missavStatusTag.user.js L688-718 queryAndRender。
+     * 统一的"查询 + 渲染"流程：右上角 JavDB 状态徽标 + 底部独立信息区（MissAV 收藏 + JavDB 归属清单）。
      */
     async queryAndRender(
         container: HTMLElement | null,
         existingMap: Map<string, { status: string; url: string }> | null,
+        existingVltMap: Map<string, MissavVltListMeta[]> | null,
+        existingSavedSet: Set<string> | null,
         label: string
     ): Promise<void> {
         if (!container) return;
 
         let map = existingMap;
-        if (!map || map.size === 0) {
+        let vltMap = existingVltMap;
+        let savedSet = existingSavedSet;
+
+        if (!map || !vltMap || !savedSet) {
             const carNums = new Set<string>();
+            const slugs = new Set<string>();
             const thumbs = container.querySelectorAll<HTMLElement>('.thumbnail.group');
             for (const thumb of thumbs) {
-                const link = thumb.querySelector<HTMLAnchorElement>('a[alt]');
-                if (link) {
-                    const cn = link.getAttribute('alt');
-                    if (cn) carNums.add(normalizeCarNum(cn, 'path'));
-                }
+                const identity = extractCardIdentity(thumb);
+                if (!identity) continue;
+                if (identity.carNum) carNums.add(identity.carNum);
+                if (identity.slug) slugs.add(identity.slug);
             }
-            if (carNums.size === 0) return;
-            map = await queryLocalCars(Array.from(carNums));
+            if (carNums.size === 0 && slugs.size === 0) return;
+            const carNumArr = Array.from(carNums);
+            const slugArr = Array.from(slugs);
+            const [queriedCars, queriedVlt, queriedSaved] = await Promise.all([
+                map ? Promise.resolve(map) : queryLocalCars(carNumArr),
+                vltMap ? Promise.resolve(vltMap) : queryMissavVltLists(carNumArr),
+                savedSet ? Promise.resolve(savedSet) : queryMissavSaved(slugArr)
+            ]);
+            map = queriedCars;
+            vltMap = queriedVlt;
+            savedSet = queriedSaved;
         }
 
-        if (!map || map.size === 0) return;
+        const badgeRes = map.size > 0 ? renderBadges(container, map) : { total: 0, matched: 0 };
+        const metaRes = renderCardMeta(container, vltMap, savedSet);
 
-        const { total, matched } = renderBadges(container, map);
-        const cumulativeMatched = container.querySelectorAll('.missav-status-tag').length;
-        const totalThumbs = container.querySelectorAll('.thumbnail.group').length;
-        logInfo(
-            '渲染标签',
-            `${label}: +${total} 新增, +${matched} 命中 | 累计 ${cumulativeMatched}/${totalThumbs} 个标签`
-        );
+        if (badgeRes.total > 0 || metaRes.updated > 0) {
+            const cumulativeMatched = container.querySelectorAll('.missav-status-tag').length;
+            const totalThumbs = container.querySelectorAll('.thumbnail.group').length;
+            logInfo(
+                '渲染标签',
+                `${label}: 状态+${badgeRes.matched}（累计 ${cumulativeMatched}/${totalThumbs}）| 清单命中 ${metaRes.vltMatched} | MissAV收藏命中 ${metaRes.savedMatched}`
+            );
+        }
+    }
+
+    /** 消费 JavDB 归属清单跨站全量快照（串行队列 + 修订号门控 + 严格校验）。 */
+    async consumeVltLists(payload?: MissavVltSyncPayload): Promise<void> {
+        return this.consumeQueue.enqueue('vlt-consume', () => this.applyVltLists(payload));
+    }
+
+    private async applyVltLists(payload?: MissavVltSyncPayload): Promise<void> {
+        try {
+            const data: MissavVltSyncPayload | undefined =
+                payload ?? (GM_getValue(GM_KEY_VLT_SYNC_DATA) as MissavVltSyncPayload | undefined);
+            if (!data || typeof data !== 'object' || typeof data.data !== 'string' || !data.data) {
+                return;
+            }
+            if (
+                typeof data.revision !== 'number' ||
+                !Number.isInteger(data.revision) ||
+                data.revision < 0 ||
+                data.ready !== true
+            ) {
+                logWarn('忽略格式无效的归属清单快照');
+                return;
+            }
+            if (data.revision <= this.lastAppliedVltRevision) {
+                return;
+            }
+
+            const raw = await gunzipFromBase64<unknown>(data.data);
+            if (!raw) {
+                logErr('归属清单快照解压失败');
+                return;
+            }
+            const validation = validateVltSnapshot(raw, data.listCount, data.movieCount);
+            if (!validation.ok) {
+                logErr('归属清单快照校验失败，拒绝应用', validation.reason);
+                return;
+            }
+            const res = await replaceMissavVltData(validation.snapshot, data.revision);
+            this.lastAppliedVltRevision = Math.max(this.lastAppliedVltRevision, data.revision);
+            if (res.applied) {
+                logOk('归属清单已同步到本地', `清单 ${res.listCount} 个，覆盖 ${res.movieCount} 部影片`);
+                await this.processAll();
+            }
+        } catch (err: unknown) {
+            logErr('归属清单消费失败', err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    /** 菜单手动触发同步 MissAV 原生收藏并提示结果。 */
+    private async triggerManualSavedSync(): Promise<void> {
+        show.ok('正在同步 MissAV 收藏列表...');
+        const res = await syncAllMissavSavedPages();
+        if (res.ok) {
+            await this.processAll();
+            show.ok(`MissAV 收藏同步完成：共 ${res.total} 部（${res.pages} 页）`);
+        } else {
+            show.error(res.message);
+        }
     }
 
     /**

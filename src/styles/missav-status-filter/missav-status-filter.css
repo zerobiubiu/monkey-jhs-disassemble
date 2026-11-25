@@ -1,41 +1,103 @@
-/* MissAV 状态标签筛选栏 —— missav 是 Tailwind nord 暗色主题，样式独立定义
- * （不参与 filter-chip-base.css 的 javdb 浅色共享基础，doc/223）。
- * 配色参考 missav 页面 Tailwind nord 令牌：nord0 #2e3440 / nord1 #3b4252 /
- * nord3 #4c566a / nord4 #d8dee9 / frost #81a1c1。
+/**
+ * MissAV 多栏筛选栈 —— Tailwind Nord 暗色子系统专属样式（DESIGN.md Subsystem-Fidelity Rule）。
+ *
+ * === Workflow B 设计约束简报 ===
+ * - 内容层级：Primary = 宿主缩略图网格；Secondary = 三行并列无框筛选栈（状态 / MissAV / 清单），
+ *   靠 subgrid 统一左标签列宽、仅对生效行提亮标签、空栏自动隐藏；Tertiary = MissAV 栏右侧轻量同步按钮。
+ * - 色彩与令牌：全量取自 DESIGN.md Nord 暗色族（`#2e3440/#3b4252/#4c566a/#d8dee9/#81a1c1/#8fbcbb`）
+ *   与既有语义色（`var(--jhs-color-primary)` / `#f14668` / `#dc2626` / `#fecaca`），无背板无外框透贴画布。
+ * - 响应式与无障碍：沿用项目 600px 窄屏断点（单列堆叠）、`@media (pointer: coarse)` 触控放大、`:focus-visible` 焦点环。
  */
 
-/* ---------- 筛选栏容器 ---------- */
-.missav-status-filter-bar {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 0 16px 0; /* 无分割线，用底部间距与下方内容自然分离（doc/227） */
+/* ---------- 多栏无框筛选栈容器（透贴 MissAV 暗色画布，与网格自然分隔） ---------- */
+.jhs-missav-filter-stack {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--jhs-space-md);
+    row-gap: 8px;
+    align-items: start;
+    padding-block: 6px 14px;
+    user-select: none;
 }
 
-/* ---------- 筛选栏标签 ---------- */
-.missav-status-filter-label {
-    flex-shrink: 0;
-    font-size: 0.8em;
+.jhs-missav-filter-stack:not(
+        :has(.missav-status-filter-chips:not(:empty), .missav-saved-filter-chips:not(:empty), .missav-vlt-filter-chips:not(:empty))
+    ) {
+    display: none;
+}
+
+/* ---------- 单行筛选栏（默认降级两列 Grid；支持 subgrid 时自动共享左标签列宽） ---------- */
+.missav-status-filter-bar,
+.missav-saved-filter-bar,
+.missav-vlt-filter-bar {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--jhs-space-md);
+    align-items: start;
+    grid-column: 1 / -1;
+}
+
+@supports (grid-template-columns: subgrid) {
+    .jhs-missav-filter-stack > .missav-status-filter-bar,
+    .jhs-missav-filter-stack > .missav-saved-filter-bar,
+    .jhs-missav-filter-stack > .missav-vlt-filter-bar {
+        grid-template-columns: subgrid;
+    }
+}
+
+.missav-status-filter-bar:has(.missav-status-filter-chips:empty),
+.missav-saved-filter-bar:has(.missav-saved-filter-chips:empty),
+.missav-vlt-filter-bar:has(.missav-vlt-filter-chips:empty) {
+    display: none;
+}
+
+/* ---------- 筛选栏行标签 ---------- */
+.missav-status-filter-label,
+.missav-saved-filter-label,
+.missav-vlt-filter-label {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    min-height: 26px;
+    font-size: var(--jhs-font-size-sm);
     font-weight: 600;
+    color: #b5b5b5;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: color var(--jhs-transition-fast);
+}
+
+.missav-status-filter-bar:has(.active, .jhs-filter-excluded) > .missav-status-filter-label,
+.missav-saved-filter-bar:has(.active, .jhs-filter-excluded) > .missav-saved-filter-label,
+.missav-vlt-filter-bar:has(.active, .jhs-filter-excluded) > .missav-vlt-filter-label {
     color: #d8dee9; /* nord4 */
-    line-height: 1.8;
-    margin-right: 4px;
 }
 
 /* ---------- 芯片容器 ---------- */
-.missav-status-filter-chips {
+.missav-status-filter-chips,
+.missav-saved-filter-chips,
+.missav-vlt-filter-chips {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    min-inline-size: 0;
 }
 
-/* ---------- 芯片基础 ---------- */
-.missav-status-filter-chip {
-    display: inline-block;
-    padding: 0.25em 0.7em;
-    font-size: 0.75em;
+/* ---------- 三栏共享芯片基础 ---------- */
+.missav-status-filter-chip,
+.missav-saved-filter-chip,
+.missav-vlt-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 2px 10px;
+    font-size: var(--jhs-font-size-sm);
     font-weight: 600;
-    line-height: 1.5;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
     border-radius: 50rem;
     cursor: pointer;
     user-select: none;
@@ -43,33 +105,161 @@
     background: #2e3440; /* nord0 */
     color: #d8dee9; /* nord4 */
     transition:
-        color 0.15s ease,
-        background-color 0.15s ease,
-        border-color 0.15s ease;
+        color var(--jhs-transition-fast),
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
+        opacity var(--jhs-transition-fast);
 }
 
-/* ---------- 芯片悬停 ---------- */
-.missav-status-filter-chip:hover {
+.missav-status-filter-chip:focus-visible,
+.missav-saved-filter-chip:focus-visible,
+.missav-vlt-filter-chip:focus-visible,
+.missav-saved-sync-btn:focus-visible {
+    outline: 2px solid #81a1c1; /* frost */
+    outline-offset: 2px;
+}
+
+/* ---------- 芯片悬停（未选与已选分治） ---------- */
+.missav-status-filter-chip:not(.active, .jhs-filter-excluded):hover,
+.missav-saved-filter-chip:not(.active, .jhs-filter-excluded):hover,
+.missav-vlt-filter-chip:not(.active, .jhs-filter-excluded):hover {
     border-color: #81a1c1; /* frost */
     background: #3b4252; /* nord1 */
 }
 
-/* ---------- 芯片选中 ---------- */
-.missav-status-filter-chip.active {
-    background: #5d87c2;
-    border-color: #5d87c2;
+.missav-status-filter-chip.active:hover,
+.missav-saved-filter-chip.active:hover,
+.missav-vlt-filter-chip.active:hover {
+    opacity: 0.9;
+}
+
+/* ---------- 芯片包含态（左键选中） ---------- */
+.missav-status-filter-chip.active,
+.missav-vlt-filter-chip.active {
+    background: var(--jhs-color-primary);
+    border-color: var(--jhs-color-primary);
     border-style: solid;
     color: #fff;
 }
 
-/* ---------- 无状态标签芯片 ---------- */
-.missav-status-filter-chip.no-status {
-    color: #7c8794;
+/* MissAV 已收藏包含态：与卡片底部玫瑰红心形徽标视觉呼应 */
+.missav-saved-filter-chip.is-saved.active {
+    background: #f14668;
+    border-color: #f14668;
+    border-style: solid;
+    color: #fff;
+}
+
+/* ---------- 弱化虚线芯片（无状态 / 未收藏 / 无清单） ---------- */
+.missav-status-filter-chip.no-status,
+.missav-saved-filter-chip.is-unsaved,
+.missav-vlt-filter-chip.no-vlt-tag {
+    color: #b5b5b5;
     border-style: dashed;
 }
 
-.missav-status-filter-chip.no-status.active {
+.missav-status-filter-chip.no-status.active,
+.missav-saved-filter-chip.is-unsaved.active,
+.missav-vlt-filter-chip.no-vlt-tag.active {
     background: #8fbcbb; /* aurora frost */
     border-color: #8fbcbb;
+    border-style: solid;
     color: #1a1a1a;
+}
+
+/* ---------- 芯片排除态（右键排除：Nord 暗底红洗底 + 危险描边 + 浅红删除线） ---------- */
+.missav-status-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.missav-status-filter-chip.no-status.jhs-filter-excluded[data-filter-state='exclude'],
+.missav-saved-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.missav-saved-filter-chip.is-unsaved.jhs-filter-excluded[data-filter-state='exclude'],
+.missav-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.missav-vlt-filter-chip.no-vlt-tag.jhs-filter-excluded[data-filter-state='exclude'] {
+    border-style: solid;
+    border-color: #dc2626;
+    background: rgb(220 38 38 / 22%);
+    color: #fecaca;
+    text-decoration: line-through;
+}
+
+.missav-status-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.missav-status-filter-chip.no-status.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.missav-saved-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.missav-saved-filter-chip.is-unsaved.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.missav-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.missav-vlt-filter-chip.no-vlt-tag.jhs-filter-excluded[data-filter-state='exclude']:hover {
+    border-color: #ef4444;
+    background: rgb(220 38 38 / 32%);
+    color: #fecaca;
+}
+
+/* ---------- 轻量次级动作：同步 MissAV 收藏按钮 ---------- */
+.missav-saved-sync-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 2px 10px;
+    font-size: var(--jhs-font-size-xs);
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    border-radius: 50rem;
+    border: 1px solid #4c566a; /* nord3 */
+    background: transparent;
+    color: #81a1c1; /* frost */
+    cursor: pointer;
+    transition:
+        color var(--jhs-transition-fast),
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
+        opacity var(--jhs-transition-fast);
+}
+
+.missav-saved-sync-btn:hover:not(:disabled) {
+    background: #3b4252; /* nord1 */
+    border-color: #81a1c1;
+    color: #d8dee9;
+}
+
+.missav-saved-sync-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* ---------- 窄屏自适应（手机端：标签置顶，芯片占满全宽，沿用项目 600px 断点） ---------- */
+@media (width <= 600px) {
+    .jhs-missav-filter-stack {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 10px;
+    }
+
+    .jhs-missav-filter-stack > .missav-status-filter-bar,
+    .jhs-missav-filter-stack > .missav-saved-filter-bar,
+    .jhs-missav-filter-stack > .missav-vlt-filter-bar {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--jhs-space-xs);
+    }
+
+    .missav-status-filter-label,
+    .missav-saved-filter-label,
+    .missav-vlt-filter-label {
+        min-height: auto;
+        font-size: var(--jhs-font-size-xs);
+    }
+}
+
+/* 触控设备适度扩大芯片与同步按钮触控面积 */
+@media (pointer: coarse) {
+    .missav-status-filter-chips,
+    .missav-saved-filter-chips,
+    .missav-vlt-filter-chips {
+        gap: var(--jhs-space-sm);
+    }
+
+    .missav-status-filter-chip,
+    .missav-saved-filter-chip,
+    .missav-vlt-filter-chip,
+    .missav-saved-sync-btn {
+        min-height: 32px;
+        padding: 4px var(--jhs-space-md);
+    }
 }

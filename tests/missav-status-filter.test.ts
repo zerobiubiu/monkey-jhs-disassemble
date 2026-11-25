@@ -81,6 +81,23 @@ describe('shouldShow', () => {
         expect(shouldShow(null, new Set([NO_TAG_VALUE]))).toBe(true);
         expect(shouldShow(null, new Set(['favorite']))).toBe(false);
     });
+
+    it('三态 FilterSelections：仅排除、包含+排除混选与排除无标签均精确判定', () => {
+        // 仅排除「已屏蔽」→ 屏蔽隐藏，其余（含无标签）保留
+        expect(shouldShow('filter', { included: new Set(), excluded: new Set(['filter']) })).toBe(false);
+        expect(shouldShow('favorite', { included: new Set(), excluded: new Set(['filter']) })).toBe(true);
+        expect(shouldShow(null, { included: new Set(), excluded: new Set(['filter']) })).toBe(true);
+
+        // 仅排除「无标签」→ 无标签隐藏，有标签保留
+        expect(shouldShow(null, { included: new Set(), excluded: new Set([NO_TAG_VALUE]) })).toBe(false);
+        expect(shouldShow('hasWatch', { included: new Set(), excluded: new Set([NO_TAG_VALUE]) })).toBe(true);
+
+        // 同栏包含 + 排除混选（包含 favorite/hasWatch，排除 hasWatch → 仅显示 favorite）
+        const mixed = { included: new Set(['favorite', 'hasWatch']), excluded: new Set(['hasWatch']) };
+        expect(shouldShow('favorite', mixed)).toBe(true);
+        expect(shouldShow('hasWatch', mixed)).toBe(false);
+        expect(shouldShow('filter', mixed)).toBe(false);
+    });
 });
 
 describe('statusToLabel', () => {

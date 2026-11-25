@@ -25,6 +25,8 @@ import {
     queryMoviesLists,
     check,
     getAllInventory,
+    readListSnapshot,
+    setVltChangeCallback,
     deleteList,
     renameList
 } from './db/vlt-db-core';
@@ -71,6 +73,12 @@ export class VltDb {
 
     /** 获取全部清单。 */
     static getAllInventory = getAllInventory;
+
+    /** 读取清单元数据与关联关系只读快照（供跨站同步发布侧消费）。 */
+    static readListSnapshot = readListSnapshot;
+
+    /** 注册写入完成回调（每次 readwrite 事务提交成功后通知）。 */
+    static setChangeCallback = setVltChangeCallback;
 
     /** 删除清单和其全部关联；不删除影片记录。 */
     static deleteList = deleteList;

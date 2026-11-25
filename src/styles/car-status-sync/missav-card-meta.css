@@ -1,0 +1,180 @@
+/**
+ * MissAV 卡片底部独立信息区样式（MissAV 原生收藏状态 + JavDB 归属清单条）。
+ *
+ * === Workflow B 设计约束简报 ===
+ * - 内容层级：Primary = MissAV 原生封面与标题（不遮盖）；
+ *   Secondary = 卡片底部独立单行区 `.jhs-missav-card-meta`（左侧固定 MissAV 收藏徽标 + 右侧横向可滚 JavDB 清单胶囊）；
+ *   Tertiary = 空数据时的暗色低对比度 `—` 占位符（维持网格同行底部对齐）。
+ * - 视觉系统：严格遵循 DESIGN.md `The Subsystem-Fidelity Rule`（Nord 暗色族 `#2e3440/#3b4252/#4c566a/#d8dee9/#81a1c1/#7c8794`）、
+ *   五级字号 `caption` 阶（11px）、无背板无外框扁平融入宿主暗色卡片。
+ * - 可感知滚动与无障碍：隐藏原生滚动条后，按 `scrollability-affordance-hints` 使用 `@property` + `mask` +
+ *   `animation-timeline: scroll(self inline)` 在溢出边绘制渐隐提示，配合 `scroll-padding-inline` 与 `:focus-visible` 焦点环。
+ */
+
+@property --jhs-vlt-fade-start {
+    syntax: '<length>';
+    inherits: false;
+    /* stylelint-disable-next-line length-zero-no-unit -- CSS @property <length> 要求显式单位 */
+    initial-value: 0px;
+}
+
+@property --jhs-vlt-fade-end {
+    syntax: '<length>';
+    inherits: false;
+    /* stylelint-disable-next-line length-zero-no-unit -- CSS @property <length> 要求显式单位 */
+    initial-value: 0px;
+}
+
+/* ---------- 卡片底部独立信息区容器 ---------- */
+.jhs-missav-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    min-height: 22px;
+    max-width: 100%;
+    cursor: default;
+}
+
+/* ---------- 左侧固定槽位：MissAV 原生收藏徽标 ---------- */
+.jhs-missav-saved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    padding: 2px 7px;
+    font-size: var(--jhs-font-size-xs);
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    border-radius: 50rem;
+    border: 1px solid rgb(241 70 104 / 50%);
+    background: rgb(241 70 104 / 18%);
+    color: #fecaca;
+    user-select: none;
+}
+
+.jhs-missav-saved-icon {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    color: #f14668;
+}
+
+/* ---------- 右侧滚动槽位：JavDB 归属清单胶囊行 ---------- */
+.jhs-missav-vlt-tags {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-padding-inline: 16px;
+    padding-block: 1px;
+}
+
+.jhs-missav-vlt-tags::-webkit-scrollbar {
+    display: none;
+}
+
+/* 横向溢出边缘渐隐提示（scrollability-affordance-hints，按能力渐进增强） */
+@supports (animation-timeline: scroll()) {
+    .jhs-missav-vlt-tags {
+        --jhs-vlt-fade-size: 16px;
+
+        mask-image:
+            linear-gradient(#000, #000),
+            linear-gradient(to right, #000, transparent),
+            linear-gradient(to right, transparent, #000);
+        mask-position:
+            0 0,
+            0 0,
+            100% 0;
+        mask-size:
+            100% 100%,
+            var(--jhs-vlt-fade-start) 100%,
+            var(--jhs-vlt-fade-end) 100%;
+        mask-repeat: no-repeat;
+        mask-composite: subtract, subtract, add;
+        animation-name: jhs-missav-vlt-fade-start, jhs-missav-vlt-fade-end;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: scroll(self inline);
+        animation-range:
+            0 var(--jhs-vlt-fade-size),
+            calc(100% - var(--jhs-vlt-fade-size)) 100%;
+    }
+}
+
+@keyframes jhs-missav-vlt-fade-start {
+    to {
+        --jhs-vlt-fade-start: var(--jhs-vlt-fade-size);
+    }
+}
+
+@keyframes jhs-missav-vlt-fade-end {
+    from {
+        --jhs-vlt-fade-end: var(--jhs-vlt-fade-size);
+    }
+}
+
+/* ---------- 单个清单胶囊（沿用 JavDB 胶囊样式，适配暗色悬停反馈） ---------- */
+.jhs-missav-vlt-tag {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 2px 8px;
+    font-size: var(--jhs-font-size-xs);
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    border-radius: 50rem;
+    text-decoration: none;
+    color: #fff;
+    transition:
+        filter var(--jhs-transition-fast),
+        transform var(--jhs-transition-fast);
+}
+
+a.jhs-missav-vlt-tag {
+    cursor: pointer;
+}
+
+a.jhs-missav-vlt-tag:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+a.jhs-missav-vlt-tag:focus-visible {
+    outline: 2px solid #81a1c1; /* nord frost */
+    outline-offset: 2px;
+}
+
+.jhs-missav-vlt-tag.jhs-vlt-light-bg {
+    color: #212529;
+}
+
+/* ---------- 空态占位（仅当无 MissAV 收藏且无 JavDB 清单时占位，保持同行高度齐平） ---------- */
+.jhs-missav-vlt-empty {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    font-size: var(--jhs-font-size-xs);
+    font-weight: 600;
+    line-height: 1.35;
+    border-radius: 50rem;
+    border: 1px solid #3b4252; /* nord1 */
+    background: #2e3440; /* nord0 */
+    color: #7c8794; /* nord-faint */
+    pointer-events: none;
+    user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    a.jhs-missav-vlt-tag:hover {
+        transform: none;
+    }
+}
