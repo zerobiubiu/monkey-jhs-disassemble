@@ -23,6 +23,7 @@ vi.mock('../src/plugins/video-lists-tag/vlt-sync', () => ({
     updateDetailPageCheckboxLabel: vi.fn()
 }));
 vi.mock('../src/plugins/video-lists-tag/vlt-remote-sync', () => ({ setupListMgmtBroadcastListener: vi.fn() }));
+vi.mock('../src/plugins/video-lists-tag/vlt-sync-listener', () => ({ subscribeTagSync: vi.fn() }));
 vi.mock('../src/plugins/video-lists-tag/vlt-reconcile', () => ({
     setAutoReconcileDelay: vi.fn(),
     setAutoServerSyncEnabled: vi.fn()
@@ -146,7 +147,6 @@ describe('推荐原生卡片晚填事件接线', () => {
         const item = document.getElementById('recommend')!;
         item.replaceChildren();
         vi.spyOn(VltTags.prototype, 'initExistingItems').mockResolvedValue();
-        vi.spyOn(VltTags.prototype, 'setupAutoRefreshListener').mockImplementation(() => {});
         vi.spyOn(VltTags.prototype, 'buildFilterBar').mockImplementation(() => {});
         const parse = vi.spyOn(VltTags.prototype, 'handleNewItems').mockResolvedValue();
         const plugin = new VideoListsTagPlugin();

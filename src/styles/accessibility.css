@@ -23,7 +23,7 @@ textarea:focus-visible,
    2) 滚动改即时；
    3) **状态过渡保留**：颜色 / 底色 / 描边 / 阴影 / 透明度 / 填充仍按原时长过渡，
       动作反馈不因减动而消失；
-   4) 只摘掉「位移动效」（transform / width）：下方 10 处载体把 transition-property
+   4) 只摘掉「位移动效」（transform / width）：下方 8 处载体把 transition-property
       收窄到非位移属性，悬停抬升、开关滑块、骨架与进度位移改为立即到位。 */
 @media (prefers-reduced-motion: reduce) {
     *,
@@ -41,9 +41,7 @@ textarea:focus-visible,
     .console-logger-toggle::after,
     .jhs-user-rating,
     .cache-item,
-    .jhs-toggle::before,
-    .jhs-vlt-auto-refresh-slider::before,
-    .jhs-vlt-filter-mode-arrow {
+    .jhs-toggle::before {
         transition-property: color, background-color, background, border-color, border,
             box-shadow, opacity, fill !important;
     }

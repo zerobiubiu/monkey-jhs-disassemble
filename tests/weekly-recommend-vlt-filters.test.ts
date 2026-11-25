@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-/** 推荐与主流复用清单筛选组件，各自保有计数、选中、模式及显隐范围。 */
+/** 推荐与主流复用清单筛选组件，各自保有计数、三态选中（包含/排除）及显隐范围；已移除筛选模式下拉与自动刷新开关。 */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FilterScope } from '../src/types/filter-scope';
+import { FILTER_EXCLUDED_CLASS } from '../src/core/util/site/filter-chips';
 import { VltDb } from '../src/plugins/video-lists-tag/vlt-db';
-import { FILTER_MODES, TAG_HIDDEN_ATTR } from '../src/plugins/video-lists-tag/vlt-filter-apply';
+import { TAG_HIDDEN_ATTR } from '../src/plugins/video-lists-tag/vlt-filter-apply';
 import { VltTags } from '../src/plugins/video-lists-tag/vlt-tags';
 
 function card(id: string, tags: string[]): string {
@@ -44,6 +45,12 @@ function chip(value: string, scope?: FilterScope): HTMLElement {
         .find((element) => element.dataset.value === value)!;
 }
 
+function rightClick(el: HTMLElement): MouseEvent {
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 });
+    el.dispatchEvent(event);
+    return event;
+}
+
 beforeEach(() => vi.stubGlobal('GM_setValue', vi.fn()));
 afterEach(() => {
     vi.restoreAllMocks();
@@ -52,7 +59,7 @@ afterEach(() => {
 });
 
 describe('推荐清单筛选的独立范围', () => {
-    it('分别构建两套 UI 与计数，推荐不创建全局自动刷新开关或查询数据库', () => {
+    it('分别构建两套 UI 与计数，均不含筛选模式下拉与自动刷新开关且不查询数据库', () => {
         const query = vi.spyOn(VltDb, 'queryMoviesLists');
         const { scope, main, scoped } = fixture();
 
@@ -61,8 +68,10 @@ describe('推荐清单筛选的独立范围', () => {
         expect(scoped.collectAllUniqueTags()).toEqual(['共同', '其他', '推荐']);
         expect(main.collectTagCounts()).toEqual({ 共同: 1, 主流: 1 });
         expect(scoped.collectTagCounts()).toEqual({ 共同: 1, 推荐: 1, 其他: 1 });
-        expect(bar(scope).querySelector('.jhs-vlt-auto-refresh-toggle')).toBeNull();
-        expect(bar().querySelector('.jhs-vlt-auto-refresh-toggle')).not.toBeNull();
+        expect(bar(scope).querySelector('details')).toBeNull();
+        expect(bar().querySelector('details')).toBeNull();
+        expect(bar(scope).querySelector('label')).toBeNull();
+        expect(bar().querySelector('label')).toBeNull();
         expect(query).not.toHaveBeenCalled();
         expect(GM_setValue).not.toHaveBeenCalled();
     });
@@ -84,14 +93,14 @@ describe('推荐清单筛选的独立范围', () => {
         expect(document.getElementById('rec-b')!.style.display).toBe('none');
     });
 
-    it('筛选模式仅修改对应实例，推荐排除模式不改变主流包含模式', () => {
-        const { scope, main, scoped } = fixture();
+    it('右键排除仅作用于对应作用域，推荐排除不改变主流包含', () => {
+        const { scope } = fixture();
         chip('共同').click();
-        chip('共同', scope).click();
-        bar(scope).querySelector<HTMLElement>(`[data-mode="${FILTER_MODES.EXCLUDES_ALL}"]`)!.click();
+        const event = rightClick(chip('共同', scope));
 
-        expect(scoped.currentFilterMode).toBe(FILTER_MODES.EXCLUDES_ALL);
-        expect(main.currentFilterMode).toBe(FILTER_MODES.CONTAINS_ANY);
+        expect(event.defaultPrevented).toBe(true);
+        expect(chip('共同', scope).classList.contains(FILTER_EXCLUDED_CLASS)).toBe(true);
+        expect(chip('共同').classList.contains('jhs-vlt-active')).toBe(true);
         expect(document.getElementById('rec-a')!.style.display).toBe('none');
         expect(document.getElementById('rec-b')!.style.display).toBe('');
         expect(document.getElementById('main-a')!.style.display).toBe('');
@@ -133,10 +142,10 @@ describe('推荐清单筛选的独立范围', () => {
         expect(item.style.display).toBe('');
     });
 
-    it('动态刷新保留消失标签的 active 状态，晚到同标签卡片自动套用筛选', () => {
+    it('动态刷新保留消失标签的包含与排除状态，晚到同标签卡片自动套用筛选', () => {
         const { scope, main, scoped } = fixture();
         chip('推荐', scope).click();
-        chip('主流').click();
+        rightClick(chip('主流'));
         document.querySelector('#rec-a .jhs-vlt-tag-link:last-child')!.remove();
 
         scoped.updateFilterBar();
@@ -149,8 +158,8 @@ describe('推荐清单筛选的独立范围', () => {
         main.updateFilterBar();
         expect(chip('推荐', scope).textContent).toBe('推荐 1');
         expect(document.getElementById('late')!.style.display).toBe('');
-        expect(chip('主流').classList.contains('jhs-vlt-active')).toBe(true);
-        expect(document.getElementById('main-a')!.style.display).toBe('none');
-        expect(document.getElementById('main-b')!.style.display).toBe('');
+        expect(chip('主流').classList.contains(FILTER_EXCLUDED_CLASS)).toBe(true);
+        expect(document.getElementById('main-a')!.style.display).toBe('');
+        expect(document.getElementById('main-b')!.style.display).toBe('none');
     });
 });

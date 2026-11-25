@@ -47,6 +47,7 @@ import {
     updateDetailPageCheckboxLabel
 } from './vlt-sync';
 import { setupListMgmtBroadcastListener } from './vlt-remote-sync';
+import { subscribeTagSync } from './vlt-sync-listener';
 import {
     setAutoReconcileDelay,
     setAutoServerSyncEnabled
@@ -76,6 +77,7 @@ export class VideoListsTagPlugin extends BasePlugin {
     destroy(): void {
         this.supervisor.abort();
         this.observer = null;
+        this.vltTags?.destroy();
         this.vltTags = null;
     }
 
@@ -126,7 +128,8 @@ export class VideoListsTagPlugin extends BasePlugin {
             // 接收清单删除/改名广播：实时移除/更新 checkbox
             setupListMgmtBroadcastListener(
                 (listId: string) => removeDetailPageCheckbox(listId),
-                (listId: string, newName: string) => updateDetailPageCheckboxLabel(listId, newName)
+                (listId: string, newName: string) => updateDetailPageCheckboxLabel(listId, newName),
+                { signal: this.supervisor.signal }
             );
             return;
         }
@@ -137,7 +140,7 @@ export class VideoListsTagPlugin extends BasePlugin {
             return;
         }
 
-        // 列表页（含 JavDB 首页，doc/47）：标签显示 + 筛选
+        // 列表页（含 JavDB 首页，doc/47）：标签显示 + 筛选 + 永久实时同步
         if (!isVideoListContext()) return;
 
         this.vltTags = new VltTags();
@@ -146,25 +149,33 @@ export class VideoListsTagPlugin extends BasePlugin {
         await this.vltTags.initExistingItems();
         if (this.supervisor.aborted) return;
 
-        // MutationObserver：监听新 .item 加入（AutoPagePlugin 瀑布流 / listWaterfall）
+        // 统一挂载实时刷新源（瀑布流/推荐晚填/清单管理/跨标签页同步），全部随 supervisor 回收
+        this.setupLiveRefresh();
+    }
+
+    /** 统一接线列表页的所有永久开启实时刷新源。 */
+    private setupLiveRefresh(): void {
+        const signal = this.supervisor.signal;
+
+        // 1. MutationObserver：监听新 .item 加入与筛选栏晚挂重试
         this.setupItemObserver();
+        // 2. 首页每周推荐晚填卡片
         this.supervisor.addEventListener(document, WEEKLY_RECOMMEND_ITEMS_EVENT, this.onRecommendationItems);
         // 补齐初始化读取期间已到达的推荐变化，避免监听安装前的事件丢失。
         this.onRecommendationItems();
-
-        // 接收清单删除/改名广播：实时全量刷新标签
+        // 3. 清单删除/改名广播 → 全量刷新标签
         setupListMgmtBroadcastListener(
             () => this.vltTags?.refreshAllTags().then(),
-            () => this.vltTags?.refreshAllTags().then()
+            () => this.vltTags?.refreshAllTags().then(),
+            { signal }
         );
-
-        // 自动刷新监听（跨标签页同步事件）
-        this.vltTags.setupAutoRefreshListener((payload) => {
-            // 收到同步事件后，精准刷新对应番号的标签
-            if (payload?.designation) {
-                this.vltTags?.refreshDesignation(payload.designation).then();
-            }
-        });
+        // 4. 详情页/批量清单同步广播 → 合批精准刷新对应番号（永久开启，无开关门控）
+        subscribeTagSync(
+            (payload) => {
+                this.vltTags?.queueDesignationRefresh(payload.designation);
+            },
+            { signal }
+        );
     }
 
     /**

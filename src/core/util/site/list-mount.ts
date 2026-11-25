@@ -16,6 +16,7 @@
  * 全部选择器取自注册表，本模块不持有站点字面量。
  */
 
+import { bindFilterContainerClear } from './filter-chips';
 import { siteSelector } from './selectors';
 
 /** 挂载点：目标元素 + 插入方位（`insertAdjacentElement` 的第二参）。 */
@@ -86,13 +87,17 @@ const STACK_PRIORITY_ATTR = 'data-jhs-filter-priority';
  */
 export function ensureFilterStack(): HTMLElement | null {
     const existing = document.querySelector<HTMLElement>(`.${FILTER_STACK_CLASS}`);
-    if (existing) return existing;
+    if (existing) {
+        bindFilterContainerClear(existing);
+        return existing;
+    }
 
     const mount = findListMountPoint();
     if (!mount) return null;
 
     const stack = document.createElement('div');
     stack.className = FILTER_STACK_CLASS;
+    bindFilterContainerClear(stack);
     applyListMountPoint(mount, stack);
     return stack;
 }

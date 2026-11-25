@@ -1,6 +1,7 @@
 import { PRELOAD_FILTER_READY_EVENT, STATUS_FILTER_DATA_EVENT } from '../../constants/weekly-recommend';
 
 import { TaskSupervisor } from '../../core/task-supervisor';
+import { FILTER_CHANGE_EVENT } from '../../core/util/site/filter-chips';
 import { siteSelector } from '../../core/util/site/selectors';
 import { queryFilterItems, reconcileFilterVisibility } from '../../core/util/site/filter-scope';
 import type { FilterScope } from '../../types/filter-scope';
@@ -18,6 +19,7 @@ export class WeeklyRecommendFilters {
     private supervisor = new TaskSupervisor();
     private tags: VltTags;
     private pending = false;
+    private preloadPending = false;
 
     constructor(private scope: FilterScope, private getOtherSite?: () => OtherSitePlugin | undefined) {
         this.tags = new VltTags(scope);
@@ -25,8 +27,12 @@ export class WeeklyRecommendFilters {
 
     init(): void {
         this.refresh();
-        // 筛选操作后重算其他栏的可见计数，不通过观察自身 style/隐藏标记触发。
-        this.supervisor.addEventListener(this.scope.mount, 'click', () => this.schedule());
+        // 筛选变化后仅合批重算预加载可见计数，避免重建正在交互中的筛选栏芯片 DOM（保障双击与焦点连续性）。
+        this.supervisor.addEventListener(this.scope.mount, FILTER_CHANGE_EVENT, (event: Event) => {
+            const detail = (event as CustomEvent<{ bar?: Element; cleared?: boolean }>).detail;
+            if (detail?.cleared || detail?.bar?.classList.contains('preload-filter-bar')) return;
+            this.schedulePreloadRefresh();
+        });
         const container = this.scope.root.querySelector(siteSelector('weeklyRecommend'));
         if (container) this.supervisor.observe(container, () => this.schedule(), {
             childList: true, subtree: true, characterData: true,
@@ -42,6 +48,15 @@ export class WeeklyRecommendFilters {
         this.supervisor.setTimeout(() => {
             this.pending = false;
             this.refresh();
+        }, 50);
+    }
+
+    private schedulePreloadRefresh(): void {
+        if (this.preloadPending || this.supervisor.aborted) return;
+        this.preloadPending = true;
+        this.supervisor.setTimeout(() => {
+            this.preloadPending = false;
+            if (!this.supervisor.aborted) refreshScopedPreloadFilter(this.scope);
         }, 50);
     }
 

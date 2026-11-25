@@ -1,9 +1,14 @@
 /**
  * 筛选应用 —— 从 status-tag-filter-plugin.ts 拆出的 applyFilter 方法。
  *
- * 根据当前激活的芯片显示/隐藏 .item 元素。协同安全：被 jhs 或其他脚本
+ * 根据当前包含/排除芯片维护 `data-status-tag-hidden` 标记。协同安全：被 jhs 或其他脚本
  * 隐藏的卡片不纳入管理（doc/48 增强：检查 data-hide 属性）。
  */
+import {
+    hasActiveSelections,
+    matchesIncludeExclude,
+    readFilterSelections
+} from '../../core/util/site/filter-chips';
 import {
     isHiddenByUnknownScript,
     queryFilterControls,
@@ -20,26 +25,20 @@ import { getItemCarNum, getScore, parseScoreChipValue } from './stf-score';
 const HIDDEN_ATTR = 'data-status-tag-hidden';
 
 /**
- * 应用筛选：根据当前激活的芯片显示/隐藏 .item 元素。对应原 L75-120。
+ * 应用状态/星级筛选：根据当前包含与排除芯片显示/隐藏 .item 元素。
  *
- * 协同安全（与 jhs 兼容的关键）：
- * - 被其他脚本隐藏的卡片（display:none 且无 data-status-tag-hidden）不纳入管理
- * - jhs 用 jQuery .hide() + data-hide 属性隐藏卡片，本脚本识别为"被其他脚本隐藏"并跳过
- *
- * 筛选逻辑：
- * - 无激活芯片：仅恢复本脚本隐藏的卡片（不触碰其他脚本已隐藏的）
- * - 激活"无状态标签"芯片：仅显示无任何状态标签的项
- * - 激活其他芯片：OR 逻辑，命中任一选中标签即显示
+ * 规则：
+ * - 无任何包含/排除芯片：仅恢复本脚本隐藏的卡片（不触碰其他脚本已隐藏的）
+ * - 命中任意排除芯片（状态标签 / 无状态标签 / 星级）→ 隐藏
+ * - 存在包含芯片时，命中任一包含芯片即显示（OR）
  */
 export function applyFilter(scope?: FilterScope): void {
-    const activeChips = queryFilterControls('.status-tag-filter-chip.active', scope);
-    const selectedValues = new Set(
-        Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
+    const selections = readFilterSelections(
+        queryFilterControls('.status-tag-filter-chip', scope),
+        'active'
     );
 
-    // 无筛选时：仅恢复本脚本隐藏的卡片，不清除其他脚本的隐藏
-    // doc/48 增强：恢复时检查 data-hide，避免恢复被 jhs 屏蔽的卡片
-    if (selectedValues.size === 0) {
+    if (!hasActiveSelections(selections)) {
         queryFilterItems(scope, scope ? '' : `[${HIDDEN_ATTR}]`).forEach((item: Element) => {
             const htmlItem = item as HTMLElement;
             htmlItem.removeAttribute(HIDDEN_ATTR);
@@ -48,56 +47,42 @@ export function applyFilter(scope?: FilterScope): void {
         return;
     }
 
-    const showNoTag = selectedValues.has(NO_TAG_VALUE);
-    const selectedTags = new Set(
-        [...selectedValues].filter((v) => v !== NO_TAG_VALUE && parseScoreChipValue(v) === null)
-    );
-    // 已读星级芯片（doc/24）：值形如 `score:3`，按本脚本 car_list 的评分筛选
-    const selectedScores = new Set(
-        [...selectedValues]
-            .map((v) => parseScoreChipValue(v))
-            .filter((score): score is number => score !== null)
-    );
-
     queryFilterItems(scope).forEach((item: Element) => {
         const htmlItem = item as HTMLElement;
-        // 协同安全（doc/48 增强）：被 jhs 屏蔽的卡片不纳入管理。
-        // 优先检查稳定的语义属性 data-hide（jhs 两种隐藏标记：
-        // "yes"=filterMovieList 屏蔽 / "<carNum>-hide"=showCarNumBox 临时隐藏），
-        // 而非易变的 style.display——排序/筛选时序竞争中 style.display 可能
-        // 被临时清除/覆盖，但 data-hide 属性在同一节点引用上不会丢失
-        // （jQuery empty+append 移动节点不丢属性）。同时保留 style.display
-        // 检查作为兼底（兼容未知脚本的隐藏）。
         const hiddenByJhs = htmlItem.hasAttribute(JHS_HIDE_ATTR);
         if (!scope && (hiddenByJhs || isHiddenByUnknownScript(htmlItem))) return;
 
-        // 收集当前卡片内所有 status-tag 的文本
         const itemStatusTags = new Set<string>();
         item.querySelectorAll(STATUS_TAG_SELECTOR).forEach((el: Element) => {
             const text = el.textContent?.trim() || '';
             if (text) itemStatusTags.add(text);
         });
 
-        // 标签匹配：命中任一选定标签即显示（OR 逻辑）
-        let tagMatch = false;
-        if (selectedTags.size > 0) {
-            tagMatch = [...selectedTags].some((t) => itemStatusTags.has(t));
-        }
+        let cachedScore: number | null | undefined;
+        const getItemScore = (): number | null => {
+            if (cachedScore === undefined) {
+                cachedScore = getScore(getItemCarNum(item));
+            }
+            return cachedScore;
+        };
 
-        // 无标签条件独立判断，与标签匹配用 OR 连接
-        const noTagMatch = showNoTag && itemStatusTags.size === 0;
+        const shouldShow = matchesIncludeExclude(selections, (values) => {
+            for (const value of values) {
+                if (value === NO_TAG_VALUE) {
+                    if (itemStatusTags.size === 0) return true;
+                    continue;
+                }
+                const score = parseScoreChipValue(value);
+                if (score !== null) {
+                    if (getItemScore() === score) return true;
+                    continue;
+                }
+                if (itemStatusTags.has(value)) return true;
+            }
+            return false;
+        });
 
-        // 星级匹配：卡片必须是已读（car_list 有记录）且评分命中选中的星级
-        const scoreMatch =
-            selectedScores.size > 0 && selectedScores.has(getScore(getItemCarNum(item)) ?? -1);
-
-        const shouldShow = tagMatch || noTagMatch || scoreMatch;
-
-        if (shouldShow) {
-            htmlItem.removeAttribute(HIDDEN_ATTR);
-        } else {
-            htmlItem.setAttribute(HIDDEN_ATTR, '');
-        }
+        htmlItem.toggleAttribute(HIDDEN_ATTR, !shouldShow);
         reconcileFilterVisibility(htmlItem);
     });
 }

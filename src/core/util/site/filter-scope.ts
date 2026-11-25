@@ -1,5 +1,6 @@
 import type { FilterScope } from '../../../types/filter-scope';
 
+import { bindFilterContainerClear } from './filter-chips';
 import { mountFilterBar } from './list-mount';
 import { siteSelector } from './selectors';
 
@@ -39,9 +40,10 @@ export function queryFilterItems<T extends Element = HTMLElement>(scope?: Filter
     return (scope?.root ?? document).querySelectorAll<T>(`${scope?.itemSelector ?? siteSelector('filterItem')}${suffix}`);
 }
 
-/** 保留主页面顺序权威，浮层中的三栏也按相同优先级排列。 */
+/** 保留主页面顺序权威，浮层中的各栏也按相同优先级排列并支持空白区双击清空。 */
 export function mountScopedFilterBar(bar: HTMLElement, priority: number, scope?: FilterScope): boolean {
     if (!scope) return mountFilterBar(bar, priority);
+    bindFilterContainerClear(scope.mount);
     bar.dataset.jhsFilterScope ||= 'local';
     bar.dataset.jhsFilterPriority = String(priority);
     const next = Array.from(scope.mount.children).find(

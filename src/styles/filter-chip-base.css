@@ -1,7 +1,18 @@
 /**
- * 筛选栏 + 芯片共享基础样式 —— status-tag-filter / video-lists-tag / preload-status-badge /
- * site-tag-filter 四个插件的筛选栏布局与芯片基础样式统一定义于此，
- * 各插件 CSS 仅保留 active 配色与 no-tag 变体。
+ * 筛选栏栈 + 芯片共享基础样式 —— status-tag-filter / video-lists-tag / preload-status-badge /
+ * site-tag-filter 四栏统一无底透贴布局、列对齐、暗色适配与三态排除样式。
+ *
+ * 设计约束简述（Workflow C · Refine，doc/72）：
+ * - 融入原站（PRODUCT.md / DESIGN.md / §8.5）：`.jhs-filter-stack` 与 `.jhs-weekly-recommend-filters`
+ *   不加额外背景色、外框或圆角容器，直接透贴宿主画布并与上方 `.tabs`、下方 `.movie-list` 左边缘齐平；
+ *   仅以行间发丝线（`#ededed` 对齐 JavDB `.panel-block`，暗色 `#2a2a2a`）和下外边距（12px）自然分隔；
+ *   空栈自动隐藏（§8.4）；生效行经 `:has()` 轻微加深行标签（§2.4）。
+ * - 网格与列对齐（css-layout §3 / §4）：外层 `display: grid; grid-template-columns: max-content minmax(0, 1fr)`
+ *   配合 `@supports (grid-template-columns: subgrid)` 使四行「筛选:/状态:/预加载:/标签:」左边缘贴齐页面主轴，
+ *   同时共享列宽让四行芯片左边缘垂直成线；容器宽 `<= 520px` 时经 `@container` 自动切单列堆叠。
+ * - 芯片规格与双通道状态（§3.5.1 / §4.4 / §5.6 / §5.7）：四栏芯片统一 `inline-flex`、12px、
+ *   `min-height: 26px`（粗指针触控设备 `32px`）、`tabular-nums` 计数防抖；排除态采用洗底 `#fee2e2` +
+ *   危险描边 `#dc2626` + 深红删除线 `#b91c1c`（对比度 5.16:1 ≥ AA）；明暗主题全四栏同构。
  *
  * 注意：missav-status-filter 不在此共享基础内——missav 是 Tailwind nord 暗色主题，
  * 浅色基础样式与其风格冲突（doc/223），由 missav-status-filter.css 独立定义暗色样式。
@@ -9,29 +20,80 @@
  * 注入方式：main.tsx 顶层 injectCss（始终注入，与 design-tokens.css 同级）。
  */
 
-/* ---------- 筛选栏容器 ---------- */
+/* ---------- 筛选区统一栈容器（无底无外框，直接融入原站画布） ---------- */
+.jhs-filter-stack,
+.jhs-weekly-recommend-filters {
+    container: jhs-filter-stack / inline-size;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--jhs-space-md);
+}
+
+.jhs-filter-stack {
+    margin-block: var(--jhs-space-xs) var(--jhs-space-md);
+}
+
+.jhs-filter-stack:empty,
+.jhs-weekly-recommend-filters:empty {
+    display: none;
+}
+
+/* ---------- 筛选栏单行（兼容独立兜底挂载 + subgrid 列对齐） ---------- */
 .status-tag-filter-bar,
 .jhs-vlt-filter-bar,
 .preload-filter-bar,
 .jhs-site-tag-filter-bar {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 0 12px 0;
-    border-bottom: 1px solid #e9ecef;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--jhs-space-md);
+    align-items: start;
+    padding-block: 6px;
+    border-bottom: 1px solid #ededed;
+    user-select: none;
 }
 
-/* ---------- 筛选栏标签 ---------- */
+@supports (grid-template-columns: subgrid) {
+    .jhs-filter-stack > .status-tag-filter-bar,
+    .jhs-filter-stack > .jhs-vlt-filter-bar,
+    .jhs-filter-stack > .preload-filter-bar,
+    .jhs-filter-stack > .jhs-site-tag-filter-bar,
+    .jhs-weekly-recommend-filters > .status-tag-filter-bar,
+    .jhs-weekly-recommend-filters > .jhs-vlt-filter-bar,
+    .jhs-weekly-recommend-filters > .preload-filter-bar,
+    .jhs-weekly-recommend-filters > .jhs-site-tag-filter-bar {
+        grid-template-columns: subgrid;
+    }
+}
+
+.jhs-filter-stack > :last-child,
+.jhs-weekly-recommend-filters > :last-child {
+    border-bottom: none;
+}
+
+/* ---------- 筛选栏前缀标签（左齐页面主轴，与首行芯片同高垂直居中） ---------- */
 .status-tag-filter-label,
 .jhs-vlt-filter-label,
 .preload-filter-label,
 .jhs-site-tag-filter-label {
-    flex-shrink: 0;
-    font-size: 0.8em;
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    min-height: 26px;
+    font-size: var(--jhs-font-size-sm);
     font-weight: 600;
-    color: #6c757d;
-    line-height: 1.8;
-    margin-right: 4px;
+    color: var(--jhs-color-text-secondary);
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: color var(--jhs-transition-fast);
+}
+
+/* 正在生效筛选的行轻微加深标签，未激活行退居次级（§2.4） */
+.status-tag-filter-bar:has(.active, .jhs-filter-excluded) > .status-tag-filter-label,
+.jhs-vlt-filter-bar:has(.jhs-vlt-active, .jhs-filter-excluded) > .jhs-vlt-filter-label,
+.preload-filter-bar:has(.active, .jhs-filter-excluded) > .preload-filter-label,
+.jhs-site-tag-filter-bar:has(.active, .jhs-filter-excluded) > .jhs-site-tag-filter-label {
+    color: var(--jhs-color-text);
 }
 
 /* ---------- 芯片容器 ---------- */
@@ -41,7 +103,9 @@
 .jhs-site-tag-filter-chips {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    min-inline-size: 0;
 }
 
 /* ---------- 芯片基础 ---------- */
@@ -49,25 +113,179 @@
 .jhs-vlt-filter-chip,
 .preload-filter-chip,
 .jhs-site-tag-filter-chip {
-    display: inline-block;
-    padding: 0.25em 0.7em;
-    font-size: 0.75em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 2px 10px;
+    font-size: var(--jhs-font-size-sm);
     font-weight: 600;
-    line-height: 1.5;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
     border-radius: 50rem;
     cursor: pointer;
     user-select: none;
     border: 1.5px solid #dee2e6;
-    background: #fff;
+    background: var(--jhs-color-bg);
     color: #495057;
-    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    transition:
+        color var(--jhs-transition-fast),
+        background-color var(--jhs-transition-fast),
+        border-color var(--jhs-transition-fast),
+        opacity var(--jhs-transition-fast);
 }
 
-/* ---------- 芯片悬停 ---------- */
-.status-tag-filter-chip:hover,
-.jhs-vlt-filter-chip:hover,
-.preload-filter-chip:hover,
-.jhs-site-tag-filter-chip:hover {
+/* ---------- 芯片悬停（未选中态与已包含态分治，避免已激活芯片悬停闪灰） ---------- */
+.status-tag-filter-chip:not(.active, .jhs-filter-excluded):hover,
+.jhs-vlt-filter-chip:not(.jhs-vlt-active, .jhs-filter-excluded):hover,
+.preload-filter-chip:not(.active, .jhs-filter-excluded):hover,
+.jhs-site-tag-filter-chip:not(.active, .jhs-filter-excluded):hover {
     border-color: #adb5bd;
     background: #f8f9fa;
+}
+
+.status-tag-filter-chip.active:hover,
+.jhs-vlt-filter-chip.jhs-vlt-active:hover,
+.preload-filter-chip.active:hover,
+.jhs-site-tag-filter-chip.active:hover {
+    opacity: 0.9;
+}
+
+/* ---------- 芯片排除态（右键排除，特异性高于后注入插件的 .no-tag/.no-status） ---------- */
+.status-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.jhs-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.preload-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+.jhs-site-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude'] {
+    border-style: solid;
+    border-color: #dc2626;
+    background: #fee2e2;
+    color: #b91c1c;
+    text-decoration: line-through;
+}
+
+.status-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.jhs-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.preload-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+.jhs-site-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover {
+    border-color: #b91c1c;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+/* ---------- 暗色主题全四栏统一适配（对齐 JavDB :root[data-theme='dark']） ---------- */
+:root[data-theme='dark'] .status-tag-filter-bar,
+:root[data-theme='dark'] .jhs-vlt-filter-bar,
+:root[data-theme='dark'] .preload-filter-bar,
+:root[data-theme='dark'] .jhs-site-tag-filter-bar {
+    border-bottom-color: #262626;
+}
+
+:root[data-theme='dark'] .status-tag-filter-label,
+:root[data-theme='dark'] .jhs-vlt-filter-label,
+:root[data-theme='dark'] .preload-filter-label,
+:root[data-theme='dark'] .jhs-site-tag-filter-label {
+    color: #b5b5b5;
+}
+
+:root[data-theme='dark'] .status-tag-filter-bar:has(.active, .jhs-filter-excluded) > .status-tag-filter-label,
+:root[data-theme='dark'] .jhs-vlt-filter-bar:has(.jhs-vlt-active, .jhs-filter-excluded) > .jhs-vlt-filter-label,
+:root[data-theme='dark'] .preload-filter-bar:has(.active, .jhs-filter-excluded) > .preload-filter-label,
+:root[data-theme='dark'] .jhs-site-tag-filter-bar:has(.active, .jhs-filter-excluded) > .jhs-site-tag-filter-label {
+    color: #f5f5f5;
+}
+
+/* 暗色默认芯片排除已包含/已排除态，保证各插件的激活色不被覆盖 */
+:root[data-theme='dark'] .status-tag-filter-chip:not(.active, .jhs-filter-excluded),
+:root[data-theme='dark'] .jhs-vlt-filter-chip:not(.jhs-vlt-active, .jhs-filter-excluded),
+:root[data-theme='dark'] .preload-filter-chip:not(.active, .jhs-filter-excluded),
+:root[data-theme='dark'] .jhs-site-tag-filter-chip:not(.active, .jhs-filter-excluded) {
+    background: #242424;
+    border-color: #4c566a;
+    color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .status-tag-filter-chip:not(.active, .jhs-filter-excluded):hover,
+:root[data-theme='dark'] .jhs-vlt-filter-chip:not(.jhs-vlt-active, .jhs-filter-excluded):hover,
+:root[data-theme='dark'] .preload-filter-chip:not(.active, .jhs-filter-excluded):hover,
+:root[data-theme='dark'] .jhs-site-tag-filter-chip:not(.active, .jhs-filter-excluded):hover {
+    background: #333;
+    border-color: #64748b;
+}
+
+:root[data-theme='dark'] .status-tag-filter-chip.no-status:not(.active, .jhs-filter-excluded),
+:root[data-theme='dark'] .jhs-vlt-filter-chip.jhs-vlt-no-tag:not(.jhs-vlt-active, .jhs-filter-excluded),
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.is-no-tag:not(.active, .jhs-filter-excluded) {
+    color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .status-tag-filter-chip.no-status.active,
+:root[data-theme='dark'] .jhs-vlt-filter-chip.jhs-vlt-no-tag.jhs-vlt-active,
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.is-no-tag.active {
+    background: #475569;
+    border-color: #475569;
+    color: var(--jhs-color-bg);
+}
+
+:root[data-theme='dark'] .status-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+:root[data-theme='dark'] .jhs-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+:root[data-theme='dark'] .preload-filter-chip.jhs-filter-excluded[data-filter-state='exclude'],
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude'] {
+    border-style: solid;
+    border-color: #dc2626;
+    background: rgb(220 38 38 / 22%);
+    color: #fecaca;
+    text-decoration: line-through;
+}
+
+:root[data-theme='dark'] .status-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+:root[data-theme='dark'] .jhs-vlt-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+:root[data-theme='dark'] .preload-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover,
+:root[data-theme='dark'] .jhs-site-tag-filter-chip.jhs-filter-excluded[data-filter-state='exclude']:hover {
+    border-color: #ef4444;
+    background: rgb(220 38 38 / 32%);
+    color: #fecaca;
+}
+
+/* ---------- 窄容器自适应（手机端或较窄浮层：标签置顶，芯片占满 100% 宽度） ---------- */
+@container jhs-filter-stack (inline-size <= 520px) {
+    .jhs-filter-stack > .status-tag-filter-bar,
+    .jhs-filter-stack > .jhs-vlt-filter-bar,
+    .jhs-filter-stack > .preload-filter-bar,
+    .jhs-filter-stack > .jhs-site-tag-filter-bar,
+    .jhs-weekly-recommend-filters > .status-tag-filter-bar,
+    .jhs-weekly-recommend-filters > .jhs-vlt-filter-bar,
+    .jhs-weekly-recommend-filters > .preload-filter-bar,
+    .jhs-weekly-recommend-filters > .jhs-site-tag-filter-bar {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--jhs-space-xs);
+        padding-block: var(--jhs-space-sm);
+    }
+
+    .status-tag-filter-label,
+    .jhs-vlt-filter-label,
+    .preload-filter-label,
+    .jhs-site-tag-filter-label {
+        justify-self: start;
+        min-height: auto;
+        font-size: var(--jhs-font-size-xs);
+    }
+}
+
+/* 触控设备适度扩大芯片触控面积（accessibility §5 Target sizes） */
+@media (pointer: coarse) {
+    .status-tag-filter-chips,
+    .jhs-vlt-filter-chips,
+    .preload-filter-chips,
+    .jhs-site-tag-filter-chips {
+        gap: var(--jhs-space-sm);
+    }
+
+    .status-tag-filter-chip,
+    .jhs-vlt-filter-chip,
+    .preload-filter-chip,
+    .jhs-site-tag-filter-chip {
+        min-height: 32px;
+        padding: 4px var(--jhs-space-md);
+    }
 }

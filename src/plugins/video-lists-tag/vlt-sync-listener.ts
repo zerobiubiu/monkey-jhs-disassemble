@@ -1,16 +1,20 @@
 /**
- * 跨标签页同步监听模块 —— 三重监听机制接收清单同步事件并触发精准刷新。
+ * 跨标签页实时标签同步订阅模块 —— 永久开启的三重广播接收与去重。
  *
- * 提取自 vlt-tags.ts：
- * - setupAutoRefreshListener：设置三重监听（CustomEvent / storage / GM_addValueChangeListener）
- * - handleSyncNotify：处理同步通知（过滤 + 防抖 + 回调）
+ * 原独立脚本通过 `autoRefreshEnabled` 开关控制是否响应跨标签页同步；
+ * 现已移除开关逻辑，标签同步永久生效，本模块彻底解耦 `VltTags`：
+ * - `shouldProcessTagSync`：校验载荷是否携带有效番号且属于会产生标签变更的关联结果
+ * - `createTagSyncDeduper`：对同一广播经 CustomEvent/storage/GM 三通道送达的回声精准去重，
+ *   不再使用全局时间窗口误吞并发场景下其他番号的更新
+ * - `subscribeTagSync`：订阅 `jdb:last-sync` / `jdb:sync-complete`，支持 `AbortSignal` 生命周期回收
  */
 import { broadcastSubscribe } from '../../core/util/broadcast';
 
-import type { VltTags } from './vlt-tags';
-
 /** GM 存储键 + localStorage 键：最后一次同步事件 payload。 */
-const LAST_SYNC_KEY = 'jdb:last-sync';
+export const LAST_SYNC_KEY = 'jdb:last-sync';
+
+/** 同页面即时同步事件名。 */
+export const SYNC_COMPLETE_EVENT = 'jdb:sync-complete';
 
 /** 跨标签页同步事件 payload 结构。 */
 export interface SyncPayload {
@@ -20,85 +24,112 @@ export interface SyncPayload {
     time?: number;
 }
 
+/** 已通过基本校验的同步载荷。 */
+export type ValidSyncPayload = SyncPayload & { designation: string };
+
+/** 同步去重器接口。 */
+export interface TagSyncDeduper {
+    accept(payload: ValidSyncPayload, now?: number): boolean;
+}
+
 /** 服务器返回的「未变更」类 association —— 标签不会变化，跳过刷新。 */
-const NO_CHANGE_ASSOCS: Record<string, true> = { existed: true, limit_exceeded: true, unchanged: true };
+const NO_CHANGE_ASSOCS: Record<string, true> = {
+    existed: true,
+    limit_exceeded: true,
+    unchanged: true
+};
 
-/** 防抖间隔（毫秒），500ms 内不重复刷新。 */
-const SYNC_DEBOUNCE_MS = 500;
+/** 缺少 `time` 字段的兼容载荷按番号去重的默认窗口（毫秒）。 */
+const FALLBACK_DESIGNATION_WINDOW_MS = 500;
 
-/**
- * 处理同步通知，通过过滤后回调 onSync（对应原 handleSyncNotify 闭包）。
- *
- * 过滤条件：
- * - autoRefreshEnabled 关闭 → 跳过
- * - payload 无 designation → 跳过
- * - association 为 existed/limit_exceeded/unchanged → 标签不变，跳过
- * - 距上次刷新 < 500ms → 防抖跳过
- *
- * @param plugin VltTags 实例
- * @param payload 同步事件 payload
- * @param onSync 通过过滤后的回调
- * @param state 可变状态（lastRefreshTime 防抖时间戳）
- */
-export function handleSyncNotify(
-    plugin: VltTags,
-    payload: SyncPayload | null,
-    onSync: (payload: SyncPayload) => void,
-    state: { lastRefreshTime: number }
-): void {
-    if (!plugin.autoRefreshEnabled) {
-        console.log('[视频清单标签] 收到同步事件但自动刷新已关闭，跳过');
-        return;
-    }
+/** 带时间戳事件的跨通道回声记忆 TTL（毫秒）。 */
+const EVENT_DEDUPE_TTL_MS = 5000;
+
+/** 校验同步载荷是否应触发标签刷新。 */
+export function shouldProcessTagSync(payload: SyncPayload | null): payload is ValidSyncPayload {
     if (!payload || !payload.designation) {
         console.warn('[视频清单标签] 收到同步事件但无 designation:', payload);
-        return;
+        return false;
     }
     if (NO_CHANGE_ASSOCS[payload.association ?? '']) {
         console.log(`[视频清单标签] association=${payload.association} 不影响标签，跳过`);
-        return;
+        return false;
     }
-
-    const now = Date.now();
-    if (now - state.lastRefreshTime < SYNC_DEBOUNCE_MS) {
-        console.log(
-            `[视频清单标签] 距上次刷新 ${now - state.lastRefreshTime}ms < ${SYNC_DEBOUNCE_MS}ms，防抖跳过`
-        );
-        return;
-    }
-    state.lastRefreshTime = now;
-
-    console.log('[视频清单标签] 收到同步事件 → 精准刷新', payload);
-    onSync(payload);
+    return true;
 }
 
 /**
- * 设置跨脚本跨标签页联动监听（对应原 L1189-1282）。
- *
- * 三重监听机制（与 listsOptionSync 的三重广播对应）：
- * 1. CustomEvent 'jdb:sync-complete' —— 跨脚本同页面（即时）
- * 2. window 'storage' 事件 —— 跨脚本跨标签页（localStorage）
- * 3. GM_addValueChangeListener —— 同脚本跨标签页（GM 原生通道，兜底）
- *
- * 收到同步事件后，handleSyncNotify 做过滤，全部通过后调用 onSync(payload)，
- * 由调用方决定如何刷新（通常传入 `(payload) => this.refreshDesignation(payload.designation)`）。
- *
- * @param plugin VltTags 实例
- * @param onSync 同步事件回调（payload 包含 designation/action/association/time）
+ * 创建跨通道同步去重器：
+ * - 带 `time` 的标准载荷按 `(designation, action, association, time)` 精确去重，
+ *   拦截 storage + GM 双通道回声，同时绝不误吞不同番号或同一番号的新变更；
+ * - 无 `time` 的旧格式载荷退回按番号独立窗口去重，不互相阻塞。
  */
-export function setupAutoRefreshListener(
-    plugin: VltTags,
-    onSync: (payload: SyncPayload) => void
-): void {
-    const state = { lastRefreshTime: 0 };
+export function createTagSyncDeduper(
+    fallbackWindowMs = FALLBACK_DESIGNATION_WINDOW_MS,
+    eventTtlMs = EVENT_DEDUPE_TTL_MS
+): TagSyncDeduper {
+    const seenEvents = new Map<string, number>();
+    const lastByDesignation = new Map<string, number>();
 
-    // 三重通道（CustomEvent 'jdb:sync-complete' / storage / GM）接收同步事件，
-    // onDelivery 保留各通道诊断日志（与原始实现时序一致：storage/GM 在 key 过滤后、空值检查前打印）
+    const pruneExpired = (map: Map<string, number>, ttl: number, now: number): void => {
+        if (map.size <= 64) return;
+        for (const [key, ts] of map) {
+            if (now - ts >= ttl) map.delete(key);
+        }
+    };
+
+    return {
+        accept(payload: ValidSyncPayload, now = Date.now()): boolean {
+            if (typeof payload.time === 'number' && Number.isFinite(payload.time)) {
+                const key = `${payload.designation}|${payload.action ?? ''}|${payload.association ?? ''}|${payload.time}`;
+                const seenAt = seenEvents.get(key);
+                if (seenAt !== undefined && now - seenAt < eventTtlMs) {
+                    return false;
+                }
+                pruneExpired(seenEvents, eventTtlMs, now);
+                seenEvents.set(key, now);
+                return true;
+            }
+
+            const prev = lastByDesignation.get(payload.designation);
+            if (prev !== undefined && now - prev < fallbackWindowMs) {
+                return false;
+            }
+            pruneExpired(lastByDesignation, fallbackWindowMs, now);
+            lastByDesignation.set(payload.designation, now);
+            return true;
+        }
+    };
+}
+
+/**
+ * 订阅跨脚本/跨标签页清单同步广播（永久生效）。
+ *
+ * 三重通道（与 `broadcastSyncComplete` 对应）：
+ * 1. CustomEvent `jdb:sync-complete` —— 同页面即时
+ * 2. window `storage` —— 同源跨标签页 / 跨脚本
+ * 3. `GM_addValueChangeListener` —— 同脚本跨标签页兜底
+ *
+ * @param onSync 通过校验与去重后的同步事件回调
+ * @param opts 可选取消信号（插件销毁时自动停止接收）
+ */
+export function subscribeTagSync(
+    onSync: (payload: ValidSyncPayload) => void,
+    opts: { signal?: AbortSignal } = {}
+): void {
+    const deduper = createTagSyncDeduper();
+
     broadcastSubscribe<SyncPayload>(
         LAST_SYNC_KEY,
-        (payload) => handleSyncNotify(plugin, payload, onSync, state),
+        (payload) => {
+            if (!shouldProcessTagSync(payload)) return;
+            if (!deduper.accept(payload)) return;
+            console.log('[视频清单标签] 收到同步事件 → 刷新标签', payload);
+            onSync(payload);
+        },
         {
-            eventName: 'jdb:sync-complete',
+            eventName: SYNC_COMPLETE_EVENT,
+            signal: opts.signal,
             onDelivery: (delivery) => {
                 if (delivery.channel === 'customEvent') {
                     console.log('[视频清单标签] [CustomEvent] 收到 jdb:sync-complete');
@@ -115,7 +146,5 @@ export function setupAutoRefreshListener(
         }
     );
 
-    console.log(
-        `[视频清单标签] 自动刷新监听已就绪 (autoRefreshEnabled=${plugin.autoRefreshEnabled})`
-    );
+    console.log('[视频清单标签] 跨标签页实时同步监听已就绪');
 }

@@ -4,14 +4,14 @@
  * 结构保持地去重自 4 处发送点（vlt-broadcast 的 broadcastWantWatchedSync /
  * broadcastSyncComplete / broadcastListMgmt，dpb-want-watched 的
  * broadcastWantWatchedSync）与 3 处订阅点（vlt-remote-sync 的
- * setupListMgmtBroadcastListener、vlt-sync-listener 的 setupAutoRefreshListener、
+ * setupListMgmtBroadcastListener、vlt-sync-listener 的 subscribeTagSync、
  * dpb-want-watched 的 setupWantWatchedSyncListener）。
  *
  * 线格式（wire format）与原始实现逐字节一致：
  * - GM/localStorage 写入 JSON.stringify(payload)；CustomEvent 的 detail 为 payload 对象本身。
  * - 无 senderId、无发送方排除机制：发送页经 CustomEvent 自收一次；其他标签页经
  *   storage + GM 各收一次（原始代码即如此，本模块不引入 senderId）。
- * - 不做跨通道去重：是否去重/防抖由订阅方 handler 决定（如 vlt-sync-listener 的 500ms 防抖）。
+ * - 不做跨通道去重：是否去重/合并由订阅方 handler 决定（如 vlt-sync-listener 的跨通道去重）。
  */
 
 /** 订阅侧送达通道（CustomEvent 事件 / storage 事件 / GM 监听器）。 */
@@ -56,6 +56,8 @@ export interface BroadcastSubscribeOptions {
     /** 通道级诊断回调：每条通道送达时先于 handler 调用（storage/GM 在 key 过滤后、
      *  空值检查前触发，与原始实现的日志时序一致）。用于保留各订阅点的 console 诊断日志。 */
     onDelivery?: (delivery: BroadcastDelivery) => void;
+    /** 可选取消信号：传入后在 signal abort 时自动卸载 DOM 事件并忽略后续 GM 回调。 */
+    signal?: AbortSignal;
 }
 
 /**
@@ -129,38 +131,51 @@ export function broadcastSubscribe<T>(
     const eventName = opts.eventName ?? key;
     const raw = opts.raw === true;
     const onDelivery = opts.onDelivery;
+    const signal = opts.signal;
+    if (signal?.aborted) return;
+
+    const listenerOpts = signal ? { signal } : undefined;
 
     // 1) 同页面 CustomEvent（即时）—— detail 对象直传
-    document.addEventListener(eventName, (e: Event) => {
-        onDelivery?.({ channel: 'customEvent' });
-        handler((e as CustomEvent).detail as T, { channel: 'customEvent' });
-    });
+    document.addEventListener(
+        eventName,
+        (e: Event) => {
+            onDelivery?.({ channel: 'customEvent' });
+            handler((e as CustomEvent).detail as T, { channel: 'customEvent' });
+        },
+        listenerOpts
+    );
 
     // 2) 跨标签页/跨脚本 localStorage storage 事件（仅其他标签页触发）
-    window.addEventListener('storage', (e: StorageEvent) => {
-        if (e.key !== key) return;
-        const delivery: BroadcastDelivery = { channel: 'storage', rawValue: e.newValue ?? undefined };
-        onDelivery?.(delivery);
-        if (!e.newValue) return;
-        if (raw) {
-            // raw 模式直传原始字符串（泛型擦除，非 as-any）
-            handler(e.newValue as unknown as T, delivery);
-            return;
-        }
-        let payload: T;
-        try {
-            payload = JSON.parse(e.newValue) as T;
-        } catch {
-            return;
-        }
-        handler(payload, delivery);
-    });
+    window.addEventListener(
+        'storage',
+        (e: StorageEvent) => {
+            if (e.key !== key) return;
+            const delivery: BroadcastDelivery = { channel: 'storage', rawValue: e.newValue ?? undefined };
+            onDelivery?.(delivery);
+            if (!e.newValue) return;
+            if (raw) {
+                // raw 模式直传原始字符串（泛型擦除，非 as-any）
+                handler(e.newValue as unknown as T, delivery);
+                return;
+            }
+            let payload: T;
+            try {
+                payload = JSON.parse(e.newValue) as T;
+            } catch {
+                return;
+            }
+            handler(payload, delivery);
+        },
+        listenerOpts
+    );
 
     // 3) 同脚本跨标签页 GM 原生通道
     try {
         GM_addValueChangeListener(
             key,
             (_name: string, _oldValue: unknown, newValue: unknown, remote: boolean) => {
+                if (signal?.aborted) return;
                 const delivery: BroadcastDelivery = {
                     channel: 'gm',
                     rawValue: newValue as string | undefined,

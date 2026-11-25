@@ -72,10 +72,8 @@
     display: none !important;
 }
 
+/* 布局与容器底色复用 filter-chip-base.css 的 .jhs-weekly-recommend-filters 网格定义。 */
 .jhs-weekly-recommend-filters {
-    display: flex;
-    flex-direction: column;
-    gap: var(--jhs-space-sm);
     margin-bottom: var(--jhs-space-lg);
 }
 

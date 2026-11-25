@@ -92,17 +92,12 @@
 
 /* ========== 筛选栏 ========== */
 
-.preload-filter-chip {
-    display: inline-flex;
-    align-items: center;
-}
-
 .preload-filter-chip .pf-dot {
     display: inline-block;
+    flex-shrink: 0;
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    margin-right: 5px;
 }
 
 .preload-filter-chip[data-value='queued'] .pf-dot {
@@ -119,6 +114,10 @@
 
 .preload-filter-chip[data-value='failed'] .pf-dot {
     background-color: #dc2626;
+}
+
+.preload-filter-chip.active[data-value] .pf-dot {
+    background-color: #fff;
 }
 
 .preload-filter-chip.active[data-value='queued'] {

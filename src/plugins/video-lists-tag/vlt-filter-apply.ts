@@ -1,12 +1,17 @@
 /**
- * 标签筛选应用逻辑 —— 筛选执行 + 标签统计。
+ * 标签筛选应用逻辑 —— 三态（包含/排除）筛选执行 + 标签统计。
  *
  * 提取自 vlt-filter-bar.ts：
- * - applyFilter：应用当前筛选（4 种模式）
+ * - applyFilter：按芯片三态应用筛选（左键包含 OR / 右键排除 NOR / 同栏混选为包含且不命中排除）
  * - collectAllUniqueTags：收集所有唯一标签名
  * - collectTagCounts：收集标签计数
  * - countNoTagItems：计算无标签卡片数
  */
+import {
+    hasActiveSelections,
+    matchesIncludeExclude,
+    readFilterSelections
+} from '../../core/util/site/filter-chips';
 import {
     isHiddenByUnknownScript,
     queryFilterControls,
@@ -20,30 +25,12 @@ import type { VltTags } from './vlt-tags';
 /** 标记本脚本隐藏的卡片（与其他脚本的 hidden 属性区分，协同安全设计）。 */
 export const TAG_HIDDEN_ATTR = 'data-video-lists-tag-hidden';
 
-/** 筛选模式枚举（4 种）。 */
-export const FILTER_MODES = {
-    CONTAINS_ANY: 'contains-any',
-    CONTAINS_ALL: 'contains-all',
-    EXCLUDES_ALL: 'excludes-all',
-    EXCLUDES_ANY: 'excludes-any'
-} as const;
-
-/**
- * 收集页面上所有唯一的标签名称（排除占位符）（对应原 L668-681）。
- * 占位符（pointer-events: none 的 —）被选择器排除。
- *
- * @returns 去重排序后的标签名数组
- */
+/** 收集页面上所有唯一的标签名称（排除占位符）。 */
 export function collectAllUniqueTags(scope?: FilterScope): string[] {
     return Object.keys(collectTagCounts(scope)).sort();
 }
 
-/**
- * 收集每个标签的出现次数（对应原 L684-697）。
- * 占位符被选择器排除。
- *
- * @returns 标签名→计数映射
- */
+/** 收集每个标签的出现次数（排除占位符）。 */
 export function collectTagCounts(scope?: FilterScope): Record<string, number> {
     const counts: Record<string, number> = {};
     const tags = new Set<Element>();
@@ -59,12 +46,7 @@ export function collectTagCounts(scope?: FilterScope): Record<string, number> {
     return counts;
 }
 
-/**
- * 计算无标签的卡片数（对应原 L700-709）。
- * 占位符被选择器排除，仅有占位符的卡片计为无标签。
- *
- * @returns 无标签的卡片数
- */
+/** 计算无标签的卡片数（排除占位符，仅有占位符的卡片计为无标签）。 */
 export function countNoTagItems(scope?: FilterScope): number {
     let count = 0;
     queryFilterItems(scope).forEach((item: Element) => {
@@ -77,37 +59,27 @@ export function countNoTagItems(scope?: FilterScope): number {
 }
 
 /**
- * 应用当前筛选（对应原 L717-807）。
+ * 应用当前清单标签筛选。
  *
- * 支持 4 种模式：
- * - CONTAINS_ANY：包含任意一个选中标签即显示（OR）
- * - CONTAINS_ALL：全都包含才显示（AND）
- * - EXCLUDES_ALL：一个都不包含才显示（NOR）
- * - EXCLUDES_ANY：至少缺少一个才显示（NAND）
- *
- * 协同安全：被其他脚本隐藏的卡片（display:none 且无 TAG_HIDDEN_ATTR）
- * 不纳入管理，跳过。无筛选时仅恢复本脚本隐藏的卡片。
- *
- * @param plugin VltTags 实例
+ * 规则：
+ * - 无包含也无排除条件：仅恢复本脚本隐藏的卡片，同时尊重其他筛选栏与基础屏蔽的交集标记；
+ * - 命中任意排除项（含「无标签」排除）→ 隐藏；
+ * - 存在包含项时，命中任一包含项（含「无标签」包含）才显示。
  */
 export function applyFilter(plugin: VltTags): void {
     const scope = plugin.filterScope;
-    const activeChips = queryFilterControls('.jhs-vlt-filter-chip.jhs-vlt-active', scope);
-    const selectedValues = new Set(
-        Array.from(activeChips).map((c: Element) => (c as HTMLElement).dataset.value || '')
+    const selections = readFilterSelections(
+        queryFilterControls('.jhs-vlt-filter-chip', scope),
+        'jhs-vlt-active'
     );
 
-    // 无筛选时：仅恢复本脚本隐藏的卡片，同时尊重其他筛选栏与基础屏蔽的交集标记
-    if (selectedValues.size === 0) {
+    if (!hasActiveSelections(selections)) {
         queryFilterItems(scope, `[${TAG_HIDDEN_ATTR}]`).forEach((item: Element) => {
             (item as HTMLElement).removeAttribute(TAG_HIDDEN_ATTR);
             reconcileFilterVisibility(item);
         });
         return;
     }
-
-    const showNoTag = selectedValues.has('no-tag');
-    const selectedTags = new Set([...selectedValues].filter((v: string) => v !== 'no-tag'));
 
     queryFilterItems(scope).forEach((item: Element) => {
         const htmlItem = item as HTMLElement;
@@ -121,41 +93,15 @@ export function applyFilter(plugin: VltTags): void {
             Array.from(tagLinks).map((el: Element) => el.textContent?.trim() || '')
         );
 
-        let tagMatch = false;
-
-        if (selectedTags.size > 0) {
-            switch (plugin.currentFilterMode) {
-                case FILTER_MODES.CONTAINS_ANY:
-                    // 包含任意一个：命中任一标签即显示
-                    tagMatch = [...selectedTags].some((t) => itemTagNames.has(t));
-                    break;
-                case FILTER_MODES.CONTAINS_ALL:
-                    // 全都包含：命中全部标签才显示
-                    tagMatch = [...selectedTags].every((t) => itemTagNames.has(t));
-                    break;
-                case FILTER_MODES.EXCLUDES_ALL:
-                    // 不包含以下标签：一个都不包含才显示
-                    tagMatch = ![...selectedTags].some((t) => itemTagNames.has(t));
-                    break;
-                case FILTER_MODES.EXCLUDES_ANY:
-                    // 不包含以下任意一个：至少缺少一个才显示
-                    tagMatch = ![...selectedTags].every((t) => itemTagNames.has(t));
-                    break;
-                default:
-                    tagMatch = [...selectedTags].some((t) => itemTagNames.has(t));
+        const shouldShow = matchesIncludeExclude(selections, (values) => {
+            if (values.has('no-tag') && itemTagNames.size === 0) return true;
+            for (const value of values) {
+                if (value !== 'no-tag' && itemTagNames.has(value)) return true;
             }
-        }
+            return false;
+        });
 
-        // 无标签条件独立判断，与标签匹配用 OR 连接
-        const noTagMatch = showNoTag && itemTagNames.size === 0;
-
-        const shouldShow = tagMatch || noTagMatch;
-
-        if (shouldShow) {
-            htmlItem.removeAttribute(TAG_HIDDEN_ATTR);
-        } else {
-            htmlItem.setAttribute(TAG_HIDDEN_ATTR, '');
-        }
+        htmlItem.toggleAttribute(TAG_HIDDEN_ATTR, !shouldShow);
         reconcileFilterVisibility(htmlItem);
     });
 }

@@ -31,7 +31,8 @@ interface ListMgmtPayload {
  */
 export function setupListMgmtBroadcastListener(
     onDelete: (listId: string) => void,
-    onRename: (listId: string, newName: string) => void
+    onRename: (listId: string, newName: string) => void,
+    opts: { signal?: AbortSignal } = {}
 ): void {
     /** 处理收到的广播 payload */
     const handlePayload = (payload: ListMgmtPayload | null): void => {
@@ -45,5 +46,7 @@ export function setupListMgmtBroadcastListener(
     };
 
     // 三重通道（CustomEvent / storage / GM）接收并解析广播 payload
-    broadcastSubscribe<ListMgmtPayload>(LIST_MGMT_KEY, (payload) => handlePayload(payload));
+    broadcastSubscribe<ListMgmtPayload>(LIST_MGMT_KEY, (payload) => handlePayload(payload), {
+        signal: opts.signal
+    });
 }
