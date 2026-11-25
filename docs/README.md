@@ -85,6 +85,11 @@
 | [`68-top250-native-pagination.md`](68-top250-native-pagination.md) | 变更 | v1.49.5 | 原站榜单不再被增强入口劫持；区分主导航、原生分页与增强页，记录浏览器 GET 验收及项目文档口径修正 |
 | [`69-top250-host-route.md`](69-top250-host-route.md) | 变更 | v1.49.6 | 更正 doc/68 增强入口的旧承载路由；记录线上 404 与登录重定向、真实 HTTP 导航回归及字幕筛选传递 |
 | [`70-site-native-tag-filter.md`](70-site-native-tag-filter.md) | 变更 | v1.50.0 | 新增站点原生卡片标签筛选插件 `SiteTagFilterPlugin`：实时采集 `div.tags.has-addons` 原生 `span`（排除 `.status-tag`），不预设名单动态渲染，支持无标签筛选、瀑布流增量、推荐浮层与主列表四栏交集协同 |
+| [`71-filter-interaction-and-always-on-vlt-sync.md`](71-filter-interaction-and-always-on-vlt-sync.md) | 变更 | v1.51.0 | 移除清单筛选模式下拉与自动刷新开关；新增四栏共享三态筛选引擎（左键包含/右键排除/四栏独立双击单选/空白区双击全清）；按永久实时同步重构清单同步去重、合批刷新与 `AbortSignal` 生命周期 |
+| [`72-filter-stack-layout-refinement.md`](72-filter-stack-layout-refinement.md) | 变更 | v1.51.1 | 筛选区 `.jhs-filter-stack`（含推荐浮层）整体布局精修：CSS Grid + `subgrid` 四栏列对齐、统一边车分组容器与外大于内间距、四栏统一暗色适配、修复预加载激活态圆点隐身、窄容器 `@container` 单列自适应与触控目标增强 |
+| [`73-filter-stack-frameless-canvas.md`](73-filter-stack-frameless-canvas.md) | 变更 | v1.51.2 | 移除 `.jhs-filter-stack` 额外背景/外框/圆角容器使其直接融入 JavDB 原站画布，标签左对齐贴齐 `.tabs` 与 `.movie-list` 左轴，保留 `subgrid` 芯片列对齐、暗色适配与窄屏堆叠 |
+| [`74-missav-filter-sync-and-nord-layout.md`](74-missav-filter-sync-and-nord-layout.md) | 变更 | v1.52.0 | MissAV 状态筛选同步 JavDB 三态交互（左键包含/右键排除/左右键双击单选/空白区双击全清/零计数保活/键盘无障碍），并按 Nord 暗色无背板风格升级布局与窄屏触控适配 |
+| [`75-missav-vlt-lists-and-native-saved.md`](75-missav-vlt-lists-and-native-saved.md) | 变更 | v1.53.0 | MissAV 跨站同步并独立区展示 JavDB 归属清单（不盖封面）+ 识别同步 MissAV 原生收藏状态（支持 `/saved` 同源分页、详情页与 iframe 预览弹窗实时联动）+ 顶部三栏无框筛选栈（状态 / MissAV / 清单交集） |
 
 ### 1.2 站点参考文档（固定名称，持续维护）
 

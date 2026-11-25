@@ -53,9 +53,9 @@
 | ListWaterfallPlugin | listWaterfall.user.js |
 | ListReadingStatusPlugin | listReadingStatus.user.js |
 | ModalListDisablerPlugin | modalListDisabler.user.js |
-| VideoListsTagPlugin | listsOptionSync + videoListsTag；原生与批量清单共用最新意图及 videoId 关联锁，恢复、自动补推和快照回写拒绝旧意图 |
-| CarListReaderPlugin | jhsCarListReader.user.js |
-| MissavStatusTagPlugin | missavStatusTag.user.js |
+| VideoListsTagPlugin | listsOptionSync + videoListsTag；原生与批量清单共用最新意图及 videoId 关联锁，恢复、自动补推和快照回写拒绝旧意图；列表页永久实时同步并合批精准刷新，筛选栏支持左键包含/右键排除/双击单选 |
+| CarListReaderPlugin | jhsCarListReader.user.js；同步负责 JavDB `car_list` 与 `VltDb` 归属清单跨站发布（含 iframe 实时推送） |
+| MissavStatusTagPlugin | missavStatusTag.user.js；渲染封面 JavDB 状态徽标与卡片底部独立区（MissAV 原生收藏徽标 + JavDB 归属清单），含详情/iframe 收藏按钮实时联动与 `/saved` 同源分页同步 |
 | MissavQuickCopyPlugin | MissAV Quick Copy & Javdb Search.user.js |
 
 ### 1.3 升级新插件（5 个，feature flag 可关）
@@ -78,14 +78,14 @@
 |------|------|
 | VisitHistoryPlugin | 访问记录：详情页元数据链接悬浮「最近打开时间」 |
 | ListReflowPlugin | 清单页编号整理：压实计划预览（期1）+ 压实执行引擎（期2） |
-| SiteTagFilterPlugin | 站点原生卡片标签筛选：实时采集卡片 `div.tags.has-addons` 内原生 `span`（排除 `.status-tag`），不预设名单动态渲染芯片，支持 OR 多选/无标签/瀑布流增量刷新与推荐浮层交集协同 |
+| SiteTagFilterPlugin | 站点原生卡片标签筛选：实时采集卡片 `div.tags.has-addons` 内原生 `span`（排除 `.status-tag`），不预设名单动态渲染芯片，支持左键包含/右键排除/双击单选、无标签/瀑布流增量刷新与推荐浮层交集协同 |
 | MissavAutoPagePlugin | MissAV 列表页瀑布流：点击加载下一页 + 加载全部 + 回到顶部；修复懒加载封面（data-src→src）；视频页守卫 |
-| MissavStatusFilterPlugin | MissAV 状态筛选：dataset.status → 芯片筛选栏（OR 过滤，data-mstf-hidden 协同）；nord 暗色样式；cell 级显隐 |
-| MissavVideoPreviewPlugin | MissAV 视频流 iframe 详情弹窗：捕获阶段拦截 + 修饰键保留原生新标签 + 可嵌套弹窗 |
+| MissavStatusFilterPlugin | MissAV 多栏筛选栈（状态 / MissAV 原生收藏 / JavDB 归属清单）：复用共享三态引擎（左键包含/右键排除/各栏独立双击单选/栈空白区双击全清，三栏独立标记求交集）；Nord 暗色无背板 subgrid 透贴样式与窄屏自适应；cell 级显隐 + 一键同步收藏按钮 |
+| MissavVideoPreviewPlugin | MissAV 视频流 iframe 详情弹窗：捕获阶段拦截 + 修饰键保留原生新标签 + 放行状态徽标与卡片底部独立信息区 + 可嵌套弹窗 |
 
 ## 2. 核心模块 `src/core/`
 
-共 **69 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 12 + `sync/` 4 + `util/` 26。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
+共 **70 个文件**：顶层 26 + `domain/`（领域层共享内核）1 + `storage/` 12 + `sync/` 4 + `util/` 27。`domain/`、`storage/`、`sync/`、`util/` 四个子目录按职责聚合，逐个文件的职责见下表；子目录内其余文件按同名模式归类。
 
 | 文件 | 职责 |
 |------|------|
@@ -124,4 +124,4 @@
 | pagination-state.ts | 瀑布流分页状态机（idle/loading/error/exhausted + retry） |
 | storage-revision.ts | 跨标签页存储修订号追踪（BroadcastChannel 广播 + 缓存失效回调） |
 | sync/ | 4 个文件：withExclusiveLock（Web Locks 包装，降级直接执行）、KeyedQueue（键控串行队列）、sync-intent-journal（意图日志，崩溃后恢复消费）、index（barrel） |
-| util/ | 26 个文件：broadcast（三重广播总线）、back-to-top、tabulator-factory、util-async/clipboard/cookie/date/dom/download/misc/popup/retry/sort/status-tag/translate/url、site/selectors（站点原生选择器注册表）、site/actress-links（演员链接新旧结构兼容）、site/missav-paths（MissAV 视频页路径判定）、site/csrf（CSRF 令牌读取）、site/list-mount（列表页筛选栏挂载锚点）、site/filter-scope（主流与浮层筛选范围、挂载与隐藏交集）、esc-layer、logger-panel、util-simple-lists、util-fetch-html（同源 fetch 规避 Cloudflare 403） |
+| util/ | 27 个文件：broadcast（三重广播总线，支持 AbortSignal）、back-to-top、tabulator-factory、util-async/clipboard/cookie/date/dom/download/misc/popup/retry/sort/status-tag/translate/url、site/selectors（站点原生选择器注册表）、site/actress-links（演员链接新旧结构兼容）、site/missav-paths（MissAV 视频页/收藏页路径判定、slug 提取与收藏页地址构造）、site/csrf（CSRF 令牌读取）、site/list-mount（列表页筛选栏挂载锚点与空白双击清空绑定）、site/filter-scope（主流与浮层筛选范围、挂载与隐藏交集）、site/filter-chips（四栏共享三态芯片包含/排除/双击单选与栈容器清空引擎）、esc-layer、logger-panel、util-simple-lists、util-fetch-html（同源 fetch 规避 Cloudflare 403） |

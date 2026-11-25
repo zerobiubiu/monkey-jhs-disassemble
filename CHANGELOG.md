@@ -9,6 +9,51 @@
 
 ---
 
+## v1.53.0
+
+> 本次发布同步合并自 `v1.50.0` 以来的全部演进（含 `v1.51.0`–`v1.52.0`：JavDB 四栏三态筛选交互与去背板无框布局、清单标签永久合批实时同步、MissAV 筛选三态交互与 Nord 暗色无框升级，详见下方各版本条目）。
+
+### 新增（MissAV 同步显示 JavDB 归属清单与 MissAV 自身收藏状态，doc/75）
+
+- **JavDB 归属清单跨站同步与卡片独立展示区**：
+  - 在 `VltDb` 全部写入事务（勾选/取消、清单删改名、对账、导入）挂载变更回调，`CarListReaderPlugin`（含 JavDB 详情页 iframe）通过独立 GM 跨站通道 `jhs_vlt_lists_data`（gzip+base64 紧凑快照 + 单调修订号）自动合批发布，设置面板「MissAV 同步 → 立即同步」与菜单命令同步推送。
+  - `MissAV-CarStatus` IndexedDB 平滑升级至 v3（新增 `vlt_cars` 与 `missav_saved` 仓库，零损兼容已有 `cars`/`sync_meta`）。
+  - 在每个 MissAV 卡片（`.thumbnail.group`，兼容初始页与瀑布流追加）底部单独渲染 `.jhs-missav-card-meta` 信息区，绝不遮盖视频封面；右侧按 JavDB 同款配色/新标签跳转/滚轮横向滚动展示归属清单（带 CSS `scroll()` 横向溢出边缘渐隐提示），无收藏且无清单时以暗色低对比度 `—` 占位对齐同行高度；`MissavVideoPreviewPlugin` 放行底部信息区点击避免误弹视频预览。
+- **MissAV 自身收藏状态识别、同步与实时联动（含 iframe 预览弹窗）**：
+  - 新增 `missav-saved-sync.ts`：支持同源 `fetch` 分页同步 `/{lang}/saved`（复用登录会话并带防重定向/风控误清库校验）、浏览收藏页自动校对、以及在视频详情页与 **iframe 预览弹窗内** 监听原生 `@click.prevent="toggleSave"` 按钮状态（`text-primary` vs `text-nord4`）并通过同源 `BroadcastChannel` 实时刷新父窗口列表页卡片。
+  - 在卡片底部独立区左侧固定槽位展示玫瑰红实心心形 `MissAV` 徽标，与封面右上角 JavDB 状态徽标清晰区分。
+- **MissAV 顶部多栏无框筛选栈**：
+  - `MissavStatusFilterPlugin` 升级为 `.jhs-missav-filter-stack`（`状态:` / `MissAV:` / `清单:` 三栏 `subgrid` 对齐，三栏独立标记求交集，空栏自动隐藏），沿用共享三态交互引擎（左键包含/右键排除/本栏独立双击单选/栈空白处双击全清），并在 `MissAV:` 栏附轻量「同步收藏 / 刷新收藏」按钮。
+
+## v1.52.0
+
+### 新增与优化（MissAV 状态筛选交互与布局对齐 JavDB，doc/74）
+
+- `MissavStatusFilterPlugin` 接入共享筛选交互引擎（`filter-chips.ts`），与 JavDB 筛选区功能完全同步：左键单击包含（OR）、右键单击排除（阻止默认菜单，支持同栏包含 + 排除混选）、左/右键双击芯片单选本项、双击筛选区空白处一键清空全部过滤条件，并支持零计数已选/已排除芯片保活清理、Enter/Space 键盘交互与 `aria-pressed`（`false` / `true` / `mixed`）。
+- 同步更新 `missav-status-filter.css`：延续 MissAV Tailwind Nord 暗色子系统配色与无背板透贴风格，左边缘与原站标题及网格齐平，新增暗底红洗底删除线排除态、`:has()` 生效行标签轻强调、`@media (width <= 600px)` 窄屏单列堆叠与触控目标放大。
+
+## v1.51.2
+
+### 调整（筛选区去背板融入原站，doc/73）
+
+- 移除 `.jhs-filter-stack`（及推荐浮层 `.jhs-weekly-recommend-filters`）的浅底背景、外框与圆角容器，使筛选区直接透贴于 JavDB 宿主画布；左侧四栏标签改为左对齐贴齐 `.tabs` 与 `.movie-list` 页面左轴，保留 `subgrid` 芯片列对齐、行间 `#ededed` / `#262626` 发丝线、统一暗色主题与移动端单列自适应，整体高度进一步收敛至 `155px`。
+
+## v1.51.1
+
+### 优化（筛选区整体布局精修，doc/72）
+
+- `.jhs-filter-stack`（及首页每周推荐浮层 `.jhs-weekly-recommend-filters`）升级为统一边车工具容器（浅底 `#fbfcfd` / 暗色 `#1a1a1a`、1px 描边、6px 圆角、外间距大于组内行间距、空栈自动隐藏），四栏经 CSS Grid + `subgrid` 对齐左侧标签列（右对齐冒号）与芯片左边缘，并经 `:has()` 轻微强调正在生效筛选的行标签。
+- 全四栏芯片统一 `inline-flex`、12px、`min-height: 26px`、`tabular-nums` 计数防抖与明暗双主题适配（消除暗色模式下前三栏白底白线与标签栏割裂问题），同时修复预加载激活态圆点与实底同色消失的问题。
+- 新增 `@container jhs-filter-stack (inline-size <= 520px)` 窄容器单列堆叠布局与 `@media (pointer: coarse)` 触控放大（32px 高、8px 间距）。
+
+## v1.51.0
+
+### 变更与重构（四栏三态筛选交互 + 清单标签永久实时同步，doc/71）
+
+- 移除清单筛选栏的模式下拉选择器（`<details>`）与自动刷新开关（`<label>`）及其全部状态存储和样式。
+- 新增四栏共享三态筛选交互引擎（`filter-chips.ts`），统一覆盖「筛选 / 状态 / 预加载 / 标签」四栏（含首页每周推荐浮层）：左键单击切换包含（OR）、右键单击切换排除（阻止原生菜单，同栏混选按「包含且不命中排除」结算，排除态采用浅红洗底 + 危险描边 + 深红删除线双通道表态）；左/右键双击芯片清空本栏其余条件后单选该项（四栏彼此独立）；双击 `.jhs-filter-stack`（或推荐浮层筛选区）空白处一键清除所有过滤条件并刷新计数。
+- 按「自动刷新永久开启」重构清单标签实时同步架构：`vlt-sync-listener` 彻底解耦 `VltTags` 并改用按 `(designation, action, association, time)` 的跨通道精确去重（修复旧全局 500ms 防抖吞并发多番号更新的问题）；`VltTags` 新增 50ms 合批 + 在途续跑的 `queueDesignationRefresh` / `refreshDesignations`；`broadcastSubscribe` 与 `VideoListsTagPlugin` 全链路接入 `AbortSignal` 随销毁自动清理。
+
 ## v1.50.0
 
 ### 新增（站点原生卡片标签筛选，doc/70）

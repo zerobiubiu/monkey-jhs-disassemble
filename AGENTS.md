@@ -88,7 +88,7 @@ monkey-jhs-disassemble/
 
 ### 3.4 核心模块 `src/core/`
 
-共 **69 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 43。
+共 **70 个文件**：顶层 26 + `domain/`（领域层共享内核）+ `storage/`（存储域拆分，含备份全量写入/回读/补偿）+ `sync/`（跨站同步共享设施）+ `util/`（核心工具集，含 site/）四个子目录 44。
 **完整清单（含职责）见 [`docs/plugin-catalog.md`](docs/plugin-catalog.md)**，增删模块时同步更新该文件；`bun run check:docs` 校验 catalog 与实际注册和核心目录，不校验其他文档。
 
 ### 3.5 组件 `src/components/`（142 个）
@@ -103,7 +103,7 @@ monkey-jhs-disassemble/
 翻页、批量选择和筛选统计仍保持独立；推荐预加载仅在浮层打开时调度，同番号任务与徽标共享。
 推荐卡片身份或原生番号/链接变化触发增量处理，标签与徽标更新不反复触发；标题只展示推荐名称与更新周期。
 浮层复用清单、状态/星级、预加载及站点原生标签四套筛选组件，以 `FilterScope` 分别维护挂载点、卡片范围、计数和选中状态；
-默认主页面查询排除局部范围控件，主列表与浮层均通过 `filter-scope` 隐藏标记组成多栏交集。原生「收起到下次更新」链接在浮层标题内隐藏。
+默认主页面查询排除局部范围控件，主列表与浮层均通过 `filter-scope` 隐藏标记组成多栏交集，并通过 `filter-chips` 共享左键包含/右键排除/四栏独立双击单选与栈容器空白双击清空；清单标签跨标签页实时同步永久开启并按番号合批刷新。原生「收起到下次更新」链接在浮层标题内隐藏。
 
 列表批量操作由 `list-page/lp-batch.tsx` 管理选择与委托，`lp-batch-actions.ts` 负责评价写入。
 `list-page/batch-lists/` 按网站适配、GM 持久日志、执行器、恢复调度与模态交互分层；
@@ -124,6 +124,12 @@ monkey-jhs-disassemble/
 具体路由和创建尝试先保存日志；`ratings.ts` 保留稳定评价身份及本地准备阶段，恢复不生成新意图覆盖后续评分。
 本地 `car_list` 读改写共用短锁，组合评价条件提交；评价回执交接任务日志后才释放，未完成日志不按容量淘汰。
 原快捷评价按钮保持独立后台操作；组合窗口结束刷新卡片状态和星级索引并保留勾选。
+
+MissAV 跨站与原生状态扩展由 `car-status-sync/` 与 `missav-status-filter/` 协同完成：
+`CarListReaderPlugin` 挂接 `VltDb.setChangeCallback`（含 JavDB iframe）经 `jhs_vlt_lists_data` 发布紧凑清单快照；
+`MissAV-CarStatus` IndexedDB（v3）新增 `vlt_cars` 与按规范小写 `slug` 主键存储的 `missav_saved`；
+`MissavStatusTagPlugin` 在 `.thumbnail.group` 底部独立渲染 `.jhs-missav-card-meta`（左侧 MissAV 原生心形徽标 + 右侧 JavDB 归属清单滚轮横向条，不覆盖封面，`MissavVideoPreviewPlugin` 放行点击），并在详情页与 iframe 预览弹窗内监听 `@click.prevent="toggleSave"` 按钮状态经同源 `BroadcastChannel` 实时刷新父页，同时支持同源 `fetch` 分页同步 `/{lang}/saved` 与浏览收藏页自动校对；
+`MissavStatusFilterPlugin` 以 `.jhs-missav-filter-stack`（`状态:` / `MissAV:` / `清单:` 三栏无框 Nord `subgrid` 交集 + 同步按钮）统一接入 `filter-chips`。
 
 ### 3.6 样式 `src/styles/`
 
